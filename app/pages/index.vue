@@ -31,7 +31,7 @@
 
               <div class="overflow-x-auto lg:overflow-x-visible">
                 <!-- Header -->
-                <div class="grid auto-cols-auto grid-flow-col gap-4 px-6 py-3 bg-gray-50 sticky top-0 z-10 w-full">
+                <div class="grid auto-cols-auto grid-flow-col gap-4 px-6 py-3 bg-gray-50 sticky top-0 z-10 w-fit lg:w-full">
                   <div class="text-xs font-medium text-gray-500 uppercase tracking-wider w-96">Business
                     Name
                   </div>
@@ -42,7 +42,7 @@
                 </div>
                 <!-- Rows -->
                 <div v-for="shop in diveshops" :key="shop.id"
-                  class="grid auto-cols-auto grid-flow-col gap-4 px-6 py-4 border-b border-gray-200 hover:bg-gray-50 w-full">
+                  class="grid auto-cols-auto grid-flow-col gap-4 px-6 py-4 border-b border-gray-200 hover:bg-gray-50 w-fit lg:w-full">
                   <div class="font-medium text-gray-900 w-96">{{ shop.business_name }}</div>
                   <div class="w-64">
                     <div class="text-sm text-gray-900">{{ shop.locale }}, {{ shop.country }}</div>
