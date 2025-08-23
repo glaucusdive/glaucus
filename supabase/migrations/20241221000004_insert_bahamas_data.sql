@@ -1,0 +1,18 @@
+-- Insert Bahamas dive shops data
+INSERT INTO diveshops (business_name, street_address, locale, country, region, website_url, phone, email, google_rating) VALUES
+('Brendal''s Dive Center', 'Brendal''s Dive Center, Green Turtle Cay, Abaco, Bahamas', 'Green Turtle Cay', 'Bahamas', 'North America', 'https://www.brendal.com/', '', 'brendal@brendal.com', NULL),
+('Dive Abaco!', 'The Conch Inn Marina, Marsh Harbour, Abaco, Bahamas', 'Marsh Harbour', 'Bahamas', 'North America', 'https://diveabaco.com/', '', 'dive@diveabaco.com', NULL),
+('Dive Guana', 'Great Guana Cay, Abaco, Bahamas', 'Great Guana Cay', 'Bahamas', 'North America', 'https://www.diveguana.com/', '', 'diveguana@gmail.com', NULL),
+('Reef Oasis Dive Club – Viva Bahamas', 'Viva Wyndham Fortuna Beach, Churchill Dr & Doubloon Rd, Freeport, Bahamas', 'Freeport', 'Bahamas', 'North America', 'https://www.reefoasisdiveclub.com/diving-bahamas/', '', 'viva@reefoasisdiveclub.com', NULL),
+('Riding Rock Resort (Guanahani Divers)', 'Riding Rock Resort & Marina, San Salvador Island, Bahamas', 'San Salvador', 'Bahamas', 'North America', 'https://ridingrock.com/', '', 'reservations@ridingrock.com', 4.0),
+('Stuart Cove''s Dive Bahamas', 'Coral Harbour Road, Coral Harbour, Nassau, Bahamas', 'Nassau', 'Bahamas', 'North America', 'https://stuartcove.com/', '', 'info@stuartcove.com', NULL),
+('Sunn Odyssey Divers', '30 Beach Way Drive, Freeport, Grand Bahama, Bahamas', 'Freeport', 'Bahamas', 'North America', 'https://sunnodysseydivers.com/', '', 'karen@sunnodysseydivers.com', 4.5),
+('The Dive Shop Ltd (Cape Eleuthera)', 'Cape Eleuthera, Rock Sound, Eleuthera, Bahamas', 'Rock Sound / Deep Creek', 'Bahamas', 'North America', 'https://thedive.shop/', '', 'info@thedive.shop', NULL),
+('UNEXSO – Underwater Explorers Society', '1 Sea Horse Road, Port Lucaya, Freeport, Bahamas', 'Freeport / Port Lucaya', 'Bahamas', 'North America', 'https://www.unexso.com/', '', 'linda@unexso.com', NULL),
+('Valentines Dive Center', 'Valentines Resort & Marina, Colebrooke St, Dunmore Town, Harbour Island, Bahamas', 'Harbour Island', 'Bahamas', 'North America', 'https://valentinesdivecenter.com/', '', 'valentinesdive@gmail.com', 4.5),
+('Aqua Cat (Liveaboard)', '204 Hospital Dr NE, Fort Walton Beach, FL 32548, USA', 'Exuma Cays', 'Bahamas', 'North America', 'https://allstarliveaboards.com/aqua-cat-liveaboard-diving/', '', 'info@allstarliveaboards.com', NULL),
+('Bahamas Aggressor (Liveaboard)', 'Aggressor Adventures, 209 Hudson Trace, Augusta, GA 30907, USA', 'Exuma Cays', 'Bahamas', 'North America', 'https://www.aggressor.com/destination/Bahamas', '', 'bahamas@aggressor.com', NULL),
+('Bahamas Aggressor II (Liveaboard)', 'Aggressor Adventures, 209 Hudson Trace, Augusta, GA 30907, USA', 'Exuma Cays', 'Bahamas', 'North America', 'https://adventuretravel.aggressor.com/2025/03/06/experience-exuma-cays-tiger-beach-with-the-new-bahamas-aggressor-ii/', '', 'bahamas@aggressor.com', NULL),
+('Blackbeard''s – Morning Star (Liveaboard)', '204 Hospital Dr NE, Fort Walton Beach, FL 32548, USA', 'Exuma Cays', 'Bahamas', 'North America', 'https://allstarliveaboards.com/blackbeards-liveaboard-diving/', '', 'info@allstarliveaboards.com', NULL),
+('Blackbeard''s – Sea Explorer (Liveaboard)', '204 Hospital Dr NE, Fort Walton Beach, FL 32548, USA', 'Exuma Cays', 'Bahamas', 'North America', 'https://allstarliveaboards.com/blackbeards-liveaboard-diving/', '', 'info@allstarliveaboards.com', NULL),
+('Cat Ppalu (Private Charter)', '204 Hospital Dr NE, Fort Walton Beach, FL 32548, USA', 'Exuma Cays', 'Bahamas', 'North America', 'https://allstarliveaboards.com/cat-ppalu-bahamas-yacht-charter/', '', 'info@allstarliveaboards.com', NULL);

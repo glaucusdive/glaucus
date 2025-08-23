@@ -1,0 +1,23 @@
+-- Insert Fiji dive shops data
+INSERT INTO diveshops (business_name, street_address, locale, country, region, website_url, phone, email, google_rating) VALUES
+('Beqa Adventure Divers', 'Fairway Place, Pacific Harbour, Fiji', 'Pacific Harbour', 'Fiji', 'Oceania', 'https://www.fijisharkdive.com/', '', 'adventuredivers@connect.com.fj', 4.8),
+('Aqua-Trek Beqa', 'Queens Hwy (at The Pearl), Pacific Harbour; Alt: 1 Atoll Place', 'Pacific Harbour', 'Fiji', 'Oceania', 'https://www.aquatrek.com/', '', 'info@aquatrek.com', NULL),
+('Subsurface Fiji (Port Denarau/Mamanuca)', 'Port Denarau Marina, Denarau Island, Nadi, Fiji', 'Nadi / Denarau', 'Fiji', 'Oceania', 'https://fijidiving.com/', '', 'info@subsurfacefiji.com', NULL),
+('Whitetip Marine Adventures (Port Denarau)', 'Port Denarau Marina (PO Box PD54), Nadi, Fiji', 'Nadi / Denarau', 'Fiji', 'Oceania', 'https://whitetipmarineadventures.com/', '', 'info@whitetipmarineadventures.com', NULL),
+('Diveaway Fiji (Coral Coast)', 'Fiji Hideaway Resort, Coral Coast, Korolevu, Fiji', 'Korolevu (Coral Coast)', 'Fiji', 'Oceania', 'https://www.diveawayfiji.com/', '', 'diveawayfiji1@gmail.com', NULL),
+('Waidroka Bay Resort (Dive Waidroka)', 'PO Box 323, Pacific Harbour, Deuba, Fiji', 'Deuba / Pacific Harbour', 'Fiji', 'Oceania', 'https://www.waidroka.com/', '', 'reservations@waidroka.com', NULL),
+('Ra Divers (Volivoli Beach Resort)', 'Volivoli Road, Suncoast (Rakiraki), Fiji', 'Rakiraki', 'Fiji', 'Oceania', 'https://volivoli.com/', '', 'res@volivoli.com', NULL),
+('Tokoriki Diving (Tokoriki Island Resort)', 'By the jetty at Tokoriki Island Resort, Tokoriki Island, Fiji', 'Tokoriki Island', 'Fiji', 'Oceania', 'https://www.tokorikidiving.com/', '', 'enquiries@tokorikidiving.com', NULL),
+('Reef Safari (Shangri-La Yanuca Island)', 'Shangri-La Yanuca Island, Coral Coast, Fiji', 'Yanuca Island / Sigatoka', 'Fiji', 'Oceania', 'https://www.reefsafaridivingfiji.com/reef-safari-at-shangri-la', '', 'shangrila@reefsafari.com', NULL),
+('Taveuni Dive (Taveuni Dive Resort)', 'PO Box 223, Waiyevo, Taveuni, Fiji', 'Waiyevo', 'Fiji', 'Oceania', 'https://www.taveunidiveresort.com/', '', 'inquiry@taveunidiveresort.com', NULL),
+('Taveuni Ocean Sports', 'Taveuni Island, Fiji', 'Taveuni', 'Fiji', 'Oceania', 'https://www.taveunioceansports.com/', '', 'dive@taveunioceansports.com', NULL),
+('Paradise Taveuni (PADI Dive Center)', 'PO Box 69, Waiyevo, Taveuni, Fiji', 'Waiyevo / Vuna', 'Fiji', 'Oceania', 'https://www.paradiseinfiji.com/diving/', '', 'allan@paradiseinfiji.com', NULL),
+('KoroSun Dive (Savasi Island)', 'Hibiscus Highway, Savasi Island (Savusavu), Fiji', 'Savusavu', 'Fiji', 'Oceania', 'https://korosundive.com/', '', 'korosundive@connect.com.fj', NULL),
+('Jean-Michel Cousteau Resort – Dive Center', 'PO Box 333, Savusavu, Fiji', 'Savusavu', 'Fiji', 'Oceania', 'https://www.jeanmichelcousteaudiving.com/', '', 'donsantee@jeanmichelcousteaudiving.com', NULL),
+('Dive Kadavu (Matana Beach Resort)', 'PO Box 8, Vunisea, Kadavu, Fiji', 'Vunisea', 'Fiji', 'Oceania', 'https://www.divekadavu.com/', '', 'admin@divekadavu.com', NULL),
+('Mad Fish Dive Centre (Matava Resort)', 'Matava Resort, Kadavu, Fiji', 'Kadavu', 'Fiji', 'Oceania', 'https://matava.com/', '', 'info@matava.com', NULL),
+('Sau Bay Resort & Spa (Dive Sau Bay)', 'Sau Bay, Vanua Levu (near Rainbow Reef), Fiji', 'Sau Bay', 'Fiji', 'Oceania', 'https://www.fijidiveresort.net/', '', 'info@divesaubay.com', NULL),
+('Dive Academy Fiji (Viani Bay)', 'Viani Bay, Vanua Levu, Fiji', 'Viani Bay', 'Fiji', 'Oceania', 'https://www.diveacademyfiji.com/', '', 'info@diveacademyfiji.com', NULL),
+('Scuba Bula (Seashell@Momi)', 'Seashell@Momi Resort, Momi Bay, Nadi, Fiji', 'Nadi / Momi Bay', 'Fiji', 'Oceania', 'http://www.scubabula.com/', '', 'info@scubabula.com', NULL),
+('Beqa Lagoon Resort – Dive Center', 'Beqa Island (Box 112 Deuba; Pacific Harbour), Fiji', 'Beqa / Pacific Harbour', 'Fiji', 'Oceania', 'https://beqalagoonresort.com/fiji-shark-dive/', '', 'reservations@beqalagoonresort.com', NULL),
+('NAI''A Liveaboard', 'PO Box 332, Pacific Harbour, Fiji', 'Lautoka (embark) / Pacific Harbour (office)', 'Fiji', 'Oceania', 'https://www.naia.com.fj/', '', 'explore@naia.com.fj', NULL);
