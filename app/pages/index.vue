@@ -6,7 +6,7 @@
           <div class="h-full min-h-screen">
             <!-- Loading State -->
             <div v-if="pending" class="flex justify-center items-center h-full min-h-screen">
-              <div class="text-center">
+              <div class="flex flex-col items-center justify-center">
                 <UIcon name="i-heroicons-arrow-path" class="animate-spin h-8 w-8 text-gray-500 mx-auto mb-4" />
                 <span class="text-gray-600">Loading dive shops...</span>
               </div>
@@ -129,5 +129,9 @@ const { data: diveshops, pending, error } = await useAsyncData('diveshops', asyn
     console.error('Error fetching dive shops:', err)
     throw err
   }
+}, {
+  server: false,    // Don't cache on server
+  lazy: false,      // Fetch immediately
+  default: () => [] // Default empty array
 })
 </script>
