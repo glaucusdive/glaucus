@@ -48,7 +48,7 @@
                 Please contact the dive center upon your arrival to book the program.
               </div>
             </div>
-            <div class="flex flex-row gap-2 p-6 border border-neutral-200 rounded-md *:w-full">
+            <div class="flex flex-col lg:flex-row gap-6 p-6 border border-neutral-200 rounded-md *:w-full">
               <div class="flex flex-col gap-2">
                 <h3 class="text-xl font-semibold">Hours</h3>
                 <ul class="text-lg space-y-1">
@@ -76,9 +76,9 @@
               </div>
               <div class="">
                 <div
-                  class="flex flex-col gap-6 *:w-full *:flex *:flex-row *:gap-6 *:border *:border-neutral-200 *:rounded-md *:p-6">
+                  class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1 gap-6 *:w-full *:flex *:flex-col lg:*:flex-row *:gap-6 *:border *:border-neutral-200 *:rounded-md *:p-6">
                   <div>
-                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto lg:w-52 lg:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -90,7 +90,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto lg:w-52 lg:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -103,7 +103,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto lg:w-52 lg:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -115,7 +115,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto lg:w-52 lg:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -128,7 +128,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto lg:w-52 lg:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -141,7 +141,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto lg:w-52 lg:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -152,7 +152,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto lg:w-52 lg:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -194,7 +194,7 @@
                 <div ref="carouselContainer"
                   class="flex flex-row gap-6 transition-transform duration-300 ease-in-out *:flex *:flex-col *:gap-6 *:border *:border-neutral-200 *:rounded-md *:p-6">
                   <div>
-                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto xl:w-52 xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -207,7 +207,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto xl:w-52 xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -220,7 +220,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto xl:w-52 xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -233,7 +233,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto xl:w-52 xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -246,7 +246,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto xl:w-52 xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -259,7 +259,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto xl:w-52 xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -279,7 +279,7 @@
             <div class="flex flex-col gap-4 p-6 bg-neutral-50 sticky top-0">
               <h2 class="text-2xl font-semibold">More Information</h2>
             </div>
-            <div class="flex flex-row gap-2 p-6 border border-neutral-200 rounded-md *:w-full">
+            <div class="flex flex-col lg:flex-row gap-6 p-6 border border-neutral-200 rounded-md *:w-full">
               <div class="flex flex-col gap-6">
                 <div class="flex flex-col gap-2">
                   <h3 class="text-xl font-semibold">Equipment Rental</h3>
@@ -385,18 +385,28 @@
 
 <script setup>
 import { MapPin, Phone, Mail, Globe, ChevronLeft, ChevronRight } from 'lucide-vue-next'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 // Carousel functionality - wrapped in a modular function
-function createCarousel(containerRef, itemsPerSlide = 3) {
+function createCarousel(containerRef) {
   const currentIndex = ref(0)
   const totalItems = ref(0)
   const canGoNext = ref(true)
   const canGoPrevious = ref(false)
+  const itemsPerSlide = ref(3) // Will be updated responsively
+
+  function getItemsPerSlide() {
+    if (typeof window === 'undefined') return 3 // SSR fallback
+    
+    const width = window.innerWidth
+    if (width <= 375) return 1.5
+    if (width <= 640) return 2.5
+    return 3
+  }
 
   function updateButtonStates() {
     canGoPrevious.value = currentIndex.value > 0
-    canGoNext.value = currentIndex.value < (totalItems.value - itemsPerSlide)
+    canGoNext.value = currentIndex.value < (totalItems.value - Math.floor(itemsPerSlide.value))
   }
 
   function updateCarouselPosition() {
@@ -405,10 +415,11 @@ function createCarousel(containerRef, itemsPerSlide = 3) {
       const gapSize = 24 // 6 * 4 = 24px per gap (gap-6 = 1.5rem = 24px)
       
       // Calculate item width for display (showing itemsPerSlide items)
-      const totalGaps = itemsPerSlide - 1
+      const currentItemsPerSlide = itemsPerSlide.value
+      const totalGaps = Math.floor(currentItemsPerSlide) - 1
       const totalGapWidth = gapSize * totalGaps
       const availableWidth = containerWidth - totalGapWidth
-      const itemWidth = availableWidth / itemsPerSlide
+      const itemWidth = availableWidth / currentItemsPerSlide
       
       // Calculate translation: slide by 1 item at a time
       const translateX = -(currentIndex.value * (itemWidth + gapSize))
@@ -419,7 +430,7 @@ function createCarousel(containerRef, itemsPerSlide = 3) {
   }
 
   function carouselNext() {
-    const maxIndex = totalItems.value - itemsPerSlide
+    const maxIndex = totalItems.value - Math.floor(itemsPerSlide.value)
     if (currentIndex.value < maxIndex) {
       currentIndex.value += 1 // Always slide by 1, regardless of itemsPerSlide
       updateCarouselPosition()
@@ -434,28 +445,72 @@ function createCarousel(containerRef, itemsPerSlide = 3) {
   }
 
   function setItemWidths() {
-    if (containerRef.value) {
+    if (containerRef.value && containerRef.value.parentElement) {
       const containerWidth = containerRef.value.parentElement.offsetWidth
-      const gapSize = 24 // 6 * 4 = 24px per gap (gap-6 = 1.5rem = 24px)
       
-      // Calculate item width for displaying itemsPerSlide items
-      const totalGaps = itemsPerSlide - 1
-      const totalGapWidth = gapSize * totalGaps
-      const availableWidth = containerWidth - totalGapWidth
-      const itemWidth = availableWidth / itemsPerSlide
-      
-      Array.from(containerRef.value.children).forEach(item => {
-        item.style.width = `${itemWidth}px`
-        item.style.flexShrink = '0'
-      })
+      // Only proceed if container has a valid width
+      if (containerWidth > 0) {
+        const gapSize = 24 // 6 * 4 = 24px per gap (gap-6 = 1.5rem = 24px)
+        
+        // Calculate item width for displaying itemsPerSlide items
+        const currentItemsPerSlide = itemsPerSlide.value
+        const totalGaps = Math.floor(currentItemsPerSlide) - 1
+        const totalGapWidth = gapSize * totalGaps
+        const availableWidth = containerWidth - totalGapWidth
+        const itemWidth = availableWidth / currentItemsPerSlide
+        
+        Array.from(containerRef.value.children).forEach(item => {
+          item.style.width = `${itemWidth}px`
+          item.style.flexShrink = '0'
+          item.style.minWidth = `${itemWidth}px`
+        })
+      }
     }
+  }
+
+  let resizeTimeout = null
+
+  function updateResponsiveSettings() {
+    // Debounce resize events to prevent excessive calculations
+    if (resizeTimeout) {
+      clearTimeout(resizeTimeout)
+    }
+    
+    resizeTimeout = setTimeout(() => {
+      const newItemsPerSlide = getItemsPerSlide()
+      const shouldUpdate = newItemsPerSlide !== itemsPerSlide.value
+      
+      if (shouldUpdate) {
+        itemsPerSlide.value = newItemsPerSlide
+      }
+      
+      // Always update widths and position on resize, even if itemsPerSlide hasn't changed
+      // This handles cases where container size changes but breakpoint doesn't
+      setItemWidths()
+      updateCarouselPosition()
+    }, 100) // 100ms debounce
   }
 
   function initializeCarousel() {
     if (containerRef.value) {
       totalItems.value = containerRef.value.children.length
-      setItemWidths()
-      updateCarouselPosition()
+      itemsPerSlide.value = getItemsPerSlide()
+      
+      // Use a small delay to ensure DOM is fully rendered
+      setTimeout(() => {
+        setItemWidths()
+        updateCarouselPosition()
+      }, 50)
+      
+      // Add resize listener
+      window.addEventListener('resize', updateResponsiveSettings)
+    }
+  }
+
+  function cleanup() {
+    window.removeEventListener('resize', updateResponsiveSettings)
+    if (resizeTimeout) {
+      clearTimeout(resizeTimeout)
     }
   }
 
@@ -463,6 +518,7 @@ function createCarousel(containerRef, itemsPerSlide = 3) {
     carouselNext,
     carouselPrevious,
     initializeCarousel,
+    cleanup,
     canGoNext,
     canGoPrevious
   }
@@ -470,9 +526,13 @@ function createCarousel(containerRef, itemsPerSlide = 3) {
 
 // Initialize carousel
 const carouselContainer = ref(null)
-const { carouselNext, carouselPrevious, initializeCarousel, canGoNext, canGoPrevious } = createCarousel(carouselContainer, 3)
+const { carouselNext, carouselPrevious, initializeCarousel, cleanup, canGoNext, canGoPrevious } = createCarousel(carouselContainer)
 
 onMounted(() => {
   initializeCarousel()
+})
+
+onUnmounted(() => {
+  cleanup()
 })
 </script>
