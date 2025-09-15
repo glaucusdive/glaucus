@@ -78,7 +78,7 @@
                 <div
                   class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1 gap-6 *:w-full *:flex *:flex-col lg:*:flex-row *:gap-6 *:border *:border-neutral-200 *:rounded-md *:p-6">
                   <div>
-                    <div class="w-full h-auto lg:w-52 lg:h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto lg:w-52 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -90,7 +90,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-full h-auto lg:w-52 lg:h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto lg:w-52 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -103,7 +103,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-full h-auto lg:w-52 lg:h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto lg:w-52 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -115,7 +115,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-full h-auto lg:w-52 lg:h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto lg:w-52 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -128,7 +128,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-full h-auto lg:w-52 lg:h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto lg:w-52 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -141,7 +141,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-full h-auto lg:w-52 lg:h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto lg:w-52 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -152,7 +152,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-full h-auto lg:w-52 lg:h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto lg:w-52 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -194,7 +194,7 @@
                 <div ref="carouselContainer"
                   class="flex flex-row gap-6 transition-transform duration-300 ease-in-out *:flex *:flex-col *:gap-6 *:border *:border-neutral-200 *:rounded-md *:p-6">
                   <div>
-                    <div class="w-full h-auto xl:w-52 xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -207,7 +207,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-full h-auto xl:w-52 xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -220,7 +220,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-full h-auto xl:w-52 xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -233,7 +233,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-full h-auto xl:w-52 xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -246,7 +246,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-full h-auto xl:w-52 xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
@@ -259,7 +259,7 @@
                     </div>
                   </div>
                   <div>
-                    <div class="w-full h-auto xl:w-52 xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                    <div class="w-full h-auto xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
                       <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col gap-2">
