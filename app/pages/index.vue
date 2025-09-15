@@ -1,6 +1,6 @@
 <template>
   <div class="grid lg:grid-cols-[200px_auto] min-h-screen *:h-full">
-    <div class="bg-neutral-100 hidden lg:block">
+    <div class="bg-neutral-50 hidden lg:block">
       <div class="flex flex-col justify-start gap-56 p-4 sticky top-0 h-full max-h-screen">
         <div class="w-[120px] h-auto">
           <img src="/images/logo-glaucus.svg" class="w-full h-full object-cover" />
