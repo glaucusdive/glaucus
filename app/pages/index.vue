@@ -75,94 +75,42 @@
                 <h2 class="text-2xl font-semibold">Dive Destinations</h2>
               </div>
               <div class="">
-                <div
-                  class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1 gap-6 *:w-full *:flex *:flex-col lg:*:flex-row *:gap-6 *:border *:border-neutral-200 *:rounded-md *:p-6">
-                  <div>
-                    <div class="w-full h-auto lg:w-52 bg-neutral-100 rounded-sm overflow-hidden">
-                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
-                    </div>
-                    <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold">Beginner / Training Dives</h3>
-                      <ul class="text-lg space-y-1">
-                        <li>House Reef</li>
-                        <li>Lagoon around Bandos</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="w-full h-auto lg:w-52 bg-neutral-100 rounded-sm overflow-hidden">
-                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
-                    </div>
-                    <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold">Shark & Ray / Big Pelagic Dives</h3>
-                      <ul class="text-lg space-y-1">
-                        <li>House Reef</li>
-                        <li>Lankan Reef</li>
-                        <li>Banana Reef</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="w-full h-auto lg:w-52 bg-neutral-100 rounded-sm overflow-hidden">
-                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
-                    </div>
-                    <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold">Wreck Diving</h3>
-                      <ul class="text-lg space-y-1">
-                        <li>Victory Wreck</li>
-                        <li>Other small wrecks</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="w-full h-auto lg:w-52 bg-neutral-100 rounded-sm overflow-hidden">
-                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
-                    </div>
-                    <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold">Deep / Advanced Dives (20-30m)</h3>
-                      <ul class="text-lg space-y-1">
-                        <li>Bandos Rock</li>
-                        <li>Banana Reef</li>
-                        <li>Victory Wreck</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="w-full h-auto lg:w-52 bg-neutral-100 rounded-sm overflow-hidden">
-                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
-                    </div>
-                    <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold">Current / Drift Dives</h3>
-                      <ul class="text-lg space-y-1">
-                        <li>Banana Reef</li>
-                        <li>Bandos Rock</li>
-                        <li>Other "thilas"</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="w-full h-auto lg:w-52 bg-neutral-100 rounded-sm overflow-hidden">
-                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
-                    </div>
-                    <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold">Night Diving</h3>
-                      <ul class="text-lg space-y-1">
-                        <li>House Reef</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="w-full h-auto lg:w-52 bg-neutral-100 rounded-sm overflow-hidden">
-                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
-                    </div>
-                    <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold">Overhangs / Swim-Throughs</h3>
-                      <ul class="text-lg space-y-1">
-                        <li>Banana Reef</li>
-                        <li>Other nearby reefs</li>
-                      </ul>
-                    </div>
-                  </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1 gap-6">
+                  <CardListItem 
+                    title="Beginner / Training Dives"
+                    image="/images/fpo/destinations-beginner.png"
+                    :items="['House Reef', 'Lagoon around Bandos']"
+                  />
+                  <CardListItem 
+                    title="Shark & Ray / Big Pelagic Dives"
+                    image="/images/fpo/destinations-beginner.png"
+                    :items="['House Reef', 'Lankan Reef', 'Banana Reef']"
+                  />
+                  <CardListItem 
+                    title="Wreck Diving"
+                    image="/images/fpo/destinations-beginner.png"
+                    :items="['Victory Wreck', 'Other small wrecks']"
+                  />
+                  <CardListItem 
+                    title="Deep / Advanced Dives (20-30m)"
+                    image="/images/fpo/destinations-beginner.png"
+                    :items="['Bandos Rock', 'Banana Reef', 'Victory Wreck']"
+                  />
+                  <CardListItem 
+                    title="Current / Drift Dives"
+                    image="/images/fpo/destinations-beginner.png"
+                    :items="['Banana Reef', 'Bandos Rock', 'Other thilas']"
+                  />
+                  <CardListItem 
+                    title="Night Diving"
+                    image="/images/fpo/destinations-beginner.png"
+                    :items="['House Reef']"
+                  />
+                  <CardListItem 
+                    title="Overhangs / Swim-Throughs"
+                    image="/images/fpo/destinations-beginner.png"
+                    :items="['Banana Reef', 'Other nearby reefs']"
+                  />
                 </div>
               </div>
             </div>
@@ -192,85 +140,37 @@
               <div class="overflow-hidden">
                 <!-- Carousel Items -->
                 <div ref="carouselContainer"
-                  class="flex flex-row gap-6 transition-transform duration-300 ease-in-out *:flex *:flex-col *:gap-6 *:border *:border-neutral-200 *:rounded-md *:p-6">
-                  <div>
-                    <div class="w-full h-auto xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
-                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
-                    </div>
-                    <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold">Open Water Diver</h3>
-                      <ul class="text-lg space-y-1">
-                        <li>5-10 hrs</li>
-                        <li>Contact shop for dates</li>
-                        <li>eLearning only</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="w-full h-auto xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
-                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
-                    </div>
-                    <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold">Advanced Open Water</h3>
-                      <ul class="text-lg space-y-1">
-                        <li>3-5 days</li>
-                        <li>Contact shop for dates</li>
-                        <li>eLearning + practical</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="w-full h-auto xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
-                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
-                    </div>
-                    <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold">Rescue Diver</h3>
-                      <ul class="text-lg space-y-1">
-                        <li>3-4 days</li>
-                        <li>Contact shop for dates</li>
-                        <li>eLearning + practical</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="w-full h-auto xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
-                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
-                    </div>
-                    <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold">Divemaster</h3>
-                      <ul class="text-lg space-y-1">
-                        <li>2-3 weeks</li>
-                        <li>Contact shop for dates</li>
-                        <li>Intensive program</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="w-full h-auto xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
-                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
-                    </div>
-                    <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold">Specialty Courses</h3>
-                      <ul class="text-lg space-y-1">
-                        <li>1-2 days</li>
-                        <li>Contact shop for dates</li>
-                        <li>Various specialties</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="w-full h-auto xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
-                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
-                    </div>
-                    <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold">Instructor Course</h3>
-                      <ul class="text-lg space-y-1">
-                        <li>2-3 weeks</li>
-                        <li>Contact shop for dates</li>
-                        <li>Professional level</li>
-                      </ul>
-                    </div>
-                  </div>
+                  class="flex flex-row gap-2 xl:gap-6 transition-transform duration-300 ease-in-out">
+                  <CardCarouselItem 
+                    title="Open Water Diver"
+                    image="/images/fpo/destinations-beginner.png"
+                    :details="['5-10 hrs', 'Contact shop for dates', 'eLearning only']"
+                  />
+                  <CardCarouselItem 
+                    title="Advanced Open Water"
+                    image="/images/fpo/destinations-beginner.png"
+                    :details="['3-5 days', 'Contact shop for dates', 'eLearning + practical']"
+                  />
+                  <CardCarouselItem 
+                    title="Rescue Diver"
+                    image="/images/fpo/destinations-beginner.png"
+                    :details="['3-4 days', 'Contact shop for dates', 'eLearning + practical']"
+                  />
+                  <CardCarouselItem 
+                    title="Divemaster"
+                    image="/images/fpo/destinations-beginner.png"
+                    :details="['2-3 weeks', 'Contact shop for dates', 'Intensive program']"
+                  />
+                  <CardCarouselItem 
+                    title="Specialty Courses"
+                    image="/images/fpo/destinations-beginner.png"
+                    :details="['1-2 days', 'Contact shop for dates', 'Various specialties']"
+                  />
+                  <CardCarouselItem 
+                    title="Instructor Course"
+                    image="/images/fpo/destinations-beginner.png"
+                    :details="['2-3 weeks', 'Contact shop for dates', 'Professional level']"
+                  />
                 </div>
               </div>
             </div>
@@ -385,7 +285,10 @@
 
 <script setup>
 import { MapPin, Phone, Mail, Globe, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import CardCarouselItem from '~/components/CardCarouselItem.vue'
+import CardListItem from '~/components/CardListItem.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
+
 
 // Carousel functionality - wrapped in a modular function
 function createCarousel(containerRef) {
