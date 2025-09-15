@@ -253,26 +253,26 @@
             <ul class="space-y-2">
               <li>
                 <a href="#" class="flex flex-row gap-4 items-center">
-                  <MapPin class="w-4 h-4" />
+                  <MapPin class="min-w-4 max-w-4 h-4" />
                   <span>Bandos Island, Maldives</span>
                 </a>
               </li>
               <li>
                 <a href="#" class="flex flex-row gap-4 items-center">
-                  <Phone class="w-4 h-4" />
+                  <Phone class="min-w-4 max-w-4 h-4" />
                   <span>+960 664-0088</span>
                 </a>
               </li>
               <li>
                 <a href="#" class="flex flex-row gap-4 items-center">
-                  <Mail class="w-4 h-4" />
+                  <Mail class="min-w-4 max-w-4 h-4" />
                   <span>resv@bandos.com.mv</span>
                 </a>
               </li>
               <li>
                 <a href="#" class="flex flex-row gap-4 items-center">
-                  <Globe class="w-4 h-4" />
-                  <span>http://www.bandosmaldives.com/</span>
+                  <Globe class="min-w-4 max-w-4 h-4" />
+                  <span class="truncate">http://www.bandosmaldives.com/</span>
                 </a>
               </li>
             </ul>
