@@ -1,137 +1,478 @@
-  <template>
-    <div class="min-h-screen bg-gray-50 h-full">
-      <div class="mx-auto h-full min-h-screen">
-        <div class="bg-white h-full min-h-screen">
-          <!-- Always render a consistent container div -->
-          <div class="h-full min-h-screen">
-            <!-- Loading State -->
-            <div v-if="pending" class="flex justify-center items-center h-full min-h-screen">
-              <div class="flex flex-col items-center justify-center">
-                <UIcon name="i-heroicons-arrow-path" class="animate-spin h-8 w-8 text-gray-500 mx-auto mb-4" />
-                <span class="text-gray-600">Loading dive shops...</span>
-              </div>
-            </div>
-
-            <!-- Error State -->
-            <div v-else-if="error" class="flex justify-center items-center h-full min-h-screen">
-              <UAlert title="Error loading data" :description="error.message" color="red" variant="soft"
-                class="max-w-md" />
-            </div>
-
-            <!-- Data Table -->
-            <div v-else-if="diveshops && diveshops.length > 0" class="h-full min-h-screen">
-              <div class="px-6 py-4 border-b border-gray-200 w-full">
-                <div class="flex items-center justify-between">
-                  <h2 class="text-xl font-semibold text-gray-900">Dive Shops Directory</h2>
-                  <UBadge color="green" variant="soft">
-                    {{ diveshops.length }} shops
-                  </UBadge>
-                </div>
-              </div>
-
-              <div class="overflow-x-auto lg:overflow-x-visible">
-                <!-- Header -->
-                <div class="grid auto-cols-auto grid-flow-col gap-4 px-6 py-3 bg-gray-50 sticky top-0 z-10 w-fit lg:w-full">
-                  <div class="text-xs font-medium text-gray-500 uppercase tracking-wider w-96">Business
-                    Name
-                  </div>
-                  <div class="text-xs font-medium text-gray-500 uppercase tracking-wider w-64">Location</div>
-                  <div class="text-xs font-medium text-gray-500 uppercase tracking-wider w-64">Contact</div>
-                  <div class="text-xs font-medium text-gray-500 uppercase tracking-wider w-48">Website</div>
-                  <div class="text-xs font-medium text-gray-500 uppercase tracking-wider w-48">Rating</div>
-                </div>
-                <!-- Rows -->
-                <div v-for="shop in diveshops" :key="shop.id"
-                  class="grid auto-cols-auto grid-flow-col gap-4 px-6 py-4 border-b border-gray-200 hover:bg-gray-50 w-fit lg:w-full">
-                  <div class="font-medium text-gray-900 w-96">{{ shop.business_name }}</div>
-                  <div class="w-64">
-                    <div class="text-sm text-gray-900">{{ shop.locale }}, {{ shop.country }}</div>
-                    <div v-if="shop.street_address" class="text-sm text-gray-500">{{ shop.street_address }}</div>
-                    <div v-if="shop.region" class="text-xs text-gray-400">{{ shop.region }}</div>
-                  </div>
-                  <div class="space-y-1 w-64">
-                    <div v-if="shop.phone" class="flex items-center gap-1">
-                      <UIcon name="i-heroicons-phone" class="h-4 w-4 text-gray-400" />
-                      <a :href="`tel:${shop.phone}`" class="text-blue-600 hover:text-blue-800 text-sm">
-                        {{ shop.phone }}
-                      </a>
-                    </div>
-                    <div v-if="shop.email" class="flex items-center gap-1">
-                      <UIcon name="i-heroicons-envelope" class="h-4 w-4 text-gray-400" />
-                      <a :href="`mailto:${shop.email}`" class="text-blue-600 hover:text-blue-800 text-sm">
-                        {{ shop.email }}
-                      </a>
-                    </div>
-                  </div>
-                  <div class="w-48">
-                    <div v-if="shop.website_url" class="flex items-center gap-1">
-                      <UIcon name="i-heroicons-globe-alt" class="h-4 w-4 text-gray-400" />
-                      <a :href="shop.website_url" target="_blank" rel="noopener noreferrer"
-                        class="text-blue-600 hover:text-blue-800 text-sm">
-                        Visit Website
-                      </a>
-                    </div>
-                    <span v-else class="text-gray-400 text-sm">No website</span>
-                  </div>
-                  <div class="w-48">
-                    <div v-if="shop.google_rating" class="flex items-center gap-1">
-                      <UIcon name="i-heroicons-star" class="h-4 w-4 text-yellow-500" />
-                      <span class="text-sm font-medium">{{ shop.google_rating }}</span>
-                    </div>
-                    <span v-else class="text-gray-400 text-sm">No rating</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Empty State -->
-            <div v-else-if="diveshops && diveshops.length === 0"
-              class="text-center h-full min-h-screen flex flex-col justify-center items-center">
-              <UIcon name="i-heroicons-information-circle" class="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 class="text-lg font-medium text-gray-900 mb-2">No dive shops found</h3>
-              <p class="text-gray-500">There are no dive shops in the database.</p>
-            </div>
-
-            <!-- Initial State (during SSR or before data loads) -->
-            <div v-else class="text-center h-full min-h-screen flex flex-col justify-center items-center">
-              <UIcon name="i-heroicons-arrow-path" class="animate-spin h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 class="text-lg font-medium text-gray-900 mb-2">Loading...</h3>
-              <p class="text-gray-500">Please wait while we load the dive shops data.</p>
-            </div>
+<template>
+  <div class="grid lg:grid-cols-[200px_auto] min-h-screen *:h-full">
+    <div class="bg-neutral-100 hidden lg:block">
+      <div class="flex flex-col justify-start gap-56 p-4 sticky top-0 h-full max-h-screen">
+        <div class="w-[120px] h-auto">
+          <img src="/images/logo-glaucus.svg" class="w-full h-full object-cover" />
+        </div>
+        <nav class="flex flex-col gap-4 *:text-base">
+          <a href="#">Dive Shops</a>
+          <a href="#">Shop</a>
+          <a href="#">Community</a>
+          <a href="#">Your Profile</a>
+        </nav>
+      </div>
+    </div>
+    <div class="bg-neutral-50 grid grid-cols-12 gap-4 content-start p-4">
+      <div class="col-span-12 order-1">
+        <section class="bg-white p-2 flex flex-col lg:flex-row gap-0 lg:min-h-[500px] rounded-md overflow-hidden *:w-full">
+          <div class="bg-white flex flex-col justify-end p-4">
+            <h1 class="text-4xl font-semibold">Dive Bandos – Bandos Maldives</h1>
           </div>
+          <div class="bg-neutral-100 overflow-hidden rounded-sm order-first lg:order-last">
+            <img src="https://bandosmaldives.com/wp-content/uploads/2024/06/BM_Dive-2024-11.jpg"
+              class="w-full h-full object-cover" />
+          </div>
+        </section>
+      </div>
+      <div class="col-span-12 lg:col-span-8 order-3 lg:order-2">
+        <div class="flex flex-col gap-4">
+          <section class="flex flex-col gap-4">
+            <div class="flex flex-col gap-4 p-6">
+              <h2 class="text-2xl font-semibold">Details</h2>
+              <div class="text-lg">
+                Dive Bandos is one of the longest established centres in the country, offering lush underwater gardens,
+                colourful fishes and magnificent seascapes.
+
+                We tend to our underwater environments with the recent introduction of our Coral Gardening Project,
+                which
+                guests can take part in too.
+
+                Dive Bandos is a spacious facility complete with air-conditioned audio-visual classrooms, library, hot
+                water
+                showers, and spacious storage rooms.
+
+                The equipment we employ includes internationally-reputed brands such as Mares, Scubapro, Aqua Lung, Dive
+                Rite and Suunto.
+
+                Please contact the dive center upon your arrival to book the program.
+              </div>
+            </div>
+            <div class="flex flex-row gap-2 p-6 border border-neutral-200 rounded-md *:w-full">
+              <div class="flex flex-col gap-2">
+                <h3 class="text-xl font-semibold">Hours</h3>
+                <ul class="text-lg space-y-1">
+                  <li>Mon: 07:30 AM - 05:00 PM</li>
+                  <li>Tue: 07:30 AM - 05:00 PM</li>
+                  <li>Wed: 07:30 AM - 05:00 PM</li>
+                  <li>Thu: 07:30 AM - 05:00 PM</li>
+                  <li>Fri: 07:30 AM - 05:00 PM</li>
+                  <li>Sat: 07:30 AM - 05:00 PM</li>
+                  <li>Sun: 07:30 AM - 05:00 PM</li>
+                </ul>
+              </div>
+              <div class="flex flex-col gap-2">
+                <h3 class="text-xl font-semibold">Languages</h3>
+                <div class="text-lg">
+                  English
+                </div>
+              </div>
+            </div>
+          </section>
+          <section class="flex flex-col gap-4">
+            <div class="flex flex-col gap-4">
+              <div class="flex flex-col gap-4 p-6 bg-neutral-50 sticky top-0">
+                <h2 class="text-2xl font-semibold">Dive Destinations</h2>
+              </div>
+              <div class="">
+                <div
+                  class="flex flex-col gap-6 *:w-full *:flex *:flex-row *:gap-6 *:border *:border-neutral-200 *:rounded-md *:p-6">
+                  <div>
+                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <h3 class="text-lg font-semibold">Beginner / Training Dives</h3>
+                      <ul class="text-lg space-y-1">
+                        <li>House Reef</li>
+                        <li>Lagoon around Bandos</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <h3 class="text-lg font-semibold">Shark & Ray / Big Pelagic Dives</h3>
+                      <ul class="text-lg space-y-1">
+                        <li>House Reef</li>
+                        <li>Lankan Reef</li>
+                        <li>Banana Reef</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <h3 class="text-lg font-semibold">Wreck Diving</h3>
+                      <ul class="text-lg space-y-1">
+                        <li>Victory Wreck</li>
+                        <li>Other small wrecks</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <h3 class="text-lg font-semibold">Deep / Advanced Dives (20-30m)</h3>
+                      <ul class="text-lg space-y-1">
+                        <li>Bandos Rock</li>
+                        <li>Banana Reef</li>
+                        <li>Victory Wreck</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <h3 class="text-lg font-semibold">Current / Drift Dives</h3>
+                      <ul class="text-lg space-y-1">
+                        <li>Banana Reef</li>
+                        <li>Bandos Rock</li>
+                        <li>Other "thilas"</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <h3 class="text-lg font-semibold">Night Diving</h3>
+                      <ul class="text-lg space-y-1">
+                        <li>House Reef</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <h3 class="text-lg font-semibold">Overhangs / Swim-Throughs</h3>
+                      <ul class="text-lg space-y-1">
+                        <li>Banana Reef</li>
+                        <li>Other nearby reefs</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section class="flex flex-col gap-4">
+            <div class="flex flex-col gap-4">
+              <div class="flex flex-row gap-4 items-center justify-between">
+                <div class="flex flex-col gap-4 p-6 bg-neutral-50 sticky top-0">
+                  <h2 class="text-2xl font-semibold">Courses</h2>
+                </div>
+                <div class="flex flex-row gap-0 border border-neutral-200 rounded-md divide-x divide-neutral-200">
+                  <!-- Carousel Controls -->
+                  <button @click="carouselPrevious" :class="[
+                      'flex items-center justify-center p-2',
+                      canGoPrevious ? 'hover:bg-neutral-100 cursor-pointer' : 'cursor-auto text-neutral-300'
+                    ]">
+                    <ChevronLeft class="w-4 h-4" />
+                  </button>
+                  <button @click="carouselNext" :class="[
+                      'flex items-center justify-center p-2',
+                      canGoNext ? 'hover:bg-neutral-100 cursor-pointer' : 'cursor-auto text-neutral-300'
+                    ]">
+                    <ChevronRight class="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div class="overflow-hidden">
+                <!-- Carousel Items -->
+                <div ref="carouselContainer"
+                  class="flex flex-row gap-6 transition-transform duration-300 ease-in-out *:flex *:flex-col *:gap-6 *:border *:border-neutral-200 *:rounded-md *:p-6">
+                  <div>
+                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <h3 class="text-lg font-semibold">Open Water Diver</h3>
+                      <ul class="text-lg space-y-1">
+                        <li>5-10 hrs</li>
+                        <li>Contact shop for dates</li>
+                        <li>eLearning only</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <h3 class="text-lg font-semibold">Advanced Open Water</h3>
+                      <ul class="text-lg space-y-1">
+                        <li>3-5 days</li>
+                        <li>Contact shop for dates</li>
+                        <li>eLearning + practical</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <h3 class="text-lg font-semibold">Rescue Diver</h3>
+                      <ul class="text-lg space-y-1">
+                        <li>3-4 days</li>
+                        <li>Contact shop for dates</li>
+                        <li>eLearning + practical</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <h3 class="text-lg font-semibold">Divemaster</h3>
+                      <ul class="text-lg space-y-1">
+                        <li>2-3 weeks</li>
+                        <li>Contact shop for dates</li>
+                        <li>Intensive program</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <h3 class="text-lg font-semibold">Specialty Courses</h3>
+                      <ul class="text-lg space-y-1">
+                        <li>1-2 days</li>
+                        <li>Contact shop for dates</li>
+                        <li>Various specialties</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="w-52 h-32 bg-neutral-100 rounded-sm overflow-hidden">
+                      <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <h3 class="text-lg font-semibold">Instructor Course</h3>
+                      <ul class="text-lg space-y-1">
+                        <li>2-3 weeks</li>
+                        <li>Contact shop for dates</li>
+                        <li>Professional level</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section class="flex flex-col gap-4">
+            <div class="flex flex-col gap-4 p-6 bg-neutral-50 sticky top-0">
+              <h2 class="text-2xl font-semibold">More Information</h2>
+            </div>
+            <div class="flex flex-row gap-2 p-6 border border-neutral-200 rounded-md *:w-full">
+              <div class="flex flex-col gap-6">
+                <div class="flex flex-col gap-2">
+                  <h3 class="text-xl font-semibold">Equipment Rental</h3>
+                   <ul class="text-lg space-y-1">
+                     <li>BCD</li>
+                     <li>Boots</li>
+                     <li>Camera</li>
+                     <li>Children sizes</li>
+                     <li>Compass</li>
+                     <li>Dive Computer</li>
+                     <li>Flashlight</li>
+                     <li>Full-foot fins</li>
+                     <li>Gauges</li>
+                     <li>Large Cylinders (15L / 100 cu. ft.)</li>
+                     <li>Mask & Snorkel</li>
+                     <li>Open-heel fins</li>
+                     <li>Regulator</li>
+                     <li>Scooter (DPV)</li>
+                     <li>Small Cylinders (10L / 71.2 cu. ft.)</li>
+                     <li>Wetsuit – 3mm</li>
+                     <li>Wetsuit – shorty</li>
+                   </ul>
+                </div>
+              </div>
+              <div class="flex flex-col gap-6">
+                <div class="flex flex-col gap-2">
+                  <h3 class="text-xl font-semibold">Gas Mixture</h3>
+                  <ul class="text-lg space-y-1">
+                    <li>Air Fills</li>
+                    <li>Nitrox</li>
+                  </ul>
+                </div>
+                <div class="flex flex-col gap-2">
+                  <h3 class="text-xl font-semibold">Payment Methods</h3>
+                  <ul class="text-lg space-y-1">
+                    <li>Bank Transfer</li>
+                    <li>VISA</li>
+                    <li>Mastercard</li>
+                    <li>AMEX</li>
+                    <li>Discover</li>
+                    <li>Cash (USD)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="col-span-12 lg:col-span-4 order-2 lg:order-3">
+        <div class="flex flex-col gap-4 sticky top-4">
+          <section class="flex flex-col gap-4 p-6 bg-neutral-100 rounded-md">
+            <h2 class="text-2xl font-semibold">Book Now</h2>
+            <form class="flex flex-col gap-4">
+              <div class="flex flex-col gap-2">
+                <h3>What type of dive do you want to do?</h3>
+                <fieldset class="flex flex-row gap-2">
+                  <input type="radio" name="dive-type" id="certification"
+                    class="border border-gray-300 rounded-md p-2" />
+                  <label for="certification">Certification</label>
+                </fieldset>
+                <hr class="border-neutral-200" />
+                <fieldset class="flex flex-row gap-2">
+                  <input type="radio" name="dive-type" id="recreation" class="border border-gray-300 rounded-md p-2" />
+                  <label for="recreation">Recreation</label>
+                </fieldset>
+              </div>
+              <button type="submit" class="bg-blue-500 text-white rounded-md p-2 cursor-pointer">Book</button>
+            </form>
+          </section>
+          <section class="flex flex-col gap-2 p-6 border border-neutral-200 rounded-md">
+            <ul class="space-y-2">
+              <li>
+                <a href="#" class="flex flex-row gap-4 items-center">
+                  <MapPin class="w-4 h-4" />
+                  <span>Bandos Island, Maldives</span>
+                </a>
+              </li>
+              <li>
+                <a href="#" class="flex flex-row gap-4 items-center">
+                  <Phone class="w-4 h-4" />
+                  <span>+960 664-0088</span>
+                </a>
+              </li>
+              <li>
+                <a href="#" class="flex flex-row gap-4 items-center">
+                  <Mail class="w-4 h-4" />
+                  <span>resv@bandos.com.mv</span>
+                </a>
+              </li>
+              <li>
+                <a href="#" class="flex flex-row gap-4 items-center">
+                  <Globe class="w-4 h-4" />
+                  <span>http://www.bandosmaldives.com/</span>
+                </a>
+              </li>
+            </ul>
+          </section>
         </div>
       </div>
     </div>
-  </template>
+  </div>
+</template>
 
 <script setup>
-const { client } = useSupabase()
+import { MapPin, Phone, Mail, Globe, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { ref, onMounted } from 'vue'
 
+// Carousel functionality - wrapped in a modular function
+function createCarousel(containerRef, itemsPerSlide = 3) {
+  const currentIndex = ref(0)
+  const totalItems = ref(0)
+  const canGoNext = ref(true)
+  const canGoPrevious = ref(false)
 
-
-// Fetch diveshops data
-const { data: diveshops, pending, error } = await useAsyncData('diveshops', async () => {
-  try {
-    console.log('Fetching dive shops data...')
-    const { data, error: supabaseError } = await client
-      .from('diveshops')
-      .select('*')
-      .order('business_name')
-
-    if (supabaseError) {
-      console.error('Supabase error:', supabaseError)
-      throw supabaseError
-    }
-
-    console.log('Fetched data:', data)
-    return data || []
-  } catch (err) {
-    console.error('Error fetching dive shops:', err)
-    throw err
+  function updateButtonStates() {
+    canGoPrevious.value = currentIndex.value > 0
+    canGoNext.value = currentIndex.value < (totalItems.value - itemsPerSlide)
   }
-}, {
-  server: false,    // Don't cache on server
-  lazy: false,      // Fetch immediately
-  default: () => [] // Default empty array
+
+  function updateCarouselPosition() {
+    if (containerRef.value) {
+      const containerWidth = containerRef.value.parentElement.offsetWidth
+      const gapSize = 24 // 6 * 4 = 24px per gap (gap-6 = 1.5rem = 24px)
+      
+      // Calculate item width for display (showing itemsPerSlide items)
+      const totalGaps = itemsPerSlide - 1
+      const totalGapWidth = gapSize * totalGaps
+      const availableWidth = containerWidth - totalGapWidth
+      const itemWidth = availableWidth / itemsPerSlide
+      
+      // Calculate translation: slide by 1 item at a time
+      const translateX = -(currentIndex.value * (itemWidth + gapSize))
+      
+      containerRef.value.style.transform = `translateX(${translateX}px)`
+      updateButtonStates()
+    }
+  }
+
+  function carouselNext() {
+    const maxIndex = totalItems.value - itemsPerSlide
+    if (currentIndex.value < maxIndex) {
+      currentIndex.value += 1 // Always slide by 1, regardless of itemsPerSlide
+      updateCarouselPosition()
+    }
+  }
+
+  function carouselPrevious() {
+    if (currentIndex.value > 0) {
+      currentIndex.value -= 1 // Always slide by 1, regardless of itemsPerSlide
+      updateCarouselPosition()
+    }
+  }
+
+  function setItemWidths() {
+    if (containerRef.value) {
+      const containerWidth = containerRef.value.parentElement.offsetWidth
+      const gapSize = 24 // 6 * 4 = 24px per gap (gap-6 = 1.5rem = 24px)
+      
+      // Calculate item width for displaying itemsPerSlide items
+      const totalGaps = itemsPerSlide - 1
+      const totalGapWidth = gapSize * totalGaps
+      const availableWidth = containerWidth - totalGapWidth
+      const itemWidth = availableWidth / itemsPerSlide
+      
+      Array.from(containerRef.value.children).forEach(item => {
+        item.style.width = `${itemWidth}px`
+        item.style.flexShrink = '0'
+      })
+    }
+  }
+
+  function initializeCarousel() {
+    if (containerRef.value) {
+      totalItems.value = containerRef.value.children.length
+      setItemWidths()
+      updateCarouselPosition()
+    }
+  }
+
+  return {
+    carouselNext,
+    carouselPrevious,
+    initializeCarousel,
+    canGoNext,
+    canGoPrevious
+  }
+}
+
+// Initialize carousel
+const carouselContainer = ref(null)
+const { carouselNext, carouselPrevious, initializeCarousel, canGoNext, canGoPrevious } = createCarousel(carouselContainer, 3)
+
+onMounted(() => {
+  initializeCarousel()
 })
 </script>
