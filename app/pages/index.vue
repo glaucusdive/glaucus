@@ -31,21 +31,21 @@
             <div class="flex flex-col gap-4 p-6">
               <h2 class="text-2xl font-semibold">Details</h2>
               <div class="text-lg">
-                Dive Bandos is one of the longest established centres in the country, offering lush underwater gardens,
-                colourful fishes and magnificent seascapes.
-
-                We tend to our underwater environments with the recent introduction of our Coral Gardening Project,
-                which
-                guests can take part in too.
-
-                Dive Bandos is a spacious facility complete with air-conditioned audio-visual classrooms, library, hot
-                water
-                showers, and spacious storage rooms.
-
-                The equipment we employ includes internationally-reputed brands such as Mares, Scubapro, Aqua Lung, Dive
-                Rite and Suunto.
-
-                Please contact the dive center upon your arrival to book the program.
+                <div v-if="!showFullDetails">
+                  {{ firstParagraph }}
+                </div>
+                <div v-else>
+                  <p v-for="(paragraph, index) in paragraphs" :key="index" class="mb-4 last:mb-0">
+                    {{ paragraph }}
+                  </p>
+                </div>
+                <button 
+                  v-if="remainingParagraphs.length > 0"
+                  @click="showFullDetails = !showFullDetails"
+                  class="text-blue-600 hover:text-blue-800 underline mt-2 text-sm"
+                >
+                  {{ showFullDetails ? 'Read less' : 'Read more' }}
+                </button>
               </div>
             </div>
             <div class="flex flex-col lg:flex-row gap-6 p-6 border border-neutral-200 rounded-md *:w-full">
@@ -287,7 +287,34 @@
 import { MapPin, Phone, Mail, Globe, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import CardCarouselItem from '~/components/CardCarouselItem.vue'
 import CardListItem from '~/components/CardListItem.vue'
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+
+// Read more/read less state
+const showFullDetails = ref(false)
+
+// Full description text
+const fullDescription = `Dive Bandos is one of the longest established centres in the country, offering lush underwater gardens, colourful fishes and magnificent seascapes.
+
+We tend to our underwater environments with the recent introduction of our Coral Gardening Project, which guests can take part in too.
+
+Dive Bandos is a spacious facility complete with air-conditioned audio-visual classrooms, library, hot water showers, and spacious storage rooms.
+
+The equipment we employ includes internationally-reputed brands such as Mares, Scubapro, Aqua Lung, Dive Rite and Suunto.
+
+Please contact the dive center upon your arrival to book the program.`
+
+// Computed properties for dynamic truncation
+const paragraphs = computed(() => {
+  return fullDescription.split('\n\n').filter(para => para.trim() !== '')
+})
+
+const firstParagraph = computed(() => {
+  return paragraphs.value[0] || ''
+})
+
+const remainingParagraphs = computed(() => {
+  return paragraphs.value.slice(1)
+})
 
 
 // Carousel functionality - wrapped in a modular function
