@@ -15,7 +15,8 @@
     </div>
     <div class="bg-neutral-50 grid grid-cols-12 gap-4 content-start p-4">
       <div class="col-span-12 order-1">
-        <section class="bg-white p-2 flex flex-col lg:flex-row gap-0 lg:min-h-[500px] rounded-md overflow-hidden *:w-full">
+        <section
+          class="bg-white p-2 flex flex-col lg:flex-row gap-0 lg:min-h-[500px] rounded-md overflow-hidden *:w-full">
           <div class="bg-white flex flex-col justify-end p-4">
             <h1 class="text-4xl font-semibold">Dive Bandos – Bandos Maldives</h1>
           </div>
@@ -39,11 +40,8 @@
                     {{ paragraph }}
                   </p>
                 </div>
-                <button 
-                  v-if="remainingParagraphs.length > 0"
-                  @click="showFullDetails = !showFullDetails"
-                  class="text-blue-600 hover:text-blue-800 underline mt-2 text-sm"
-                >
+                <button v-if="remainingParagraphs.length > 0" @click="showFullDetails = !showFullDetails"
+                  class="text-blue-600 hover:text-blue-800 underline mt-2 text-sm">
                   {{ showFullDetails ? 'Read less' : 'Read more' }}
                 </button>
               </div>
@@ -76,41 +74,20 @@
               </div>
               <div class="">
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1 gap-6">
-                  <CardListItem 
-                    title="Beginner / Training Dives"
-                    image="/images/fpo/destinations-beginner.png"
-                    :items="['House Reef', 'Lagoon around Bandos']"
-                  />
-                  <CardListItem 
-                    title="Shark & Ray / Big Pelagic Dives"
-                    image="/images/fpo/destinations-beginner.png"
-                    :items="['House Reef', 'Lankan Reef', 'Banana Reef']"
-                  />
-                  <CardListItem 
-                    title="Wreck Diving"
-                    image="/images/fpo/destinations-beginner.png"
-                    :items="['Victory Wreck', 'Other small wrecks']"
-                  />
-                  <CardListItem 
-                    title="Deep / Advanced Dives (20-30m)"
-                    image="/images/fpo/destinations-beginner.png"
-                    :items="['Bandos Rock', 'Banana Reef', 'Victory Wreck']"
-                  />
-                  <CardListItem 
-                    title="Current / Drift Dives"
-                    image="/images/fpo/destinations-beginner.png"
-                    :items="['Banana Reef', 'Bandos Rock', 'Other thilas']"
-                  />
-                  <CardListItem 
-                    title="Night Diving"
-                    image="/images/fpo/destinations-beginner.png"
-                    :items="['House Reef']"
-                  />
-                  <CardListItem 
-                    title="Overhangs / Swim-Throughs"
-                    image="/images/fpo/destinations-beginner.png"
-                    :items="['Banana Reef', 'Other nearby reefs']"
-                  />
+                  <CardListItem title="Beginner / Training Dives" image="/images/fpo/destinations-beginner.png"
+                    :items="['House Reef', 'Lagoon around Bandos']" />
+                  <CardListItem title="Shark & Ray / Big Pelagic Dives" image="/images/fpo/destinations-beginner.png"
+                    :items="['House Reef', 'Lankan Reef', 'Banana Reef']" />
+                  <CardListItem title="Wreck Diving" image="/images/fpo/destinations-beginner.png"
+                    :items="['Victory Wreck', 'Other small wrecks']" />
+                  <CardListItem title="Deep / Advanced Dives (20-30m)" image="/images/fpo/destinations-beginner.png"
+                    :items="['Bandos Rock', 'Banana Reef', 'Victory Wreck']" />
+                  <CardListItem title="Current / Drift Dives" image="/images/fpo/destinations-beginner.png"
+                    :items="['Banana Reef', 'Bandos Rock', 'Other thilas']" />
+                  <CardListItem title="Night Diving" image="/images/fpo/destinations-beginner.png"
+                    :items="['House Reef']" />
+                  <CardListItem title="Overhangs / Swim-Throughs" image="/images/fpo/destinations-beginner.png"
+                    :items="['Banana Reef', 'Other nearby reefs']" />
                 </div>
               </div>
             </div>
@@ -141,36 +118,18 @@
                 <!-- Carousel Items -->
                 <div ref="carouselContainer"
                   class="flex flex-row gap-2 xl:gap-6 transition-transform duration-300 ease-in-out">
-                  <CardCarouselItem 
-                    title="Open Water Diver"
-                    image="/images/fpo/destinations-beginner.png"
-                    :details="['5-10 hrs', 'Contact shop for dates', 'eLearning only']"
-                  />
-                  <CardCarouselItem 
-                    title="Advanced Open Water"
-                    image="/images/fpo/destinations-beginner.png"
-                    :details="['3-5 days', 'Contact shop for dates', 'eLearning + practical']"
-                  />
-                  <CardCarouselItem 
-                    title="Rescue Diver"
-                    image="/images/fpo/destinations-beginner.png"
-                    :details="['3-4 days', 'Contact shop for dates', 'eLearning + practical']"
-                  />
-                  <CardCarouselItem 
-                    title="Divemaster"
-                    image="/images/fpo/destinations-beginner.png"
-                    :details="['2-3 weeks', 'Contact shop for dates', 'Intensive program']"
-                  />
-                  <CardCarouselItem 
-                    title="Specialty Courses"
-                    image="/images/fpo/destinations-beginner.png"
-                    :details="['1-2 days', 'Contact shop for dates', 'Various specialties']"
-                  />
-                  <CardCarouselItem 
-                    title="Instructor Course"
-                    image="/images/fpo/destinations-beginner.png"
-                    :details="['2-3 weeks', 'Contact shop for dates', 'Professional level']"
-                  />
+                  <CardCarouselItem title="Open Water Diver" image="/images/fpo/destinations-beginner.png"
+                    :details="['5-10 hrs', 'Contact shop for dates', 'eLearning only']" />
+                  <CardCarouselItem title="Advanced Open Water" image="/images/fpo/destinations-beginner.png"
+                    :details="['3-5 days', 'Contact shop for dates', 'eLearning + practical']" />
+                  <CardCarouselItem title="Rescue Diver" image="/images/fpo/destinations-beginner.png"
+                    :details="['3-4 days', 'Contact shop for dates', 'eLearning + practical']" />
+                  <CardCarouselItem title="Divemaster" image="/images/fpo/destinations-beginner.png"
+                    :details="['2-3 weeks', 'Contact shop for dates', 'Intensive program']" />
+                  <CardCarouselItem title="Specialty Courses" image="/images/fpo/destinations-beginner.png"
+                    :details="['1-2 days', 'Contact shop for dates', 'Various specialties']" />
+                  <CardCarouselItem title="Instructor Course" image="/images/fpo/destinations-beginner.png"
+                    :details="['2-3 weeks', 'Contact shop for dates', 'Professional level']" />
                 </div>
               </div>
             </div>
@@ -183,25 +142,25 @@
               <div class="flex flex-col gap-6">
                 <div class="flex flex-col gap-2">
                   <h3 class="text-xl font-semibold">Equipment Rental</h3>
-                   <ul class="text-lg space-y-1">
-                     <li>BCD</li>
-                     <li>Boots</li>
-                     <li>Camera</li>
-                     <li>Children sizes</li>
-                     <li>Compass</li>
-                     <li>Dive Computer</li>
-                     <li>Flashlight</li>
-                     <li>Full-foot fins</li>
-                     <li>Gauges</li>
-                     <li>Large Cylinders (15L / 100 cu. ft.)</li>
-                     <li>Mask & Snorkel</li>
-                     <li>Open-heel fins</li>
-                     <li>Regulator</li>
-                     <li>Scooter (DPV)</li>
-                     <li>Small Cylinders (10L / 71.2 cu. ft.)</li>
-                     <li>Wetsuit – 3mm</li>
-                     <li>Wetsuit – shorty</li>
-                   </ul>
+                  <ul class="text-lg space-y-1">
+                    <li>BCD</li>
+                    <li>Boots</li>
+                    <li>Camera</li>
+                    <li>Children sizes</li>
+                    <li>Compass</li>
+                    <li>Dive Computer</li>
+                    <li>Flashlight</li>
+                    <li>Full-foot fins</li>
+                    <li>Gauges</li>
+                    <li>Large Cylinders (15L / 100 cu. ft.)</li>
+                    <li>Mask & Snorkel</li>
+                    <li>Open-heel fins</li>
+                    <li>Regulator</li>
+                    <li>Scooter (DPV)</li>
+                    <li>Small Cylinders (10L / 71.2 cu. ft.)</li>
+                    <li>Wetsuit – 3mm</li>
+                    <li>Wetsuit – shorty</li>
+                  </ul>
                 </div>
               </div>
               <div class="flex flex-col gap-6">
@@ -279,6 +238,23 @@
           </section>
         </div>
       </div>
+      <div class="col-span-12 order-4 lg:order-4">
+        <section class="flex flex-col gap-4">
+          <div class="flex flex-col gap-4 p-6 bg-neutral-50 sticky top-0">
+            <h2 class="text-2xl font-semibold">Similar Dive Shops</h2>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+            <CardDiveShop image="/images/fpo/destinations-beginner.png" title="Dive Bandos – Bandos Maldives"
+              location="Bandos Island, Maldives" />
+            <CardDiveShop image="/images/fpo/destinations-beginner.png" title="Dive Bandos – Bandos Maldives"
+              location="Bandos Island, Maldives" />
+            <CardDiveShop image="/images/fpo/destinations-beginner.png" title="Dive Bandos – Bandos Maldives"
+              location="Bandos Island, Maldives" />
+            <CardDiveShop image="/images/fpo/destinations-beginner.png" title="Dive Bandos – Bandos Maldives"
+              location="Bandos Island, Maldives" />
+          </div>
+        </section>
+      </div>
     </div>
   </div>
 </template>
@@ -287,6 +263,7 @@
 import { MapPin, Phone, Mail, Globe, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import CardCarouselItem from '~/components/CardCarouselItem.vue'
 import CardListItem from '~/components/CardListItem.vue'
+import CardDiveShop from '~/components/CardDiveShop.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 // Read more/read less state
