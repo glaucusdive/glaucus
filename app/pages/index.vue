@@ -115,50 +115,21 @@
                 </div>
               </div>
               <div class="relative">
-                <!-- Review Items -->
+                <!-- Carousel Items -->
                 <div ref="carouselContainer"
                   class="flex flex-row gap-2 xl:gap-6 w-full snap-x overflow-x-auto relative">
-                  <CardReview 
-                    reviewer-name="Sarah Johnson" 
-                    reviewer-image="https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face"
-                    review-date="2 weeks ago"
-                    :rating="5"
-                    review-text="Amazing dive shop! The instructors were incredibly knowledgeable and patient. The equipment was top-notch and the dive sites were breathtaking. Highly recommend for both beginners and experienced divers." />
-                  
-                  <CardReview 
-                    reviewer-name="Mike Chen" 
-                    reviewer-image="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"
-                    review-date="1 month ago"
-                    :rating="5"
-                    review-text="Best diving experience I've had! The staff was professional and safety was clearly their top priority. The boat was clean and well-maintained. Will definitely be back!" />
-                  
-                  <CardReview 
-                    reviewer-name="Emma Rodriguez" 
-                    reviewer-image="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face"
-                    review-date="3 weeks ago"
-                    :rating="4"
-                    review-text="Great shop with excellent customer service. The dive master was very experienced and showed us some incredible marine life. Only minor issue was the boat was a bit crowded, but overall fantastic experience." />
-                  
-                  <CardReview 
-                    reviewer-name="David Kim" 
-                    reviewer-image="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"
-                    review-date="1 week ago"
-                    :rating="5"
-                    review-text="Outstanding dive operation! From booking to completion, everything was smooth. The instructor took time to explain everything clearly and made sure everyone felt comfortable. The reef was absolutely stunning!" />
-                  
-                  <CardReview 
-                    reviewer-name="Lisa Thompson" 
-                    reviewer-image="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face"
-                    review-date="5 days ago"
-                    :rating="5"
-                    review-text="Perfect for my first open water certification! The instructor was patient and thorough. The equipment was in excellent condition and the dive sites were perfect for learning. Can't wait to dive with them again!" />
-                  
-                  <CardReview 
-                    reviewer-name="James Wilson" 
-                    reviewer-image="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face"
-                    review-date="2 weeks ago"
-                    :rating="4"
-                    review-text="Really good dive shop with professional staff. The morning briefing was comprehensive and safety protocols were clearly followed. Great value for money and would recommend to anyone looking for quality diving." />
+                  <CardCarouselItem title="Open Water Diver" image="/images/fpo/destinations-beginner.png"
+                    :details="['5-10 hrs', 'Contact shop for dates', 'eLearning only']" />
+                  <CardCarouselItem title="Advanced Open Water" image="/images/fpo/destinations-beginner.png"
+                    :details="['3-5 days', 'Contact shop for dates', 'eLearning + practical']" />
+                  <CardCarouselItem title="Rescue Diver" image="/images/fpo/destinations-beginner.png"
+                    :details="['3-4 days', 'Contact shop for dates', 'eLearning + practical']" />
+                  <CardCarouselItem title="Divemaster" image="/images/fpo/destinations-beginner.png"
+                    :details="['2-3 weeks', 'Contact shop for dates', 'Intensive program']" />
+                  <CardCarouselItem title="Specialty Courses" image="/images/fpo/destinations-beginner.png"
+                    :details="['1-2 days', 'Contact shop for dates', 'Various specialties']" />
+                  <CardCarouselItem title="Instructor Course" image="/images/fpo/destinations-beginner.png"
+                    :details="['2-3 weeks', 'Contact shop for dates', 'Professional level']" />
                 </div>
               </div>
             </div>
