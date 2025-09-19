@@ -3,6 +3,6 @@
 
 @layer base {
   html, body {
-    @apply text-red-500;
+    @apply text-black;
   }
 }

@@ -41,7 +41,7 @@
                   </p>
                 </div>
                 <button v-if="remainingParagraphs.length > 0" @click="showFullDetails = !showFullDetails"
-                  class="text-blue-600 hover:text-blue-800 underline mt-2 text-sm">
+                  class="text-blue-600 hover:text-blue-800 underline mt-2 text-sm cursor-pointer">
                   {{ showFullDetails ? 'Read less' : 'Read more' }}
                 </button>
               </div>
