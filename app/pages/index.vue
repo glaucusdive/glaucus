@@ -100,7 +100,7 @@
                 </div>
                 <div class="flex flex-row gap-0 border border-neutral-200 rounded-md divide-x divide-neutral-200">
                   <!-- Carousel Controls -->
-                  <button @click="carouselPrevious" :class="[
+                  <!-- <button @click="carouselPrevious" :class="[
                       'flex items-center justify-center p-2',
                       canGoPrevious ? 'hover:bg-neutral-100 cursor-pointer' : 'cursor-auto text-neutral-300'
                     ]">
@@ -111,25 +111,54 @@
                       canGoNext ? 'hover:bg-neutral-100 cursor-pointer' : 'cursor-auto text-neutral-300'
                     ]">
                     <ChevronRight class="w-4 h-4" />
-                  </button>
+                  </button> -->
                 </div>
               </div>
-              <div class="overflow-hidden">
-                <!-- Carousel Items -->
+              <div class="relative">
+                <!-- Review Items -->
                 <div ref="carouselContainer"
-                  class="flex flex-row gap-2 xl:gap-6 transition-transform duration-300 ease-in-out">
-                  <CardCarouselItem title="Open Water Diver" image="/images/fpo/destinations-beginner.png"
-                    :details="['5-10 hrs', 'Contact shop for dates', 'eLearning only']" />
-                  <CardCarouselItem title="Advanced Open Water" image="/images/fpo/destinations-beginner.png"
-                    :details="['3-5 days', 'Contact shop for dates', 'eLearning + practical']" />
-                  <CardCarouselItem title="Rescue Diver" image="/images/fpo/destinations-beginner.png"
-                    :details="['3-4 days', 'Contact shop for dates', 'eLearning + practical']" />
-                  <CardCarouselItem title="Divemaster" image="/images/fpo/destinations-beginner.png"
-                    :details="['2-3 weeks', 'Contact shop for dates', 'Intensive program']" />
-                  <CardCarouselItem title="Specialty Courses" image="/images/fpo/destinations-beginner.png"
-                    :details="['1-2 days', 'Contact shop for dates', 'Various specialties']" />
-                  <CardCarouselItem title="Instructor Course" image="/images/fpo/destinations-beginner.png"
-                    :details="['2-3 weeks', 'Contact shop for dates', 'Professional level']" />
+                  class="flex flex-row gap-2 xl:gap-6 w-full snap-x overflow-x-auto relative">
+                  <CardReview 
+                    reviewer-name="Sarah Johnson" 
+                    reviewer-image="https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face"
+                    review-date="2 weeks ago"
+                    :rating="5"
+                    review-text="Amazing dive shop! The instructors were incredibly knowledgeable and patient. The equipment was top-notch and the dive sites were breathtaking. Highly recommend for both beginners and experienced divers." />
+                  
+                  <CardReview 
+                    reviewer-name="Mike Chen" 
+                    reviewer-image="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"
+                    review-date="1 month ago"
+                    :rating="5"
+                    review-text="Best diving experience I've had! The staff was professional and safety was clearly their top priority. The boat was clean and well-maintained. Will definitely be back!" />
+                  
+                  <CardReview 
+                    reviewer-name="Emma Rodriguez" 
+                    reviewer-image="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face"
+                    review-date="3 weeks ago"
+                    :rating="4"
+                    review-text="Great shop with excellent customer service. The dive master was very experienced and showed us some incredible marine life. Only minor issue was the boat was a bit crowded, but overall fantastic experience." />
+                  
+                  <CardReview 
+                    reviewer-name="David Kim" 
+                    reviewer-image="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"
+                    review-date="1 week ago"
+                    :rating="5"
+                    review-text="Outstanding dive operation! From booking to completion, everything was smooth. The instructor took time to explain everything clearly and made sure everyone felt comfortable. The reef was absolutely stunning!" />
+                  
+                  <CardReview 
+                    reviewer-name="Lisa Thompson" 
+                    reviewer-image="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face"
+                    review-date="5 days ago"
+                    :rating="5"
+                    review-text="Perfect for my first open water certification! The instructor was patient and thorough. The equipment was in excellent condition and the dive sites were perfect for learning. Can't wait to dive with them again!" />
+                  
+                  <CardReview 
+                    reviewer-name="James Wilson" 
+                    reviewer-image="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face"
+                    review-date="2 weeks ago"
+                    :rating="4"
+                    review-text="Really good dive shop with professional staff. The morning briefing was comprehensive and safety protocols were clearly followed. Great value for money and would recommend to anyone looking for quality diving." />
                 </div>
               </div>
             </div>
@@ -181,6 +210,77 @@
                     <li>Discover</li>
                     <li>Cash (USD)</li>
                   </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section class="flex flex-col gap-4">
+            <div class="flex flex-col gap-4">
+              <div class="flex flex-row gap-4 items-center justify-between">
+                <div class="flex flex-col gap-4 p-6 bg-neutral-50 sticky top-0">
+                  <h2 class="text-2xl font-semibold">Reviews</h2>
+                </div>
+                <div class="flex flex-row gap-0 border border-neutral-200 rounded-md divide-x divide-neutral-200">
+                  <!-- Carousel Controls -->
+                  <!-- <button @click="carouselPrevious" :class="[
+                      'flex items-center justify-center p-2',
+                      canGoPrevious ? 'hover:bg-neutral-100 cursor-pointer' : 'cursor-auto text-neutral-300'
+                    ]">
+                    <ChevronLeft class="w-4 h-4" />
+                  </button>
+                  <button @click="carouselNext" :class="[
+                      'flex items-center justify-center p-2',
+                      canGoNext ? 'hover:bg-neutral-100 cursor-pointer' : 'cursor-auto text-neutral-300'
+                    ]">
+                    <ChevronRight class="w-4 h-4" />
+                  </button> -->
+                </div>
+              </div>
+              <div class="relative">
+                <!-- Review Items -->
+                <div ref="carouselContainer"
+                  class="flex flex-row gap-2 xl:gap-6 w-full snap-x overflow-x-auto relative">
+                  <CardReview 
+                    reviewer-name="Alexandra Park" 
+                    reviewer-image="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face"
+                    review-date="1 week ago"
+                    :rating="5"
+                    review-text="Incredible experience! The dive masters were so knowledgeable about the local marine life. We saw turtles, rays, and so many colorful fish. The equipment was in perfect condition and the boat ride was smooth." />
+                  
+                  <CardReview 
+                    reviewer-name="Roberto Silva" 
+                    reviewer-image="https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=150&h=150&fit=crop&crop=face"
+                    review-date="2 weeks ago"
+                    :rating="5"
+                    review-text="Fantastic dive shop! The staff was incredibly professional and made sure everyone felt safe and comfortable. The underwater visibility was amazing and we saw some rare species. Highly recommend this place!" />
+                  
+                  <CardReview 
+                    reviewer-name="Jennifer Lee" 
+                    reviewer-image="https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150&h=150&fit=crop&crop=face"
+                    review-date="3 days ago"
+                    :rating="4"
+                    review-text="Great diving experience overall! The instructors were patient and thorough with the safety briefing. The dive sites were beautiful with lots of coral and fish. Only downside was the group was a bit large, but still had a wonderful time." />
+                  
+                  <CardReview 
+                    reviewer-name="Marcus Johnson" 
+                    reviewer-image="https://images.unsplash.com/photo-1463453091185-61582044d556?w=150&h=150&fit=crop&crop=face"
+                    review-date="1 month ago"
+                    :rating="5"
+                    review-text="Outstanding service from start to finish! The booking process was easy, the equipment was top quality, and the dive sites were spectacular. The instructor was experienced and made sure we had the best possible dive. Will definitely return!" />
+                  
+                  <CardReview 
+                    reviewer-name="Sophie Williams" 
+                    reviewer-image="https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=150&h=150&fit=crop&crop=face"
+                    review-date="4 days ago"
+                    :rating="5"
+                    review-text="Amazing first diving experience! As a complete beginner, I was nervous but the instructor was so reassuring and professional. The equipment fit perfectly and the underwater world was absolutely breathtaking. Thank you for making my first dive unforgettable!" />
+                  
+                  <CardReview 
+                    reviewer-name="Thomas Brown" 
+                    reviewer-image="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=face"
+                    review-date="6 days ago"
+                    :rating="4"
+                    review-text="Really good dive operation with excellent safety standards. The boat was clean and well-maintained, and the dive master was very experienced. The marine life was incredible - saw sharks, turtles, and schools of tropical fish. Highly recommended!" />
                 </div>
               </div>
             </div>
@@ -264,6 +364,7 @@ import { MapPin, Phone, Mail, Globe, ChevronLeft, ChevronRight } from 'lucide-vu
 import CardCarouselItem from '~/components/CardCarouselItem.vue'
 import CardListItem from '~/components/CardListItem.vue'
 import CardDiveShop from '~/components/CardDiveShop.vue'
+import CardReview from '~/components/CardReview.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 // Read more/read less state
@@ -294,152 +395,152 @@ const remainingParagraphs = computed(() => {
 })
 
 
-// Carousel functionality - wrapped in a modular function
-function createCarousel(containerRef) {
-  const currentIndex = ref(0)
-  const totalItems = ref(0)
-  const canGoNext = ref(true)
-  const canGoPrevious = ref(false)
-  const itemsPerSlide = ref(3) // Will be updated responsively
+// // Carousel functionality - wrapped in a modular function
+// function createCarousel(containerRef) {
+//   const currentIndex = ref(0)
+//   const totalItems = ref(0)
+//   const canGoNext = ref(true)
+//   const canGoPrevious = ref(false)
+//   const itemsPerSlide = ref(3) // Will be updated responsively
 
-  function getItemsPerSlide() {
-    if (typeof window === 'undefined') return 3 // SSR fallback
+//   function getItemsPerSlide() {
+//     if (typeof window === 'undefined') return 3 // SSR fallback
     
-    const width = window.innerWidth
-    if (width <= 375) return 1.5
-    if (width <= 640) return 2.5
-    return 3
-  }
+//     const width = window.innerWidth
+//     if (width <= 375) return 1.5
+//     if (width <= 640) return 2.5
+//     return 3
+//   }
 
-  function updateButtonStates() {
-    canGoPrevious.value = currentIndex.value > 0
-    canGoNext.value = currentIndex.value < (totalItems.value - Math.floor(itemsPerSlide.value))
-  }
+//   function updateButtonStates() {
+//     canGoPrevious.value = currentIndex.value > 0
+//     canGoNext.value = currentIndex.value < (totalItems.value - Math.floor(itemsPerSlide.value))
+//   }
 
-  function updateCarouselPosition() {
-    if (containerRef.value) {
-      const containerWidth = containerRef.value.parentElement.offsetWidth
-      const gapSize = 24 // 6 * 4 = 24px per gap (gap-6 = 1.5rem = 24px)
+//   function updateCarouselPosition() {
+//     if (containerRef.value) {
+//       const containerWidth = containerRef.value.parentElement.offsetWidth
+//       const gapSize = 24 // 6 * 4 = 24px per gap (gap-6 = 1.5rem = 24px)
       
-      // Calculate item width for display (showing itemsPerSlide items)
-      const currentItemsPerSlide = itemsPerSlide.value
-      const totalGaps = Math.floor(currentItemsPerSlide) - 1
-      const totalGapWidth = gapSize * totalGaps
-      const availableWidth = containerWidth - totalGapWidth
-      const itemWidth = availableWidth / currentItemsPerSlide
+//       // Calculate item width for display (showing itemsPerSlide items)
+//       const currentItemsPerSlide = itemsPerSlide.value
+//       const totalGaps = Math.floor(currentItemsPerSlide) - 1
+//       const totalGapWidth = gapSize * totalGaps
+//       const availableWidth = containerWidth - totalGapWidth
+//       const itemWidth = availableWidth / currentItemsPerSlide
       
-      // Calculate translation: slide by 1 item at a time
-      const translateX = -(currentIndex.value * (itemWidth + gapSize))
+//       // Calculate translation: slide by 1 item at a time
+//       const translateX = -(currentIndex.value * (itemWidth + gapSize))
       
-      containerRef.value.style.transform = `translateX(${translateX}px)`
-      updateButtonStates()
-    }
-  }
+//       containerRef.value.style.transform = `translateX(${translateX}px)`
+//       updateButtonStates()
+//     }
+//   }
 
-  function carouselNext() {
-    const maxIndex = totalItems.value - Math.floor(itemsPerSlide.value)
-    if (currentIndex.value < maxIndex) {
-      currentIndex.value += 1 // Always slide by 1, regardless of itemsPerSlide
-      updateCarouselPosition()
-    }
-  }
+//   function carouselNext() {
+//     const maxIndex = totalItems.value - Math.floor(itemsPerSlide.value)
+//     if (currentIndex.value < maxIndex) {
+//       currentIndex.value += 1 // Always slide by 1, regardless of itemsPerSlide
+//       updateCarouselPosition()
+//     }
+//   }
 
-  function carouselPrevious() {
-    if (currentIndex.value > 0) {
-      currentIndex.value -= 1 // Always slide by 1, regardless of itemsPerSlide
-      updateCarouselPosition()
-    }
-  }
+//   function carouselPrevious() {
+//     if (currentIndex.value > 0) {
+//       currentIndex.value -= 1 // Always slide by 1, regardless of itemsPerSlide
+//       updateCarouselPosition()
+//     }
+//   }
 
-  function setItemWidths() {
-    if (containerRef.value && containerRef.value.parentElement) {
-      const containerWidth = containerRef.value.parentElement.offsetWidth
+//   function setItemWidths() {
+//     if (containerRef.value && containerRef.value.parentElement) {
+//       const containerWidth = containerRef.value.parentElement.offsetWidth
       
-      // Only proceed if container has a valid width
-      if (containerWidth > 0) {
-        const gapSize = 24 // 6 * 4 = 24px per gap (gap-6 = 1.5rem = 24px)
+//       // Only proceed if container has a valid width
+//       if (containerWidth > 0) {
+//         const gapSize = 24 // 6 * 4 = 24px per gap (gap-6 = 1.5rem = 24px)
         
-        // Calculate item width for displaying itemsPerSlide items
-        const currentItemsPerSlide = itemsPerSlide.value
-        const totalGaps = Math.floor(currentItemsPerSlide) - 1
-        const totalGapWidth = gapSize * totalGaps
-        const availableWidth = containerWidth - totalGapWidth
-        const itemWidth = availableWidth / currentItemsPerSlide
+//         // Calculate item width for displaying itemsPerSlide items
+//         const currentItemsPerSlide = itemsPerSlide.value
+//         const totalGaps = Math.floor(currentItemsPerSlide) - 1
+//         const totalGapWidth = gapSize * totalGaps
+//         const availableWidth = containerWidth - totalGapWidth
+//         const itemWidth = availableWidth / currentItemsPerSlide
         
-        Array.from(containerRef.value.children).forEach(item => {
-          item.style.width = `${itemWidth}px`
-          item.style.flexShrink = '0'
-          item.style.minWidth = `${itemWidth}px`
-        })
-      }
-    }
-  }
+//         Array.from(containerRef.value.children).forEach(item => {
+//           item.style.width = `${itemWidth}px`
+//           item.style.flexShrink = '0'
+//           item.style.minWidth = `${itemWidth}px`
+//         })
+//       }
+//     }
+//   }
 
-  let resizeTimeout = null
+//   let resizeTimeout = null
 
-  function updateResponsiveSettings() {
-    // Debounce resize events to prevent excessive calculations
-    if (resizeTimeout) {
-      clearTimeout(resizeTimeout)
-    }
+//   function updateResponsiveSettings() {
+//     // Debounce resize events to prevent excessive calculations
+//     if (resizeTimeout) {
+//       clearTimeout(resizeTimeout)
+//     }
     
-    resizeTimeout = setTimeout(() => {
-      const newItemsPerSlide = getItemsPerSlide()
-      const shouldUpdate = newItemsPerSlide !== itemsPerSlide.value
+//     resizeTimeout = setTimeout(() => {
+//       const newItemsPerSlide = getItemsPerSlide()
+//       const shouldUpdate = newItemsPerSlide !== itemsPerSlide.value
       
-      if (shouldUpdate) {
-        itemsPerSlide.value = newItemsPerSlide
-      }
+//       if (shouldUpdate) {
+//         itemsPerSlide.value = newItemsPerSlide
+//       }
       
-      // Always update widths and position on resize, even if itemsPerSlide hasn't changed
-      // This handles cases where container size changes but breakpoint doesn't
-      setItemWidths()
-      updateCarouselPosition()
-    }, 100) // 100ms debounce
-  }
+//       // Always update widths and position on resize, even if itemsPerSlide hasn't changed
+//       // This handles cases where container size changes but breakpoint doesn't
+//       setItemWidths()
+//       updateCarouselPosition()
+//     }, 100) // 100ms debounce
+//   }
 
-  function initializeCarousel() {
-    if (containerRef.value) {
-      totalItems.value = containerRef.value.children.length
-      itemsPerSlide.value = getItemsPerSlide()
+//   function initializeCarousel() {
+//     if (containerRef.value) {
+//       totalItems.value = containerRef.value.children.length
+//       itemsPerSlide.value = getItemsPerSlide()
       
-      // Use a small delay to ensure DOM is fully rendered
-      setTimeout(() => {
-        setItemWidths()
-        updateCarouselPosition()
-      }, 50)
+//       // Use a small delay to ensure DOM is fully rendered
+//       setTimeout(() => {
+//         setItemWidths()
+//         updateCarouselPosition()
+//       }, 50)
       
-      // Add resize listener
-      window.addEventListener('resize', updateResponsiveSettings)
-    }
-  }
+//       // Add resize listener
+//       window.addEventListener('resize', updateResponsiveSettings)
+//     }
+//   }
 
-  function cleanup() {
-    window.removeEventListener('resize', updateResponsiveSettings)
-    if (resizeTimeout) {
-      clearTimeout(resizeTimeout)
-    }
-  }
+//   function cleanup() {
+//     window.removeEventListener('resize', updateResponsiveSettings)
+//     if (resizeTimeout) {
+//       clearTimeout(resizeTimeout)
+//     }
+//   }
 
-  return {
-    carouselNext,
-    carouselPrevious,
-    initializeCarousel,
-    cleanup,
-    canGoNext,
-    canGoPrevious
-  }
-}
+//   return {
+//     carouselNext,
+//     carouselPrevious,
+//     initializeCarousel,
+//     cleanup,
+//     canGoNext,
+//     canGoPrevious
+//   }
+// }
 
-// Initialize carousel
-const carouselContainer = ref(null)
-const { carouselNext, carouselPrevious, initializeCarousel, cleanup, canGoNext, canGoPrevious } = createCarousel(carouselContainer)
+// // Initialize carousel
+// const carouselContainer = ref(null)
+// const { carouselNext, carouselPrevious, initializeCarousel, cleanup, canGoNext, canGoPrevious } = createCarousel(carouselContainer)
 
-onMounted(() => {
-  initializeCarousel()
-})
+// onMounted(() => {
+//   initializeCarousel()
+// })
 
-onUnmounted(() => {
-  cleanup()
-})
+// onUnmounted(() => {
+//   cleanup()
+// })
 </script>
