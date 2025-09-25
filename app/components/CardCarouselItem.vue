@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-2 xl:gap-6 border border-neutral-200 rounded-md p-2 xl:p-6 w-2xs shrink-0 snap-start">
+  <div class="flex flex-col gap-2 xl:gap-6 border border-neutral-200 rounded-md p-2 xl:p-6">
     <div class="w-full h-24 xl:h-32 bg-neutral-100 rounded-sm overflow-hidden">
       <img :src="image" :alt="title" class="w-full h-full object-cover" />
     </div>

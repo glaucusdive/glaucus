@@ -3,6 +3,6 @@
 
 @layer base {
   html, body {
-    @apply text-black;
+    @apply text-black bg-neutral-50;
   }
 }

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-4 border border-neutral-200 rounded-md p-4 w-2xs shrink-0 snap-start">
+  <div class="flex flex-col gap-4 border border-neutral-200 rounded-md p-4 shrink-0">
     <!-- Header with profile, name, date, and Google logo -->
     <div class="flex items-start justify-between">
       <div class="flex items-center gap-3">
