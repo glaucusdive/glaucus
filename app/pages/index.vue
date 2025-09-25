@@ -211,7 +211,7 @@
                   <!-- Nearby Dive Shops Tab -->
                   <div v-if="activeTab === 'nearby'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
                     <section class="flex flex-col gap-4">
-                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <CardDiveShop image="/images/fpo/destinations-beginner.png"
                           title="Dive Bandos – Bandos Maldives" location="Bandos Island, Maldives" />
                         <CardDiveShop image="/images/fpo/destinations-beginner.png"
