@@ -26,19 +26,19 @@
     </div>
 
     <!-- Data Table -->
-    <div v-else-if="diveshops && diveshops.length > 0" class="h-fit w-fit">
-      <div class="px-6 py-4 border-b border-gray-200 w-full">
+    <div v-else-if="diveshops && diveshops.length > 0" class="h-fit w-full flex flex-col">
+      <!-- <div class="px-6 py-4 border-b border-gray-200 w-full">
         <div class="flex items-center justify-between">
           <h2 class="text-xl font-semibold text-gray-900">Dive Shops Directory</h2>
           <UBadge color="green" variant="soft">
             {{ diveshops.length }} shops
           </UBadge>
         </div>
-      </div>
+      </div> -->
 
-      <div class="w-full">
+      <div class="w-fit">
         <!-- Header -->
-        <div class="grid auto-cols-auto grid-flow-col gap-4 px-6 py-3 bg-gray-50 sticky top-0 z-10 w-fit lg:w-full">
+        <div class="bg-neutral-100 grid auto-cols-auto grid-flow-col gap-4 px-6 py-3 bg-gray-50 sticky top-0 z-10 w-fit lg:w-full">
           <div class="text-xs font-medium text-gray-500 uppercase tracking-wider w-96">Business
             Name
           </div>
