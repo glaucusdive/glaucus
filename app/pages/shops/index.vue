@@ -112,7 +112,7 @@
 
 <script setup>
 const { client } = useSupabase()
-const { restoreScrollPosition } = useScrollPosition()
+const { restoreScrollPosition, saveScrollPosition } = useScrollPosition()
 
 // Restore scroll position when component mounts
 onMounted(() => {
@@ -123,6 +123,10 @@ onMounted(() => {
 const navigateToShop = (shop) => {
   // Use the shop ID for reliable routing
   console.log('Navigating to shop:', shop.business_name, 'ID:', shop.id)
+  
+  // Save scroll position immediately before navigation
+  saveScrollPosition('shops')
+  
   navigateTo(`/shops/${shop.id}`)
 }
 

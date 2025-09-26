@@ -417,8 +417,7 @@ const { saveScrollPosition } = useScrollPosition()
 
 // Function to go back to shops with scroll position preservation
 const goBackToShops = () => {
-  // Save current scroll position before navigating
-  saveScrollPosition('shops')
+  // Navigate back to shops (scroll position was already saved when leaving shops page)
   navigateTo('/shops')
 }
 </script>
