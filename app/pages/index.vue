@@ -2,7 +2,7 @@
   <div class="h-screen overflow-hidden">
     <div class="h-full w-screen flex">
       <!-- Sidebar -->
-      <div class="w-56 shrink-0 bg-neutral-50 hidden lg:flex flex-col justify-center gap-56 p-1 h-full relative">
+      <div class="w-56 shrink-0 bg-neutral-50 hidden lg:flex flex-col justify-center gap-56 p-2 h-full relative">
         <div class="w-[100px] h-auto absolute top-4 left-3">
           <img src="/images/logo-glaucus.svg" class="w-full h-full object-cover" />
         </div>
