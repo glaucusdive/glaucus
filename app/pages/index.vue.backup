@@ -1,6 +1,6 @@
 <template>
   <div class="grid lg:grid-cols-[200px_auto] min-h-screen *:h-full">
-    <div class="bg-neutral-50 hidden lg:block">
+    <div class="bg-gray-50 hidden lg:block">
       <div class="flex flex-col justify-start gap-56 p-4 h-full max-h-screen">
         <div class="w-[120px] h-auto">
           <img src="/images/logo-glaucus.svg" class="w-full h-full object-cover" />
@@ -13,14 +13,14 @@
         </nav>
       </div>
     </div>
-    <div class="bg-neutral-50 grid grid-cols-12 gap-1 gap-x-4 content-start p-4">
+    <div class="bg-gray-50 grid grid-cols-12 gap-1 gap-x-4 content-start p-4">
       <div class="col-span-12 order-1">
         <section class="bg-white p-2 flex flex-col gap-2 rounded-xl *:w-full">
           <div class="flex flex-row gap-2">
             <div class="bg-white flex flex-col justify-end p-4 basis-1/2 order-2 lg:order-1">
               <h1 class="text-4xl font-semibold">Dive Bandos – Bandos Maldives</h1>
             </div>
-            <div class="bg-neutral-100 overflow-hidden rounded-sm order-first lg:order-2 h-[300px] basis-1/2">
+            <div class="bg-gray-100 overflow-hidden rounded-sm order-first lg:order-2 h-[300px] basis-1/2">
               <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover" />
             </div>
           </div>
@@ -35,8 +35,8 @@
             :class="[
               'flex flex-row gap-2 rounded-sm p-2 px-4 w-fit cursor-pointer transition-colors',
               activeTab === tab.id 
-                ? 'bg-neutral-50 text-neutral-900' 
-                : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
+                ? 'bg-gray-50 text-neutral-900' 
+                : 'text-neutral-600 hover:text-neutral-900 hover:bg-gray-100'
             ]"
           >
             {{ tab.label }}
@@ -74,7 +74,7 @@
               <div v-if="activeTab === 'destinations'" class="flex flex-col gap-4">
                 <section class="flex flex-col gap-4">
                   <div class="flex flex-col gap-4">
-                    <div class="flex flex-col gap-4 p-6 bg-neutral-50">
+                    <div class="flex flex-col gap-4 p-6 bg-gray-50">
                       <h2 class="text-2xl font-semibold">Dive Destinations</h2>
                     </div>
                     <div class="">
@@ -103,20 +103,20 @@
             <section class="flex flex-col gap-4">
               <div class="flex flex-col gap-4">
                 <div class="flex flex-row gap-4 items-center justify-between">
-                  <div class="flex flex-col gap-4 p-6 bg-neutral-50">
+                  <div class="flex flex-col gap-4 p-6 bg-gray-50">
                     <h2 class="text-2xl font-semibold">Courses</h2>
                   </div>
-                  <div class="flex flex-row gap-0 border border-neutral-200 rounded-md divide-x divide-neutral-200">
+                  <div class="flex flex-row gap-0 border border-gray-300 rounded-md divide-x divide-gray-300">
                     <!-- Carousel Controls -->
                     <!-- <button @click="carouselPrevious" :class="[
                         'flex items-center justify-center p-2',
-                        canGoPrevious ? 'hover:bg-neutral-100 cursor-pointer' : 'cursor-auto text-neutral-300'
+                        canGoPrevious ? 'hover:bg-gray-100 cursor-pointer' : 'cursor-auto text-neutral-300'
                       ]">
                       <ChevronLeft class="w-4 h-4" />
                     </button>
                     <button @click="carouselNext" :class="[
                         'flex items-center justify-center p-2',
-                        canGoNext ? 'hover:bg-neutral-100 cursor-pointer' : 'cursor-auto text-neutral-300'
+                        canGoNext ? 'hover:bg-gray-100 cursor-pointer' : 'cursor-auto text-neutral-300'
                       ]">
                       <ChevronRight class="w-4 h-4" />
                     </button> -->
@@ -146,10 +146,10 @@
               <!-- More Information Tab -->
               <div v-if="activeTab === 'information'" class="flex flex-col gap-4">
             <section class="flex flex-col gap-4">
-              <div class="flex flex-col gap-4 p-6 bg-neutral-50">
+              <div class="flex flex-col gap-4 p-6 bg-gray-50">
                 <h2 class="text-2xl font-semibold">More Information</h2>
               </div>
-              <div class="flex flex-col lg:flex-row gap-6 p-6 border border-neutral-200 rounded-md *:w-full">
+              <div class="flex flex-col lg:flex-row gap-6 p-6 border border-gray-300 rounded-md *:w-full">
                 <div class="flex flex-col gap-6">
                   <div class="flex flex-col gap-2">
                     <h3 class="text-xl font-semibold">Equipment Rental</h3>
@@ -202,20 +202,20 @@
                 <section class="flex flex-col gap-4">
                   <div class="flex flex-col gap-4">
                     <div class="flex flex-row gap-4 items-center justify-between">
-                      <div class="flex flex-col gap-4 p-6 bg-neutral-50">
+                      <div class="flex flex-col gap-4 p-6 bg-gray-50">
                         <h2 class="text-2xl font-semibold">Reviews</h2>
                       </div>
-                      <div class="flex flex-row gap-0 border border-neutral-200 rounded-md divide-x divide-neutral-200">
+                      <div class="flex flex-row gap-0 border border-gray-300 rounded-md divide-x divide-gray-300">
                     <!-- Carousel Controls -->
                     <!-- <button @click="carouselPrevious" :class="[
                         'flex items-center justify-center p-2',
-                        canGoPrevious ? 'hover:bg-neutral-100 cursor-pointer' : 'cursor-auto text-neutral-300'
+                        canGoPrevious ? 'hover:bg-gray-100 cursor-pointer' : 'cursor-auto text-neutral-300'
                       ]">
                       <ChevronLeft class="w-4 h-4" />
                     </button>
                     <button @click="carouselNext" :class="[
                         'flex items-center justify-center p-2',
-                        canGoNext ? 'hover:bg-neutral-100 cursor-pointer' : 'cursor-auto text-neutral-300'
+                        canGoNext ? 'hover:bg-gray-100 cursor-pointer' : 'cursor-auto text-neutral-300'
                       ]">
                       <ChevronRight class="w-4 h-4" />
                     </button> -->
@@ -261,7 +261,7 @@
               <!-- Nearby Dive Shops Tab -->
               <div v-if="activeTab === 'nearby'" class="flex flex-col gap-4">
             <section class="flex flex-col gap-4">
-              <div class="flex flex-col gap-4 p-6 bg-neutral-50">
+              <div class="flex flex-col gap-4 p-6 bg-gray-50">
                 <h2 class="text-2xl font-semibold">Nearby Dive Shops</h2>
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -281,7 +281,7 @@
       </div>
       <div class="col-span-12 lg:col-span-4 order-2 lg:order-3">
         <div class="flex flex-col gap-4 sticky top-20">
-          <section class="flex flex-col gap-4 p-6 bg-neutral-100 rounded-md">
+          <section class="flex flex-col gap-4 p-6 bg-gray-100 rounded-md">
             <h2 class="text-2xl font-semibold">Book Now</h2>
             <form class="flex flex-col gap-4">
               <div class="flex flex-col gap-2">
@@ -291,7 +291,7 @@
                     class="border border-gray-300 rounded-md p-2" />
                   <label for="certification">Certification</label>
                 </fieldset>
-                <hr class="border-neutral-200" />
+                <hr class="border-gray-300" />
                 <fieldset class="flex flex-row gap-2">
                   <input type="radio" name="dive-type" id="recreation" class="border border-gray-300 rounded-md p-2" />
                   <label for="recreation">Recreation</label>
@@ -300,7 +300,7 @@
               <button type="submit" class="bg-blue-500 text-white rounded-md p-2 cursor-pointer">Book</button>
             </form>
           </section>
-          <section class="flex flex-col gap-2 p-6 border border-neutral-200 rounded-md">
+          <section class="flex flex-col gap-2 p-6 border border-gray-300 rounded-md">
             <ul class="space-y-2">
               <li>
                 <a href="#" class="flex flex-row gap-4 items-center">
@@ -328,7 +328,7 @@
               </li>
             </ul>
           </section>
-          <section class="flex flex-col gap-6 p-6 border border-neutral-200 rounded-md *:w-full">
+          <section class="flex flex-col gap-6 p-6 border border-gray-300 rounded-md *:w-full">
             <div class="flex flex-col gap-2">
               <h3 class="text-xl font-semibold">Hours</h3>
               <ul class="text-sm space-y-1">

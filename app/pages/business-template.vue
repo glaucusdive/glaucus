@@ -17,13 +17,13 @@
   <div v-else class="h-screen overflow-hidden">
     <div class="h-full w-screen flex">
       <!-- Sidebar -->
-      <div class="w-56 shrink-0 bg-neutral-50 hidden lg:flex flex-col justify-center gap-56 p-2 h-full relative">
+      <div class="w-56 shrink-0 bg-gray-50 hidden lg:flex flex-col justify-center gap-56 p-2 h-full relative">
         <div class="w-[100px] h-auto absolute top-4 left-3">
           <img src="/images/logo-glaucus.svg" class="w-full h-full object-cover" />
         </div>
         <nav
-          class="w-full flex flex-col gap-1 *:text-neutral-600 *:text-sm *:font-medium *:bg-transparent *:hover:bg-neutral-100 *:hover:text-neutral-700 *:px-4 *:py-2 *:rounded-sm">
-          <a class="!bg-neutral-200/50 !text-black" href="#">Dive Shops</a>
+          class="w-full flex flex-col gap-1 *:text-neutral-600 *:text-sm *:font-medium *:bg-transparent *:hover:bg-gray-100 *:hover:text-neutral-700 *:px-4 *:py-2 *:rounded-sm">
+          <a class="!bg-gray-200/50 !text-black" href="#">Dive Shops</a>
           <a href="#">Shop</a>
           <a href="#">Community</a>
           <a href="#">Your Profile</a>
@@ -31,15 +31,15 @@
       </div>
       <!-- Main -->
       <div class="p-2 pl-0 w-full flex-1 h-full">
-        <div class="border border-neutral-200 rounded-xl h-full">
-          <div class="flex flex-col justify-between h-full gap-0 divide-y divide-neutral-200">
+        <div class="border border-gray-300 rounded-xl h-full">
+          <div class="flex flex-col justify-between h-full gap-0 divide-y divide-gray-300">
             <!-- Header -->
-            <div class="flex flex-col justify-center z-50 w-full divide-y divide-neutral-200">
+            <div class="flex flex-col justify-center z-50 w-full divide-y divide-gray-300">
               <div class="flex flex-row justify-between items-end gap-2 p-2">
                 <h1 class="text-6xl font-medium w-[12ch]">{{ shopData?.business_name || 'Loading...' }}</h1>
 
                 <!-- Image -->
-                <div class="hidden lg:block bg-neutral-100 overflow-hidden rounded-sm w-[322px] h-[322px]">
+                <div class="hidden lg:block bg-gray-100 overflow-hidden rounded-sm w-[322px] h-[322px]">
                   <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover aspect-square" />
                 </div>
               </div>
@@ -48,8 +48,8 @@
                 <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id" :class="[
                   'flex flex-row gap-2 rounded-md p-2 px-3 w-fit cursor-pointer transition-color whitespace-nowrap',
                   activeTab === tab.id
-                    ? 'bg-neutral-100 text-neutral-900'
-                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
+                    ? 'bg-gray-100 text-neutral-900'
+                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-gray-100'
                 ]">
                   {{ tab.label }}
                 </button>
@@ -57,7 +57,7 @@
             </div>
             <!-- Content -->
             <div
-              class="flex flex-col lg:flex-row items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 divide-neutral-200 w-full lg:h-0 lg:flex-1 overflow-y-auto lg:overflow-y-visible">
+              class="flex flex-col lg:flex-row items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 divide-gray-300 w-full lg:h-0 lg:flex-1 overflow-y-auto lg:overflow-y-visible">
               <!-- Business Main -->
               <div class="w-full flex flex-col border-b-0 h-full order-2 lg:order-1">
                 <!-- Tab Content -->
@@ -150,7 +150,7 @@
                   </div>
                   <!-- More Information Tab -->
                   <div v-if="activeTab === 'information'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
-                    <div class="flex flex-col lg:flex-row gap-6 p-6 border border-neutral-200 rounded-md *:w-full">
+                    <div class="flex flex-col lg:flex-row gap-6 p-6 border border-gray-300 rounded-md *:w-full">
                       <div class="flex flex-col gap-6">
                         <div class="flex flex-col gap-2">
                           <h3 class="text-lg font-semibold">Equipment Rental</h3>
@@ -254,7 +254,7 @@
                 <div class="h-full">
                   <div class="flex flex-col gap-2">
                     <!-- Book Now -->
-                    <div class="flex flex-col gap-2 p-6 bg-neutral-100 rounded-md">
+                    <div class="flex flex-col gap-2 p-6 bg-gray-100 rounded-md">
                       <h2 class="text-2xl font-semibold">Book Now</h2>
                       <form class="flex flex-col gap-4">
                         <div class="flex flex-col gap-4">
@@ -265,7 +265,7 @@
                                 class="border border-gray-300 rounded-md p-2" />
                               <label for="certification">Certification</label>
                             </fieldset>
-                            <hr class="border-neutral-200" />
+                            <hr class="border-gray-300" />
                             <fieldset class="flex flex-row gap-2">
                               <input type="radio" name="dive-type" id="recreation"
                                 class="border border-gray-300 rounded-md p-2" />
@@ -277,7 +277,7 @@
                       </form>
                     </div>
                     <!-- Contact Information -->
-                    <div class="flex flex-col gap-2 p-6 border border-neutral-200 rounded-md">
+                    <div class="flex flex-col gap-2 p-6 border border-gray-300 rounded-md">
                       <ul class="space-y-2">
                         <li v-if="shopData?.street_address || shopData?.locale || shopData?.country">
                           <a href="#" class="flex flex-row gap-4 items-center">

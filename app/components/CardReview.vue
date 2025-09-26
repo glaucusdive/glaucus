@@ -1,9 +1,9 @@
 <template>
-  <div class="flex flex-col gap-4 border border-neutral-200 rounded-md p-4 shrink-0">
+  <div class="flex flex-col gap-4 border border-gray-300 rounded-md p-4 shrink-0">
     <!-- Header with profile, name, date, and Google logo -->
     <div class="flex items-start justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-neutral-100 rounded-full overflow-hidden">
+        <div class="w-10 h-10 bg-gray-100 rounded-full overflow-hidden">
           <img :src="reviewerImage" :alt="reviewerName" class="w-full h-full object-cover" />
         </div>
         <div class="flex flex-col">

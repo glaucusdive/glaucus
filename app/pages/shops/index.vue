@@ -2,7 +2,7 @@
   <NuxtLayout name="default">
     <!-- Header -->
     <template #header>
-      <div class="flex flex-col justify-center z-50 w-full divide-y divide-neutral-200">
+      <div class="flex flex-col justify-center z-50 w-full divide-y divide-gray-300">
         <div class="flex flex-row justify-between items-end gap-2 p-2">
           <h1 class="text-6xl font-medium w-[12ch]">Dive Shops Directory</h1>
         </div>
@@ -38,7 +38,7 @@
 
       <div class="w-fit">
         <!-- Header -->
-        <div class="bg-neutral-100 grid auto-cols-auto grid-flow-col gap-4 px-6 py-3 bg-gray-50 sticky top-0 z-10 w-fit lg:w-full">
+        <div class="bg-gray-100 grid auto-cols-auto grid-flow-col gap-4 px-6 py-3 bg-gray-50 sticky top-0 z-10 w-fit lg:w-full">
           <div class="text-xs font-medium text-gray-500 uppercase tracking-wider w-96">Business
             Name
           </div>

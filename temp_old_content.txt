@@ -29,7 +29,7 @@
               <div v-if="activeTab === 'destinations'" class="flex flex-col gap-4">
                 <section class="flex flex-col gap-4">
                   <div class="flex flex-col gap-4">
-                    <div class="flex flex-col gap-4 p-6 bg-neutral-50">
+                    <div class="flex flex-col gap-4 p-6 bg-gray-50">
                       <h2 class="text-2xl font-semibold">Dive Destinations</h2>
                     </div>
                     <div class="">
@@ -58,20 +58,20 @@
             <section class="flex flex-col gap-4">
               <div class="flex flex-col gap-4">
                 <div class="flex flex-row gap-4 items-center justify-between">
-                  <div class="flex flex-col gap-4 p-6 bg-neutral-50">
+                  <div class="flex flex-col gap-4 p-6 bg-gray-50">
                     <h2 class="text-2xl font-semibold">Courses</h2>
                   </div>
-                  <div class="flex flex-row gap-0 border border-neutral-200 rounded-md divide-x divide-neutral-200">
+                  <div class="flex flex-row gap-0 border border-gray-300 rounded-md divide-x divide-gray-300">
                     <!-- Carousel Controls -->
                     <!-- <button @click="carouselPrevious" :class="[
                         'flex items-center justify-center p-2',
-                        canGoPrevious ? 'hover:bg-neutral-100 cursor-pointer' : 'cursor-auto text-neutral-300'
+                        canGoPrevious ? 'hover:bg-gray-100 cursor-pointer' : 'cursor-auto text-neutral-300'
                       ]">
                       <ChevronLeft class="w-4 h-4" />
                     </button>
                     <button @click="carouselNext" :class="[
                         'flex items-center justify-center p-2',
-                        canGoNext ? 'hover:bg-neutral-100 cursor-pointer' : 'cursor-auto text-neutral-300'
+                        canGoNext ? 'hover:bg-gray-100 cursor-pointer' : 'cursor-auto text-neutral-300'
                       ]">
                       <ChevronRight class="w-4 h-4" />
                     </button> -->
@@ -101,10 +101,10 @@
               <!-- More Information Tab -->
               <div v-if="activeTab === 'information'" class="flex flex-col gap-4">
             <section class="flex flex-col gap-4">
-              <div class="flex flex-col gap-4 p-6 bg-neutral-50">
+              <div class="flex flex-col gap-4 p-6 bg-gray-50">
                 <h2 class="text-2xl font-semibold">More Information</h2>
               </div>
-              <div class="flex flex-col lg:flex-row gap-6 p-6 border border-neutral-200 rounded-md *:w-full">
+              <div class="flex flex-col lg:flex-row gap-6 p-6 border border-gray-300 rounded-md *:w-full">
                 <div class="flex flex-col gap-6">
                   <div class="flex flex-col gap-2">
                     <h3 class="text-xl font-semibold">Equipment Rental</h3>
@@ -157,20 +157,20 @@
                 <section class="flex flex-col gap-4">
                   <div class="flex flex-col gap-4">
                     <div class="flex flex-row gap-4 items-center justify-between">
-                      <div class="flex flex-col gap-4 p-6 bg-neutral-50">
+                      <div class="flex flex-col gap-4 p-6 bg-gray-50">
                         <h2 class="text-2xl font-semibold">Reviews</h2>
                       </div>
-                      <div class="flex flex-row gap-0 border border-neutral-200 rounded-md divide-x divide-neutral-200">
+                      <div class="flex flex-row gap-0 border border-gray-300 rounded-md divide-x divide-gray-300">
                     <!-- Carousel Controls -->
                     <!-- <button @click="carouselPrevious" :class="[
                         'flex items-center justify-center p-2',
-                        canGoPrevious ? 'hover:bg-neutral-100 cursor-pointer' : 'cursor-auto text-neutral-300'
+                        canGoPrevious ? 'hover:bg-gray-100 cursor-pointer' : 'cursor-auto text-neutral-300'
                       ]">
                       <ChevronLeft class="w-4 h-4" />
                     </button>
                     <button @click="carouselNext" :class="[
                         'flex items-center justify-center p-2',
-                        canGoNext ? 'hover:bg-neutral-100 cursor-pointer' : 'cursor-auto text-neutral-300'
+                        canGoNext ? 'hover:bg-gray-100 cursor-pointer' : 'cursor-auto text-neutral-300'
                       ]">
                       <ChevronRight class="w-4 h-4" />
                     </button> -->
@@ -216,7 +216,7 @@
               <!-- Nearby Dive Shops Tab -->
               <div v-if="activeTab === 'nearby'" class="flex flex-col gap-4">
             <section class="flex flex-col gap-4">
-              <div class="flex flex-col gap-4 p-6 bg-neutral-50">
+              <div class="flex flex-col gap-4 p-6 bg-gray-50">
                 <h2 class="text-2xl font-semibold">Nearby Dive Shops</h2>
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">

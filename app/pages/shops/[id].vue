@@ -16,19 +16,19 @@
   </div>
   <NuxtLayout name="default">
     <!-- start shop/id here-->
-    <div class="flex flex-col justify-between h-full gap-0 divide-y divide-neutral-200">
+    <div class="flex flex-col justify-between h-full gap-0 divide-y divide-gray-300">
       <!-- Header -->
-      <div class="flex flex-col justify-center z-50 w-full divide-y divide-neutral-200">
+      <div class="flex flex-col justify-center z-50 w-full divide-y divide-gray-300">
         <!-- Title -->
-        <header class="flex flex-row justify-start items-stretch gap-0 divide-x divide-neutral-200">
+        <header class="flex flex-row justify-start items-stretch gap-0 divide-x divide-gray-300">
           <div class="p-1 flex items-center">
-            <div class="hover:bg-neutral-100 rounded-sm w-full h-full flex items-center justify-center cursor-pointer px-1" @click="goBackToShops">
+            <div class="hover:bg-gray-100 rounded-sm w-full h-full flex items-center justify-center cursor-pointer px-1" @click="goBackToShops">
               <ChevronLeft class="w-6 h-6" />
             </div>
           </div>
           <!-- Image -->
           <div class="p-1 flex items-center">
-            <div class="hidden lg:block bg-neutral-200 overflow-hidden rounded-sm w-16 h-auto aspect-square"></div>
+            <div class="hidden lg:block bg-gray-200 overflow-hidden rounded-sm w-16 h-auto aspect-square"></div>
           </div>
 
           <div class="p-1 grow flex items-center">
@@ -40,8 +40,8 @@
           <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id" :class="[
             'flex flex-row gap-2 rounded-sm p-2 px-3 w-fit cursor-pointer transition-color whitespace-nowrap',
             activeTab === tab.id
-              ? 'bg-neutral-200/50 text-neutral-900'
-              : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/40'
+              ? 'bg-gray-200/50 text-neutral-900'
+              : 'text-neutral-600 hover:text-neutral-900 hover:bg-gray-200/40'
           ]">
             {{ tab.label }}
           </button>
@@ -51,7 +51,7 @@
       <div class="w-full h-0 flex-1 overflow-y-auto">
         <!-- Main Content with Sidebar -->
         <div
-          class="flex flex-col lg:flex-row items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 divide-neutral-200 w-full h-full overflow-y-auto lg:overflow-y-visible">
+          class="flex flex-col lg:flex-row items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 divide-gray-300 w-full h-full overflow-y-auto lg:overflow-y-visible">
           <!-- Tab Content -->
           <div class="w-full flex flex-col grow border-b-0 h-full order-2 lg:order-1">
             <div class="flex flex-col gap-4 h-full w-full p-0">
@@ -142,7 +142,7 @@
               </div>
               <!-- More Information Tab -->
               <div v-if="activeTab === 'information'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
-                <div class="flex flex-col lg:flex-row gap-6 p-6 border border-neutral-200 rounded-md *:w-full">
+                <div class="flex flex-col lg:flex-row gap-6 p-6 border border-gray-300 rounded-md *:w-full">
                   <div class="flex flex-col gap-6">
                     <div class="flex flex-col gap-2">
                       <h3 class="text-lg font-semibold">Equipment Rental</h3>
@@ -246,7 +246,7 @@
             <div class="h-full">
               <div class="flex flex-col gap-2">
                 <!-- Book Now -->
-                <div class="flex flex-col gap-2 p-6 bg-neutral-100 rounded-md">
+                <div class="flex flex-col gap-2 p-6 bg-gray-100 rounded-md">
                   <h2 class="text-2xl font-semibold">Book Now</h2>
                   <form class="flex flex-col gap-4">
                     <div class="flex flex-col gap-4">
@@ -257,7 +257,7 @@
                             class="border border-gray-300 rounded-md p-2" />
                           <label for="certification">Certification</label>
                         </fieldset>
-                        <hr class="border-neutral-200" />
+                        <hr class="border-gray-300" />
                         <fieldset class="flex flex-row gap-2">
                           <input type="radio" name="dive-type" id="recreation"
                             class="border border-gray-300 rounded-md p-2" />
@@ -269,7 +269,7 @@
                   </form>
                 </div>
                 <!-- Contact Information -->
-                <div class="flex flex-col gap-2 p-6 border border-neutral-200 rounded-md">
+                <div class="flex flex-col gap-2 p-6 border border-gray-300 rounded-md">
                   <ul class="space-y-2">
                     <li v-if="contactInfo?.address">
                       <a :href="`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contactInfo.address)}`"
