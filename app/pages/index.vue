@@ -2,26 +2,34 @@
   <div class="h-screen overflow-hidden">
     <div class="h-full w-screen flex">
       <!-- Sidebar -->
-      <div class="w-56 shrink-0 bg-neutral-50 hidden lg:flex flex-col justify-start gap-56 p-4 h-full">
-        <div class="w-[120px] h-auto">
+      <div class="w-56 shrink-0 bg-neutral-50 hidden lg:flex flex-col justify-center gap-56 p-1 h-full relative">
+        <div class="w-[100px] h-auto absolute top-4 left-3">
           <img src="/images/logo-glaucus.svg" class="w-full h-full object-cover" />
         </div>
-        <nav class="flex flex-col gap-4 *:text-base sticky top-0">
-          <a href="#">Dive Shops</a>
+        <nav
+          class="w-full flex flex-col gap-1 *:text-sm *:font-medium *:bg-transparent *:hover:bg-neutral-100 *:px-4 *:py-2 *:rounded-sm">
+          <a class="!bg-neutral-200/50" href="#">Dive Shops</a>
           <a href="#">Shop</a>
           <a href="#">Community</a>
           <a href="#">Your Profile</a>
         </nav>
       </div>
       <!-- Main -->
-      <div class="p-2 w-full flex-1 h-full">
+      <div class="p-2 pl-0 w-full flex-1 h-full">
         <div class="border border-neutral-200 rounded-xl h-full">
           <div class="flex flex-col justify-between h-full gap-0 divide-y divide-neutral-200">
             <!-- Header -->
             <div class="flex flex-col justify-center z-50 w-full divide-y divide-neutral-200">
-              <h1 class="text-2xl font-semibold p-2 pt-8">Dive Bandos – Bandos Maldives</h1>
+              <div class="flex flex-row justify-between items-end gap-2 p-2">
+                <h1 class="text-6xl font-medium w-[12ch]">Dive Bandos – Bandos Maldives</h1>
+
+                <!-- Image -->
+                <div class="hidden lg:block bg-neutral-100 overflow-hidden rounded-sm w-[400px] h-[400px]">
+                  <img src="/images/fpo/destinations-beginner.png" class="w-full h-full object-cover aspect-square" />
+                </div>
+              </div>
               <!-- Tabs -->
-              <div class="flex flex-row gap-1 items-center p-2 overflow-x-auto">
+              <div class="flex flex-row gap-1 items-center p-2 overflow-x-auto font-medium">
                 <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id" :class="[
                   'flex flex-row gap-2 rounded-md p-2 px-3 w-fit cursor-pointer transition-color whitespace-nowrap',
                   activeTab === tab.id
@@ -42,10 +50,10 @@
                   <!-- Details Tab -->
                   <div v-if="activeTab === 'details'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
                     <section class="flex flex-col gap-4">
-                      <div class="flex flex-col gap-0">
-                        <section class="flex flex-col xl:flex-row gap-4 p-4 *:w-full">
+                      <div class="flex flex-col gap-2">
+                        <section class="flex flex-col xl:flex-row gap-2 p-2 *:w-full">
                           <div class="flex flex-col gap-2">
-                            <h2 class="text-xl font-semibold">Hours</h2>
+                            <h2 class="text-lg font-semibold">Hours</h2>
                             <ul class="text-base space-y-1">
                               <li>Mon: 07:30 AM - 05:00 PM</li>
                               <li>Tue: 07:30 AM - 05:00 PM</li>
@@ -57,14 +65,14 @@
                             </ul>
                           </div>
                           <div class="flex flex-col gap-2">
-                            <h3 class="text-xl font-semibold">Languages</h3>
+                            <h3 class="text-lg font-semibold">Languages</h3>
                             <div class="text-base">
                               English
                             </div>
                           </div>
                         </section>
-                        <div class="text-lg p-4 flex flex-col gap-4 justify-start">
-                          <h2 class="text-xl font-semibold">Details</h2>
+                        <div class="text-lg p-2 flex flex-col gap-2 justify-start">
+                          <h2 class="text-lg font-semibold">Details</h2>
                           <div class="text-base">
                             <div v-if="!showFullDetails">
                               {{ firstParagraph }}
@@ -247,11 +255,6 @@
                         </div>
                         <button type="submit" class="bg-blue-500 text-white rounded-md p-2 cursor-pointer">Book</button>
                       </form>
-                    </div>
-                    <!-- Image -->
-                    <div class="hidden lg:block bg-neutral-100 overflow-hidden rounded-sm w-full">
-                      <img src="/images/fpo/destinations-beginner.png"
-                        class="w-full h-full object-cover aspect-square" />
                     </div>
                     <!-- Contact Information -->
                     <div class="flex flex-col gap-2 p-6 border border-neutral-200 rounded-md">
