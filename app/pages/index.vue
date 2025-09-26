@@ -7,8 +7,8 @@
           <img src="/images/logo-glaucus.svg" class="w-full h-full object-cover" />
         </div>
         <nav
-          class="w-full flex flex-col gap-1 *:text-sm *:font-medium *:bg-transparent *:hover:bg-neutral-100 *:px-4 *:py-2 *:rounded-sm">
-          <a class="!bg-neutral-200/50" href="#">Dive Shops</a>
+          class="w-full flex flex-col gap-1 *:text-neutral-600 *:text-sm *:font-medium *:bg-transparent *:hover:bg-neutral-100 *:hover:text-neutral-700 *:px-4 *:py-2 *:rounded-sm">
+          <a class="!bg-neutral-200/50 !text-black" href="#">Dive Shops</a>
           <a href="#">Shop</a>
           <a href="#">Community</a>
           <a href="#">Your Profile</a>
