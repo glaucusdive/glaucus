@@ -23,7 +23,7 @@
         <header class="flex flex-row justify-start items-stretch gap-0 divide-x divide-gray-300">
           <div class="p-1 flex items-center">
             <div class="hover:bg-gray-100 rounded-sm w-full h-full flex items-center justify-center cursor-pointer px-1" @click="goBackToShops">
-              <ChevronLeft class="w-6 h-6" />
+              <ChevronLeft class="w-4 h-4 lg:w-6 lg:h-6" />
             </div>
           </div>
           <!-- Image -->
