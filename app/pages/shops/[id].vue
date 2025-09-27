@@ -48,7 +48,7 @@
         </div>
       </div>
       <!-- Content -->
-      <div class="w-full h-0 flex-1 overflow-y-auto">
+      <div class="w-full h-0 flex-1 lg:overflow-y-auto">
         <!-- Main Content with Sidebar -->
         <div
           class="flex flex-col lg:flex-row items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 divide-gray-300 w-full h-full overflow-y-auto lg:overflow-y-visible">
