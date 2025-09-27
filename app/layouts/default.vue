@@ -3,9 +3,9 @@
     <div class="h-full w-full flex flex-row">
       <!-- Sidebar -->
       <div class="w-56 shrink-0 bg-gray-50 hidden lg:flex flex-col justify-center gap-56 p-2 h-full relative">
-        <div class="w-[100px] h-auto absolute top-4 left-3">
+        <NuxtLink to="/" class="w-[100px] h-auto absolute top-4 left-3">
           <img src="/images/logo-glaucus.svg" class="w-full h-full object-cover" />
-        </div>
+        </NuxtLink>
         <nav class="w-full flex flex-col gap-1">
           <NavLink to="/shops">Shops</NavLink>
           <NavLink to="/community">Community</NavLink>
@@ -13,7 +13,7 @@
         </nav>
       </div>
       <!-- Main Content -->
-      <div class="p-2 pl-0 grow h-full w-full min-w-0">
+      <div class="p-2 lg:pl-0 grow h-full w-full min-w-0">
         <div class="border border-gray-300 rounded-xl h-full w-full relative overflow-scroll min-w-0">
 
           <slot />
