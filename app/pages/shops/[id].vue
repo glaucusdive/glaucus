@@ -28,17 +28,17 @@
           </div>
           <!-- Image -->
           <div class="p-1 flex items-center">
-            <div class="hidden lg:block bg-gray-200 overflow-hidden rounded-sm w-16 h-auto aspect-square"></div>
+            <div class="block bg-gray-200 overflow-hidden rounded-sm min-w-8 w-8 lg:min-w-16 lg:w-16 h-auto aspect-square"></div>
           </div>
 
           <div class="p-1 grow flex items-center">
-            <h1 class="text-3xl font-medium p-0 leading-none px-2">{{ shopData?.business_name || 'Loading...' }}</h1>
+            <h1 class="text-xs lg:text-3xl font-medium p-0 leading-none lg:px-2">{{ shopData?.business_name || 'Loading...' }}</h1>
           </div>
         </header>
         <!-- Tabs -->
         <div class="flex flex-row gap-1 items-center p-1 overflow-x-auto font-medium">
           <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id" :class="[
-            'flex flex-row gap-2 rounded-sm p-2 px-3 w-fit cursor-pointer transition-color whitespace-nowrap',
+            'flex flex-row gap-2 rounded-sm p-2 px-3 w-fit text-xs lg:text-base cursor-pointer transition-color whitespace-nowrap',
             activeTab === tab.id
               ? 'bg-gray-200/50 text-neutral-900'
               : 'text-neutral-600 hover:text-neutral-900 hover:bg-gray-200/40'

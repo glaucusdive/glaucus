@@ -13,7 +13,7 @@
         </nav>
       </div>
       <!-- Main Content -->
-      <div class="p-2 lg:pl-0 grow h-full w-full min-w-0">
+      <div class="p-2 lg:pl-0 grow h-dvh w-dvw min-w-0">
         <div class="border border-gray-300 rounded-xl h-full w-full relative overflow-scroll min-w-0">
 
           <slot />
