@@ -245,28 +245,15 @@
           <div class="w-full lg:min-w-1/3 lg:w-1/3 p-2 h-full order-1 lg:order-2">
             <div class="h-full">
               <div class="flex flex-col gap-2">
-                <!-- Book Now -->
+                <!-- Book Now Button -->
                 <div class="flex flex-col gap-2 p-6 bg-gray-100 rounded-md">
                   <h2 class="text-2xl font-semibold">Book Now</h2>
-                  <form class="flex flex-col gap-4">
-                    <div class="flex flex-col gap-4">
-                      <h3>What type of dive do you want to do?</h3>
-                      <div class="flex flex-col gap-2">
-                        <fieldset class="flex flex-row gap-2">
-                          <input type="radio" name="dive-type" id="certification"
-                            class="border border-gray-300 rounded-md p-2" />
-                          <label for="certification">Certification</label>
-                        </fieldset>
-                        <hr class="border-gray-300" />
-                        <fieldset class="flex flex-row gap-2">
-                          <input type="radio" name="dive-type" id="recreation"
-                            class="border border-gray-300 rounded-md p-2" />
-                          <label for="recreation">Recreation</label>
-                        </fieldset>
-                      </div>
-                    </div>
-                    <button type="submit" class="bg-blue-500 text-white rounded-md p-2 cursor-pointer">Book</button>
-                  </form>
+                  <p class="text-sm text-gray-600">Ready to dive? Click below to start your booking.</p>
+                  <button 
+                    @click="openBookingDrawer" 
+                    class="bg-gray-900 hover:bg-gray-800 text-white font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">
+                    Start Booking
+                  </button>
                 </div>
                 <!-- Contact Information -->
                 <div class="flex flex-col gap-2 p-6 border border-gray-300 rounded-md">
@@ -318,6 +305,7 @@ import CardListItem from '~/components/CardListItem.vue'
 import CardDiveShop from '~/components/CardDiveShop.vue'
 import CardReview from '~/components/CardReview.vue'
 import { ref, computed } from 'vue'
+import { useDrawer } from '~/composables/useDrawer'
 
 // Get the route parameter
 const route = useRoute()
@@ -419,5 +407,15 @@ const { saveScrollPosition } = useScrollPosition()
 const goBackToShops = () => {
   // Navigate back to shops (scroll position was already saved when leaving shops page)
   navigateTo('/shops')
+}
+
+// Drawer functionality
+const { openDrawer } = useDrawer()
+
+const openBookingDrawer = () => {
+  openDrawer('booking-form', {
+    shopId: shopId,
+    shopName: shopData.value?.business_name || 'Dive Shop'
+  })
 }
 </script>
