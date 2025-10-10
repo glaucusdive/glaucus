@@ -3,26 +3,26 @@
     <div class="h-full w-full flex flex-row">
       <!-- Backdrop for mobile menu -->
       <Transition @enter="onBackdropEnter" @leave="onBackdropLeave" :css="false">
-        <div v-if="isMobileMenuOpen" @click="closeMobileMenu"
+        <div v-if="isMobileMenuOpen" @click="handleCloseMobileMenu"
           class="fixed inset-0 bg-black/50 z-40 lg:hidden"></div>
       </Transition>
 
       <!-- Sidebar - Always visible on desktop, conditional on mobile -->
-      <Transition @enter="onMobileMenuEnter" @leave="onMobileMenuLeave" :css="false">
+      <Transition @enter="onMobileMenuEnter" @leave="onMobileMenuLeave" @before-enter="onBeforeMenuEnter" :css="false">
         <div v-if="isInitialized && (isMobileMenuOpen || isDesktop)"
           class="w-full lg:w-56 h-full shrink-0 bg-gray-50 flex flex-col justify-center gap-56 p-2 absolute lg:relative z-50">
           <div class="h-fit flex flex-row justify-between items-center absolute top-4 left-3 right-3">
             <NuxtLink to="/" class="w-[120px] h-auto">
               <img src="/images/logo-glaucus.svg" class="w-full h-full object-cover" />
             </NuxtLink>
-            <button @click="closeMobileMenu" class="w-6 h-6 lg:hidden flex items-center justify-center cursor-pointer">
+            <button @click="handleCloseMobileMenu" class="w-6 h-6 lg:hidden flex items-center justify-center cursor-pointer">
               <X class="w-full h-full" />
             </button>
           </div>
           <nav class="w-full flex flex-col gap-1">
-            <NavLink to="/shops" @click="closeMobileMenu">Shops</NavLink>
-            <NavLink to="/community" @click="closeMobileMenu">Community</NavLink>
-            <NavLink to="/profile" @click="closeMobileMenu">Profile</NavLink>
+            <NavLink to="/shops" @click="handleCloseMobileMenu">Shops</NavLink>
+            <NavLink to="/community" @click="handleCloseMobileMenu">Community</NavLink>
+            <NavLink to="/profile" @click="handleCloseMobileMenu">Profile</NavLink>
           </nav>
         </div>
       </Transition>
@@ -55,7 +55,7 @@ import { X } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
 import BookingForm from '~/components/BookingForm.vue'
 
-const { isOpen, contentType, drawerData, isMobileMenuOpen, closeMobileMenu } = useDrawer()
+const { isOpen, contentType, drawerData, isMobileMenuOpen, shouldAnimateMenu, closeMobileMenu } = useDrawer()
 
 // Track if screen is desktop size - start as false to prevent flash on mobile
 const isDesktop = ref(false)
@@ -63,7 +63,15 @@ const isInitialized = ref(false)
 
 // Update isDesktop on mount and resize
 const updateIsDesktop = () => {
-  isDesktop.value = window.innerWidth >= 1024
+  const wasDesktop = isDesktop.value
+  const nowDesktop = window.innerWidth >= 1024
+  
+  // Reset animation flag on resize to prevent animation
+  if (wasDesktop !== nowDesktop) {
+    shouldAnimateMenu.value = false
+  }
+  
+  isDesktop.value = nowDesktop
 }
 
 onMounted(() => {
@@ -95,9 +103,21 @@ const onDrawerLeave = (el, done) => {
   })
 }
 
+// Handle close with animation flag
+const handleCloseMobileMenu = () => {
+  shouldAnimateMenu.value = true
+  closeMobileMenu()
+}
+
+// Before enter - no longer needed since we control animation via composable
+const onBeforeMenuEnter = () => {
+  // Animation flag already set by toggleMobileMenu or openMobileMenu
+}
+
 // GSAP Animation handlers for mobile menu (left sidebar)
 const onMobileMenuEnter = (el, done) => {
-  if (isDesktop.value) {
+  // Skip animation if it's desktop or if it's a resize event
+  if (isDesktop.value || !shouldAnimateMenu.value) {
     done()
     return
   }
@@ -110,7 +130,8 @@ const onMobileMenuEnter = (el, done) => {
 }
 
 const onMobileMenuLeave = (el, done) => {
-  if (isDesktop.value) {
+  // Skip animation if it's desktop or if it's a resize event
+  if (isDesktop.value || !shouldAnimateMenu.value) {
     done()
     return
   }
@@ -118,7 +139,10 @@ const onMobileMenuLeave = (el, done) => {
     x: '-100%',
     duration: 0.3,
     ease: 'power3.in',
-    onComplete: done
+    onComplete: () => {
+      shouldAnimateMenu.value = false
+      done()
+    }
   })
 }
 

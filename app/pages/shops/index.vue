@@ -36,10 +36,10 @@
           </div>
         </div>
         <div class="p-1 px-2 lg:p-4 flex items-center justify-between h-full grow">
-          <h2 class="text-xl font-semibold text-gray-900">Dive Shops Directory</h2>
-          <UBadge color="green" variant="soft">
+          <h2 class="text-xl font-semibold text-gray-900 whitespace-nowrap">Dive Shops Directory</h2>
+          <div class="flex items-center gap-2 text-xs whitespace-nowrap">
             {{ diveshops.length }} shops
-          </UBadge>
+          </div>
         </div>
       </div>
 

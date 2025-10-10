@@ -16,6 +16,7 @@ const drawerData = ref<DrawerData>({})
 
 // Global state for mobile menu (left sidebar)
 const isMobileMenuOpen = ref(false)
+const shouldAnimateMenu = ref(false)
 
 export const useDrawer = () => {
   const openDrawer = (type: DrawerContentType, data: DrawerData = {}) => {
@@ -34,6 +35,7 @@ export const useDrawer = () => {
   }
 
   const openMobileMenu = () => {
+    shouldAnimateMenu.value = true
     isMobileMenuOpen.value = true
   }
 
@@ -42,6 +44,7 @@ export const useDrawer = () => {
   }
 
   const toggleMobileMenu = () => {
+    shouldAnimateMenu.value = true
     isMobileMenuOpen.value = !isMobileMenuOpen.value
   }
 
@@ -52,6 +55,7 @@ export const useDrawer = () => {
     openDrawer,
     closeDrawer,
     isMobileMenuOpen,
+    shouldAnimateMenu,
     openMobileMenu,
     closeMobileMenu,
     toggleMobileMenu

@@ -257,7 +257,7 @@
             <div class="h-full">
               <div class="flex flex-col gap-2">
                 <!-- Book Now Button -->
-                <div class="flex flex-col gap-2 p-6 bg-gray-100 rounded-md order-2 2xl:order-1">
+                <div class="flex flex-col gap-2 p-6 bg-gray-100 rounded-md order-2 lg:order-1">
                   <h2 class="text-2xl font-semibold">Book Now</h2>
                   <p class="text-sm text-gray-600">Ready to dive? Click below to start your booking.</p>
                   <button @click="openBookingDrawer"
@@ -266,7 +266,7 @@
                   </button>
                 </div>
                 <!-- Contact Information -->
-                <div class="flex flex-col gap-2 p-6 border border-gray-300 rounded-md order-1 2xl:order-2">
+                <div class="flex flex-col gap-2 p-6 border border-gray-300 rounded-md order-1 lg:order-2">
                   <ul class="space-y-2">
                     <li v-if="contactInfo?.address">
                       <a :href="`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contactInfo.address)}`"
