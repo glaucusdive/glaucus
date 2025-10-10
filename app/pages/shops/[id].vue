@@ -18,11 +18,18 @@
     <!-- start shop/id here-->
     <div class="flex flex-col justify-between h-full gap-0 divide-y divide-gray-300">
       <!-- Header -->
-      <div class="flex flex-col justify-center z-50 w-full divide-y divide-gray-300">
+      <div class="flex flex-col justify-center z-40 w-full divide-y divide-gray-300">
         <!-- Title -->
         <header class="flex flex-row justify-start items-stretch gap-0 divide-x divide-gray-300">
+          <div class="p-1 flex lg:hidden items-center ">
+            <div @click="toggleMobileMenu"
+              class="hover:bg-gray-100 rounded-sm min-w-8 w-full h-full flex items-center justify-center cursor-pointer px-1">
+              <Menu class="w-4 h-4 lg:w-6 lg:h-6" />
+            </div>
+          </div>
           <div class="p-1 flex items-center">
-            <div class="hover:bg-gray-100 rounded-sm w-full h-full flex items-center justify-center cursor-pointer px-1"
+            <div
+              class="hover:bg-gray-100 rounded-sm min-w-8 w-full h-full flex items-center justify-center cursor-pointer px-1"
               @click="goBackToShops">
               <ChevronLeft class="w-4 h-4 lg:w-6 lg:h-6" />
             </div>
@@ -33,9 +40,8 @@
               class="block bg-gray-200 overflow-hidden rounded-sm min-w-8 w-8 lg:min-w-16 lg:w-16 h-auto aspect-square">
             </div>
           </div>
-
           <div class="p-1 grow flex items-center">
-            <h1 class="text-xs lg:text-3xl font-medium p-0 leading-none lg:px-2">{{ shopData?.business_name ||
+            <h1 class="text-sm lg:text-3xl font-medium p-0 leading-none lg:px-2">{{ shopData?.business_name ||
               'Loading...' }}</h1>
           </div>
         </header>
@@ -55,7 +61,7 @@
       <div class="w-full h-0 flex-1 lg:overflow-y-auto">
         <!-- Main Content with Sidebar -->
         <div
-          class="flex flex-col xl:flex-row justify-start xl:justify-stretch items-start xl:items-stretch gap-0 divide-y xl:divide-x xl:divide-y-0 divide-gray-300 w-full h-full overflow-y-auto xl:overflow-y-visible">
+          class="flex flex-col lg:flex-row justify-start lg:justify-stretch items-start lg:items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 divide-gray-300 w-full h-full overflow-y-auto lg:overflow-y-visible">
           <!-- Tab Content -->
           <div class="w-full flex flex-col grow border-b-0 h-full order-2 lg:order-1">
             <div class="flex flex-col gap-4 h-full w-full p-0">
@@ -246,7 +252,8 @@
             </div>
           </div>
           <!-- Sidebar -->
-          <div class="w-full xl:min-w-1/2 xl:w-1/2 2xl:min-w-1/3 2xl:w-1/3 p-2 h-auto xl:h-full order-2 xl:order-1 sticky bottom-0 2xl:bottom-auto">
+          <div
+            class="w-full lg:min-w-1/2 lg:w-1/2 xl:min-w-1/3 xl:w-1/3 p-2 h-auto xl:h-full order-2 xl:order-1 sticky bottom-0 2xl:bottom-auto">
             <div class="h-full">
               <div class="flex flex-col gap-2">
                 <!-- Book Now Button -->
@@ -302,7 +309,7 @@
 </template>
 
 <script setup>
-import { MapPin, Phone, Mail, Globe, ChevronLeft } from 'lucide-vue-next'
+import { MapPin, Phone, Mail, Globe, ChevronLeft, Menu } from 'lucide-vue-next'
 import CardCarouselItem from '~/components/CardCarouselItem.vue'
 import CardListItem from '~/components/CardListItem.vue'
 import CardDiveShop from '~/components/CardDiveShop.vue'
@@ -413,7 +420,7 @@ const goBackToShops = () => {
 }
 
 // Drawer functionality
-const { openDrawer } = useDrawer()
+const { openDrawer, toggleMobileMenu } = useDrawer()
 
 const openBookingDrawer = () => {
   openDrawer('booking-form', {

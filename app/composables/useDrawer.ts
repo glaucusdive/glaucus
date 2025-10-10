@@ -9,10 +9,13 @@ interface DrawerData {
   [key: string]: any
 }
 
-// Global state
+// Global state for right drawer
 const isOpen = ref(false)
 const contentType = ref<DrawerContentType>(null)
 const drawerData = ref<DrawerData>({})
+
+// Global state for mobile menu (left sidebar)
+const isMobileMenuOpen = ref(false)
 
 export const useDrawer = () => {
   const openDrawer = (type: DrawerContentType, data: DrawerData = {}) => {
@@ -30,12 +33,28 @@ export const useDrawer = () => {
     }, 400) // Match GSAP animation duration
   }
 
+  const openMobileMenu = () => {
+    isMobileMenuOpen.value = true
+  }
+
+  const closeMobileMenu = () => {
+    isMobileMenuOpen.value = false
+  }
+
+  const toggleMobileMenu = () => {
+    isMobileMenuOpen.value = !isMobileMenuOpen.value
+  }
+
   return {
     isOpen,
     contentType,
     drawerData,
     openDrawer,
-    closeDrawer
+    closeDrawer,
+    isMobileMenuOpen,
+    openMobileMenu,
+    closeMobileMenu,
+    toggleMobileMenu
   }
 }
 
