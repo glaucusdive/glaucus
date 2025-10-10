@@ -13,25 +13,19 @@
         </nav>
       </div>
       <!-- Main Content -->
-      <div class="p-2 lg:pl-0 grow h-dvh w-dvw min-w-0 flex flex-row gap-2">
+      <div class="p-2 lg:pl-0 grow h-dvh w-dvw min-w-0 flex flex-row gap-2 relative">
         <div class="border border-gray-300 rounded-xl h-full w-full relative overflow-scroll min-w-0">
 
           <slot />
 
         </div>
         <!-- Drawer Sidebar -->
-        <Transition
-          @enter="onDrawerEnter"
-          @leave="onDrawerLeave"
-          :css="false"
-        >
-          <div v-if="isOpen" class="w-[520px] h-full border border-gray-300 rounded-xl flex flex-col justify-start overflow-hidden">
+        <Transition @enter="onDrawerEnter" @leave="onDrawerLeave" :css="false">
+          <div v-if="isOpen"
+            class="w-auto lg:w-[520px] h-auto bg-gray-50 border border-gray-300 rounded-xl absolute lg:relative bottom-2 lg:bottom-auto top-2 lg:top-auto right-2 lg:right-auto left-2 lg:left-auto flex flex-col justify-start overflow-hidden z-50">
             <!-- Dynamic Drawer Content -->
-            <BookingForm 
-              v-if="contentType === 'booking-form'" 
-              :shop-id="drawerData.shopId" 
-              :shop-name="drawerData.shopName"
-            />
+            <BookingForm v-if="contentType === 'booking-form'" :shop-id="drawerData.shopId"
+              :shop-name="drawerData.shopName" />
           </div>
         </Transition>
       </div>

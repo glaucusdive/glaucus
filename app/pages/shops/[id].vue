@@ -22,17 +22,21 @@
         <!-- Title -->
         <header class="flex flex-row justify-start items-stretch gap-0 divide-x divide-gray-300">
           <div class="p-1 flex items-center">
-            <div class="hover:bg-gray-100 rounded-sm w-full h-full flex items-center justify-center cursor-pointer px-1" @click="goBackToShops">
+            <div class="hover:bg-gray-100 rounded-sm w-full h-full flex items-center justify-center cursor-pointer px-1"
+              @click="goBackToShops">
               <ChevronLeft class="w-4 h-4 lg:w-6 lg:h-6" />
             </div>
           </div>
           <!-- Image -->
           <div class="p-1 flex items-center">
-            <div class="block bg-gray-200 overflow-hidden rounded-sm min-w-8 w-8 lg:min-w-16 lg:w-16 h-auto aspect-square"></div>
+            <div
+              class="block bg-gray-200 overflow-hidden rounded-sm min-w-8 w-8 lg:min-w-16 lg:w-16 h-auto aspect-square">
+            </div>
           </div>
 
           <div class="p-1 grow flex items-center">
-            <h1 class="text-xs lg:text-3xl font-medium p-0 leading-none lg:px-2">{{ shopData?.business_name || 'Loading...' }}</h1>
+            <h1 class="text-xs lg:text-3xl font-medium p-0 leading-none lg:px-2">{{ shopData?.business_name ||
+              'Loading...' }}</h1>
           </div>
         </header>
         <!-- Tabs -->
@@ -51,7 +55,7 @@
       <div class="w-full h-0 flex-1 lg:overflow-y-auto">
         <!-- Main Content with Sidebar -->
         <div
-          class="flex flex-col lg:flex-row items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 divide-gray-300 w-full h-full overflow-y-auto lg:overflow-y-visible">
+          class="flex flex-col xl:flex-row justify-start xl:justify-stretch items-start xl:items-stretch gap-0 divide-y xl:divide-x xl:divide-y-0 divide-gray-300 w-full h-full overflow-y-auto xl:overflow-y-visible">
           <!-- Tab Content -->
           <div class="w-full flex flex-col grow border-b-0 h-full order-2 lg:order-1">
             <div class="flex flex-col gap-4 h-full w-full p-0">
@@ -59,7 +63,7 @@
               <div v-if="activeTab === 'details'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
                 <section class="flex flex-col gap-4 p-2">
                   <div class="flex flex-col gap-2">
-                    <section class="flex flex-col xl:flex-row gap-2 p-2 *:w-full">
+                    <section class="flex flex-col 2xl:flex-row gap-8 p-2 *:w-full">
                       <div class="flex flex-col gap-2">
                         <h2 class="text-lg font-semibold">Hours</h2>
                         <ul class="text-base space-y-1">
@@ -78,29 +82,29 @@
                           English
                         </div>
                       </div>
-                    </section>
-                    <div class="text-lg p-2 flex flex-col gap-2 justify-start">
-                      <h2 class="text-lg font-semibold">Details</h2>
-                      <div class="text-base">
-                        <div v-if="shopData?.description">
-                          <div v-if="!showFullDetails">
-                            {{ firstParagraph }}
+                      <div class="flex flex-col gap-2 justify-start">
+                        <h2 class="text-lg font-semibold">Details</h2>
+                        <div class="text-base">
+                          <div v-if="shopData?.description">
+                            <div v-if="!showFullDetails">
+                              {{ firstParagraph }}
+                            </div>
+                            <div v-else>
+                              <p v-for="(paragraph, index) in paragraphs" :key="index" class="mb-4 last:mb-0">
+                                {{ paragraph }}
+                              </p>
+                            </div>
+                            <button v-if="remainingParagraphs.length > 0" @click="showFullDetails = !showFullDetails"
+                              class="text-blue-600 hover:text-blue-800 underline mt-2 text-sm cursor-pointer">
+                              {{ showFullDetails ? 'Read less' : 'Read more' }}
+                            </button>
                           </div>
-                          <div v-else>
-                            <p v-for="(paragraph, index) in paragraphs" :key="index" class="mb-4 last:mb-0">
-                              {{ paragraph }}
-                            </p>
+                          <div v-else class="text-gray-500 italic">
+                            No description available for this dive shop.
                           </div>
-                          <button v-if="remainingParagraphs.length > 0" @click="showFullDetails = !showFullDetails"
-                            class="text-blue-600 hover:text-blue-800 underline mt-2 text-sm cursor-pointer">
-                            {{ showFullDetails ? 'Read less' : 'Read more' }}
-                          </button>
-                        </div>
-                        <div v-else class="text-gray-500 italic">
-                          No description available for this dive shop.
                         </div>
                       </div>
-                    </div>
+                    </section>
                   </div>
                 </section>
               </div>
@@ -242,21 +246,20 @@
             </div>
           </div>
           <!-- Sidebar -->
-          <div class="w-full lg:min-w-1/3 lg:w-1/3 p-2 h-full order-1 lg:order-2">
+          <div class="w-full xl:min-w-1/2 xl:w-1/2 2xl:min-w-1/3 2xl:w-1/3 p-2 h-auto xl:h-full order-2 xl:order-1 sticky bottom-0 2xl:bottom-auto">
             <div class="h-full">
               <div class="flex flex-col gap-2">
                 <!-- Book Now Button -->
-                <div class="flex flex-col gap-2 p-6 bg-gray-100 rounded-md">
+                <div class="flex flex-col gap-2 p-6 bg-gray-100 rounded-md order-2 2xl:order-1">
                   <h2 class="text-2xl font-semibold">Book Now</h2>
                   <p class="text-sm text-gray-600">Ready to dive? Click below to start your booking.</p>
-                  <button 
-                    @click="openBookingDrawer" 
+                  <button @click="openBookingDrawer"
                     class="bg-gray-900 hover:bg-gray-800 text-white font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">
                     Start Booking
                   </button>
                 </div>
                 <!-- Contact Information -->
-                <div class="flex flex-col gap-2 p-6 border border-gray-300 rounded-md">
+                <div class="flex flex-col gap-2 p-6 border border-gray-300 rounded-md order-1 2xl:order-2">
                   <ul class="space-y-2">
                     <li v-if="contactInfo?.address">
                       <a :href="`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contactInfo.address)}`"
