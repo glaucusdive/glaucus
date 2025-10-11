@@ -141,7 +141,7 @@
                     <select :id="`gear-height-unit-${index}`" v-model="gear.heightUnit"
                       class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200 bg-gray-100">
                       <option value="cm">cm</option>
-                      <option value="in">in</option>
+                      <option value="ft-in">ft' in"</option>
                     </select>
                   </div>
                 </div>
