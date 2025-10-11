@@ -57,6 +57,40 @@
             <input type="text" :id="`diver-dives-${index}`" v-model="diver.numberOfDives" required
               class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200" />
           </div>
+
+          <!-- Height -->
+          <div class="flex gap-2">
+            <div class="flex flex-col gap-1 flex-1">
+              <label :for="`diver-height-${index}`" class="text-xs px-2 text-gray-600">Height</label>
+              <input type="text" :id="`diver-height-${index}`" v-model="diver.height" required
+                class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200" />
+            </div>
+            <div class="flex flex-col gap-1 w-20">
+              <label :for="`diver-height-unit-${index}`" class="text-xs px-2 text-gray-600">Unit</label>
+              <select :id="`diver-height-unit-${index}`" v-model="diver.heightUnit"
+                class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200">
+                <option value="cm">cm</option>
+                <option value="ft-in">ft' in"</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Weight -->
+          <div class="flex gap-2">
+            <div class="flex flex-col gap-1 flex-1">
+              <label :for="`diver-weight-${index}`" class="text-xs px-2 text-gray-600">Weight</label>
+              <input type="text" :id="`diver-weight-${index}`" v-model="diver.weight" required
+                class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200" />
+            </div>
+            <div class="flex flex-col gap-1 w-20">
+              <label :for="`diver-weight-unit-${index}`" class="text-xs px-2 text-gray-600">Unit</label>
+              <select :id="`diver-weight-unit-${index}`" v-model="diver.weightUnit"
+                class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200">
+                <option value="kg">kg</option>
+                <option value="lbs">lbs</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <!-- Dates -->
@@ -93,17 +127,17 @@
           <div class="flex items-center justify-between px-2">
             <label class="text-xs uppercase font-medium">Rental Gear</label>
             <button type="button" @click="addRentalGear"
-              class="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-sm font-medium">
+              class="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-sm font-medium cursor-pointer">
               + Add Gear
             </button>
           </div>
 
           <div v-for="(gear, index) in formData.rentalGear" :key="index"
-            class="bg-white rounded-md flex flex-col gap-2 p-2 border border-gray-200 mx-2 ">
+            class="bg-white rounded-md flex flex-col gap-2 p-2 border border-gray-200 mx-2">
             <div class="flex items-center justify-between">
               <span class="text-xs font-medium text-gray-600">Gear Item {{ index + 1 }}</span>
               <button type="button" @click="removeRentalGear(index)"
-                class="text-xs text-red-600 hover:text-red-700 font-medium">
+                class="text-xs text-red-600 hover:text-red-700 font-medium cursor-pointer">
                 Remove
               </button>
             </div>
@@ -118,49 +152,13 @@
             </div>
 
             <div v-if="gear.gearType" class="flex flex-col gap-2 pt-2 border-t border-gray-200">
-              <div class="flex flex-col gap-1">
-                <label :for="`gear-diver-${index}`" class="text-xs text-gray-600">Select Diver</label>
-                <select :id="`gear-diver-${index}`" v-model="gear.diver" required
-                  class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200 bg-gray-100">
-                  <option value="">Select diver</option>
-                  <option v-for="(diver, diverIndex) in formData.divers" :key="diverIndex" :value="diverIndex">
-                    {{ diver.name || `Diver ${diverIndex + 1}` }}
-                  </option>
-                </select>
-              </div>
-
-              <div v-if="gear.diver !== ''" class="flex flex-col gap-2">
-                <div class="flex gap-2">
-                  <div class="flex flex-col gap-1 flex-1">
-                    <label :for="`gear-height-${index}`" class="text-xs text-gray-600">Height</label>
-                    <input type="text" :id="`gear-height-${index}`" v-model="gear.height" required
-                      class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200 bg-gray-100" />
-                  </div>
-                  <div class="flex flex-col gap-1 w-20">
-                    <label :for="`gear-height-unit-${index}`" class="text-xs text-gray-600">Unit</label>
-                    <select :id="`gear-height-unit-${index}`" v-model="gear.heightUnit"
-                      class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200 bg-gray-100">
-                      <option value="cm">cm</option>
-                      <option value="ft-in">ft' in"</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div class="flex gap-2">
-                  <div class="flex flex-col gap-1 flex-1">
-                    <label :for="`gear-weight-${index}`" class="text-xs text-gray-600">Weight</label>
-                    <input type="text" :id="`gear-weight-${index}`" v-model="gear.weight" required
-                      class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200 bg-gray-100" />
-                  </div>
-                  <div class="flex flex-col gap-1 w-20">
-                    <label :for="`gear-weight-unit-${index}`" class="text-xs text-gray-600">Unit</label>
-                    <select :id="`gear-weight-unit-${index}`" v-model="gear.weightUnit"
-                      class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200 bg-gray-100">
-                      <option value="kg">kg</option>
-                      <option value="lbs">lbs</option>
-                    </select>
-                  </div>
-                </div>
+              <label class="text-xs text-gray-600 px-2">Select Diver(s)</label>
+              <div class="flex flex-col gap-1 px-2">
+                <label v-for="(diver, diverIndex) in formData.divers" :key="diverIndex"
+                  class="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-sm cursor-pointer">
+                  <input type="checkbox" :value="diverIndex" v-model="gear.divers" class="cursor-pointer" />
+                  <span class="text-sm">{{ diver.name || `Diver ${diverIndex + 1}` }}</span>
+                </label>
               </div>
             </div>
           </div>
@@ -204,7 +202,15 @@ const formData = ref({
   email: '',
   numberOfDivers: 1,
   divers: [
-    { name: '', certificationNumber: '', numberOfDives: '' }
+    { 
+      name: '', 
+      certificationNumber: '', 
+      numberOfDives: '',
+      height: '',
+      heightUnit: 'cm',
+      weight: '',
+      weightUnit: 'kg'
+    }
   ],
   startDate: '',
   endDate: '',
@@ -222,7 +228,11 @@ const updateDiversCount = (count) => {
       formData.value.divers.push({
         name: '',
         certificationNumber: '',
-        numberOfDives: ''
+        numberOfDives: '',
+        height: '',
+        heightUnit: 'cm',
+        weight: '',
+        weightUnit: 'kg'
       })
     }
   } else if (count < currentCount) {
@@ -235,11 +245,7 @@ const updateDiversCount = (count) => {
 const addRentalGear = () => {
   formData.value.rentalGear.push({
     gearType: '',
-    diver: '',
-    height: '',
-    heightUnit: 'cm',
-    weight: '',
-    weightUnit: 'kg'
+    divers: []
   })
 }
 
