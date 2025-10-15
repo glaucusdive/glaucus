@@ -69,8 +69,8 @@
               <label :for="`diver-height-unit-${index}`" class="text-xs px-2 text-gray-600">Unit</label>
               <select :id="`diver-height-unit-${index}`" v-model="diver.heightUnit"
                 class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200">
-                <option value="cm">cm</option>
                 <option value="ft-in">ft' in"</option>
+                <option value="cm">cm</option>
               </select>
             </div>
           </div>
@@ -99,13 +99,13 @@
 
           <div class="flex flex-col gap-1">
             <label for="startDate" class="text-xs px-2 text-gray-600">Start Date</label>
-            <input type="date" id="startDate" v-model="formData.startDate" required
+            <input type="date" id="startDate" v-model="formData.startDate" :min="today" required
               class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200" />
           </div>
 
           <div class="flex flex-col gap-1">
             <label for="endDate" class="text-xs px-2 text-gray-600">End Date</label>
-            <input type="date" id="endDate" v-model="formData.endDate" required
+            <input type="date" id="endDate" v-model="formData.endDate" :min="formData.startDate || today" required
               class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200" />
           </div>
         </fieldset>
@@ -177,7 +177,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { X } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
 
@@ -194,6 +194,15 @@ const props = defineProps({
 })
 
 const { closeDrawer } = useDrawer()
+
+// Get today's date in YYYY-MM-DD format for date inputs
+const today = computed(() => {
+  const date = new Date()
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+})
 
 // Form state
 const formData = ref({
@@ -216,6 +225,13 @@ const formData = ref({
   endDate: '',
   desiredDiveSites: [],
   rentalGear: []
+})
+
+// Auto-sync main name to Diver 1
+watch(() => formData.value.name, (newName) => {
+  if (formData.value.divers[0]) {
+    formData.value.divers[0].name = newName
+  }
 })
 
 // Update divers array when numberOfDivers changes
