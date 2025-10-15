@@ -40,9 +40,16 @@
               class="block bg-gray-200 overflow-hidden rounded-sm min-w-8 w-8 lg:min-w-16 lg:w-16 h-auto aspect-square">
             </div>
           </div>
-          <div class="p-1 grow flex items-center">
-            <h1 class="text-sm lg:text-3xl font-medium p-0 leading-none lg:px-2">{{ shopData?.business_name ||
+          <div class="p-1 grow flex items-center overflow-auto">
+            <h1 class="text-sm lg:text-3xl font-medium p-0 leading-none lg:px-2 w-full truncate">{{
+              shopData?.business_name ||
               'Loading...' }}</h1>
+          </div>
+          <div class="p-1 flex items-center">
+            <button @click="toggleDemoMode" class="text-xs px-3 py-1 rounded-sm transition-colors cursor-pointer"
+              :class="isDemoMode ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
+              {{ isDemoMode ? '📊 Demo' : 'Live' }}
+            </button>
           </div>
         </header>
         <!-- Tabs -->
@@ -73,25 +80,31 @@
                       <div class="flex flex-col gap-2">
                         <h2 class="text-lg font-semibold">Hours</h2>
                         <ul class="text-base space-y-1">
-                          <li>Mon: 07:30 AM - 05:00 PM</li>
-                          <li>Tue: 07:30 AM - 05:00 PM</li>
-                          <li>Wed: 07:30 AM - 05:00 PM</li>
-                          <li>Thu: 07:30 AM - 05:00 PM</li>
-                          <li>Fri: 07:30 AM - 05:00 PM</li>
-                          <li>Sat: 07:30 AM - 05:00 PM</li>
-                          <li>Sun: 07:30 AM - 05:00 PM</li>
+                          <template v-if="displayHours && displayHours.length > 0">
+                            <li v-for="day in displayHours" :key="day.name">
+                              {{ day.label }}: {{ day.hours }}
+                            </li>
+                          </template>
+                          <li v-else class="text-gray-500 italic">
+                            Hours not available
+                          </li>
                         </ul>
                       </div>
                       <div class="flex flex-col gap-2">
                         <h3 class="text-lg font-semibold">Languages</h3>
                         <div class="text-base">
-                          English
+                          <template v-if="displayLanguages && displayLanguages.length > 0">
+                            {{ displayLanguages.join(', ') }}
+                          </template>
+                          <span v-else class="text-gray-500 italic">
+                            Languages not available
+                          </span>
                         </div>
                       </div>
                       <div class="flex flex-col gap-2 justify-start">
                         <h2 class="text-lg font-semibold">Details</h2>
                         <div class="text-base">
-                          <div v-if="shopData?.description">
+                          <div v-if="paragraphs.length > 0">
                             <div v-if="!showFullDetails">
                               {{ firstParagraph }}
                             </div>
@@ -253,7 +266,7 @@
           </div>
           <!-- Sidebar -->
           <div
-            class="w-full lg:min-w-1/2 lg:w-1/2 xl:min-w-1/3 xl:w-1/3 p-2 h-auto xl:h-full order-2 xl:order-1 sticky bottom-0 2xl:bottom-auto">
+            class="w-full lg:min-w-1/2 lg:w-1/2 xl:min-w-1/3 xl:w-1/3 p-2 h-auto xl:h-full order-2 xl:order-1 sticky bottom-0 2xl:bottom-auto bg-neutral-50">
             <div class="h-full">
               <div class="flex flex-col gap-2">
                 <!-- Book Now Button -->
@@ -316,6 +329,8 @@ import CardDiveShop from '~/components/CardDiveShop.vue'
 import CardReview from '~/components/CardReview.vue'
 import { ref, computed } from 'vue'
 import { useDrawer } from '~/composables/useDrawer'
+import { useDemoMode } from '~/composables/useDemoMode'
+import { formatOperatingHours, demoHours, demoLanguages, demoDescription } from '~/utils/formatHours'
 
 // Get the route parameter
 const route = useRoute()
@@ -385,8 +400,9 @@ const { data: shopData, pending, error } = await useAsyncData(`diveshop-${shopId
 
 // Computed properties for dynamic truncation
 const paragraphs = computed(() => {
-  if (!shopData.value?.description) return []
-  return shopData.value.description.split('\n\n').filter(para => para.trim() !== '')
+  const description = isDemoMode.value ? demoDescription : shopData.value?.description
+  if (!description) return []
+  return description.split('\n\n').filter(para => para.trim() !== '')
 })
 
 const firstParagraph = computed(() => {
@@ -428,4 +444,31 @@ const openBookingDrawer = () => {
     shopName: shopData.value?.business_name || 'Dive Shop'
   })
 }
+
+// Demo mode functionality
+const { isDemoMode, toggleDemoMode } = useDemoMode()
+
+// Display hours - switches between demo and real data
+const displayHours = computed(() => {
+  // If demo mode is on, always show demo data
+  if (isDemoMode.value) {
+    return formatOperatingHours(demoHours)
+  }
+  
+  // Otherwise show real data if available
+  if (shopData.value?.operating_hours) {
+    return formatOperatingHours(shopData.value.operating_hours)
+  }
+  
+  // No data available
+  return null
+})
+
+// Display languages - switches between demo and real data
+const displayLanguages = computed(() => {
+  if (isDemoMode.value) {
+    return demoLanguages
+  }
+  return shopData.value?.languages || null
+})
 </script>
