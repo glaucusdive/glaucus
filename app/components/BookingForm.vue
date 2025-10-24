@@ -13,6 +13,9 @@
     <!-- Form Content -->
     <div class="w-full h-full overflow-y-auto">
       <form @submit.prevent="handleSubmit" class="flex flex-col gap-2 relative pt-2">
+
+        <h3 class="text-base font-bold px-2">Trip Information</h3>
+
         <!-- Name -->
         <fieldset class="bg-gray-100 rounded-md flex flex-col gap-1 p-2 mx-2">
           <label for="name" class="text-xs uppercase font-medium px-2">Name</label>
@@ -26,6 +29,39 @@
           <input type="email" id="email" v-model="formData.email" required
             class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200" />
         </fieldset>
+
+        <!-- Dates -->
+        <fieldset class="bg-gray-100 rounded-md flex flex-col gap-2 p-2 mx-2">
+          <label class="text-xs uppercase font-medium px-2">Dates for Diving</label>
+
+          <div class="flex flex-col gap-1">
+            <label for="startDate" class="text-xs px-2 text-gray-600">Start Date</label>
+            <input type="date" id="startDate" v-model="formData.startDate" :min="today" required
+              class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200" />
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="endDate" class="text-xs px-2 text-gray-600">End Date</label>
+            <input type="date" id="endDate" v-model="formData.endDate" :min="formData.startDate || today" required
+              class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200" />
+          </div>
+        </fieldset>
+
+        <!-- Desired Dive Sites -->
+        <fieldset class="bg-gray-100 rounded-md flex flex-col gap-1 p-2 mx-2">
+          <label class="text-xs uppercase font-medium px-2">Desired Dive Sites</label>
+          <div class="flex flex-col gap-1 px-2">
+            <label v-for="site in diveSites" :key="site"
+              class="flex items-center gap-2 p-1 hover:bg-gray-200/50 rounded-sm cursor-pointer">
+              <input type="checkbox" :value="site" v-model="formData.desiredDiveSites" class="cursor-pointer" />
+              <span class="text-sm">{{ site }}</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <hr class="border-gray-300" />
+
+        <h3 class="text-base font-bold px-2">Diver Information</h3>
 
         <!-- Number of Divers -->
         <fieldset class="bg-gray-100 rounded-md flex flex-col gap-1 p-2 mx-2">
@@ -91,78 +127,38 @@
               </select>
             </div>
           </div>
-        </div>
 
-        <!-- Dates -->
-        <fieldset class="bg-gray-100 rounded-md flex flex-col gap-2 p-2 mx-2">
-          <label class="text-xs uppercase font-medium px-2">Dates for Diving</label>
-
-          <div class="flex flex-col gap-1">
-            <label for="startDate" class="text-xs px-2 text-gray-600">Start Date</label>
-            <input type="date" id="startDate" v-model="formData.startDate" :min="today" required
-              class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200" />
-          </div>
-
-          <div class="flex flex-col gap-1">
-            <label for="endDate" class="text-xs px-2 text-gray-600">End Date</label>
-            <input type="date" id="endDate" v-model="formData.endDate" :min="formData.startDate || today" required
-              class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200" />
-          </div>
-        </fieldset>
-
-        <!-- Desired Dive Sites -->
-        <fieldset class="bg-gray-100 rounded-md flex flex-col gap-1 p-2 mx-2">
-          <label class="text-xs uppercase font-medium px-2">Desired Dive Sites</label>
-          <div class="flex flex-col gap-1 px-2">
-            <label v-for="site in diveSites" :key="site"
-              class="flex items-center gap-2 p-1 hover:bg-gray-200/50 rounded-sm cursor-pointer">
-              <input type="checkbox" :value="site" v-model="formData.desiredDiveSites" class="cursor-pointer" />
-              <span class="text-sm">{{ site }}</span>
-            </label>
-          </div>
-        </fieldset>
-
-        <!-- Rental Gear -->
-        <fieldset class="bg-gray-100 rounded-md flex flex-col gap-2 p-2 mx-2">
-          <div class="flex items-center justify-between px-2">
-            <label class="text-xs uppercase font-medium">Rental Gear</label>
-            <button type="button" @click="addRentalGear"
-              class="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-sm font-medium cursor-pointer">
-              + Add Gear
-            </button>
-          </div>
-
-          <div v-for="(gear, index) in formData.rentalGear" :key="index"
-            class="bg-white rounded-md flex flex-col gap-2 p-2 border border-gray-200 mx-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-medium text-gray-600">Gear Item {{ index + 1 }}</span>
-              <button type="button" @click="removeRentalGear(index)"
-                class="text-xs text-red-600 hover:text-red-700 font-medium cursor-pointer">
-                Remove
+          <!-- Rental Gear -->
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between px-2">
+              <label class="text-xs text-gray-600">Rental Gear</label>
+              <button type="button" @click="addDiverGear(index)"
+                class="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-sm font-medium cursor-pointer">
+                + Add Gear
               </button>
             </div>
 
-            <div class="flex flex-col gap-1">
-              <label :for="`gear-type-${index}`" class="text-xs text-gray-600">Gear Type</label>
-              <select :id="`gear-type-${index}`" v-model="gear.gearType" required
-                class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200 bg-gray-100">
-                <option value="">Select gear type</option>
-                <option v-for="type in gearTypes" :key="type" :value="type">{{ type }}</option>
-              </select>
-            </div>
+            <div v-for="(gear, gearIndex) in diver.gear" :key="gearIndex"
+              class="bg-white rounded-md flex flex-col gap-2 p-2 border border-gray-200">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-gray-600">Gear Item {{ gearIndex + 1 }}</span>
+                <button type="button" @click="removeDiverGear(index, gearIndex)"
+                  class="text-xs text-red-600 hover:text-red-700 font-medium cursor-pointer">
+                  Remove
+                </button>
+              </div>
 
-            <div v-if="gear.gearType" class="flex flex-col gap-2 pt-2 border-t border-gray-200">
-              <label class="text-xs text-gray-600 px-2">Select Diver(s)</label>
-              <div class="flex flex-col gap-1 px-2">
-                <label v-for="(diver, diverIndex) in formData.divers" :key="diverIndex"
-                  class="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-sm cursor-pointer">
-                  <input type="checkbox" :value="diverIndex" v-model="gear.divers" class="cursor-pointer" />
-                  <span class="text-sm">{{ diver.name || `Diver ${diverIndex + 1}` }}</span>
-                </label>
+              <div class="flex flex-col gap-1">
+                <label :for="`diver-${index}-gear-type-${gearIndex}`" class="text-xs text-gray-600">Gear Type</label>
+                <select :id="`diver-${index}-gear-type-${gearIndex}`" v-model="gear.gearType" required
+                  class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200 bg-gray-100">
+                  <option value="">Select gear type</option>
+                  <option v-for="type in gearTypes" :key="type" :value="type">{{ type }}</option>
+                </select>
               </div>
             </div>
           </div>
-        </fieldset>
+        </div>
 
         <!-- Submit Button -->
         <div class="sticky bottom-0 bg-gray-50 border-t border-gray-300 p-2 mt-2">
@@ -218,13 +214,13 @@ const formData = ref({
       height: '',
       heightUnit: 'cm',
       weight: '',
-      weightUnit: 'kg'
+      weightUnit: 'kg',
+      gear: []
     }
   ],
   startDate: '',
   endDate: '',
-  desiredDiveSites: [],
-  rentalGear: []
+  desiredDiveSites: []
 })
 
 // Auto-sync main name to Diver 1
@@ -248,7 +244,8 @@ const updateDiversCount = (count) => {
         height: '',
         heightUnit: 'cm',
         weight: '',
-        weightUnit: 'kg'
+        weightUnit: 'kg',
+        gear: []
       })
     }
   } else if (count < currentCount) {
@@ -257,16 +254,15 @@ const updateDiversCount = (count) => {
   }
 }
 
-// Rental gear management
-const addRentalGear = () => {
-  formData.value.rentalGear.push({
-    gearType: '',
-    divers: []
+// Diver gear management
+const addDiverGear = (diverIndex) => {
+  formData.value.divers[diverIndex].gear.push({
+    gearType: ''
   })
 }
 
-const removeRentalGear = (index) => {
-  formData.value.rentalGear.splice(index, 1)
+const removeDiverGear = (diverIndex, gearIndex) => {
+  formData.value.divers[diverIndex].gear.splice(gearIndex, 1)
 }
 
 // Available gear types (static for now, can be pulled from DB later)
