@@ -2,8 +2,8 @@
   <div class="flex flex-col h-full">
     <!-- Header -->
     <div class="w-full h-10 lg:h-18 p-1 border-b border-gray-300 shrink-0 flex items-center">
-      <div class="w-full flex items-center justify-between px-2">
-        <h2 class="text-base font-medium">Book with {{ shopName }}</h2>
+      <div class="w-full flex items-center justify-between px-2 overflow-auto">
+        <h2 class="text-base font-medium truncate">Book with {{ shopName }}</h2>
         <button @click="closeDrawer" class="lg:p-2 hover:bg-gray-100 rounded-sm transition-colors cursor-pointer">
           <X class="w-5 h-5" />
         </button>
