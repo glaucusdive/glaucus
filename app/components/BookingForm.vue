@@ -89,7 +89,7 @@
           </div>
 
           <div class="flex flex-col gap-1">
-            <label :for="`diver-dives-${index}`" class="text-xs px-2 text-gray-600">Number of Dives</label>
+            <label :for="`diver-dives-${index}`" class="text-xs px-2 text-gray-600">Number of Dives Completed</label>
             <input type="text" :id="`diver-dives-${index}`" v-model="diver.numberOfDives" required
               class="rounded-sm w-full p-2 outline-none hover:bg-gray-200/50 focus:bg-gray-200" />
           </div>
