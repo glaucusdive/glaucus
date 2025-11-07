@@ -334,6 +334,7 @@ import { formatOperatingHours, demoHours, demoLanguages, demoDescription } from 
 
 // Get the route parameter
 const route = useRoute()
+const router = useRouter()
 const shopId = route.params.id
 
 // Read more/read less state
@@ -431,7 +432,11 @@ const { saveScrollPosition } = useScrollPosition()
 
 // Function to go back to shops with scroll position preservation
 const goBackToShops = () => {
-  // Navigate back to shops (scroll position was already saved when leaving shops page)
+  if (typeof window !== 'undefined' && window.history.length > 1) {
+    router.back()
+    return
+  }
+
   navigateTo('/shops')
 }
 

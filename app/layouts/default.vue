@@ -9,7 +9,7 @@
 
       <!-- Sidebar - Always visible on desktop, conditional on mobile -->
       <Transition @enter="onMobileMenuEnter" @leave="onMobileMenuLeave" @before-enter="onBeforeMenuEnter" :css="false">
-        <div v-if="isInitialized && (isMobileMenuOpen || isDesktop)"
+        <div v-if="isMobileMenuOpen || isDesktop"
           class="w-full lg:w-56 h-full shrink-0 bg-gray-50 flex flex-col justify-center gap-56 p-2 absolute lg:relative z-50">
           <div class="h-fit flex flex-row justify-between items-center absolute top-4 left-3 right-3">
             <NuxtLink to="/" class="w-[120px] h-auto">
@@ -58,12 +58,20 @@ import BookingForm from '~/components/BookingForm.vue'
 const { isOpen, contentType, drawerData, isMobileMenuOpen, shouldAnimateMenu, closeMobileMenu } = useDrawer()
 
 // Track if screen is desktop size - start as false to prevent flash on mobile
-const isDesktop = ref(false)
-const isInitialized = ref(false)
+const getInitialDesktop = () => {
+  if (typeof window === 'undefined') {
+    return true
+  }
+  return window.innerWidth >= 1024
+}
+
+const isDesktop = ref(getInitialDesktop())
 
 // Update isDesktop on mount and resize
 const updateIsDesktop = () => {
   const wasDesktop = isDesktop.value
+  if (typeof window === 'undefined') return
+
   const nowDesktop = window.innerWidth >= 1024
   
   // Reset animation flag on resize to prevent animation
@@ -76,7 +84,6 @@ const updateIsDesktop = () => {
 
 onMounted(() => {
   updateIsDesktop()
-  isInitialized.value = true
   window.addEventListener('resize', updateIsDesktop)
 })
 
