@@ -2,13 +2,13 @@
   <div v-if="pending" class="h-screen flex items-center justify-center">
     <div class="flex flex-col items-center">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-      <span class="text-gray-600">Loading dive shop...</span>
+      <span class="text-zinc-600">Loading dive shop...</span>
     </div>
   </div>
   <div v-else-if="error" class="h-screen flex items-center justify-center">
     <div class="text-center">
       <h1 class="text-2xl font-bold text-red-600 mb-2">Error</h1>
-      <p class="text-gray-600">{{ error.message || 'Failed to load dive shop' }}</p>
+      <p class="text-zinc-600">{{ error.message || 'Failed to load dive shop' }}</p>
       <button @click="navigateTo('/shops')" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
         Back to Dive Shops
       </button>
@@ -16,20 +16,20 @@
   </div>
   <NuxtLayout name="default">
     <!-- start shop/id here-->
-    <div class="flex flex-col justify-between h-full gap-0 divide-y divide-gray-300">
+    <div class="flex flex-col justify-between h-full gap-0 divide-y divide-zinc-300">
       <!-- Header -->
-      <div class="flex flex-col justify-center z-40 w-full divide-y divide-gray-300">
+      <div class="flex flex-col justify-center z-40 w-full divide-y divide-zinc-300">
         <!-- Title -->
-        <header class="flex flex-row justify-start items-stretch gap-0 divide-x divide-gray-300">
+        <header class="flex flex-row justify-start items-stretch gap-0 divide-x divide-zinc-300">
           <div class="p-1 flex lg:hidden items-center ">
             <div @click="toggleMobileMenu"
-              class="hover:bg-gray-100 rounded-sm min-w-8 w-full h-full flex items-center justify-center cursor-pointer px-1">
+              class="hover:bg-zinc-100 rounded-sm min-w-8 w-full h-full flex items-center justify-center cursor-pointer px-1">
               <Menu class="w-4 h-4 lg:w-6 lg:h-6" />
             </div>
           </div>
           <div class="p-1 flex items-center">
             <div
-              class="hover:bg-gray-100 rounded-sm min-w-8 w-full h-full flex items-center justify-center cursor-pointer px-1"
+              class="hover:bg-zinc-100 rounded-sm min-w-8 w-full h-full flex items-center justify-center cursor-pointer px-1"
               @click="goBackToShops">
               <ChevronLeft class="w-4 h-4 lg:w-6 lg:h-6" />
             </div>
@@ -37,7 +37,7 @@
           <!-- Image -->
           <div class="p-1 flex items-center">
             <div
-              class="block bg-gray-200 overflow-hidden rounded-sm min-w-8 w-8 lg:min-w-16 lg:w-16 h-auto aspect-square">
+              class="block bg-zinc-200 overflow-hidden rounded-sm min-w-8 w-8 lg:min-w-16 lg:w-16 h-auto aspect-square">
             </div>
           </div>
           <div class="p-1 grow flex items-center overflow-auto">
@@ -47,7 +47,7 @@
           </div>
           <div class="p-1 flex items-center">
             <button @click="toggleDemoMode" class="text-xs px-3 py-1 rounded-sm transition-colors cursor-pointer"
-              :class="isDemoMode ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
+              :class="isDemoMode ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'">
               {{ isDemoMode ? '📊 Demo' : 'Live' }}
             </button>
           </div>
@@ -57,8 +57,8 @@
           <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id" :class="[
             'flex flex-row gap-2 rounded-sm p-2 px-3 w-fit text-xs lg:text-base cursor-pointer transition-color whitespace-nowrap',
             activeTab === tab.id
-              ? 'bg-gray-200/50 text-neutral-900'
-              : 'text-neutral-600 hover:text-neutral-900 hover:bg-gray-200/40'
+              ? 'bg-zinc-200/50 text-zinc-900'
+              : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/40'
           ]">
             {{ tab.label }}
           </button>
@@ -68,7 +68,7 @@
       <div class="w-full h-0 flex-1 lg:overflow-y-auto">
         <!-- Main Content with Sidebar -->
         <div
-          class="flex flex-col lg:flex-row justify-start lg:justify-stretch items-start lg:items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 divide-gray-300 w-full h-full overflow-y-auto lg:overflow-y-visible">
+          class="flex flex-col lg:flex-row justify-start lg:justify-stretch items-start lg:items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 divide-zinc-300 w-full h-full overflow-y-auto lg:overflow-y-visible">
           <!-- Tab Content -->
           <div class="w-full flex flex-col grow border-b-0 h-full order-2 lg:order-1">
             <div class="flex flex-col gap-4 h-full w-full p-0">
@@ -85,7 +85,7 @@
                               {{ day.label }}: {{ day.hours }}
                             </li>
                           </template>
-                          <li v-else class="text-gray-500 italic">
+                          <li v-else class="text-zinc-500 italic">
                             Hours not available
                           </li>
                         </ul>
@@ -96,7 +96,7 @@
                           <template v-if="displayLanguages && displayLanguages.length > 0">
                             {{ displayLanguages.join(', ') }}
                           </template>
-                          <span v-else class="text-gray-500 italic">
+                          <span v-else class="text-zinc-500 italic">
                             Languages not available
                           </span>
                         </div>
@@ -118,7 +118,7 @@
                               {{ showFullDetails ? 'Read less' : 'Read more' }}
                             </button>
                           </div>
-                          <div v-else class="text-gray-500 italic">
+                          <div v-else class="text-zinc-500 italic">
                             No description available for this dive shop.
                           </div>
                         </div>
@@ -165,7 +165,7 @@
               </div>
               <!-- More Information Tab -->
               <div v-if="activeTab === 'information'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
-                <div class="flex flex-col lg:flex-row gap-6 p-6 border border-gray-300 rounded-md *:w-full">
+                <div class="flex flex-col lg:flex-row gap-6 p-6 border border-zinc-300 rounded-md *:w-full">
                   <div class="flex flex-col gap-6">
                     <div class="flex flex-col gap-2">
                       <h3 class="text-lg font-semibold">Equipment Rental</h3>
@@ -266,20 +266,20 @@
           </div>
           <!-- Sidebar -->
           <div
-            class="w-full lg:min-w-1/2 lg:w-1/2 xl:min-w-1/3 xl:w-1/3 p-2 h-auto xl:h-full order-2 xl:order-1 sticky bottom-0 2xl:bottom-auto bg-neutral-50">
+            class="w-full lg:min-w-1/2 lg:w-1/2 xl:min-w-1/3 xl:w-1/3 p-2 h-auto xl:h-full order-2 xl:order-1 sticky bottom-0 2xl:bottom-auto bg-zinc-50">
             <div class="h-full">
               <div class="flex flex-col gap-2">
                 <!-- Book Now Button -->
-                <div class="flex flex-col gap-2 p-6 bg-gray-100 rounded-md order-2 lg:order-1">
+                <div class="flex flex-col gap-2 p-6 bg-zinc-100 rounded-md order-2 lg:order-1">
                   <h2 class="text-2xl font-semibold">Book Now</h2>
-                  <p class="text-sm text-gray-600">Ready to dive? Click below to start your booking.</p>
+                  <p class="text-sm text-zinc-600">Ready to dive? Click below to start your booking.</p>
                   <button @click="openBookingDrawer"
-                    class="bg-gray-900 hover:bg-gray-800 text-white font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">
+                    class="bg-zinc-900 hover:bg-zinc-800 text-white font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">
                     Start Booking
                   </button>
                 </div>
                 <!-- Contact Information -->
-                <div class="flex flex-col gap-2 p-6 border border-gray-300 rounded-md order-1 lg:order-2">
+                <div class="flex flex-col gap-2 p-6 border border-zinc-300 rounded-md order-1 lg:order-2">
                   <ul class="space-y-2">
                     <li v-if="contactInfo?.address">
                       <a :href="`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contactInfo.address)}`"
@@ -292,14 +292,14 @@
                       <div class="flex flex-row gap-4 items-center">
                         <Phone class="min-w-4 max-w-4 h-4" />
                         <span v-if="contactInfo?.phone">{{ contactInfo.phone }}</span>
-                        <span v-else class="text-gray-400">No Phone</span>
+                        <span v-else class="text-zinc-400">No Phone</span>
                       </div>
                     </li>
                     <li>
                       <div class="flex flex-row gap-4 items-center">
                         <Mail class="min-w-4 max-w-4 h-4" />
                         <span v-if="contactInfo?.email">{{ contactInfo.email }}</span>
-                        <span v-else class="text-gray-400">No Email</span>
+                        <span v-else class="text-zinc-400">No Email</span>
                       </div>
                     </li>
                     <li v-if="contactInfo?.website">

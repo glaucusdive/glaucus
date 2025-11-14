@@ -2,42 +2,34 @@
   <NuxtLayout name="default">
     <div class="flex flex-col h-full w-full">
       <!-- Header -->
-      <div class="flex flex-row justify-between items-center p-4 border-b border-gray-200 shrink-0">
+      <div
+        class="flex flex-row justify-between items-center p-4 border-b border-zinc-200 dark:border-zinc-700 shrink-0">
         <div class="flex items-center gap-3">
-          <button 
-            @click="navigateTo('/')" 
-            class="lg:hidden hover:bg-gray-100 rounded-sm p-1">
+          <button @click="navigateTo('/')" class="lg:hidden hover:bg-zinc-100 dark:hover:bg-zinc-700 bg-zinc-100 dark:bg-zinc-800 rounded-sm p-1">
             <Menu class="w-5 h-5" />
           </button>
-          <h1 class="text-xl lg:text-2xl font-semibold text-gray-900">AI Dive Shop Search</h1>
+          <h1 class="text-xl lg:text-2xl font-semibold text-zinc-900 dark:text-white">Dive Shop Search</h1>
         </div>
-        <button 
-          v-if="messages.length > 0"
-          @click="clearConversation" 
-          class="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 hover:bg-gray-100 rounded-md">
+        <button v-if="messages.length > 0" @click="clearConversation"
+          class="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md cursor-pointer">
           New Search
         </button>
       </div>
 
       <!-- Messages Container -->
-      <div 
-        ref="messagesContainer"
-        class="flex-1 overflow-y-auto p-4 space-y-6">
-        
+      <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-6">
+
         <!-- Welcome message when empty -->
         <div v-if="messages.length === 0" class="flex flex-col items-center justify-center h-full text-center px-4">
           <div class="max-w-2xl space-y-4">
-            <h2 class="text-3xl font-bold text-gray-900">Find Your Perfect Dive Shop</h2>
-            <p class="text-lg text-gray-600">
+            <h2 class="text-3xl font-bold text-zinc-900">Find Your Perfect Dive Shop</h2>
+            <p class="text-lg text-zinc-600">
               Tell me what you're looking for in your diving experience, and I'll help you find the best dive shops.
             </p>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-8">
-              <button 
-                v-for="example in exampleQueries"
-                :key="example"
-                @click="sendMessage(example)"
-                class="text-left p-4 border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                <p class="text-sm text-gray-700">{{ example }}</p>
+              <button v-for="example in exampleQueries" :key="example" @click="sendMessage(example)"
+                class="text-left p-4 border border-zinc-200 rounded-lg hover:border-zinc-300 hover:bg-zinc-50 transition-colors">
+                <p class="text-sm text-zinc-700">{{ example }}</p>
               </button>
             </div>
           </div>
@@ -56,24 +48,21 @@
           <div v-else-if="msg.role === 'assistant'" class="flex justify-start">
             <div class="max-w-[90%] space-y-4">
               <!-- AI text response -->
-              <div class="bg-gray-100 rounded-lg px-4 py-3">
-                <p class="text-sm lg:text-base text-gray-800 whitespace-pre-wrap">{{ msg.content }}</p>
+              <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3">
+                <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap">{{ msg.content }}</p>
               </div>
 
               <!-- Shop results -->
               <div v-if="msg.shops && msg.shops.length > 0" class="space-y-3">
-                <div class="flex items-center gap-2 text-sm text-gray-600">
+                <div class="flex items-center gap-2 text-sm text-zinc-600">
                   <span class="font-medium">Top Results:</span>
                 </div>
                 <div class="grid grid-cols-1 gap-3">
-                  <CardSearchResult 
-                    v-for="shop in msg.shops" 
-                    :key="shop.id"
-                    :shop="shop" />
+                  <CardSearchResult v-for="shop in msg.shops" :key="shop.id" :shop="shop" />
                 </div>
-                
+
                 <!-- Results summary - only show when shops are displayed -->
-                <div v-if="msg.totalResults && msg.totalResults > msg.shops.length" class="text-sm text-gray-500">
+                <div v-if="msg.totalResults && msg.totalResults > msg.shops.length" class="text-sm text-zinc-500">
                   Showing top {{ msg.shops.length }} results from {{ msg.totalResults }} dive shops found
                 </div>
               </div>
@@ -83,35 +72,31 @@
 
         <!-- Loading indicator -->
         <div v-if="isLoading" class="flex justify-start">
-          <div class="bg-gray-100 rounded-lg px-4 py-3">
+          <div class="bg-zinc-100 rounded-lg px-4 py-3">
             <div class="flex items-center gap-2">
-              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-              <span class="text-sm text-gray-600">Searching dive shops...</span>
+              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-zinc-600"></div>
+              <span class="text-sm text-zinc-600">Searching dive shops...</span>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Input area -->
-      <div class="border-t border-gray-200 p-4 shrink-0 bg-white">
-        <form @submit.prevent="handleSubmit" class="max-w-4xl mx-auto">
-          <div class="flex gap-2">
-            <input 
-              v-model="userInput"
-              type="text"
-              :disabled="isLoading"
-              placeholder="Describe what you're looking for..."
-              class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-            />
-            <button 
-              type="submit"
-              :disabled="isLoading || !userInput.trim()"
-              class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium">
-              <Send v-if="!isLoading" class="w-5 h-5" />
-              <div v-else class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-            </button>
-          </div>
-        </form>
+      <div class="p-2">
+        <div class="p-2 shrink-0 bg-zinc-100 dark:bg-zinc-800 rounded-full max-w-4xl mx-auto w-full">
+          <form @submit.prevent="handleSubmit">
+            <div class="flex gap-2 items-center">
+              <input v-model="userInput" type="text" :disabled="isLoading"
+                placeholder="Describe what you're looking for..."
+                class="w-full h-fit px-4 outline-none text-zinc-900 dark:text-white font-medium text-base tracking-none rounded-full disabled:bg-zinc-100 disabled:cursor-not-allowed" />
+              <button type="submit" :disabled="isLoading || !userInput.trim()"
+                class="p-4 px-8 flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-xl tracking-none cursor-pointer text-zinc-900 dark:text-white disabled:bg-zinc-100 disabled:dark:bg-zinc-800 disabled:cursor-not-allowed font-medium disabled:*:opacity-20">
+                <ArrowUp v-if="!isLoading" class="w-6 h-6" />
+                <div v-else class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   </NuxtLayout>
@@ -119,7 +104,7 @@
 
 <script setup>
 import { ref, nextTick, onMounted, watch } from 'vue'
-import { Menu, Send } from 'lucide-vue-next'
+import { Menu, ArrowUp } from 'lucide-vue-next'
 import CardSearchResult from '~/components/CardSearchResult.vue'
 import { useSearchCache } from '~/composables/useSearchCache'
 

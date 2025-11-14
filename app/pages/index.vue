@@ -1,25 +1,25 @@
   <template>
     <NuxtLayout name="default">
-      <div class="p-6 flex flex-col items-center justify-start pt-48 gap-8 h-full">
+      <div class="p-6 flex flex-col items-center justify-start pt-56 gap-8 h-full">
         <div class="max-w-5xl w-full text-center space-y-4 flex flex-col items-center">
-          <!-- <h2 class="text-3xl font-bold text-gray-900">Find Your Perfect Dive Shop</h2> -->
-          <h2 class="max-w-2xl text-2xl font-bold text-gray-900">
+          <!-- <h2 class="text-3xl font-bold text-zinc-900">Find Your Perfect Dive Shop</h2> -->
+          <h2 class="max-w-2xl text-2xl font-bold text-zinc-900 dark:text-white">
             Tell me what you're looking for in your diving experience, and I'll help you find the best dive shops.
           </h2>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
             <button v-for="example in exampleQueries" :key="example" @click="handleExampleClick(example)"
-              class="text-left p-4 border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer">
-              <p class="text-sm text-gray-700">{{ example }}</p>
+              class="text-left p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer bg-white dark:bg-zinc-900">
+              <p class="text-sm text-zinc-700 dark:text-zinc-300">{{ example }}</p>
             </button>
           </div>
         </div>
 
-        <div class="w-full lg:w-[50%] h-fit rounded-full overflow-hidden flex flex-row gap-0.5 bg-gray-100 p-1">
+        <div class="w-full lg:w-[50%] h-fit rounded-full overflow-hidden flex flex-row gap-0.5 bg-zinc-100 dark:bg-zinc-800 p-1">
           <input type="text" @keyup.enter="navigateToSearch" v-model="searchQuery"
-            class="w-full h-fit p-4 lg:p-4 lg:px-8 outline-none bg-gray-100 hover:bg-gray-200 focus:bg-gray-200 text-gray-900 font-semibold text-xl tracking-none rounded-full"
+            class="w-full h-fit p-4 lg:p-4 lg:px-8 outline-none text-zinc-900 dark:text-white font-semibold text-xl tracking-none rounded-full"
             placeholder="What would you like me to do?" />
           <div @click="navigateToSearch"
-            class="p-4 px-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 font-semibold text-xl tracking-none cursor-pointer">
+            class="p-4 px-8 flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 font-semibold text-xl tracking-none cursor-pointer text-zinc-900 dark:text-white">
             <span class="hidden lg:block">
               <ArrowUp class="w-6 h-6" />
             </span>

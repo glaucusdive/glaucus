@@ -2,8 +2,8 @@
   <NuxtLink
     :to="to"
     :class="[
-      'text-sm font-medium bg-transparent hover:bg-gray-100 hover:text-neutral-700 px-4 py-2 rounded-sm transition-colors',
-      isActive ? '!bg-gray-200/50 !text-black' : 'text-neutral-600'
+      'text-sm font-medium bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 px-4 py-2 rounded-sm transition-colors',
+      isActive ? '!bg-zinc-200/50 dark:!bg-zinc-800/50 !text-black dark:!text-white' : 'text-zinc-600 dark:text-zinc-400'
     ]"
   >
     <slot />

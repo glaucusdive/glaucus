@@ -3,33 +3,47 @@
     <div class="h-full w-full flex flex-row">
       <!-- Backdrop for mobile menu -->
       <Transition @enter="onBackdropEnter" @leave="onBackdropLeave" :css="false">
-        <div v-if="isMobileMenuOpen" @click="handleCloseMobileMenu"
-          class="fixed inset-0 bg-black/50 z-40 lg:hidden"></div>
+        <div v-if="isMobileMenuOpen" @click="handleCloseMobileMenu" class="fixed inset-0 bg-black/50 z-40 lg:hidden">
+        </div>
       </Transition>
 
       <!-- Sidebar - Always visible on desktop, conditional on mobile -->
       <Transition @enter="onMobileMenuEnter" @leave="onMobileMenuLeave" @before-enter="onBeforeMenuEnter" :css="false">
         <div v-if="isMobileMenuOpen || isDesktop"
-          class="w-full lg:w-56 h-full shrink-0 bg-gray-50 flex flex-col justify-center gap-56 p-2 absolute lg:relative z-50">
-          <div class="h-fit flex flex-row justify-between items-center absolute top-4 left-3 right-3">
+          class="w-full lg:w-56 h-full shrink-0 bg-zinc-50 dark:bg-black flex flex-col justify-between p-2 absolute lg:relative z-50">
+          <div class="h-fit flex flex-row justify-between items-center m-2">
             <NuxtLink to="/" class="w-[120px] h-auto">
-              <img src="/images/logo-glaucus.svg" class="w-full h-full object-cover" />
+              <Logo class="*:fill-black *:dark:fill-white" />
             </NuxtLink>
-            <button @click="handleCloseMobileMenu" class="w-6 h-6 lg:hidden flex items-center justify-center cursor-pointer">
+            <button @click="handleCloseMobileMenu"
+              class="w-6 h-6 lg:hidden flex items-center justify-center cursor-pointer text-zinc-900 dark:text-white">
               <X class="w-full h-full" />
             </button>
           </div>
+
+
           <nav class="w-full flex flex-col gap-1">
             <NavLink to="/shops" @click="handleCloseMobileMenu">Shops</NavLink>
             <NavLink to="/community" @click="handleCloseMobileMenu">Community</NavLink>
             <NavLink to="/profile" @click="handleCloseMobileMenu">Profile</NavLink>
           </nav>
+
+          <!-- Theme Toggle Button -->
+          <div class="w-full p-2">
+            <button @click="toggleTheme"
+              class="w-full flex items-center justify-center gap-2 p-3 rounded-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-900 dark:text-white">
+              <Sun v-if="isDark" class="w-5 h-5" />
+              <Moon v-else class="w-5 h-5" />
+              <span class="text-sm font-medium">{{ isDark ? 'Light Mode' : 'Dark Mode' }}</span>
+            </button>
+          </div>
         </div>
       </Transition>
 
       <!-- Main Content -->
       <div class="p-2 lg:pl-0 grow h-dvh w-dvw min-w-0 flex flex-row gap-2 relative">
-        <div class="border border-gray-300 rounded-xl h-full w-full relative overflow-hidden min-w-0">
+        <div
+          class="bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl h-full w-full relative overflow-hidden min-w-0">
 
           <slot />
 
@@ -37,7 +51,7 @@
         <!-- Drawer Sidebar -->
         <Transition @enter="onDrawerEnter" @leave="onDrawerLeave" :css="false">
           <div v-if="isOpen"
-            class="w-auto lg:w-[520px] h-auto bg-gray-50 border border-gray-300 rounded-xl absolute lg:relative bottom-2 lg:bottom-auto top-2 lg:top-auto right-2 lg:right-auto left-2 lg:left-auto flex flex-col justify-start overflow-hidden z-50">
+            class="w-auto lg:w-[520px] h-auto bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl absolute lg:relative bottom-2 lg:bottom-auto top-2 lg:top-auto right-2 lg:right-auto left-2 lg:left-auto flex flex-col justify-start overflow-hidden z-50">
             <!-- Dynamic Drawer Content -->
             <BookingForm v-if="contentType === 'booking-form'" :shop-id="drawerData.shopId"
               :shop-name="drawerData.shopName" />
@@ -51,9 +65,13 @@
 <script setup>
 import gsap from 'gsap'
 import { ref, onMounted, onUnmounted } from 'vue'
-import { X } from 'lucide-vue-next'
+import { X, Sun, Moon } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
+import { useTheme } from '~/composables/useTheme'
 import BookingForm from '~/components/BookingForm.vue'
+import Logo from '~/components/Logo.vue'
+
+const { isDark, toggleTheme } = useTheme()
 
 const { isOpen, contentType, drawerData, isMobileMenuOpen, shouldAnimateMenu, closeMobileMenu } = useDrawer()
 

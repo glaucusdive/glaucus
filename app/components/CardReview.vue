@@ -1,9 +1,9 @@
 <template>
-  <div class="flex flex-col gap-4 border border-gray-300 rounded-md p-4 shrink-0">
+  <div class="flex flex-col gap-4 border border-zinc-300 rounded-md p-4 shrink-0">
     <!-- Header with profile, name, date, and Google logo -->
     <div class="flex items-start justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-gray-100 rounded-full overflow-hidden">
+        <div class="w-10 h-10 bg-zinc-100 rounded-full overflow-hidden">
           <img :src="reviewerImage" :alt="reviewerName" class="w-full h-full object-cover" />
         </div>
         <div class="flex flex-col">
@@ -18,8 +18,8 @@
 
     <!-- Star rating -->
     <div class="flex items-center gap-1">
-      <Star v-for="star in rating" :key="star" class="w-4 h-4 fill-current text-neutral-900" />
-      <Star v-for="star in (5 - rating)" :key="star + rating" class="w-4 h-4 fill-none stroke-current text-neutral-300" />
+      <Star v-for="star in rating" :key="star" class="w-4 h-4 fill-current text-zinc-900" />
+      <Star v-for="star in (5 - rating)" :key="star + rating" class="w-4 h-4 fill-none stroke-current text-zinc-300" />
     </div>
 
     <!-- Review text -->

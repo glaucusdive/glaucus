@@ -1,6 +1,6 @@
 <template>
-  <div class="flex flex-col gap-2 xl:gap-6 border border-gray-300 rounded-md p-2 xl:p-6">
-    <div class="w-full h-24 xl:h-32 bg-gray-100 rounded-sm overflow-hidden">
+  <div class="flex flex-col gap-2 xl:gap-6 border border-zinc-300 rounded-md p-2 xl:p-6">
+    <div class="w-full h-24 xl:h-32 bg-zinc-100 rounded-sm overflow-hidden">
       <img :src="image" :alt="title" class="w-full h-full object-cover" />
     </div>
     <div class="flex flex-col gap-2 p-2 pt-0">
