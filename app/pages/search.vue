@@ -186,10 +186,38 @@ watch([messages, userInput], persistCache, { deep: true })
 // Auto-scroll to bottom when new messages arrive
 const scrollToBottom = async () => {
   await nextTick()
-  if (messagesContainer.value) {
-    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
-  }
+  // Use requestAnimationFrame to ensure DOM is fully rendered
+  requestAnimationFrame(() => {
+    if (messagesContainer.value) {
+      const container = messagesContainer.value
+      // Use scrollTo for better browser compatibility
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
+  })
+  // Fallback: try again after a short delay in case content is still loading
+  setTimeout(() => {
+    if (messagesContainer.value) {
+      const container = messagesContainer.value
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
+  }, 150)
 }
+
+// Watch for message updates and auto-scroll
+watch(messages, () => {
+  scrollToBottom()
+}, { deep: true, flush: 'post' })
+
+// Also watch the length to catch array mutations
+watch(() => messages.value.length, () => {
+  scrollToBottom()
+})
 
 // Send message to AI
 const sendMessage = async (messageText) => {
