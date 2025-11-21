@@ -32,10 +32,13 @@
           <!-- Theme Toggle Button -->
           <div class="w-full p-2">
             <button @click="toggleTheme"
-              class="w-full flex items-center justify-center rounded-full gap-2 p-3 border hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800 transition-colors text-zinc-900 dark:text-white cursor-pointer">
-              <Sun v-if="isDark" class="w-5 h-5" />
-              <Moon v-else class="w-5 h-5" />
-              <span class="text-sm font-medium">{{ isDark ? 'Light Mode' : 'Dark Mode' }}</span>
+              class="w-full h-18 flex items-center justify-center rounded-full gap-0 p-1 border border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-white cursor-pointer relative before:content-[''] before:absolute before:inset-1 before:rounded-full before:bg-zinc-200/50 dark:before:bg-zinc-800 before:w-1/2 before:z-[-1] transition-all duration-300 ease-in-out before:transition-all before:duration-300 before:ease-in-out" :class="isDark ? 'before:left-[48%]' : 'before:left-[1%]'">
+              <div class="w-full h-full flex items-center justify-center rounded-full">
+                <Sun class="w-8 h-8" :class="isDark ? 'opacity-30' : 'opacity-100'" stroke-width="1" />
+              </div>
+              <div class="w-full h-full flex items-center justify-center rounded-full">
+                <Moon class="w-8 h-8" :class="isDark ? 'opacity-100' : 'opacity-30'" stroke-width="1" />
+              </div>
             </button>
           </div>
         </div>
