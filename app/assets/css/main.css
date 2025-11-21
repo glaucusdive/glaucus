@@ -6,3 +6,37 @@
     @apply text-black bg-zinc-50 dark:text-white dark:bg-black;
   }
 }
+
+@keyframes ring-gradient-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@layer utilities {
+  /* Base pseudo-element that's always present but hidden */
+  .gradient-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(0deg, #02C8FF 0%, #FF00F6 50%, #02C8FF 100%);
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    pointer-events: none;
+  }
+  
+  /* When animate-ring-gradient is applied, show and animate */
+  .animate-ring-gradient::before {
+    opacity: 1;
+    animation: ring-gradient-rotate 3s linear infinite;
+  }
+  
+  .animate-ring-gradient > * {
+    position: relative;
+    z-index: 1;
+  }
+}
