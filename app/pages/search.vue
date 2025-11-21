@@ -1,6 +1,6 @@
 <template>
   <NuxtLayout name="default">
-    <div class="flex flex-col h-full w-full">
+    <div class="flex flex-col h-full w-full relative">
       <!-- Header -->
       <div class="flex flex-row justify-between items-stretch border-b border-zinc-200 dark:border-zinc-700 shrink-0">
         <div class="flex items-center gap-2 h-full p-0 lg:p-4 divide-x divide-zinc-200 dark:divide-zinc-700">
@@ -19,7 +19,7 @@
       </div>
 
       <!-- Messages Container -->
-      <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-6">
+      <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 pb-28 space-y-6 *:max-w-4xl *:mx-auto *:w-full">
 
         <!-- Welcome message when empty -->
         <div v-if="messages.length === 0" class="flex flex-col items-center justify-center h-full text-center px-4">
@@ -84,8 +84,8 @@
       </div>
 
       <!-- Input area -->
-      <div class="p-2">
-        <div class="p-2 shrink-0 bg-zinc-100 dark:bg-zinc-800 rounded-full max-w-4xl mx-auto w-full">
+      <div class="p-2 absolute bottom-0 left-1/2 translate-x-[-50%] bg-transparent backdrop-blur-sm w-fit rounded-full">
+        <div class="p-2 shrink-0 bg-zinc-100 dark:bg-zinc-700 dark:hover:bg-zinc-600 border border-zinc-300 dark:border-zinc-700 dark:focus:border-zinc-300 rounded-full w-4xl">
           <form @submit.prevent="handleSubmit">
             <div class="flex gap-2 items-center justify-stretch">
               <input v-model="userInput" type="text" :disabled="isLoading"

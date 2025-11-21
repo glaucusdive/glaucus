@@ -2,7 +2,6 @@
     <NuxtLayout name="default">
       <div class="p-6 flex flex-col items-center justify-start pt-56 gap-8 h-full">
         <div class="max-w-5xl w-full text-center space-y-4 flex flex-col items-center">
-          <!-- <h2 class="text-3xl font-bold text-zinc-900">Find Your Perfect Dive Shop</h2> -->
           <h2 class="max-w-2xl text-2xl font-bold text-zinc-900 dark:text-white">
             Tell me what you're looking for in your diving experience, and I'll help you find the best dive shops.
           </h2>

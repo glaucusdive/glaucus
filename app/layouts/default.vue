@@ -32,7 +32,8 @@
           <!-- Theme Toggle Button -->
           <div class="w-full p-2">
             <button @click="toggleTheme"
-              class="w-full h-18 flex items-center justify-center rounded-full gap-0 p-1 border border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-white cursor-pointer relative before:content-[''] before:absolute before:inset-1 before:rounded-full before:bg-zinc-200/50 dark:before:bg-zinc-800 before:w-1/2 before:z-[-1] transition-all duration-300 ease-in-out before:transition-all before:duration-300 before:ease-in-out" :class="isDark ? 'before:left-[48%]' : 'before:left-[1%]'">
+              class="w-full h-18 flex items-center justify-center rounded-full gap-0 p-1 border border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-white cursor-pointer relative before:content-[''] before:absolute before:inset-1 before:rounded-full before:bg-zinc-200 dark:before:bg-zinc-700 before:w-[calc(50%-4px)] before:z-[-1] before:transition-transform before:duration-300 before:ease-in-out before:left-1"
+              :class="isDark ? 'before:translate-x-full' : 'before:translate-x-auto'">
               <div class="w-full h-full flex items-center justify-center rounded-full">
                 <Sun class="w-8 h-8" :class="isDark ? 'opacity-30' : 'opacity-100'" stroke-width="1" />
               </div>
