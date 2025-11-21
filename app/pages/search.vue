@@ -2,18 +2,20 @@
   <NuxtLayout name="default">
     <div class="flex flex-col h-full w-full">
       <!-- Header -->
-      <div
-        class="flex flex-row justify-between items-center p-4 border-b border-zinc-200 dark:border-zinc-700 shrink-0">
-        <div class="flex items-center gap-3">
-          <button @click="openMobileMenu" class="lg:hidden hover:bg-zinc-100 dark:hover:bg-zinc-700 bg-zinc-100 dark:bg-zinc-800 rounded-sm p-1">
+      <div class="flex flex-row justify-between items-stretch border-b border-zinc-200 dark:border-zinc-700 shrink-0">
+        <div class="flex items-center gap-2 h-full p-0 lg:p-4 divide-x divide-zinc-200 dark:divide-zinc-700">
+          <button @click="openMobileMenu"
+            class="flex items-center justify-center aspect-square h-full lg:hidden hover:bg-zinc-100 dark:hover:bg-zinc-800/50 p-1 cursor-pointer">
             <Menu class="w-5 h-5" />
           </button>
-          <h1 class="text-xl lg:text-2xl font-semibold text-zinc-900 dark:text-white">Dive Shop Search</h1>
+          <h1 class="text-base sm:text-lg lg:text-2xl font-semibold text-zinc-900 dark:text-white overflow-auto truncate">Dive Shop Search</h1>
         </div>
-        <button v-if="messages.length > 0" @click="clearConversation"
-          class="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md cursor-pointer">
-          New Search
-        </button>
+        <div class="flex items-center gap-2 p-1 lg:p-4">
+          <button v-if="messages.length > 0" @click="clearConversation"
+            class="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md cursor-pointer">
+            New Search
+          </button>
+        </div>
       </div>
 
       <!-- Messages Container -->

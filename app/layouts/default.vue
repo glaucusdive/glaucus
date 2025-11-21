@@ -11,7 +11,7 @@
       <Transition @enter="onMobileMenuEnter" @leave="onMobileMenuLeave" @before-enter="onBeforeMenuEnter" :css="false">
         <div v-if="isMobileMenuOpen || isDesktop"
           class="w-full lg:w-56 h-full shrink-0 bg-zinc-50 dark:bg-black flex flex-col justify-between p-2 absolute lg:relative z-50">
-          <div class="h-fit flex flex-row justify-between items-center m-2">
+          <div class="h-fit flex flex-row justify-between items-center p-2 lg:p-4">
             <NuxtLink to="/" class="w-[120px] h-auto flex flex-row items-center justify-center gap-2">
               <img src="/images/glaucus-logo-emblem.svg" alt="Logo" class="w-[40px] h-full" />
               <Logo class="*:fill-black *:dark:fill-white" />
@@ -32,7 +32,7 @@
           <!-- Theme Toggle Button -->
           <div class="w-full p-2">
             <button @click="toggleTheme"
-              class="w-full flex items-center justify-center gap-2 p-3 rounded-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-900 dark:text-white">
+              class="w-full flex items-center justify-center rounded-full gap-2 p-3 border hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800 transition-colors text-zinc-900 dark:text-white cursor-pointer">
               <Sun v-if="isDark" class="w-5 h-5" />
               <Moon v-else class="w-5 h-5" />
               <span class="text-sm font-medium">{{ isDark ? 'Light Mode' : 'Dark Mode' }}</span>
