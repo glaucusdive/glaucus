@@ -5,7 +5,7 @@
       <div
         class="flex flex-row justify-between items-center p-4 border-b border-zinc-200 dark:border-zinc-700 shrink-0">
         <div class="flex items-center gap-3">
-          <button @click="navigateTo('/')" class="lg:hidden hover:bg-zinc-100 dark:hover:bg-zinc-700 bg-zinc-100 dark:bg-zinc-800 rounded-sm p-1">
+          <button @click="openMobileMenu" class="lg:hidden hover:bg-zinc-100 dark:hover:bg-zinc-700 bg-zinc-100 dark:bg-zinc-800 rounded-sm p-1">
             <Menu class="w-5 h-5" />
           </button>
           <h1 class="text-xl lg:text-2xl font-semibold text-zinc-900 dark:text-white">Dive Shop Search</h1>
@@ -72,10 +72,10 @@
 
         <!-- Loading indicator -->
         <div v-if="isLoading" class="flex justify-start">
-          <div class="bg-zinc-100 rounded-lg px-4 py-3">
+          <div class="bg-zinc-800 rounded-lg px-4 py-3">
             <div class="flex items-center gap-2">
               <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-zinc-600"></div>
-              <span class="text-sm text-zinc-600">Searching dive shops...</span>
+              <span class="text-sm text-zinc-200">Searching dive shops...</span>
             </div>
           </div>
         </div>
@@ -85,10 +85,10 @@
       <div class="p-2">
         <div class="p-2 shrink-0 bg-zinc-100 dark:bg-zinc-800 rounded-full max-w-4xl mx-auto w-full">
           <form @submit.prevent="handleSubmit">
-            <div class="flex gap-2 items-center">
+            <div class="flex gap-2 items-center justify-stretch">
               <input v-model="userInput" type="text" :disabled="isLoading"
                 placeholder="Describe what you're looking for..."
-                class="w-full h-fit px-4 outline-none text-zinc-900 dark:text-white font-medium text-base tracking-none rounded-full disabled:bg-zinc-100 disabled:cursor-not-allowed" />
+                class="w-full h-full px-4 outline-none text-zinc-900 dark:text-white font-medium text-base tracking-none disabled:cursor-not-allowed" />
               <button type="submit" :disabled="isLoading || !userInput.trim()"
                 class="p-4 px-8 flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-xl tracking-none cursor-pointer text-zinc-900 dark:text-white disabled:bg-zinc-100 disabled:dark:bg-zinc-800 disabled:cursor-not-allowed font-medium disabled:*:opacity-20">
                 <ArrowUp v-if="!isLoading" class="w-6 h-6" />
@@ -107,6 +107,7 @@ import { ref, nextTick, onMounted, watch } from 'vue'
 import { Menu, ArrowUp } from 'lucide-vue-next'
 import CardSearchResult from '~/components/CardSearchResult.vue'
 import { useSearchCache } from '~/composables/useSearchCache'
+import { useDrawer } from '~/composables/useDrawer'
 
 // Get route to check for initial query
 const route = useRoute()
@@ -128,6 +129,9 @@ const exampleQueries = [
 
 // Cache helpers
 const { getCache, setCache, clearCache } = useSearchCache()
+
+// Mobile menu
+const { openMobileMenu } = useDrawer()
 
 const persistCache = () => {
   if (isRestoringCache.value) return

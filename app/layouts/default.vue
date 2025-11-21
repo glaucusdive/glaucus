@@ -12,7 +12,8 @@
         <div v-if="isMobileMenuOpen || isDesktop"
           class="w-full lg:w-56 h-full shrink-0 bg-zinc-50 dark:bg-black flex flex-col justify-between p-2 absolute lg:relative z-50">
           <div class="h-fit flex flex-row justify-between items-center m-2">
-            <NuxtLink to="/" class="w-[120px] h-auto">
+            <NuxtLink to="/" class="w-[120px] h-auto flex flex-row items-center justify-center gap-2">
+              <img src="/images/glaucus-logo-emblem.svg" alt="Logo" class="w-[40px] h-full" />
               <Logo class="*:fill-black *:dark:fill-white" />
             </NuxtLink>
             <button @click="handleCloseMobileMenu"
