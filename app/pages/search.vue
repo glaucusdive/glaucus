@@ -20,98 +20,135 @@
         </div>
       </div>
 
-      <!-- Messages Container -->
-      <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 pb-28 space-y-6 *:max-w-4xl *:mx-auto *:w-full">
+      <!-- Main Content Area - Split View on Desktop -->
+      <div class="flex-1 flex flex-row overflow-hidden relative">
+        <!-- Chat Section -->
+        <div :class="[
+          'flex flex-col h-full transition-all duration-300 ease-in-out relative',
+          selectedShopId ? 'w-full lg:w-1/2' : 'w-full'
+        ]">
+          <!-- Messages Container -->
+          <div ref="messagesContainer"
+            class="flex-1 overflow-y-auto p-4 pb-28 space-y-6 *:max-w-4xl *:mx-auto *:w-full">
 
-        <div v-if="messages.length === 0" class="flex flex-col items-center justify-start pt-56 gap-8 h-full">
-          <div class="text-center space-y-4 flex flex-col items-center">
-            <h2 class="max-w-2xl text-2xl font-bold text-zinc-900 dark:text-white">
-              Tell me what you're looking for in your diving experience, and I'll help you find the best dive shops.
-            </h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
-              <button v-for="example in exampleQueries" :key="example" @click="sendMessage(example)"
-                class="text-left p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer bg-white dark:bg-zinc-900">
-                <p class="text-sm text-zinc-700 dark:text-zinc-300">{{ example }}</p>
-              </button>
+            <div v-if="messages.length === 0" class="flex flex-col items-center justify-start pt-56 gap-8 h-full">
+              <div class="text-center space-y-4 flex flex-col items-center">
+                <h2 class="max-w-2xl text-2xl font-bold text-zinc-900 dark:text-white">
+                  Tell me what you're looking for in your diving experience, and I'll help you find the best dive shops.
+                </h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
+                  <button v-for="example in exampleQueries" :key="example" @click="sendMessage(example)"
+                    class="text-left p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer bg-white dark:bg-zinc-900">
+                    <p class="text-sm text-zinc-700 dark:text-zinc-300">{{ example }}</p>
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        <!-- Message history -->
-        <div v-for="(msg, index) in messages" :key="index" class="space-y-4">
-          <!-- User message -->
-          <div v-if="msg.role === 'user'" class="flex justify-end">
-            <div class="max-w-[80%] bg-blue-600 text-white rounded-lg px-4 py-3">
-              <p class="text-sm lg:text-base">{{ msg.content }}</p>
+            <!-- Message history -->
+            <div v-for="(msg, index) in messages" :key="index" class="space-y-4">
+              <!-- User message -->
+              <div v-if="msg.role === 'user'" class="flex justify-end">
+                <div class="max-w-[80%] bg-blue-600 text-white rounded-lg px-4 py-3">
+                  <p class="text-sm lg:text-base">{{ msg.content }}</p>
+                </div>
+              </div>
+
+              <!-- Assistant message -->
+              <div v-else-if="msg.role === 'assistant'" class="flex justify-start">
+                <div class="max-w-[90%] space-y-4">
+                  <!-- AI text response -->
+                  <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3">
+                    <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap">{{ msg.content }}
+                    </p>
+                  </div>
+
+                  <!-- Shop results -->
+                  <div v-if="msg.shops && msg.shops.length > 0" class="flex flex-col gap-2 p-2">
+                    <div class="flex items-center gap-2 text-sm text-zinc-600">
+                      <span class="font-medium">Top Results:</span>
+                    </div>
+                    <div class="grid grid-cols-1 gap-3">
+                      <CardSearchResult v-for="shop in msg.shops" :key="shop.id" :shop="shop"
+                        @shop-selected="handleShopSelected" />
+                    </div>
+
+                    <!-- Results summary - only show when shops are displayed -->
+                    <div v-if="msg.totalResults && msg.totalResults > msg.shops.length" class="text-sm text-zinc-500">
+                      Showing top {{ msg.shops.length }} results from {{ msg.totalResults }} dive shops found
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <!-- Assistant message -->
-          <div v-else-if="msg.role === 'assistant'" class="flex justify-start">
-            <div class="max-w-[90%] space-y-4">
-              <!-- AI text response -->
+            <!-- Loading indicator -->
+            <div v-if="isLoading" class="flex justify-start">
               <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3">
-                <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap">{{ msg.content }}</p>
+                <div class="flex items-center gap-2">
+                  <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-zinc-600"></div>
+                  <span class="text-sm text-zinc-900 dark:text-zinc-200">Searching dive shops...</span>
+                </div>
               </div>
+            </div>
+          </div>
 
-              <!-- Shop results -->
-              <div v-if="msg.shops && msg.shops.length > 0" class="space-y-3">
-                <div class="flex items-center gap-2 text-sm text-zinc-600">
-                  <span class="font-medium">Top Results:</span>
-                </div>
-                <div class="grid grid-cols-1 gap-3">
-                  <CardSearchResult v-for="shop in msg.shops" :key="shop.id" :shop="shop" />
-                </div>
-
-                <!-- Results summary - only show when shops are displayed -->
-                <div v-if="msg.totalResults && msg.totalResults > msg.shops.length" class="text-sm text-zinc-500">
-                  Showing top {{ msg.shops.length }} results from {{ msg.totalResults }} dive shops found
-                </div>
+          <!-- Input area -->
+          <div class="absolute bottom-2 left-0 right-0 flex items-stretch justify-center">
+            <div class="bg-transparent p-2 backdrop-blur-sm md:min-w-md max-w-4xl w-full rounded-full">
+              <div :class="[
+                'p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-hidden gradient-container z-0',
+                isLoading ? 'animate-ring-gradient !bg-[#02C8FF]' : ''
+              ]">
+                <form class="w-full h-full bg-zinc-100 dark:bg-zinc-700 rounded-full p-1 z-10"
+                  @submit.prevent="handleSubmit">
+                  <div class="flex gap-2 items-center justify-stretch">
+                    <input v-model="userInput" type="text" :disabled="isLoading"
+                      placeholder="Describe what you're looking for..."
+                      class="w-full h-full px-4 outline-none text-zinc-900 dark:text-white font-medium text-base tracking-none disabled:cursor-not-allowed" />
+                    <button type="submit" :disabled="isLoading || !userInput.trim()"
+                      class="p-4 px-8 flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-100 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-xl tracking-none cursor-pointer text-zinc-900 dark:text-zinc-900 disabled:bg-zinc-100 disabled:dark:bg-zinc-600 disabled:cursor-not-allowed font-medium disabled:*:opacity-20">
+                      <ArrowUp v-if="!isLoading" class="w-6 h-6" />
+                      <div v-else class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Loading indicator -->
-        <div v-if="isLoading" class="flex justify-start">
-          <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3">
-            <div class="flex items-center gap-2">
-              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-zinc-600"></div>
-              <span class="text-sm text-zinc-900 dark:text-zinc-200">Searching dive shops...</span>
+        <!-- Shop Detail Panel - Desktop Split View -->
+        <Transition @enter="onShopPanelEnter" @leave="onShopPanelLeave" :css="false">
+          <div v-if="selectedShopId && isDesktop"
+            class="w-1/2 h-full border-l border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
+            <ShopDetailPanel :shop-id="selectedShopId" @close="closeShopDetail" />
+          </div>
+        </Transition>
+
+        <!-- Shop Detail Panel - Mobile Drawer -->
+        <Transition @enter="onMobileDrawerEnter" @leave="onMobileDrawerLeave" :css="false">
+          <div v-if="selectedShopId && !isDesktop" class="fixed inset-0 z-50 lg:hidden">
+            <!-- Backdrop -->
+            <div @click="closeShopDetail" class="absolute inset-0 bg-black/50"></div>
+            <!-- Drawer -->
+            <div
+              class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-zinc-900 h-full overflow-hidden">
+              <ShopDetailPanel :shop-id="selectedShopId" @close="closeShopDetail" />
             </div>
           </div>
-        </div>
-      </div>
-
-      <!-- Input area -->
-      <div class="p-2 absolute bottom-0 left-1/2 translate-x-[-50%] bg-transparent backdrop-blur-sm w-fit rounded-full">
-        <div
-          :class="[
-            'p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-4xl relative overflow-hidden gradient-container z-0',
-            isLoading ? 'animate-ring-gradient !bg-[#02C8FF]' : ''
-          ]">
-          <form class="w-full h-full bg-zinc-100 dark:bg-zinc-700 rounded-full p-1 z-10" @submit.prevent="handleSubmit">
-            <div class="flex gap-2 items-center justify-stretch">
-              <input v-model="userInput" type="text" :disabled="isLoading"
-                placeholder="Describe what you're looking for..."
-                class="w-full h-full px-4 outline-none text-zinc-900 dark:text-white font-medium text-base tracking-none disabled:cursor-not-allowed" />
-              <button type="submit" :disabled="isLoading || !userInput.trim()"
-                class="p-4 px-8 flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-100 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-xl tracking-none cursor-pointer text-zinc-900 dark:text-zinc-900 disabled:bg-zinc-100 disabled:dark:bg-zinc-600 disabled:cursor-not-allowed font-medium disabled:*:opacity-20">
-                <ArrowUp v-if="!isLoading" class="w-6 h-6" />
-                <div v-else class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              </button>
-            </div>
-          </form>
-        </div>
+        </Transition>
       </div>
     </div>
   </NuxtLayout>
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, watch } from 'vue'
+import { ref, nextTick, onMounted, watch, onUnmounted } from 'vue'
 import { Menu, ArrowUp } from 'lucide-vue-next'
+import gsap from 'gsap'
 import CardSearchResult from '~/components/CardSearchResult.vue'
+import ShopDetailPanel from '~/components/ShopDetailPanel.vue'
 import { useSearchCache } from '~/composables/useSearchCache'
 import { useDrawer } from '~/composables/useDrawer'
 
@@ -125,6 +162,31 @@ const messages = ref([])
 const messagesContainer = ref(null)
 const isRestoringCache = ref(true)
 const abortController = ref(null)
+const selectedShopId = ref(null)
+
+// Desktop detection
+const getInitialDesktop = () => {
+  if (typeof window === 'undefined') {
+    return true
+  }
+  return window.innerWidth >= 1024
+}
+
+const isDesktop = ref(getInitialDesktop())
+
+const updateIsDesktop = () => {
+  if (typeof window === 'undefined') return
+  isDesktop.value = window.innerWidth >= 1024
+}
+
+onMounted(() => {
+  updateIsDesktop()
+  window.addEventListener('resize', updateIsDesktop)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateIsDesktop)
+})
 
 // Example queries for initial state
 const exampleQueries = [
@@ -334,7 +396,74 @@ const clearConversation = () => {
   messages.value = []
   userInput.value = ''
   isLoading.value = false
+  selectedShopId.value = null
   clearCache()
+}
+
+// Handle shop selection
+const handleShopSelected = (shop) => {
+  selectedShopId.value = shop.id
+}
+
+// Close shop detail
+const closeShopDetail = () => {
+  selectedShopId.value = null
+}
+
+// GSAP animations for shop panel
+const onShopPanelEnter = (el, done) => {
+  gsap.from(el, {
+    x: '100%',
+    duration: 0.3,
+    ease: 'power3.out',
+    onComplete: done
+  })
+}
+
+const onShopPanelLeave = (el, done) => {
+  gsap.to(el, {
+    x: '100%',
+    duration: 0.3,
+    ease: 'power3.in',
+    onComplete: done
+  })
+}
+
+// GSAP animations for mobile drawer
+const onMobileDrawerEnter = (el, done) => {
+  const drawer = el.querySelector('.absolute.right-0')
+  const backdrop = el.querySelector('.absolute.inset-0')
+  
+  gsap.from(backdrop, {
+    opacity: 0,
+    duration: 0.3,
+    ease: 'power2.out'
+  })
+  
+  gsap.from(drawer, {
+    x: '100%',
+    duration: 0.4,
+    ease: 'power3.out',
+    onComplete: done
+  })
+}
+
+const onMobileDrawerLeave = (el, done) => {
+  const drawer = el.querySelector('.absolute.right-0')
+  const backdrop = el.querySelector('.absolute.inset-0')
+  
+  gsap.to(backdrop, {
+    opacity: 0,
+    duration: 0.2,
+    ease: 'power2.in'
+  })
+  
+  gsap.to(drawer, {
+    x: '100%',
+    duration: 0.3,
+    ease: 'power3.in',
+    onComplete: done
+  })
 }
 
 // Set page title
