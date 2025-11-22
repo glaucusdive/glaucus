@@ -70,6 +70,7 @@
                     </div>
                     <div class="grid grid-cols-1 gap-3">
                       <CardSearchResult v-for="shop in msg.shops" :key="shop.id" :shop="shop"
+                        :active="selectedShopId === shop.id"
                         @shop-selected="handleShopSelected" />
                     </div>
 
@@ -122,7 +123,7 @@
         <Transition @enter="onShopPanelEnter" @leave="onShopPanelLeave" :css="false">
           <div v-if="selectedShopId && isDesktop"
             class="w-1/2 h-full border-l border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
-            <ShopDetailPanel :shop-id="selectedShopId" @close="closeShopDetail" />
+            <ShopDetailPanel :key="selectedShopId" :shop-id="selectedShopId" @close="closeShopDetail" />
           </div>
         </Transition>
 
@@ -134,7 +135,7 @@
             <!-- Drawer -->
             <div
               class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-zinc-900 h-full overflow-hidden">
-              <ShopDetailPanel :shop-id="selectedShopId" @close="closeShopDetail" />
+              <ShopDetailPanel :key="selectedShopId" :shop-id="selectedShopId" @close="closeShopDetail" />
             </div>
           </div>
         </Transition>

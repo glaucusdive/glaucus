@@ -1,7 +1,12 @@
 <template>
   <div 
     @click="navigateToShop"
-    class="flex flex-col gap-3 p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-zinc-300 dark:hover:border-zinc-600 hover:shadow-md transition-all cursor-pointer bg-white dark:bg-zinc-900">
+    :class="[
+      'flex flex-col gap-3 p-4 border rounded-lg hover:shadow-md transition-all cursor-pointer bg-white dark:bg-zinc-900',
+      active 
+        ? 'border-white dark:border-white' 
+        : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
+    ]">
     <!-- Header with name and rating -->
     <div class="flex flex-row justify-between items-start gap-2">
       <h3 class="text-lg font-semibold text-zinc-900 dark:text-white hover:text-blue-600">
@@ -67,6 +72,10 @@ const props = defineProps({
   shop: {
     type: Object,
     required: true
+  },
+  active: {
+    type: Boolean,
+    default: false
   }
 })
 
