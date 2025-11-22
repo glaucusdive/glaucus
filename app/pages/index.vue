@@ -13,7 +13,7 @@
           </div>
         </div>
 
-        <div class="w-full lg:w-[50%] h-fit rounded-full overflow-hidden flex flex-row gap-0.5 bg-zinc-100 dark:bg-zinc-800 p-1">
+        <div class="w-full lg:min-w-md max-w-2xl h-fit rounded-full overflow-hidden flex flex-row gap-0.5 bg-zinc-100 dark:bg-zinc-800 p-1">
           <input type="text" @keyup.enter="navigateToSearch" v-model="searchQuery"
             class="w-full h-fit p-4 lg:p-4 lg:px-8 outline-none text-zinc-900 dark:text-white font-semibold text-xl tracking-none rounded-full"
             placeholder="What would you like me to do?" />
