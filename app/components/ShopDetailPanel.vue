@@ -268,7 +268,7 @@
               </div>
               <!-- Contact Information -->
               <div class="flex flex-col gap-2 p-6 border border-zinc-300 dark:border-zinc-700 rounded-md order-1">
-                <ul class="space-y-2">
+                <ul class="grid grid-cols-1 xl:grid-cols-2 gap-2">
                   <li v-if="contactInfo?.address">
                     <a :href="`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contactInfo.address)}`"
                       target="_blank" class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
