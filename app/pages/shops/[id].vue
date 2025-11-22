@@ -2,52 +2,52 @@
   <div v-if="pending" class="h-screen flex items-center justify-center">
     <div class="flex flex-col items-center">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-      <span class="text-zinc-600">Loading dive shop...</span>
+      <span class="text-zinc-600 dark:text-zinc-400">Loading dive shop...</span>
     </div>
   </div>
   <div v-else-if="error" class="h-screen flex items-center justify-center">
     <div class="text-center">
-      <h1 class="text-2xl font-bold text-red-600 mb-2">Error</h1>
-      <p class="text-zinc-600">{{ error.message || 'Failed to load dive shop' }}</p>
-      <button @click="navigateTo('/shops')" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+      <h1 class="text-2xl font-bold text-red-600 dark:text-red-500 mb-2">Error</h1>
+      <p class="text-zinc-600 dark:text-zinc-400">{{ error.message || 'Failed to load dive shop' }}</p>
+      <button @click="navigateTo('/shops')" class="mt-4 px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded hover:bg-blue-600 dark:hover:bg-blue-700">
         Back to Dive Shops
       </button>
     </div>
   </div>
   <NuxtLayout name="default">
     <!-- start shop/id here-->
-    <div class="flex flex-col justify-between h-full gap-0 divide-y divide-zinc-300">
+    <div class="flex flex-col justify-between h-full gap-0 divide-y divide-zinc-300 dark:divide-zinc-700">
       <!-- Header -->
-      <div class="flex flex-col justify-center z-40 w-full divide-y divide-zinc-300">
+      <div class="flex flex-col justify-center z-40 w-full divide-y divide-zinc-300 dark:divide-zinc-700">
         <!-- Title -->
-        <header class="flex flex-row justify-start items-stretch gap-0 divide-x divide-zinc-300">
+        <header class="flex flex-row justify-start items-stretch gap-0 divide-x divide-zinc-300 dark:divide-zinc-700">
           <div class="p-1 flex lg:hidden items-center ">
             <div @click="toggleMobileMenu"
-              class="hover:bg-zinc-100 rounded-sm min-w-8 w-full h-full flex items-center justify-center cursor-pointer px-1">
-              <Menu class="w-4 h-4 lg:w-6 lg:h-6" />
+              class="hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-sm min-w-8 w-full h-full flex items-center justify-center cursor-pointer px-1">
+              <Menu class="w-4 h-4 lg:w-6 lg:h-6 text-zinc-900 dark:text-white" />
             </div>
           </div>
           <div class="p-1 flex items-center">
             <div
-              class="hover:bg-zinc-100 rounded-sm min-w-8 w-full h-full flex items-center justify-center cursor-pointer px-1"
+              class="hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-sm min-w-8 w-full h-full flex items-center justify-center cursor-pointer px-1"
               @click="goBackToShops">
-              <ChevronLeft class="w-4 h-4 lg:w-6 lg:h-6" />
+              <ChevronLeft class="w-4 h-4 lg:w-6 lg:h-6 text-zinc-900 dark:text-white" />
             </div>
           </div>
           <!-- Image -->
           <div class="p-1 flex items-center">
             <div
-              class="block bg-zinc-200 overflow-hidden rounded-sm min-w-8 w-8 lg:min-w-16 lg:w-16 h-auto aspect-square">
+              class="block bg-zinc-200 dark:bg-zinc-700 overflow-hidden rounded-sm min-w-8 w-8 lg:min-w-16 lg:w-16 h-auto aspect-square">
             </div>
           </div>
           <div class="p-1 grow flex items-center overflow-auto">
-            <h1 class="text-sm lg:text-3xl font-medium p-0 leading-none lg:px-2 w-full truncate">{{
+            <h1 class="text-sm lg:text-3xl font-medium p-0 leading-none lg:px-2 w-full truncate text-zinc-900 dark:text-white">{{
               shopData?.business_name ||
               'Loading...' }}</h1>
           </div>
           <div class="p-1 flex items-center">
             <button @click="toggleDemoMode" class="text-xs px-3 py-1 rounded-sm transition-colors cursor-pointer"
-              :class="isDemoMode ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'">
+              :class="isDemoMode ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'">
               {{ isDemoMode ? '📊 Demo' : 'Live' }}
             </button>
           </div>
@@ -57,8 +57,8 @@
           <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id" :class="[
             'flex flex-row gap-2 rounded-sm p-2 px-3 w-fit text-xs lg:text-base cursor-pointer transition-color whitespace-nowrap',
             activeTab === tab.id
-              ? 'bg-zinc-200/50 text-zinc-900'
-              : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/40'
+              ? 'bg-zinc-200/50 dark:bg-zinc-800 text-zinc-900 dark:text-white'
+              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/40 dark:hover:bg-zinc-800/50'
           ]">
             {{ tab.label }}
           </button>
@@ -68,7 +68,7 @@
       <div class="w-full h-0 flex-1 lg:overflow-y-auto">
         <!-- Main Content with Sidebar -->
         <div
-          class="flex flex-col lg:flex-row justify-start lg:justify-stretch items-start lg:items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 divide-zinc-300 w-full h-full overflow-y-auto lg:overflow-y-visible">
+          class="flex flex-col lg:flex-row justify-start lg:justify-stretch items-start lg:items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 divide-zinc-300 dark:divide-zinc-700 w-full h-full overflow-y-auto lg:overflow-y-visible">
           <!-- Tab Content -->
           <div class="w-full flex flex-col grow border-b-0 h-full order-2 lg:order-1">
             <div class="flex flex-col gap-4 h-full w-full p-0">
@@ -78,32 +78,32 @@
                   <div class="flex flex-col gap-2">
                     <section class="flex flex-col 2xl:flex-row gap-8 p-2 *:w-full">
                       <div class="flex flex-col gap-2">
-                        <h2 class="text-lg font-semibold">Hours</h2>
-                        <ul class="text-base space-y-1">
+                        <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">Hours</h2>
+                        <ul class="text-base space-y-1 text-zinc-900 dark:text-white">
                           <template v-if="displayHours && displayHours.length > 0">
                             <li v-for="day in displayHours" :key="day.name">
                               {{ day.label }}: {{ day.hours }}
                             </li>
                           </template>
-                          <li v-else class="text-zinc-500 italic">
+                          <li v-else class="text-zinc-500 dark:text-zinc-400 italic">
                             Hours not available
                           </li>
                         </ul>
                       </div>
                       <div class="flex flex-col gap-2">
-                        <h3 class="text-lg font-semibold">Languages</h3>
-                        <div class="text-base">
+                        <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Languages</h3>
+                        <div class="text-base text-zinc-900 dark:text-white">
                           <template v-if="displayLanguages && displayLanguages.length > 0">
                             {{ displayLanguages.join(', ') }}
                           </template>
-                          <span v-else class="text-zinc-500 italic">
+                          <span v-else class="text-zinc-500 dark:text-zinc-400 italic">
                             Languages not available
                           </span>
                         </div>
                       </div>
                       <div class="flex flex-col gap-2 justify-start">
-                        <h2 class="text-lg font-semibold">Details</h2>
-                        <div class="text-base">
+                        <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">Details</h2>
+                        <div class="text-base text-zinc-900 dark:text-white">
                           <div v-if="paragraphs.length > 0">
                             <div v-if="!showFullDetails">
                               {{ firstParagraph }}
@@ -114,11 +114,11 @@
                               </p>
                             </div>
                             <button v-if="remainingParagraphs.length > 0" @click="showFullDetails = !showFullDetails"
-                              class="text-blue-600 hover:text-blue-800 underline mt-2 text-sm cursor-pointer">
+                              class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline mt-2 text-sm cursor-pointer">
                               {{ showFullDetails ? 'Read less' : 'Read more' }}
                             </button>
                           </div>
-                          <div v-else class="text-zinc-500 italic">
+                          <div v-else class="text-zinc-500 dark:text-zinc-400 italic">
                             No description available for this dive shop.
                           </div>
                         </div>
@@ -165,11 +165,11 @@
               </div>
               <!-- More Information Tab -->
               <div v-if="activeTab === 'information'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
-                <div class="flex flex-col lg:flex-row gap-6 p-6 border border-zinc-300 rounded-md *:w-full">
+                <div class="flex flex-col lg:flex-row gap-6 p-6 border border-zinc-300 dark:border-zinc-700 rounded-md *:w-full">
                   <div class="flex flex-col gap-6">
                     <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold">Equipment Rental</h3>
-                      <ul class="text-base space-y-1">
+                      <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Equipment Rental</h3>
+                      <ul class="text-base space-y-1 text-zinc-900 dark:text-white">
                         <li>BCD</li>
                         <li>Boots</li>
                         <li>Camera</li>
@@ -192,15 +192,15 @@
                   </div>
                   <div class="flex flex-col gap-6">
                     <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold">Gas Mixture</h3>
-                      <ul class="text-base space-y-1">
+                      <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Gas Mixture</h3>
+                      <ul class="text-base space-y-1 text-zinc-900 dark:text-white">
                         <li>Air Fills</li>
                         <li>Nitrox</li>
                       </ul>
                     </div>
                     <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold">Payment Methods</h3>
-                      <ul class="text-base space-y-1">
+                      <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Payment Methods</h3>
+                      <ul class="text-base space-y-1 text-zinc-900 dark:text-white">
                         <li>Bank Transfer</li>
                         <li>VISA</li>
                         <li>Mastercard</li>
@@ -266,45 +266,45 @@
           </div>
           <!-- Sidebar -->
           <div
-            class="w-full lg:min-w-1/2 lg:w-1/2 xl:min-w-1/3 xl:w-1/3 p-2 h-auto xl:h-full order-2 xl:order-1 sticky bottom-0 2xl:bottom-auto bg-zinc-50">
+            class="w-full lg:min-w-1/2 lg:w-1/2 xl:min-w-1/3 xl:w-1/3 p-2 h-auto xl:h-full order-2 xl:order-1 sticky bottom-0 2xl:bottom-auto bg-zinc-50 dark:bg-zinc-900">
             <div class="h-full">
               <div class="flex flex-col gap-2">
                 <!-- Book Now Button -->
-                <div class="flex flex-col gap-2 p-6 bg-zinc-100 rounded-md order-2 lg:order-1">
-                  <h2 class="text-2xl font-semibold">Book Now</h2>
-                  <p class="text-sm text-zinc-600">Ready to dive? Click below to start your booking.</p>
+                <div class="flex flex-col gap-2 p-6 bg-zinc-100 dark:bg-zinc-800 rounded-md order-2 lg:order-1">
+                  <h2 class="text-2xl font-semibold text-zinc-900 dark:text-white">Book Now</h2>
+                  <p class="text-sm text-zinc-600 dark:text-zinc-400">Ready to dive? Click below to start your booking.</p>
                   <button @click="openBookingDrawer"
-                    class="bg-zinc-900 hover:bg-zinc-800 text-white font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">
+                    class="bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">
                     Start Booking
                   </button>
                 </div>
                 <!-- Contact Information -->
-                <div class="flex flex-col gap-2 p-6 border border-zinc-300 rounded-md order-1 lg:order-2">
+                <div class="flex flex-col gap-2 p-6 border border-zinc-300 dark:border-zinc-700 rounded-md order-1 lg:order-2">
                   <ul class="space-y-2">
                     <li v-if="contactInfo?.address">
                       <a :href="`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contactInfo.address)}`"
-                        target="_blank" class="flex flex-row gap-4 items-center">
-                        <MapPin class="min-w-4 max-w-4 h-4" />
+                        target="_blank" class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
+                        <MapPin class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
                         <span>{{ contactInfo.address }}</span>
                       </a>
                     </li>
                     <li>
-                      <div class="flex flex-row gap-4 items-center">
-                        <Phone class="min-w-4 max-w-4 h-4" />
+                      <div class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white">
+                        <Phone class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
                         <span v-if="contactInfo?.phone">{{ contactInfo.phone }}</span>
-                        <span v-else class="text-zinc-400">No Phone</span>
+                        <span v-else class="text-zinc-400 dark:text-zinc-500">No Phone</span>
                       </div>
                     </li>
                     <li>
-                      <div class="flex flex-row gap-4 items-center">
-                        <Mail class="min-w-4 max-w-4 h-4" />
+                      <div class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white">
+                        <Mail class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
                         <span v-if="contactInfo?.email">{{ contactInfo.email }}</span>
-                        <span v-else class="text-zinc-400">No Email</span>
+                        <span v-else class="text-zinc-400 dark:text-zinc-500">No Email</span>
                       </div>
                     </li>
                     <li v-if="contactInfo?.website">
-                      <a :href="contactInfo.website" target="_blank" class="flex flex-row gap-4 items-center">
-                        <Globe class="min-w-4 max-w-4 h-4" />
+                      <a :href="contactInfo.website" target="_blank" class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
+                        <Globe class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
                         <span class="truncate">{{ contactInfo.website }}</span>
                       </a>
                     </li>
