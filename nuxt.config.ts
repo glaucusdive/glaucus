@@ -2,6 +2,9 @@
 export default defineNuxtConfig({
   modules: ['@nuxt/ui'],
   css: ['~/assets/css/main.css'],
+  nitro: {
+    preset: 'netlify'
+  },
   runtimeConfig: {
     // Private keys - only available server-side
     openrouterApiKey: process.env.NUXT_OPENROUTER_API_KEY,
