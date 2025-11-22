@@ -33,7 +33,15 @@ export const useTheme = () => {
 
   // Initialize theme on mount (in case it wasn't applied above)
   onMounted(() => {
-    applyTheme(isDark.value)
+    // Sync with actual DOM state to handle hydration mismatches
+    if (typeof document !== 'undefined') {
+      const hasDarkClass = document.documentElement.classList.contains('dark')
+      if (hasDarkClass !== isDark.value) {
+        isDark.value = hasDarkClass
+      } else {
+        applyTheme(isDark.value)
+      }
+    }
   })
 
   // Watch for theme changes and apply them
