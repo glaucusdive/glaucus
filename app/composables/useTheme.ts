@@ -2,11 +2,19 @@ import { ref, onMounted, watch } from 'vue'
 
 const THEME_STORAGE_KEY = 'glaucus-theme'
 
-// Get initial theme from localStorage or default to 'dark'
+// Get initial theme from DOM (set by plugin) or localStorage, default to 'dark'
 const getInitialTheme = (): 'dark' | 'light' => {
-  if (typeof window === 'undefined') {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
     return 'dark'
   }
+  
+  // First, check the actual DOM state (set by the plugin)
+  const hasDarkClass = document.documentElement.classList.contains('dark')
+  if (hasDarkClass) {
+    return 'dark'
+  }
+  
+  // Fallback to localStorage if DOM doesn't have the class
   const stored = localStorage.getItem(THEME_STORAGE_KEY)
   return (stored === 'light' || stored === 'dark') ? stored : 'dark'
 }
@@ -26,21 +34,26 @@ export const useTheme = () => {
     }
   }
 
-  // Apply theme immediately if on client side
-  if (typeof document !== 'undefined') {
-    applyTheme(isDark.value)
-  }
-
-  // Initialize theme on mount (in case it wasn't applied above)
+  // Initialize theme on mount - always sync with DOM state first (set by plugin)
   onMounted(() => {
-    // Sync with actual DOM state to handle hydration mismatches
-    if (typeof document !== 'undefined') {
+    if (typeof document !== 'undefined' && typeof window !== 'undefined') {
+      // Check cache/localStorage
+      const stored = localStorage.getItem(THEME_STORAGE_KEY)
+      const cachedTheme = stored || 'dark (default)'
+      
+      // Always read from DOM first to sync with plugin's state
       const hasDarkClass = document.documentElement.classList.contains('dark')
+      const activeTheme = hasDarkClass ? 'dark' : 'light'
+      
+      // Log theme information
+      console.log(`[Theme] Cache: ${cachedTheme}, DOM: ${activeTheme}, Active: ${activeTheme}`)
+      
       if (hasDarkClass !== isDark.value) {
+        // DOM state differs from our state - sync our state to match DOM
         isDark.value = hasDarkClass
-      } else {
-        applyTheme(isDark.value)
       }
+      // Ensure theme is applied (in case DOM was changed elsewhere)
+      applyTheme(isDark.value)
     }
   })
 
