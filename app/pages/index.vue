@@ -103,7 +103,7 @@
 
           <!-- Input area -->
           <div class="flex items-stretch justify-center">
-            <div class="bg-transparent p-1 pt-0 backdrop-blur-sm md:min-w-md max-w-4xl w-full rounded-full">
+            <div class="bg-transparent p-4 pt-0 backdrop-blur-sm md:min-w-md max-w-4xl w-full rounded-full">
               <div :class="[
                 'p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-hidden gradient-container z-0',
                 isLoading ? 'animate-ring-gradient !bg-[#02C8FF]' : ''

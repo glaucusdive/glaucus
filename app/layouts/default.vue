@@ -1,6 +1,6 @@
 <template>
-  <div class="h-screen w-screen overflow-hidden">
-    <div class="h-full w-full flex flex-row">
+  <div class="h-dvh w-dvw overflow-hidden">
+    <div class="h-auto w-full lg:flex lg:flex-row">
       <!-- Backdrop for mobile menu -->
       <Transition @enter="onBackdropEnter" @leave="onBackdropLeave" :css="false">
         <div v-if="isMobileMenuOpen" @click="handleCloseMobileMenu" class="fixed inset-0 bg-black/50 z-40 lg:hidden">
@@ -8,8 +8,8 @@
       </Transition>
 
       <!-- Sidebar - Always visible on desktop, conditional on mobile -->
-      <Transition @enter="onMobileMenuEnter" @leave="onMobileMenuLeave" @before-enter="onBeforeMenuEnter" :css="false">
-        <div v-if="isMobileMenuOpen || isDesktop"
+      <Transition v-if="isMobileMenuOpen || isDesktop" @enter="onMobileMenuEnter" @leave="onMobileMenuLeave" @before-enter="onBeforeMenuEnter" :css="false">
+        <div
           class="w-full lg:w-56 h-full shrink-0 bg-zinc-50 dark:bg-black flex flex-col justify-between p-2 absolute lg:relative z-50">
           <div class="h-fit flex flex-row justify-between items-center p-2 lg:p-4">
             <NuxtLink to="/" class="w-[120px] h-auto flex flex-row items-center justify-center gap-2">
@@ -66,8 +66,8 @@
 
         </div>
         <!-- Drawer Sidebar -->
-        <Transition @enter="onDrawerEnter" @leave="onDrawerLeave" :css="false">
-          <div v-if="isOpen"
+        <Transition v-if="isOpen" @enter="onDrawerEnter" @leave="onDrawerLeave" :css="false">
+          <div
             class="w-auto lg:w-[520px] h-auto bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl absolute lg:relative bottom-2 lg:bottom-auto top-2 lg:top-auto right-2 lg:right-auto left-2 lg:left-auto flex flex-col justify-start overflow-hidden z-50">
             <!-- Dynamic Drawer Content -->
             <BookingForm v-if="contentType === 'booking-form'" :shop-id="drawerData.shopId"
