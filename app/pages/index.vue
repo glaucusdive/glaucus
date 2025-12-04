@@ -2,7 +2,8 @@
   <NuxtLayout name="default">
     <!-- Loading Screen -->
     <Transition @enter="onLoadingEnter" @leave="onLoadingLeave" :css="false">
-      <div v-if="isPageLoading" class="fixed inset-0 z-[100] bg-white dark:bg-zinc-900 flex items-center justify-center">
+      <div v-if="isPageLoading"
+        class="fixed inset-0 z-[100] bg-white dark:bg-zinc-900 flex items-center justify-center">
         <img src="/images/glaucus-logo-emblem.svg" alt="Glaucus" class="w-24 h-24" />
       </div>
     </Transition>
@@ -36,11 +37,11 @@
         ]">
           <!-- Messages Container -->
           <div ref="messagesContainer"
-            class="flex-1 overflow-y-auto p-4 pb-28 space-y-6 *:max-w-4xl *:mx-auto *:w-full">
+            class="flex-1 overflow-y-auto p-4 pb-28 space-y-6 *:max-w-3xl *:mx-auto *:w-full">
 
-            <div v-if="messages.length === 0" class="flex flex-col items-center justify-start pt-56 gap-8 h-full">
+            <div v-if="messages.length === 0" class="flex flex-col items-center justify-start lg:pt-56 gap-8 h-full">
               <div class="text-center space-y-4 flex flex-col items-center">
-                <h2 class="max-w-2xl text-2xl font-bold text-zinc-900 dark:text-white">
+                <h2 class="max-w-2xl lg:text-2xl font-bold text-zinc-900 dark:text-white">
                   Tell me what you're looking for in your diving experience, and I'll help you find the best dive shops.
                 </h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
@@ -77,8 +78,7 @@
                     </div>
                     <div class="grid grid-cols-1 gap-3">
                       <CardSearchResult v-for="shop in msg.shops" :key="shop.id" :shop="shop"
-                        :active="selectedShopId === shop.id"
-                        @shop-selected="handleShopSelected" />
+                        :active="selectedShopId === shop.id" @shop-selected="handleShopSelected" />
                     </div>
 
                     <!-- Results summary - only show when shops are displayed -->
@@ -102,23 +102,27 @@
           </div>
 
           <!-- Input area -->
-          <div class="absolute bottom-2 left-0 right-0 flex items-stretch justify-center">
-            <div class="bg-transparent p-2 backdrop-blur-sm md:min-w-md max-w-4xl w-full rounded-full">
+          <div class="flex items-stretch justify-center">
+            <div class="bg-transparent p-1 pt-0 backdrop-blur-sm md:min-w-md max-w-4xl w-full rounded-full">
               <div :class="[
                 'p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-hidden gradient-container z-0',
                 isLoading ? 'animate-ring-gradient !bg-[#02C8FF]' : ''
               ]">
                 <form class="w-full h-full bg-zinc-100 dark:bg-zinc-700 rounded-full p-1 z-10"
                   @submit.prevent="handleSubmit">
-                  <div class="flex gap-2 items-center justify-stretch">
-                    <input v-model="userInput" type="text" :disabled="isLoading"
-                      placeholder="Describe what you're looking for..."
-                      class="w-full h-full px-4 outline-none text-zinc-900 dark:text-white font-medium text-base tracking-none disabled:cursor-not-allowed" />
-                    <button type="submit" :disabled="isLoading || !userInput.trim()"
-                      class="p-4 px-8 flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-100 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-xl tracking-none cursor-pointer text-zinc-900 dark:text-zinc-900 disabled:bg-zinc-100 disabled:dark:bg-zinc-600 disabled:cursor-not-allowed font-medium disabled:*:opacity-20">
-                      <ArrowUp v-if="!isLoading" class="w-6 h-6" />
-                      <div v-else class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    </button>
+                  <div class="grid grid-cols-[1fr_auto]">
+                    <div class="cols-span-1 h-full">
+                      <input v-model="userInput" type="text" :disabled="isLoading"
+                        placeholder="Ask me anything about dive shops..."
+                        class="w-full h-full outline-none text-zinc-900 dark:text-white font-medium text-sm tracking-none disabled:cursor-not-allowed indent-2" />
+                    </div>
+                    <div class="cols-span-1 h-full">
+                      <button type="submit" :disabled="isLoading || !userInput.trim()"
+                        class="p-2 flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-100 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-xl tracking-none cursor-pointer text-zinc-900 dark:text-zinc-900 disabled:bg-zinc-100 disabled:dark:bg-zinc-600 disabled:cursor-not-allowed font-medium disabled:*:opacity-20">
+                        <ArrowUp v-if="!isLoading" class="w-6 h-6" />
+                        <div v-else class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      </button>
+                    </div>
                   </div>
                 </form>
               </div>
