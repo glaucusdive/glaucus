@@ -1,5 +1,12 @@
 <template>
   <NuxtLayout name="default">
+    <!-- Loading Screen -->
+    <Transition @enter="onLoadingEnter" @leave="onLoadingLeave" :css="false">
+      <div v-if="isPageLoading" class="fixed inset-0 z-[100] bg-white dark:bg-zinc-900 flex items-center justify-center">
+        <img src="/images/glaucus-logo-emblem.svg" alt="Glaucus" class="w-24 h-24" />
+      </div>
+    </Transition>
+
     <div class="flex flex-col h-full w-full relative">
       <!-- Header -->
       <div class="flex flex-row justify-between items-stretch border-b border-zinc-200 dark:border-zinc-700 shrink-0">
@@ -164,6 +171,7 @@ const messagesContainer = ref(null)
 const isRestoringCache = ref(true)
 const abortController = ref(null)
 const selectedShopId = ref(null)
+const isPageLoading = ref(true)
 
 // Desktop detection
 const getInitialDesktop = () => {
@@ -224,6 +232,13 @@ onMounted(async () => {
 
     if (!initialQuery || initialQuery === cachedState.lastQuery) {
       isRestoringCache.value = false
+      // Wait for hydration to complete before hiding loading screen
+      await nextTick()
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          isPageLoading.value = false
+        }, 300)
+      })
       return
     }
   }
@@ -237,10 +252,24 @@ onMounted(async () => {
   if (initialQuery) {
     isRestoringCache.value = false
     await sendMessage(initialQuery)
+    // Wait for hydration to complete before hiding loading screen
+    await nextTick()
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        isPageLoading.value = false
+      }, 300)
+    })
     return
   }
 
   isRestoringCache.value = false
+  // Wait for hydration to complete before hiding loading screen
+  await nextTick()
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      isPageLoading.value = false
+    }, 300)
+  })
 })
 
 // Persist cache when state changes
@@ -463,6 +492,25 @@ const onMobileDrawerLeave = (el, done) => {
     x: '100%',
     duration: 0.3,
     ease: 'power3.in',
+    onComplete: done
+  })
+}
+
+// GSAP animations for loading screen
+const onLoadingEnter = (el, done) => {
+  gsap.from(el, {
+    opacity: 0,
+    duration: 0.2,
+    ease: 'power2.out',
+    onComplete: done
+  })
+}
+
+const onLoadingLeave = (el, done) => {
+  gsap.to(el, {
+    opacity: 0,
+    duration: 0.4,
+    ease: 'power2.in',
     onComplete: done
   })
 }
