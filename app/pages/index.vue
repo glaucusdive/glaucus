@@ -10,7 +10,7 @@
 
     <div class="flex flex-col h-full w-full relative">
       <!-- Header -->
-      <div class="flex flex-row justify-between items-stretch border-b border-zinc-200 dark:border-zinc-700 shrink-0">
+      <div class="h-10 flex flex-row justify-between items-stretch border-b border-zinc-200 dark:border-zinc-700 shrink-0">
         <div class="flex items-center gap-2 h-full p-0 lg:p-4 divide-x divide-zinc-200 dark:divide-zinc-700">
           <button @click="openMobileMenu"
             class="flex items-center justify-center aspect-square h-full lg:hidden hover:bg-zinc-100 dark:hover:bg-zinc-800/50 p-1 cursor-pointer">
@@ -37,9 +37,9 @@
         ]">
           <!-- Messages Container -->
           <div ref="messagesContainer"
-            class="flex-1 overflow-y-auto p-4 pb-28 space-y-6 *:max-w-3xl *:mx-auto *:w-full">
+            class="flex-1 overflow-y-auto p-4 space-y-6 *:max-w-3xl *:mx-auto *:w-full">
 
-            <div v-if="messages.length === 0" class="flex flex-col items-center justify-start lg:pt-56 gap-8 h-full">
+            <div v-if="messages.length === 0" class="flex flex-col items-center justify-center lg:pt-56 gap-8 h-full">
               <div class="text-center space-y-4 flex flex-col items-center">
                 <h2 class="max-w-2xl lg:text-2xl font-bold text-zinc-900 dark:text-white">
                   Tell me what you're looking for in your diving experience, and I'll help you find the best dive shops.
