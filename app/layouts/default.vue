@@ -1,6 +1,6 @@
 <template>
   <div class="h-dvh w-dvw overflow-hidden">
-    <div class="h-auto w-full lg:flex lg:flex-row">
+    <div class="h-full w-full lg:flex lg:flex-row">
       <!-- Backdrop for mobile menu -->
       <Transition @enter="onBackdropEnter" @leave="onBackdropLeave" :css="false">
         <div v-if="isMobileMenuOpen" @click="handleCloseMobileMenu" class="fixed inset-0 bg-black/50 z-40 lg:hidden">
