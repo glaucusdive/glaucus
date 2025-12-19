@@ -271,8 +271,8 @@
               <div class="flex flex-col gap-2">
                 <!-- Book Now Button -->
                 <div class="flex flex-col gap-2 p-6 bg-zinc-100 dark:bg-zinc-800 rounded-md order-2 lg:order-1">
-                  <h2 class="text-2xl font-semibold text-zinc-900 dark:text-white">Book Now</h2>
-                  <p class="text-sm text-zinc-600 dark:text-zinc-400">Ready to dive? Click below to start your booking.</p>
+                  <h2 class="hidden lg:block text-2xl font-semibold text-zinc-900 dark:text-white">Book Now</h2>
+                  <p class="hidden lg:block text-sm text-zinc-600 dark:text-zinc-400">Ready to dive? Click below to start your booking.</p>
                   <button @click="openBookingDrawer"
                     class="bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">
                     Start Booking
