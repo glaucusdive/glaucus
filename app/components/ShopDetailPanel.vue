@@ -116,7 +116,7 @@
               </section>
             </div>
             <!-- Dive Destinations Tab -->
-            <div v-if="activeTab === 'destinations'" class="flex flex-col gap-2 p-2 h-full overflow-y-auto">
+            <div v-if="activeTab === 'destinations'" class="flex flex-col gap-2 p-2 h-full">
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                 <CardListItem title="Beginner / Training Dives" image="/images/fpo/destinations-beginner.png"
                   :items="['House Reef', 'Lagoon around Bandos']" />

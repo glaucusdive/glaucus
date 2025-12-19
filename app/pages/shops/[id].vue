@@ -68,9 +68,9 @@
       <div class="w-full h-0 flex-1 lg:overflow-y-auto">
         <!-- Main Content with Sidebar -->
         <div
-          class="flex flex-col lg:flex-row justify-start lg:justify-stretch items-start lg:items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 divide-zinc-300 dark:divide-zinc-700 w-full h-full overflow-y-auto lg:overflow-y-visible">
+          class="flex flex-col lg:flex-row justify-between lg:justify-stretch items-start lg:items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 divide-zinc-300 dark:divide-zinc-700 w-full h-full">
           <!-- Tab Content -->
-          <div class="w-full flex flex-col grow border-b-0 h-full order-2 lg:order-1">
+          <div class="w-full flex flex-col border-b-0 order-2 lg:order-1 overflow-y-auto">
             <div class="flex flex-col gap-4 h-full w-full p-0">
               <!-- Details Tab -->
               <div v-if="activeTab === 'details'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
@@ -128,7 +128,7 @@
                 </section>
               </div>
               <!-- Dive Destinations Tab -->
-              <div v-if="activeTab === 'destinations'" class="flex flex-col gap-2 p-2 h-full overflow-y-auto">
+              <div v-if="activeTab === 'destinations'" class="flex flex-col gap-2 p-2 h-full">
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1 gap-2">
                   <CardListItem title="Beginner / Training Dives" image="/images/fpo/destinations-beginner.png"
                     :items="['House Reef', 'Lagoon around Bandos']" />
@@ -149,18 +149,18 @@
               <!-- Courses Tab -->
               <div v-if="activeTab === 'courses'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <CardCarouselItem title="Open Water Diver" image="/images/fpo/destinations-beginner.png"
-                    :details="['5-10 hrs', 'Contact shop for dates', 'eLearning only']" />
-                  <CardCarouselItem title="Advanced Open Water" image="/images/fpo/destinations-beginner.png"
-                    :details="['3-5 days', 'Contact shop for dates', 'eLearning + practical']" />
-                  <CardCarouselItem title="Rescue Diver" image="/images/fpo/destinations-beginner.png"
-                    :details="['3-4 days', 'Contact shop for dates', 'eLearning + practical']" />
-                  <CardCarouselItem title="Divemaster" image="/images/fpo/destinations-beginner.png"
-                    :details="['2-3 weeks', 'Contact shop for dates', 'Intensive program']" />
-                  <CardCarouselItem title="Specialty Courses" image="/images/fpo/destinations-beginner.png"
-                    :details="['1-2 days', 'Contact shop for dates', 'Various specialties']" />
-                  <CardCarouselItem title="Instructor Course" image="/images/fpo/destinations-beginner.png"
-                    :details="['2-3 weeks', 'Contact shop for dates', 'Professional level']" />
+                  <CardListItem title="Open Water Diver" image="/images/fpo/destinations-beginner.png"
+                    :items="['5-10 hrs', 'Contact shop for dates', 'eLearning only']" />
+                  <CardListItem title="Advanced Open Water" image="/images/fpo/destinations-beginner.png"
+                    :items="['3-5 days', 'Contact shop for dates', 'eLearning + practical']" />
+                  <CardListItem title="Rescue Diver" image="/images/fpo/destinations-beginner.png"
+                    :items="['3-4 days', 'Contact shop for dates', 'eLearning + practical']" />
+                  <CardListItem title="Divemaster" image="/images/fpo/destinations-beginner.png"
+                    :items="['2-3 weeks', 'Contact shop for dates', 'Intensive program']" />
+                  <CardListItem title="Specialty Courses" image="/images/fpo/destinations-beginner.png"
+                    :items="['1-2 days', 'Contact shop for dates', 'Various specialties']" />
+                  <CardListItem title="Instructor Course" image="/images/fpo/destinations-beginner.png"
+                    :items="['2-3 weeks', 'Contact shop for dates', 'Professional level']" />
                 </div>
               </div>
               <!-- More Information Tab -->
@@ -255,10 +255,10 @@
               <div v-if="activeTab === 'nearby'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
                 <section class="flex flex-col gap-4">
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <CardDiveShop image="/images/fpo/destinations-beginner.png" title="Dive Bandos – Bandos Maldives"
-                      location="Bandos Island, Maldives" />
-                    <CardDiveShop image="/images/fpo/destinations-beginner.png" title="Dive Bandos – Bandos Maldives"
-                      location="Bandos Island, Maldives" />
+                    <CardListItem image="/images/fpo/destinations-beginner.png" title="Dive Bandos – Bandos Maldives"
+                      :items="['Bandos Island, Maldives']" />
+                    <CardListItem image="/images/fpo/destinations-beginner.png" title="Dive Bandos – Bandos Maldives"
+                      :items="['Bandos Island, Maldives']" />
                   </div>
                 </section>
               </div>
@@ -281,14 +281,14 @@
                 <!-- Contact Information -->
                 <div class="flex flex-col gap-2 border border-zinc-300 dark:border-zinc-700 rounded-md order-1 lg:order-2">
                   <ul class="flex flex-row lg:flex-col justify-between lg:justify-start divide-x lg:divide-y divide-zinc-300 dark:divide-zinc-700">
-                    <li class="p-4 w-full flex justify-center" v-if="contactInfo?.address">
+                    <li class="p-4 w-full flex justify-center lg:justify-start" v-if="contactInfo?.address">
                       <a :href="`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contactInfo.address)}`"
-                        target="_blank" class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
+                        target="_blank" class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 overflow-hidden">
                         <MapPin class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
-                        <span class="hidden lg:block truncate overflow-auto">{{ contactInfo.address }}</span>
+                        <span class="hidden lg:block truncate">{{ contactInfo.address }}</span>
                       </a>
                     </li>
-                    <li class="p-4 w-full flex justify-center">
+                    <li class="p-4 w-full flex justify-center lg:justify-start">
                       <div v-if="contactInfo?.phone" class="flex flex-row gap-4 items-center">
                         <a :href="`tel:${contactInfo.phone}`" class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
                           <Phone class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
@@ -300,7 +300,7 @@
                         <span class="hidden lg:block text-zinc-400 dark:text-zinc-500">No Phone</span>
                       </div>
                     </li>
-                    <li class="p-4 w-full flex justify-center">
+                    <li class="p-4 w-full flex justify-center lg:justify-start">
                       <div v-if="contactInfo?.email" class="flex flex-row gap-4 items-center">
                         <a :href="`mailto:${contactInfo.email}`" class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
                           <Mail class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
@@ -312,7 +312,7 @@
                         <span class="hidden lg:block text-zinc-400 dark:text-zinc-500">No Email</span>
                       </div>
                     </li>
-                    <li class="p-4 w-full flex justify-center" v-if="contactInfo?.website">
+                    <li class="p-4 w-full flex justify-center lg:justify-start" v-if="contactInfo?.website">
                       <a :href="contactInfo.website" target="_blank" class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
                         <Globe class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
                         <span class="hidden lg:block truncate">{{ contactInfo.website }}</span>
@@ -333,9 +333,7 @@
 
 <script setup>
 import { MapPin, Phone, Mail, Globe, ChevronLeft, Menu } from 'lucide-vue-next'
-import CardCarouselItem from '~/components/CardCarouselItem.vue'
 import CardListItem from '~/components/CardListItem.vue'
-import CardDiveShop from '~/components/CardDiveShop.vue'
 import CardReview from '~/components/CardReview.vue'
 import { ref, computed } from 'vue'
 import { useDrawer } from '~/composables/useDrawer'
