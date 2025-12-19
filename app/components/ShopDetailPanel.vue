@@ -62,7 +62,7 @@
           <div class="flex flex-col gap-4 h-full w-full p-0">
             <!-- Details Tab -->
             <div v-if="activeTab === 'details'" class="flex flex-col gap-4 h-full">
-              <section class="flex flex-col gap-4 p-2">
+              <div class="flex flex-col gap-4">
                 <div class="flex flex-col gap-2">
                   <section class="flex flex-col gap-8 p-2 *:w-full">
                     <div class="flex flex-col gap-2">
@@ -113,29 +113,29 @@
                     </div>
                   </section>
                 </div>
-              </section>
+              </div>
             </div>
             <!-- Dive Destinations Tab -->
-            <div v-if="activeTab === 'destinations'" class="flex flex-col gap-2 p-2 h-full">
+            <div v-if="activeTab === 'destinations'" class="flex flex-col gap-2 h-full">
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                <CardListItem title="Beginner / Training Dives" image="/images/fpo/destinations-beginner.png"
+                <CardInfo title="Beginner / Training Dives" image="/images/fpo/destinations-beginner.png"
                   :items="['House Reef', 'Lagoon around Bandos']" />
-                <CardListItem title="Shark & Ray / Big Pelagic Dives" image="/images/fpo/destinations-beginner.png"
+                <CardInfo title="Shark & Ray / Big Pelagic Dives" image="/images/fpo/destinations-beginner.png"
                   :items="['House Reef', 'Lankan Reef', 'Banana Reef']" />
-                <CardListItem title="Wreck Diving" image="/images/fpo/destinations-beginner.png"
+                <CardInfo title="Wreck Diving" image="/images/fpo/destinations-beginner.png"
                   :items="['Victory Wreck', 'Other small wrecks']" />
-                <CardListItem title="Deep / Advanced Dives (20-30m)" image="/images/fpo/destinations-beginner.png"
+                <CardInfo title="Deep / Advanced Dives (20-30m)" image="/images/fpo/destinations-beginner.png"
                   :items="['Bandos Rock', 'Banana Reef', 'Victory Wreck']" />
-                <CardListItem title="Current / Drift Dives" image="/images/fpo/destinations-beginner.png"
+                <CardInfo title="Current / Drift Dives" image="/images/fpo/destinations-beginner.png"
                   :items="['Banana Reef', 'Bandos Rock', 'Other thilas']" />
-                <CardListItem title="Night Diving" image="/images/fpo/destinations-beginner.png"
+                <CardInfo title="Night Diving" image="/images/fpo/destinations-beginner.png"
                   :items="['House Reef']" />
-                <CardListItem title="Overhangs / Swim-Throughs" image="/images/fpo/destinations-beginner.png"
+                <CardInfo title="Overhangs / Swim-Throughs" image="/images/fpo/destinations-beginner.png"
                   :items="['Banana Reef', 'Other nearby reefs']" />
               </div>
             </div>
             <!-- Courses Tab -->
-            <div v-if="activeTab === 'courses'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
+            <div v-if="activeTab === 'courses'" class="flex flex-col gap-4 h-full overflow-y-auto">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <CardCarouselItem title="Open Water Diver" image="/images/fpo/destinations-beginner.png"
                   :details="['5-10 hrs', 'Contact shop for dates', 'eLearning only']" />
@@ -152,7 +152,7 @@
               </div>
             </div>
             <!-- More Information Tab -->
-            <div v-if="activeTab === 'information'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
+            <div v-if="activeTab === 'information'" class="flex flex-col gap-4 h-full overflow-y-auto">
               <div class="flex flex-col gap-6 p-6 border border-zinc-300 dark:border-zinc-700 rounded-md *:w-full">
                 <div class="flex flex-col gap-6">
                   <div class="flex flex-col gap-2">
@@ -201,8 +201,8 @@
               </div>
             </div>
             <!-- Reviews Tab -->
-            <div v-if="activeTab === 'reviews'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
-              <section class="flex flex-col gap-0">
+            <div v-if="activeTab === 'reviews'" class="flex flex-col gap-4 h-full overflow-y-auto">
+              <div class="flex flex-col gap-0">
                 <div class="relative">
                   <!-- Review Items -->
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full relative">
@@ -237,18 +237,18 @@
                       review-text="Really good dive operation with excellent safety standards. The boat was clean and well-maintained, and the dive master was very experienced. The marine life was incredible - saw sharks, turtles, and schools of tropical fish. Highly recommended!" />
                   </div>
                 </div>
-              </section>
+              </div>
             </div>
             <!-- Nearby Dive Shops Tab -->
-            <div v-if="activeTab === 'nearby'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
-              <section class="flex flex-col gap-4">
+            <div v-if="activeTab === 'nearby'" class="flex flex-col gap-4 h-full overflow-y-auto">
+              <div class="flex flex-col gap-4">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <CardDiveShop image="/images/fpo/destinations-beginner.png" title="Dive Bandos – Bandos Maldives"
                     location="Bandos Island, Maldives" />
                   <CardDiveShop image="/images/fpo/destinations-beginner.png" title="Dive Bandos – Bandos Maldives"
                     location="Bandos Island, Maldives" />
                 </div>
-              </section>
+              </div>
             </div>
           </div>
         </div>
@@ -309,7 +309,7 @@
 <script setup>
 import { MapPin, Phone, Mail, Globe, X } from 'lucide-vue-next'
 import CardCarouselItem from '~/components/CardCarouselItem.vue'
-import CardListItem from '~/components/CardListItem.vue'
+import CardInfo from '~/components/CardInfo.vue'
 import CardDiveShop from '~/components/CardDiveShop.vue'
 import CardReview from '~/components/CardReview.vue'
 import { ref, computed } from 'vue'

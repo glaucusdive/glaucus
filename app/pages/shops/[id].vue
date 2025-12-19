@@ -74,102 +74,77 @@
             <div class="flex flex-col gap-4 h-full w-full p-0">
               <!-- Details Tab -->
               <div v-if="activeTab === 'details'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
-                <section class="flex flex-col gap-4 p-2">
+                <div class="flex flex-col gap-4">
                   <div class="flex flex-col gap-2">
-                    <section class="flex flex-col 2xl:flex-row gap-8 p-2 *:w-full">
-                      <div class="flex flex-col gap-2">
-                        <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">Hours</h2>
-                        <ul class="text-base space-y-1 text-zinc-900 dark:text-white">
-                          <template v-if="displayHours && displayHours.length > 0">
-                            <li v-for="day in displayHours" :key="day.name">
-                              {{ day.label }}: {{ day.hours }}
-                            </li>
-                          </template>
-                          <li v-else class="text-zinc-500 dark:text-zinc-400 italic">
-                            Hours not available
-                          </li>
-                        </ul>
-                      </div>
-                      <div class="flex flex-col gap-2">
-                        <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Languages</h3>
-                        <div class="text-base text-zinc-900 dark:text-white">
-                          <template v-if="displayLanguages && displayLanguages.length > 0">
-                            {{ displayLanguages.join(', ') }}
-                          </template>
-                          <span v-else class="text-zinc-500 dark:text-zinc-400 italic">
-                            Languages not available
-                          </span>
-                        </div>
-                      </div>
-                      <div class="flex flex-col gap-2 justify-start">
-                        <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">Details</h2>
-                        <div class="text-base text-zinc-900 dark:text-white">
-                          <div v-if="paragraphs.length > 0">
-                            <div v-if="!showFullDetails">
-                              {{ firstParagraph }}
-                            </div>
-                            <div v-else>
-                              <p v-for="(paragraph, index) in paragraphs" :key="index" class="mb-4 last:mb-0">
-                                {{ paragraph }}
-                              </p>
-                            </div>
-                            <button v-if="remainingParagraphs.length > 0" @click="showFullDetails = !showFullDetails"
-                              class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline mt-2 text-sm cursor-pointer">
-                              {{ showFullDetails ? 'Read less' : 'Read more' }}
-                            </button>
+                    <div class="flex flex-col 2xl:flex-row gap-2">
+                      <CardInfo title="Hours" :items="displayHours" empty-message="Hours not available" />
+                      <CardInfo title="Languages" :items="displayLanguages || []" display-mode="text" empty-message="Languages not available" />
+                      <CardInfo title="Details" empty-message="No description available for this dive shop.">
+                        <div v-if="paragraphs.length > 0">
+                          <div v-if="!showFullDetails">
+                            {{ firstParagraph }}
                           </div>
-                          <div v-else class="text-zinc-500 dark:text-zinc-400 italic">
-                            No description available for this dive shop.
+                          <div v-else>
+                            <p v-for="(paragraph, index) in paragraphs" :key="index" class="mb-4 last:mb-0">
+                              {{ paragraph }}
+                            </p>
                           </div>
+                          <button v-if="remainingParagraphs.length > 0" @click="showFullDetails = !showFullDetails"
+                            class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline mt-2 text-sm cursor-pointer">
+                            {{ showFullDetails ? 'Read less' : 'Read more' }}
+                          </button>
                         </div>
-                      </div>
-                    </section>
+                        <span v-else class="text-zinc-500 dark:text-zinc-400 italic">
+                          No description available for this dive shop.
+                        </span>
+                      </CardInfo>
+                    </div>
                   </div>
-                </section>
+                </div>
               </div>
               <!-- Dive Destinations Tab -->
               <div v-if="activeTab === 'destinations'" class="flex flex-col gap-2 p-2 h-full">
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1 gap-2">
-                  <CardListItem title="Beginner / Training Dives" image="/images/fpo/destinations-beginner.png"
+                  <CardInfo title="Beginner / Training Dives" image="/images/fpo/destinations-beginner.png"
                     :items="['House Reef', 'Lagoon around Bandos']" />
-                  <CardListItem title="Shark & Ray / Big Pelagic Dives" image="/images/fpo/destinations-beginner.png"
+                  <CardInfo title="Shark & Ray / Big Pelagic Dives" image="/images/fpo/destinations-beginner.png"
                     :items="['House Reef', 'Lankan Reef', 'Banana Reef']" />
-                  <CardListItem title="Wreck Diving" image="/images/fpo/destinations-beginner.png"
+                  <CardInfo title="Wreck Diving" image="/images/fpo/destinations-beginner.png"
                     :items="['Victory Wreck', 'Other small wrecks']" />
-                  <CardListItem title="Deep / Advanced Dives (20-30m)" image="/images/fpo/destinations-beginner.png"
+                  <CardInfo title="Deep / Advanced Dives (20-30m)" image="/images/fpo/destinations-beginner.png"
                     :items="['Bandos Rock', 'Banana Reef', 'Victory Wreck']" />
-                  <CardListItem title="Current / Drift Dives" image="/images/fpo/destinations-beginner.png"
+                  <CardInfo title="Current / Drift Dives" image="/images/fpo/destinations-beginner.png"
                     :items="['Banana Reef', 'Bandos Rock', 'Other thilas']" />
-                  <CardListItem title="Night Diving" image="/images/fpo/destinations-beginner.png"
+                  <CardInfo title="Night Diving" image="/images/fpo/destinations-beginner.png"
                     :items="['House Reef']" />
-                  <CardListItem title="Overhangs / Swim-Throughs" image="/images/fpo/destinations-beginner.png"
+                  <CardInfo title="Overhangs / Swim-Throughs" image="/images/fpo/destinations-beginner.png"
                     :items="['Banana Reef', 'Other nearby reefs']" />
                 </div>
               </div>
               <!-- Courses Tab -->
               <div v-if="activeTab === 'courses'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <CardListItem title="Open Water Diver" image="/images/fpo/destinations-beginner.png"
+                  <CardInfo title="Open Water Diver" image="/images/fpo/destinations-beginner.png"
                     :items="['5-10 hrs', 'Contact shop for dates', 'eLearning only']" />
-                  <CardListItem title="Advanced Open Water" image="/images/fpo/destinations-beginner.png"
+                  <CardInfo title="Advanced Open Water" image="/images/fpo/destinations-beginner.png"
                     :items="['3-5 days', 'Contact shop for dates', 'eLearning + practical']" />
-                  <CardListItem title="Rescue Diver" image="/images/fpo/destinations-beginner.png"
+                  <CardInfo title="Rescue Diver" image="/images/fpo/destinations-beginner.png"
                     :items="['3-4 days', 'Contact shop for dates', 'eLearning + practical']" />
-                  <CardListItem title="Divemaster" image="/images/fpo/destinations-beginner.png"
+                  <CardInfo title="Divemaster" image="/images/fpo/destinations-beginner.png"
                     :items="['2-3 weeks', 'Contact shop for dates', 'Intensive program']" />
-                  <CardListItem title="Specialty Courses" image="/images/fpo/destinations-beginner.png"
+                  <CardInfo title="Specialty Courses" image="/images/fpo/destinations-beginner.png"
                     :items="['1-2 days', 'Contact shop for dates', 'Various specialties']" />
-                  <CardListItem title="Instructor Course" image="/images/fpo/destinations-beginner.png"
+                  <CardInfo title="Instructor Course" image="/images/fpo/destinations-beginner.png"
                     :items="['2-3 weeks', 'Contact shop for dates', 'Professional level']" />
                 </div>
               </div>
               <!-- More Information Tab -->
               <div v-if="activeTab === 'information'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
-                <div class="flex flex-col lg:flex-row gap-6 p-6 border border-zinc-300 dark:border-zinc-700 rounded-md *:w-full">
-                  <div class="flex flex-col gap-6">
+                <div class="flex flex-col lg:flex-row gap-2 rounded-md">
+                  <div class="w-full p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-1">
                     <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Equipment Rental</h3>
-                      <ul class="text-base space-y-1 text-zinc-900 dark:text-white">
+                      <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Equipment Rental</h3>
+                      <ul class="text-sm space-y-1 text-zinc-900 dark:text-zinc-300">
                         <li>BCD</li>
                         <li>Boots</li>
                         <li>Camera</li>
@@ -190,17 +165,19 @@
                       </ul>
                     </div>
                   </div>
-                  <div class="flex flex-col gap-6">
+                  <div class="w-full p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-1">
                     <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Gas Mixture</h3>
-                      <ul class="text-base space-y-1 text-zinc-900 dark:text-white">
+                      <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Gas Mixture</h3>
+                      <ul class="text-sm space-y-1 text-zinc-900 dark:text-zinc-300">
                         <li>Air Fills</li>
                         <li>Nitrox</li>
                       </ul>
                     </div>
+                  </div>
+                  <div class="w-full p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-1">
                     <div class="flex flex-col gap-2">
-                      <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Payment Methods</h3>
-                      <ul class="text-base space-y-1 text-zinc-900 dark:text-white">
+                      <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Payment Methods</h3>
+                      <ul class="text-sm space-y-1 text-zinc-900 dark:text-zinc-300">
                         <li>Bank Transfer</li>
                         <li>VISA</li>
                         <li>Mastercard</li>
@@ -255,9 +232,9 @@
               <div v-if="activeTab === 'nearby'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
                 <section class="flex flex-col gap-4">
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <CardListItem image="/images/fpo/destinations-beginner.png" title="Dive Bandos – Bandos Maldives"
+                    <CardInfo image="/images/fpo/destinations-beginner.png" title="Dive Bandos – Bandos Maldives"
                       :items="['Bandos Island, Maldives']" />
-                    <CardListItem image="/images/fpo/destinations-beginner.png" title="Dive Bandos – Bandos Maldives"
+                    <CardInfo image="/images/fpo/destinations-beginner.png" title="Dive Bandos – Bandos Maldives"
                       :items="['Bandos Island, Maldives']" />
                   </div>
                 </section>
@@ -333,7 +310,7 @@
 
 <script setup>
 import { MapPin, Phone, Mail, Globe, ChevronLeft, Menu } from 'lucide-vue-next'
-import CardListItem from '~/components/CardListItem.vue'
+import CardInfo from '~/components/CardInfo.vue'
 import CardReview from '~/components/CardReview.vue'
 import { ref, computed } from 'vue'
 import { useDrawer } from '~/composables/useDrawer'
