@@ -270,7 +270,7 @@
             <div class="h-full">
               <div class="flex flex-col gap-2">
                 <!-- Book Now Button -->
-                <div class="flex flex-col gap-2 p-6 bg-zinc-100 dark:bg-zinc-800 rounded-md order-2 lg:order-1">
+                <div class="flex flex-col gap-2 lg:p-4 bg-zinc-100 dark:bg-zinc-800 rounded-md order-2 lg:order-1">
                   <h2 class="hidden lg:block text-2xl font-semibold text-zinc-900 dark:text-white">Book Now</h2>
                   <p class="hidden lg:block text-sm text-zinc-600 dark:text-zinc-400">Ready to dive? Click below to start your booking.</p>
                   <button @click="openBookingDrawer"
@@ -279,33 +279,43 @@
                   </button>
                 </div>
                 <!-- Contact Information -->
-                <div class="flex flex-col gap-2 p-6 border border-zinc-300 dark:border-zinc-700 rounded-md order-1 lg:order-2">
-                  <ul class="space-y-2">
-                    <li v-if="contactInfo?.address">
+                <div class="flex flex-col gap-2 border border-zinc-300 dark:border-zinc-700 rounded-md order-1 lg:order-2">
+                  <ul class="flex flex-row lg:flex-col justify-between lg:justify-start divide-x lg:divide-y divide-zinc-300 dark:divide-zinc-700">
+                    <li class="p-4 w-full flex justify-center" v-if="contactInfo?.address">
                       <a :href="`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contactInfo.address)}`"
                         target="_blank" class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
                         <MapPin class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
-                        <span>{{ contactInfo.address }}</span>
+                        <span class="hidden lg:block truncate overflow-auto">{{ contactInfo.address }}</span>
                       </a>
                     </li>
-                    <li>
-                      <div class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white">
+                    <li class="p-4 w-full flex justify-center">
+                      <div v-if="contactInfo?.phone" class="flex flex-row gap-4 items-center">
+                        <a :href="`tel:${contactInfo.phone}`" class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
+                          <Phone class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
+                          <span class="hidden lg:block">{{ contactInfo.phone }}</span>
+                        </a>
+                      </div>
+                      <div v-else class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white">
                         <Phone class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
-                        <span v-if="contactInfo?.phone">{{ contactInfo.phone }}</span>
-                        <span v-else class="text-zinc-400 dark:text-zinc-500">No Phone</span>
+                        <span class="hidden lg:block text-zinc-400 dark:text-zinc-500">No Phone</span>
                       </div>
                     </li>
-                    <li>
-                      <div class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white">
+                    <li class="p-4 w-full flex justify-center">
+                      <div v-if="contactInfo?.email" class="flex flex-row gap-4 items-center">
+                        <a :href="`mailto:${contactInfo.email}`" class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
+                          <Mail class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
+                          <span class="hidden lg:block">{{ contactInfo.email }}</span>
+                        </a>
+                      </div>
+                      <div v-else class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white">
                         <Mail class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
-                        <span v-if="contactInfo?.email">{{ contactInfo.email }}</span>
-                        <span v-else class="text-zinc-400 dark:text-zinc-500">No Email</span>
+                        <span class="hidden lg:block text-zinc-400 dark:text-zinc-500">No Email</span>
                       </div>
                     </li>
-                    <li v-if="contactInfo?.website">
+                    <li class="p-4 w-full flex justify-center" v-if="contactInfo?.website">
                       <a :href="contactInfo.website" target="_blank" class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
                         <Globe class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
-                        <span class="truncate">{{ contactInfo.website }}</span>
+                        <span class="hidden lg:block truncate">{{ contactInfo.website }}</span>
                       </a>
                     </li>
                   </ul>
