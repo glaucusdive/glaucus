@@ -61,7 +61,7 @@
         <div class="w-full flex flex-col grow border-b-0 h-full order-2">
           <div class="flex flex-col gap-4 h-full w-full p-0">
             <!-- Details Tab -->
-            <div v-if="activeTab === 'details'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
+            <div v-if="activeTab === 'details'" class="flex flex-col gap-4 h-full">
               <section class="flex flex-col gap-4 p-2">
                 <div class="flex flex-col gap-2">
                   <section class="flex flex-col gap-8 p-2 *:w-full">
