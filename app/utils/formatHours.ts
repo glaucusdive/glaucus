@@ -1,10 +1,10 @@
 // Convert 24-hour HH:MM to 12-hour format (07:30 → 7:30 AM)
 export const formatTime = (time24: string): string => {
   const [hours, minutes] = time24.split(':')
-  const hour = parseInt(hours)
+  const hour = parseInt(hours || '0', 10)
   const period = hour >= 12 ? 'PM' : 'AM'
   const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
-  return `${displayHour}:${minutes} ${period}`
+  return `${displayHour}:${minutes || '00'} ${period}`
 }
 
 // Format hours object for display

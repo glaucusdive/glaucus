@@ -34,7 +34,7 @@ import DiveShopDetail from '~/components/DiveShopDetail.vue'
 // Get the route parameter
 const route = useRoute()
 const router = useRouter()
-const shopId = route.params.id
+const shopId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
 
 // Fetch dive shop data for page title and loading state
 const { client } = useSupabase()
@@ -69,7 +69,7 @@ const { data: shopData, pending, error } = await useAsyncData(`diveshop-${shopId
     return data
   } catch (err) {
     console.error('Error fetching dive shop:', err)
-    if (err.statusCode) {
+    if (err && typeof err === 'object' && 'statusCode' in err) {
       throw err
     }
     throw createError({

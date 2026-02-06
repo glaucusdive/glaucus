@@ -355,7 +355,7 @@ const { data: shopData, pending, error } = await useAsyncData(`diveshop-${props.
     return data
   } catch (err) {
     console.error('Error fetching dive shop:', err)
-    if (err.statusCode) {
+    if (err && typeof err === 'object' && 'statusCode' in err) {
       throw err
     }
     throw createError({
