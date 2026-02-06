@@ -46,6 +46,7 @@ Rules:
 - Keep your MESSAGE SHORT and concise (1-2 sentences max)
 - Do NOT ask multiple questions - keep responses simple
 - Let the conversation flow naturally without overwhelming the user
+- IMPORTANT: If the user says "any", "doesn't matter", "no preference", "all types", or similar phrases indicating no preference for a topic, do NOT set filters for that topic. Treat it as "no filter needed" for that aspect.
 
 Examples:
 
@@ -59,7 +60,11 @@ MESSAGE: I'll find highly-rated dive shops for you.
 
 User: "Shops that speak English and Spanish"
 FILTERS: {"country": null, "locale": null, "region": null, "minRating": null, "languages": ["English", "Spanish"]}
-MESSAGE: Looking for shops where staff speaks English and Spanish.`
+MESSAGE: Looking for shops where staff speaks English and Spanish.
+
+User: "any type of diving"
+FILTERS: {"country": null, "locale": null, "region": null, "minRating": null, "languages": null}
+MESSAGE: Got it! I'll search for all dive shops without filtering by activity type.`
 
 export default defineEventHandler(async (event) => {
   try {
@@ -235,75 +240,98 @@ Examples:
         followUpMessage = 'Would you like me to broaden the search?'
       }
     } else if (resultCount > 5) {
-      shouldAskFollowUp = true
-      console.log(`[AI Search] Too many results (${resultCount}), asking follow-up question...`)
-      
       // Analyze conversation to see what's already been discussed
       const conversationContext = history.map(h => h.content).join(' ')
-      console.log(`[AI Search] Conversation context for follow-up:`, conversationContext.substring(0, 200) + '...')
       
-      // Build a prompt to ask the AI for a follow-up question
-      const followUpPrompt = `The search returned ${resultCount} dive shops, which is too many to show (we want to show 5 or fewer). 
+      // Check if user said "any" or similar for any topic
+      const noPreferencePattern = /\b(any|all|doesn't matter|don't care|no preference|no matter|whatever|either)\b/i
+      const userSaidNoPreference = noPreferencePattern.test(message) || noPreferencePattern.test(conversationContext)
       
+      // Check if the last assistant message was asking a follow-up question
+      const lastAssistantMessage = history.filter(h => h.role === 'assistant').pop()?.content || ''
+      const wasAskingQuestion = lastAssistantMessage.includes('?') && (
+        lastAssistantMessage.toLowerCase().includes('what') ||
+        lastAssistantMessage.toLowerCase().includes('which') ||
+        lastAssistantMessage.toLowerCase().includes('where') ||
+        lastAssistantMessage.toLowerCase().includes('would you')
+      )
+      
+      // If user said "any" in response to a follow-up question, just show results
+      if (userSaidNoPreference && wasAskingQuestion) {
+        console.log(`[AI Search] User said "any" in response to follow-up question, showing results instead of asking again`)
+        shouldAskFollowUp = false
+        // Don't set followUpMessage - we'll show results
+      } else {
+        shouldAskFollowUp = true
+        console.log(`[AI Search] Too many results (${resultCount}), asking follow-up question...`)
+        console.log(`[AI Search] Conversation context for follow-up:`, conversationContext.substring(0, 200) + '...')
+      
+        
+        // Build a prompt to ask the AI for a follow-up question
+        const followUpPrompt = `The search returned ${resultCount} dive shops, which is too many to show (we want to show 5 or fewer). 
+        
 Current filters applied: ${JSON.stringify(filters)}
 
 Previous conversation: ${conversationContext}
 
+${userSaidNoPreference ? `IMPORTANT: The user indicated they have no preference for a previous question (they said "any", "doesn't matter", etc.). This means we should NOT ask about that topic again. Move on to a DIFFERENT filter.` : ''}
+
 Ask the user ONE specific follow-up question (just one!) that would help narrow down their options the most. 
 
-IMPORTANT: Look at what has already been discussed in the conversation. Do NOT ask about the same thing again. Pick something DIFFERENT that hasn't been covered yet.
+IMPORTANT: Look at what has already been discussed in the conversation. Do NOT ask about the same thing again. ${userSaidNoPreference ? 'Since the user said they have no preference, skip that topic entirely and ask about something completely different.' : 'Pick something DIFFERENT that hasn\'t been covered yet.'}
 
 Choose from these options (pick what's most relevant and NOT already discussed):
-- Specific dive activities (wreck diving, reef diving, night diving, etc.)
-- Experience level (beginner, advanced, certification courses)
+- More specific location (city/town within the country/region)
 - Minimum quality/rating preference (e.g., "Would you like shops with ratings above 4.5?")
-- Language preferences
-- More specific location within the area
+- Language preferences (e.g., "Do you need shops that speak English?")
 - Budget or shop size preference
 
+${userSaidNoPreference ? 'Since the user has no preference on activities/courses, focus on location, rating, or languages instead.' : ''}
+
 Keep it SHORT and conversational. Ask ONLY ONE question. Do not list multiple options or questions.`
-      
-      try {
-        const followUpResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openrouterApiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://glaucus.app',
-            'X-Title': 'Glaucus Dive Shop Search'
-          },
-          body: JSON.stringify({
-            model: 'openai/gpt-5-mini',
-            messages: [
-              { role: 'system', content: 'You are a helpful assistant that asks ONE short, specific question at a time. Be brief and friendly.' },
-              { role: 'user', content: followUpPrompt }
-            ],
-            temperature: 0.6,
-            max_tokens: 100
-          })
-        })
         
-        if (followUpResponse.ok) {
-          const followUpData = await followUpResponse.json()
-          console.log(`[AI Search] Follow-up API response:`, JSON.stringify(followUpData, null, 2))
-          followUpMessage = followUpData.choices[0]?.message?.content || ''
-          console.log(`[AI Search] Follow-up question generated:`, followUpMessage)
+        try {
+          const followUpResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openrouterApiKey}`,
+              'Content-Type': 'application/json',
+              'HTTP-Referer': 'https://glaucus.app',
+              'X-Title': 'Glaucus Dive Shop Search'
+            },
+            body: JSON.stringify({
+              model: 'openai/gpt-5-mini',
+              messages: [
+                { role: 'system', content: 'You are a helpful assistant that asks ONE short, specific question at a time. Be brief and friendly.' },
+                { role: 'user', content: followUpPrompt }
+              ],
+              temperature: 0.6,
+              max_tokens: 100
+            })
+          })
           
-          // If no follow-up message was generated, use a default
-          if (!followUpMessage || followUpMessage.trim() === '') {
-            console.warn('[AI Search] Follow-up question was empty, using fallback')
-            followUpMessage = 'What type of diving are you most interested in (e.g., wreck diving, reef diving, beginner courses)?'
+          if (followUpResponse.ok) {
+            const followUpData = await followUpResponse.json()
+            console.log(`[AI Search] Follow-up API response:`, JSON.stringify(followUpData, null, 2))
+            followUpMessage = followUpData.choices[0]?.message?.content || ''
+            console.log(`[AI Search] Follow-up question generated:`, followUpMessage)
+            
+            // If no follow-up message was generated, use a default
+            if (!followUpMessage || followUpMessage.trim() === '') {
+              console.warn('[AI Search] Follow-up question was empty, using fallback')
+              followUpMessage = 'What type of diving are you most interested in (e.g., wreck diving, reef diving, beginner courses)?'
+            }
+          } else {
+            const errorText = await followUpResponse.text()
+            console.error(`[AI Search] Follow-up API error (${followUpResponse.status}):`, errorText)
+            // Use a fallback question
+            followUpMessage = 'What type of diving are you most interested in?'
           }
-        } else {
-          const errorText = await followUpResponse.text()
-          console.error(`[AI Search] Follow-up API error (${followUpResponse.status}):`, errorText)
+        } catch (followUpError) {
+          console.error('[AI Search] Error generating follow-up question:', followUpError)
           // Use a fallback question
           followUpMessage = 'What type of diving are you most interested in?'
         }
-      } catch (followUpError) {
-        console.error('[AI Search] Error generating follow-up question:', followUpError)
-        // Use a fallback question
-        followUpMessage = 'What type of diving are you most interested in?'
       }
     } else {
       console.log(`[AI Search] Result count (${resultCount}) is within limit, showing results`)
@@ -326,9 +354,14 @@ Keep it SHORT and conversational. Ask ONLY ONE question. Do not list multiple op
       responseShops = []
       finalMessage = `I found ${resultCount} dive shops that match your criteria. ${followUpMessage}`
     } else {
-      // Perfect amount (3-5 results) - show them
+      // Perfect amount (3-5 results) OR user said "any" to a follow-up - show them
       responseShops = (shops || []).slice(0, 5)
-      finalMessage = conversationalMessage
+      if (resultCount > 5) {
+        // User said "any" - show results with a message
+        finalMessage = `I found ${resultCount} dive shops. Here are the top results:`
+      } else {
+        finalMessage = conversationalMessage
+      }
     }
     
     console.log(`[AI Search] Sending response - hasMoreResults: ${shouldAskFollowUp}, shops count: ${responseShops.length}`)
