@@ -243,28 +243,20 @@
                       <span class="hidden cq:lg:block truncate">{{ contactInfo.address }}</span>
                     </a>
                   </li>
-                  <li class="w-full flex justify-center cq:lg:justify-start">
-                    <div v-if="contactInfo?.phone" class="w-full justify-center flex flex-row gap-4 items-center">
+                  <li class="w-full flex justify-center cq:lg:justify-start" v-if="contactInfo?.phone">
+                    <div class="w-full justify-center flex flex-row gap-4 items-center">
                       <a :href="`tel:${contactInfo.phone}`" class="p-4 flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
                         <Phone class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
                         <span class="hidden cq:lg:block">{{ contactInfo.phone }}</span>
                       </a>
                     </div>
-                    <div v-else class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white">
-                      <Phone class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
-                      <span class="hidden cq:lg:block text-zinc-400 dark:text-zinc-500">No Phone</span>
-                    </div>
                   </li>
-                  <li class="w-full flex justify-center cq:lg:justify-start">
-                    <div v-if="contactInfo?.email" class="flex flex-row gap-4 items-center">
+                  <li class="w-full flex justify-center cq:lg:justify-start" v-if="contactInfo?.email">
+                    <div class="flex flex-row gap-4 items-center">
                       <a :href="`mailto:${contactInfo.email}`" class="p-4 flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
                         <Mail class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
                         <span class="hidden cq:lg:block">{{ contactInfo.email }}</span>
                       </a>
-                    </div>
-                    <div v-else class="flex flex-row gap-4 items-center text-zinc-900 dark:text-white">
-                      <Mail class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
-                      <span class="hidden cq:lg:block text-zinc-400 dark:text-zinc-500">No Email</span>
                     </div>
                   </li>
                   <li class="w-full flex justify-center cq:lg:justify-start" v-if="contactInfo?.website">
