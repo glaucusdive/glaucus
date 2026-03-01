@@ -85,6 +85,140 @@ export default defineEventHandler(async (event) => {
       throw new Error('OpenRouter API key not configured')
     }
     
+    // Check if user is asking for more results (pagination)
+    const paginationPattern = /\b(next|more|show more|next 5|next results|show next|load more|another|additional)\s*(5|results?|shops?|ones?)?\b/i
+    const isPaginationRequest = paginationPattern.test(message)
+    
+    if (isPaginationRequest && history && history.length > 0) {
+      // Find the last assistant message that had shops and filters
+      // We need to reconstruct the filters from the conversation history
+      // Look for the last message that had shops shown
+      let lastFilters: SearchFilters = {}
+      let lastShopsCount = 0
+      
+      // Try to extract filters from the last search by looking at conversation context
+      // We'll need to re-run the AI to get filters, but skip the question-asking logic
+      const conversationContext = history.map(h => h.content).join(' ')
+      
+      // Quick check: if we can find a previous search context, use it
+      // Otherwise, we'll need to extract filters from the conversation
+      console.log(`[AI Search] Pagination request detected: "${message}"`)
+      
+      // Extract filters from conversation history using AI (but don't ask questions)
+      const filterExtractionPrompt = `Extract search filters from this conversation history. The user is asking for more results, so just return the filters that were used in the previous search.
+
+Conversation history: ${conversationContext}
+
+Return ONLY the filters in this exact format:
+FILTERS: {
+  "country": "string or null",
+  "locale": "string or null", 
+  "region": "string or null",
+  "minRating": number or null,
+  "languages": ["array", "of", "languages"] or null
+}
+
+Do not include a MESSAGE. Just return the FILTERS.`
+      
+      try {
+        const filterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openrouterApiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://glaucus.app',
+            'X-Title': 'Glaucus Dive Shop Search'
+          },
+          body: JSON.stringify({
+            model: 'openai/gpt-5-mini',
+            messages: [
+              { role: 'system', content: 'You extract search filters from conversations. Return only FILTERS in the specified format.' },
+              { role: 'user', content: filterExtractionPrompt }
+            ],
+            temperature: 0.3,
+            max_tokens: 200
+          })
+        })
+        
+        if (filterResponse.ok) {
+          const filterData = await filterResponse.json()
+          const filterMessage = filterData.choices[0]?.message?.content || ''
+          const filtersMatch = filterMessage.match(/FILTERS:\s*(\{[^}]+\})/s)
+          
+          if (filtersMatch) {
+            lastFilters = JSON.parse(filtersMatch[1])
+            console.log(`[AI Search] Extracted filters for pagination:`, lastFilters)
+            
+            // Query with same filters
+            const query = buildDiveShopQuery(supabaseUrl, supabaseKey, lastFilters)
+            const { data: shops, error: dbError } = await query
+            
+            if (dbError) {
+              console.error('Database error during pagination:', dbError)
+              throw new Error('Failed to fetch more results')
+            }
+            
+            const resultCount = shops?.length || 0
+            
+            // Count how many shops have been shown already
+            // Count all assistant messages that showed results (each shows 5)
+            // Messages that show results typically say "Here are" or "top results"
+            // Messages that ask questions say "What type" or "Would you" and end with "?"
+            let alreadyShown = 0
+            for (let i = 0; i < history.length; i++) {
+              const msg = history[i]
+              if (msg.role === 'assistant') {
+                // Check if this message showed shops/results
+                // Pattern: "Here are" or "top results" and NOT asking a question (no "What" or "Would you")
+                const hasResultsPhrase = msg.content.includes('Here are') || 
+                                        msg.content.includes('top results') ||
+                                        msg.content.includes('Here are the')
+                const isAskingQuestion = msg.content.includes('What type') ||
+                                         msg.content.includes('Would you') ||
+                                         (msg.content.includes('?') && msg.content.trim().endsWith('?'))
+                
+                if (hasResultsPhrase && !isAskingQuestion) {
+                  alreadyShown += 5
+                  console.log(`[AI Search] Found result message at index ${i}: "${msg.content.substring(0, 50)}...", total shown: ${alreadyShown}`)
+                }
+              }
+            }
+            
+            console.log(`[AI Search] Pagination: already shown ${alreadyShown} shops, total results: ${resultCount}`)
+            
+            // Get next 5 shops (skip the ones already shown)
+            const nextShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
+            const remaining = Math.max(0, resultCount - alreadyShown - nextShops.length)
+            
+            if (nextShops.length > 0) {
+              return {
+                success: true,
+                message: remaining > 0 
+                  ? `Here are the next ${nextShops.length} results. ${remaining} more available.`
+                  : `Here are the next ${nextShops.length} results.`,
+                shops: nextShops,
+                totalResults: resultCount,
+                hasMoreResults: remaining > 0,
+                filters: lastFilters
+              }
+            } else {
+              return {
+                success: true,
+                message: 'No more results available.',
+                shops: [],
+                totalResults: resultCount,
+                hasMoreResults: false,
+                filters: lastFilters
+              }
+            }
+          }
+        }
+      } catch (paginationError) {
+        console.error('[AI Search] Error handling pagination:', paginationError)
+        // Fall through to normal processing
+      }
+    }
+    
     // Build conversation history for the AI
     const messages = [
       { role: 'system', content: SYSTEM_PROMPT },
