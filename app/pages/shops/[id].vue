@@ -45,7 +45,7 @@ const { data: shopData, pending, error } = await useAsyncData(`diveshop-${shopId
     
     const { data, error: supabaseError } = await client
       .from('diveshops')
-      .select('*')
+      .select('*, country:countries(name), region:regions(name)')
       .eq('id', shopId)
       .single()
 

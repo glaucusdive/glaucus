@@ -1,0 +1,45 @@
+Agency,Level,Ranking
+ANMP,"Up to 12m, always under instructor / guide",0
+ANMP,"Up to 20 m, in a group with instructor",1
+ANMP,"Up to 40 m, with instructor/guide",2
+ANMP,"Autonomous to 20 m (with buddy), supervised deeper up to 40 m",3
+ANMP,Autonomous to 20 m; supervised to 40 m,4
+ANMP,Autonomous to 40 m,5
+ANMP,Supervised to 60 m,6
+ANMP,Autonomous (or near-autonomous) to 60 m,7
+ANMP,Up to 60 m (depending) / Leadership level,8
+BSAC,Beginner,2
+BSAC,Intermediate,3
+BSAC,Rescue,6
+BSAC,Professional,7
+BSAC,Intro,0
+CMAS,Beginner,2
+CMAS,Intermediate,3
+CMAS,Rescue,6
+CMAS,Intro,0
+GUE,Technical,5
+NAUI,Beginner,2
+NAUI,Intermediate,3
+NAUI,Rescue,6
+NAUI,Professional,7
+NAUI,Intro,0
+PADI,Beginner,2
+PADI,Intermediate,3
+PADI,Rescue,6
+PADI,Specialty,4
+PADI,Professional,7
+PADI,Technical,5
+PADI,Intro,0
+PADI,Junior,1
+RAID,Beginner,2
+RAID,Intermediate,3
+RAID,Technical,5
+SDI,Beginner,2
+SSI,Beginner,2
+SSI,Intermediate,3
+SSI,Rescue,6
+SSI,Specialty,4
+SSI,Professional,7
+SSI,Technical,5
+SSI,Junior,1
+TDI,Technical,5

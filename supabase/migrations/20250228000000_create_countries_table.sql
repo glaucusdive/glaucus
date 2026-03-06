@@ -15,12 +15,16 @@ CREATE TABLE IF NOT EXISTS regions (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS update_regions_updated_at ON regions;
 CREATE TRIGGER update_regions_updated_at
     BEFORE UPDATE ON regions
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
 ALTER TABLE regions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read access" ON regions;
+DROP POLICY IF EXISTS "Allow authenticated users to insert" ON regions;
+DROP POLICY IF EXISTS "Allow authenticated users to update" ON regions;
 CREATE POLICY "Allow public read access" ON regions FOR SELECT USING (true);
 CREATE POLICY "Allow authenticated users to insert" ON regions FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated users to update" ON regions FOR UPDATE USING (auth.role() = 'authenticated');
@@ -39,6 +43,7 @@ CREATE TABLE IF NOT EXISTS countries (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS update_countries_updated_at ON countries;
 CREATE TRIGGER update_countries_updated_at
     BEFORE UPDATE ON countries
     FOR EACH ROW
@@ -47,6 +52,9 @@ CREATE TRIGGER update_countries_updated_at
 -- Enable Row Level Security
 ALTER TABLE countries ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow public read access" ON countries;
+DROP POLICY IF EXISTS "Allow authenticated users to insert" ON countries;
+DROP POLICY IF EXISTS "Allow authenticated users to update" ON countries;
 CREATE POLICY "Allow public read access" ON countries
     FOR SELECT USING (true);
 

@@ -22,7 +22,7 @@
     <div class="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
       <MapPin class="w-4 h-4 shrink-0 mt-0.5" />
       <div class="flex flex-col">
-        <span class="font-medium">{{ shop.locale }}, {{ shop.country }}</span>
+        <span class="font-medium">{{ [shop.locale, shop.country?.name ?? shop.country].filter(Boolean).join(', ') }}</span>
         <span v-if="shop.street_address" class="text-zinc-50 dark:text-zinc-400">{{ shop.street_address }}</span>
       </div>
     </div>

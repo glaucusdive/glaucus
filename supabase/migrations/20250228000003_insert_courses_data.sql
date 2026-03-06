@@ -1,0 +1,133 @@
+-- Insert agencies, course_levels (from Courses Table.csv), then courses (from Courses.csv)
+
+-- 1. Insert agencies
+INSERT INTO agencies (name) VALUES
+  ('ANMP'),
+  ('BSAC'),
+  ('CMAS'),
+  ('GUE'),
+  ('NAUI'),
+  ('PADI'),
+  ('RAID'),
+  ('SDI'),
+  ('SSI'),
+  ('TDI')
+ON CONFLICT (name) DO NOTHING;
+
+-- 2. Insert course_levels (agency_id, name, ranking)
+INSERT INTO course_levels (agency_id, name, ranking)
+SELECT a.id, v.name, v.ranking::integer
+FROM (VALUES
+  ('ANMP', 'Up to 12m, always under instructor / guide', 0),
+  ('ANMP', 'Up to 20 m, in a group with instructor', 1),
+  ('ANMP', 'Up to 40 m, with instructor/guide', 2),
+  ('ANMP', 'Autonomous to 20 m (with buddy), supervised deeper up to 40 m', 3),
+  ('ANMP', 'Autonomous to 20 m; supervised to 40 m', 4),
+  ('ANMP', 'Autonomous to 40 m', 5),
+  ('ANMP', 'Supervised to 60 m', 6),
+  ('ANMP', 'Autonomous (or near-autonomous) to 60 m', 7),
+  ('ANMP', 'Up to 60 m (depending) / Leadership level', 8),
+  ('BSAC', 'Beginner', 2),
+  ('BSAC', 'Intermediate', 3),
+  ('BSAC', 'Rescue', 6),
+  ('BSAC', 'Professional', 7),
+  ('BSAC', 'Intro', 0),
+  ('CMAS', 'Beginner', 2),
+  ('CMAS', 'Intermediate', 3),
+  ('CMAS', 'Rescue', 6),
+  ('CMAS', 'Intro', 0),
+  ('GUE', 'Technical', 5),
+  ('NAUI', 'Beginner', 2),
+  ('NAUI', 'Intermediate', 3),
+  ('NAUI', 'Rescue', 6),
+  ('NAUI', 'Professional', 7),
+  ('NAUI', 'Intro', 0),
+  ('PADI', 'Beginner', 2),
+  ('PADI', 'Intermediate', 3),
+  ('PADI', 'Rescue', 6),
+  ('PADI', 'Specialty', 4),
+  ('PADI', 'Professional', 7),
+  ('PADI', 'Technical', 5),
+  ('PADI', 'Intro', 0),
+  ('PADI', 'Junior', 1),
+  ('RAID', 'Beginner', 2),
+  ('RAID', 'Intermediate', 3),
+  ('RAID', 'Technical', 5),
+  ('SDI', 'Beginner', 2),
+  ('SSI', 'Beginner', 2),
+  ('SSI', 'Intermediate', 3),
+  ('SSI', 'Rescue', 6),
+  ('SSI', 'Specialty', 4),
+  ('SSI', 'Professional', 7),
+  ('SSI', 'Technical', 5),
+  ('SSI', 'Junior', 1),
+  ('TDI', 'Technical', 5)
+) AS v(agency_name, name, ranking)
+JOIN agencies a ON a.name = v.agency_name
+ON CONFLICT (agency_id, name) DO NOTHING;
+
+-- 3. Insert courses (agency_id, certification_name, course_level_id, depth_limit, description)
+INSERT INTO courses (agency_id, certification_name, course_level_id, depth_limit, description)
+SELECT a.id, v.certification_name, cl.id, v.depth_limit, v.description
+FROM (VALUES
+  ('ANMP', 'PE 12', 'Up to 12m, always under instructor / guide', 'N/A', 'Entry-level “discovery” diver program.'),
+  ('ANMP', 'Level 1', 'Up to 20 m, in a group with instructor', 'N/A', 'First full qualifying diver level for open-water diving under supervision.'),
+  ('ANMP', 'PE 40', 'Up to 40 m, with instructor/guide', 'N/A', 'Enables deeper supervised dives under instructor’s charge.'),
+  ('ANMP', 'PA 20', 'Autonomous to 20 m (with buddy), supervised deeper up to 40 m', 'N/A', 'Diver is autonomous to 20 m; supervised beyond that.'),
+  ('ANMP', 'Level 2', 'Autonomous to 20 m; supervised to 40 m', 'N/A', 'A broader “autonomous diver” level.'),
+  ('ANMP', 'PA 40', 'Autonomous to 40 m', 'N/A', 'Diver has autonomy to 40 m depth.'),
+  ('ANMP', 'PE 60', 'Supervised to 60 m', 'N/A', 'Allows dives under supervision down to 60 m.'),
+  ('ANMP', 'PA 60', 'Autonomous (or near-autonomous) to 60 m', 'N/A', 'Advanced autonomy for deeper diving.'),
+  ('ANMP', 'Level 3 / Level 4', 'Up to 60 m (depending) / Leadership level', 'N/A', 'Leadership / dive-leader training; Level 4 is “Guide de palanquée / Plongeur 4*” under ANMP.'),
+  ('BSAC', 'Ocean Diver', 'Beginner', '20 m / 66 ft', 'UK diving standard'),
+  ('BSAC', 'Sports Diver', 'Intermediate', '35 m / 115 ft', 'Expands rescue and navigation'),
+  ('BSAC', 'Dive Leader', 'Rescue', 'N/A', 'Supervisory-level qualification'),
+  ('BSAC', 'Advanced Instructor', 'Professional', 'N/A', 'Teaching level'),
+  ('BSAC', 'Try Dive', 'Intro', 'Shallow', 'Pool-based intro dive'),
+  ('CMAS', 'One Star Diver (★)', 'Beginner', '20 m / 66 ft', 'European/International federation'),
+  ('CMAS', 'Two Star Diver (★★)', 'Intermediate', '30 m / 100 ft', 'Includes rescue skills'),
+  ('CMAS', 'Three Star Diver (★★★)', 'Rescue', 'N/A', 'Leadership/rescue skills'),
+  ('CMAS', 'Introductory Scuba', 'Intro', 'Shallow', 'Non-certification experience'),
+  ('GUE', 'Tech 1', 'Technical', 'Varies', 'Precision technical diving'),
+  ('GUE', 'Cave 1', 'Technical', 'Varies', 'Intro to cave diving'),
+  ('NAUI', 'Scuba Diver', 'Beginner', '18 m / 60 ft', 'US-based training agency'),
+  ('NAUI', 'Advanced Scuba Diver', 'Intermediate', '30 m / 100 ft', 'Optional specialties'),
+  ('NAUI', 'Rescue Scuba Diver', 'Rescue', 'N/A', 'Advanced rescue training'),
+  ('NAUI', 'Divemaster / Assistant Instructor', 'Professional', 'N/A', 'Pre-instructor level'),
+  ('NAUI', 'Try Scuba / Intro Scuba', 'Intro', 'Shallow', 'Non-certification experience'),
+  ('PADI', 'Open Water Diver', 'Beginner', '18 m / 60 ft', 'Most common global certification'),
+  ('PADI', 'Advanced Open Water Diver', 'Intermediate', '30 m / 100 ft', 'Expands skills and depth'),
+  ('PADI', 'Rescue Diver', 'Rescue', 'N/A', 'Emphasizes diver rescue and emergency management'),
+  ('PADI', 'Deep Diver', 'Specialty', '40 m / 130 ft', 'Deep diving specialty'),
+  ('PADI', 'Wreck Diver', 'Specialty', 'N/A', 'Wreck penetration and safety'),
+  ('PADI', 'Night Diver', 'Specialty', 'N/A', 'Low-light diving skills'),
+  ('PADI', 'Underwater Navigator', 'Specialty', 'N/A', 'Compass and natural navigation'),
+  ('PADI', 'Dry Suit Diver', 'Specialty', 'N/A', 'Cold-water diving'),
+  ('PADI', 'Divemaster', 'Professional', 'N/A', 'Leads certified divers, assists instructors'),
+  ('PADI', 'Open Water Scuba Instructor', 'Professional', 'N/A', 'Teaches courses'),
+  ('PADI', 'Master Scuba Diver Trainer', 'Professional', 'N/A', 'Can teach specialties'),
+  ('PADI', 'Course Director', 'Professional', 'N/A', 'Trains instructors'),
+  ('PADI', 'Tec 40', 'Technical', '40 m / 130 ft', 'Intro to technical diving'),
+  ('PADI', 'Tec 45', 'Technical', '45 m / 148 ft', 'Advanced technical diving'),
+  ('PADI', 'Tec 50', 'Technical', '50 m / 165 ft', 'Full technical certification'),
+  ('PADI', 'Discover Scuba Diving', 'Intro', 'Up to 12 m / 40 ft', 'Introductory experience, no certification'),
+  ('PADI', 'Junior Open Water Diver', 'Junior', '12–18 m / 40–60 ft', 'Same as OWD, reduced depth'),
+  ('RAID', 'Open Water 20', 'Beginner', '20 m / 66 ft', 'Online training with eco emphasis'),
+  ('RAID', 'Advanced 35', 'Intermediate', '35 m / 115 ft', 'Buoyancy and deeper diving'),
+  ('RAID', 'Deco 50', 'Technical', '50 m / 165 ft', 'Technical progression'),
+  ('SDI', 'Open Water Scuba Diver', 'Beginner', '18 m / 60 ft', 'Digital learning emphasis'),
+  ('SSI', 'Open Water Diver', 'Beginner', '18 m / 60 ft', 'Equivalent to PADI OWD'),
+  ('SSI', 'Advanced Adventurer', 'Intermediate', '30 m / 100 ft', 'Similar to PADI AOWD'),
+  ('SSI', 'Stress & Rescue Diver', 'Rescue', 'N/A', 'Equivalent of PADI Rescue'),
+  ('SSI', 'Enriched Air Nitrox', 'Specialty', 'N/A', 'Uses higher oxygen mix'),
+  ('SSI', 'Marine Ecology', 'Specialty', 'N/A', 'Reef and marine life education'),
+  ('SSI', 'Divemaster', 'Professional', 'N/A', 'Same as above'),
+  ('SSI', 'Extended Range (XR)', 'Technical', 'Varies', 'Deep and mixed-gas diving'),
+  ('SSI', 'Junior Open Water Diver', 'Junior', '12–18 m / 40–60 ft', 'Same as OWD, reduced depth'),
+  ('TDI', 'Advanced Nitrox', 'Technical', 'Varies', 'Technical nitrox diving'),
+  ('TDI', 'Deco Procedures', 'Technical', 'Varies', 'Decompression diving'),
+  ('TDI', 'Trimix Diver', 'Technical', 'Varies', 'Deep mixed-gas diving')
+) AS v(agency_name, certification_name, level_name, depth_limit, description)
+JOIN agencies a ON a.name = v.agency_name
+JOIN course_levels cl ON cl.agency_id = a.id AND cl.name = v.level_name
+ON CONFLICT (agency_id, certification_name) DO NOTHING;

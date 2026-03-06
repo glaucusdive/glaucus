@@ -62,9 +62,9 @@
             @click="navigateToShop(shop)">
             <div class="font-medium text-zinc-900 dark:text-white w-96 hover:text-blue-600 dark:hover:text-blue-400">{{ shop.business_name }}</div>
             <div class="w-64">
-              <div class="text-sm text-zinc-900 dark:text-white">{{ shop.locale }}, {{ shop.country }}</div>
+              <div class="text-sm text-zinc-900 dark:text-white">{{ [shop.locale, shop.country?.name ?? shop.country].filter(Boolean).join(', ') }}</div>
               <div v-if="shop.street_address" class="text-sm text-zinc-500 dark:text-zinc-400">{{ shop.street_address }}</div>
-              <div v-if="shop.region" class="text-xs text-zinc-400 dark:text-zinc-500">{{ shop.region }}</div>
+              <div v-if="shop.region?.name ?? shop.region" class="text-xs text-zinc-400 dark:text-zinc-500">{{ shop.region?.name ?? shop.region }}</div>
             </div>
             <div class="space-y-1 w-64">
               <div v-if="shop.phone" class="flex items-center gap-1">
@@ -144,13 +144,13 @@ const navigateToShop = (shop) => {
   navigateTo(`/shops/${shop.id}`)
 }
 
-// Fetch diveshops data
+// Fetch diveshops data with country and region for display
 const { data: diveshops, pending, error } = await useAsyncData('diveshops', async () => {
   try {
     console.log('Fetching dive shops data...')
     const { data, error: supabaseError } = await client
       .from('diveshops')
-      .select('*')
+      .select('*, country:countries(name), region:regions(name)')
       .order('business_name')
 
     if (supabaseError) {

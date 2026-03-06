@@ -323,7 +323,7 @@ const { data: shopData, pending, error } = await useAsyncData(`diveshop-${props.
     
     const { data, error: supabaseError } = await client
       .from('diveshops')
-      .select('*')
+      .select('*, country:countries(name), region:regions(name)')
       .eq('id', props.shopId)
       .single()
 
@@ -378,7 +378,7 @@ const remainingParagraphs = computed(() => {
 
 // Contact info for layout
 const contactInfo = computed(() => ({
-  address: [shopData.value?.street_address, shopData.value?.locale, shopData.value?.country].filter(Boolean).join(', '),
+  address: [shopData.value?.street_address, shopData.value?.locale, shopData.value?.country?.name ?? shopData.value?.country].filter(Boolean).join(', '),
   phone: shopData.value?.phone,
   email: shopData.value?.email,
   website: shopData.value?.website_url
