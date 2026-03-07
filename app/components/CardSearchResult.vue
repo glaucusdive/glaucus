@@ -1,12 +1,15 @@
 <template>
   <div 
-    @click="navigateToShop"
     :class="[
-      'flex flex-col gap-3 p-4 border rounded-lg hover:shadow-md transition-all cursor-pointer bg-white dark:bg-zinc-900',
+      'flex flex-row gap-3 p-4 border rounded-lg hover:shadow-md transition-all bg-white dark:bg-zinc-900',
       active 
         ? 'border-white dark:border-white' 
         : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
     ]">
+    <!-- Main content: tap selects shop for booking (on mobile does not open drawer) -->
+    <div 
+      class="flex flex-col gap-3 flex-1 min-w-0 cursor-pointer"
+      @click="$emit('shop-selected', shop)">
     <!-- Header with name and rating -->
     <div class="flex flex-row justify-between items-start gap-2">
       <h3 class="text-lg font-semibold text-zinc-900 dark:text-white hover:text-blue-600">
@@ -62,11 +65,21 @@
         <span>Email</span>
       </a>
     </div>
+    </div>
+    <!-- View details: 40px wide (w-10), chevron opens detail drawer when user wants -->
+    <button
+      type="button"
+      class="w-10 shrink-0 self-stretch flex items-center justify-center rounded border border-zinc-300 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+      @click.stop="$emit('view-details', shop)"
+      aria-label="View details"
+    >
+      <ChevronRight class="w-5 h-5" />
+    </button>
   </div>
 </template>
 
 <script setup>
-import { Star, MapPin, Languages, Globe, Phone, Mail } from 'lucide-vue-next'
+import { Star, MapPin, Languages, Globe, Phone, Mail, ChevronRight } from 'lucide-vue-next'
 
 const props = defineProps({
   shop: {
@@ -79,10 +92,6 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['shop-selected'])
-
-const navigateToShop = () => {
-  emit('shop-selected', props.shop)
-}
+const emit = defineEmits(['shop-selected', 'view-details'])
 </script>
 

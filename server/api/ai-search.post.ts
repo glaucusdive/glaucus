@@ -106,6 +106,8 @@ function buildBookingSystemPrompt (shopName: string, diveSiteNames: string[], ex
 
 Ask for ONE piece of information at a time in this order: 1) name, 2) email, 3) start date and end date for diving, 4) number of divers, 5) for each diver: name, certification number, number of dives completed, height (with unit: cm or ft-in), weight (with unit: kg or lbs), and any rental gear they need. Optionally ask which dive sites they're interested in from the list.
 
+Dates (step 3): Accept dates in any form the user gives — e.g. "July 24 2026", "24th July", "070826", "7/24/26", "next week", "April 15 to April 18". Parse them into a start and end date. Reply by repeating the dates back in one clean, readable format (e.g. "So that's 24 July 2026 to 27 July 2026 — is that right?") and ask for confirmation. Only when the user confirms (yes, correct, that's right, yep, looks good, etc.) treat the dates as collected and move to the next question. If they correct the dates, parse the correction, repeat back in clean format again, and ask for confirmation. Store startDate and endDate in the payload in YYYY-MM-DD. Do not ask the user to type YYYY-MM-DD.
+
 Be warm and conversational. When you have collected all required fields (name, email, startDate, endDate, numberOfDivers, and for each diver: name, certificationNumber, numberOfDives, height, heightUnit, weight, weightUnit; gear can be empty array), output exactly:
 
 BOOKING_READY: <valid JSON object>
@@ -371,10 +373,7 @@ Do not include a MESSAGE. Just return the FILTERS.`
                 hasMoreResults: remaining > 0,
                 filters: lastFilters,
                 selectableOptions: remaining > 0
-                  ? [
-                      { label: 'Load next 5', value: 'Show more' },
-                      { label: 'Load next 20', value: 'Show next 20' }
-                    ]
+                  ? [{ label: 'Load next 5', value: 'Show more' }]
                   : undefined
               }
             } else {
@@ -393,6 +392,27 @@ Do not include a MESSAGE. Just return the FILTERS.`
       } catch (paginationError) {
         console.error('[AI Search] Error handling pagination:', paginationError)
         // Fall through to normal processing
+      }
+    }
+
+    // Trip-type first: show chips immediately (no AI call) so user doesn't see "typing..."
+    const tripTypeChoiceInMessage = /\b(liveaboard|resort|day trips?|i prefer a liveaboard|i prefer a resort|just day trips?)\b/i.test(message)
+    const assistantAlreadyAskedTripType = (history || []).some(
+      m => m.role === 'assistant' && /\bliveaboard\b/i.test(m.content) && /\bresort\b/i.test(m.content) && /\bday trips?\b/i.test(m.content)
+    )
+    if (!assistantAlreadyAskedTripType && !tripTypeChoiceInMessage) {
+      return {
+        success: true,
+        message: 'What type of trip are you looking for?',
+        shops: [],
+        totalResults: 0,
+        hasMoreResults: false,
+        filters: {},
+        selectableOptions: [
+          { label: 'Liveaboard', value: 'I prefer a liveaboard' },
+          { label: 'Resort', value: 'I prefer a resort' },
+          { label: 'Day trips', value: 'Just day trips' }
+        ]
       }
     }
     
@@ -627,10 +647,7 @@ RULES:
       responseShops = (shops || []).slice(0, 5)
       finalMessage = `Here are some top options based on what you said. You can confirm details with the shop or ask to narrow by location, rating, or trip type.`
       if (resultCount > 5) {
-        selectableOptions = [
-          { label: 'Load next 5', value: 'Show more' },
-          { label: 'Load next 20', value: 'Show next 20' }
-        ]
+        selectableOptions = [{ label: 'Load next 5', value: 'Show more' }]
       }
     } else {
       // Perfect amount (3-5 results) OR user said "any" to a follow-up - show them
@@ -638,10 +655,7 @@ RULES:
       if (resultCount > 5) {
         // User said "any" - show results with a message
         finalMessage = `I found ${resultCount} dive shops. Here are the top results:`
-        selectableOptions = [
-          { label: 'Load next 5', value: 'Show more' },
-          { label: 'Load next 20', value: 'Show next 20' }
-        ]
+        selectableOptions = [{ label: 'Load next 5', value: 'Show more' }]
       } else {
         finalMessage = conversationalMessage
       }

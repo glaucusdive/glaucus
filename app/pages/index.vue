@@ -37,7 +37,7 @@
         ]">
           <!-- Messages Container -->
           <div ref="messagesContainer"
-            class="flex-1 overflow-y-auto p-4 space-y-6 *:max-w-3xl *:mx-auto *:w-full">
+            class="flex-1 overflow-y-auto p-2 md:p-4 space-y-6 *:max-w-3xl *:mx-auto *:w-full">
 
             <div v-if="messages.length === 0" class="flex flex-col items-center justify-center gap-8 h-full">
               <div class="text-center space-y-4 flex flex-col items-center">
@@ -64,7 +64,7 @@
 
               <!-- Assistant message -->
               <div v-else-if="msg.role === 'assistant'" class="flex justify-start">
-                <div class="max-w-[90%] space-y-4">
+                <div class="md:max-w-[90%] space-y-4">
                   <!-- AI text response -->
                   <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3">
                     <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap">{{ msg.content }}
@@ -72,13 +72,15 @@
                   </div>
 
                   <!-- Shop results -->
-                  <div v-if="msg.shops && msg.shops.length > 0" class="flex flex-col gap-2 p-2">
+                  <div v-if="msg.shops && msg.shops.length > 0" class="flex flex-col gap-2 md:p-2">
                     <div class="flex items-center gap-2 text-sm text-zinc-600">
                       <span class="font-medium">Top Results:</span>
                     </div>
                     <div class="grid grid-cols-1 gap-3">
                       <CardSearchResult v-for="shop in msg.shops" :key="shop.id" :shop="shop"
-                        :active="selectedShopId === shop.id" @shop-selected="handleShopSelected" />
+                        :active="selectedShopId === shop.id"
+                        @shop-selected="handleShopSelected"
+                        @view-details="handleViewDetails" />
                     </div>
 
                     <!-- Results summary - only show when shops are displayed -->
@@ -87,10 +89,18 @@
                     </div>
                   </div>
 
-                  <!-- Selectable options (chips / quick-replies) -->
-                  <div v-if="msg.selectableOptions && msg.selectableOptions.length > 0" class="flex flex-wrap gap-2 p-2">
+                  <!-- Selectable options: Book chip (white) first, then Load next 5 -->
+                  <div v-if="(msg.selectableOptions && msg.selectableOptions.length > 0) || (msg.shops?.length && selectedShopId && selectedShopName)" class="flex flex-wrap gap-2 p-2">
                     <button
-                      v-for="(opt, i) in msg.selectableOptions"
+                      v-if="msg.shops?.length && selectedShopId && selectedShopName"
+                      type="button"
+                      @click="sendMessage('Let\'s book this')"
+                      class="px-3 py-1.5 text-sm rounded-full bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-100 transition-colors cursor-pointer font-medium"
+                    >
+                      Let's book {{ selectedShopName }}
+                    </button>
+                    <button
+                      v-for="(opt, i) in (msg.selectableOptions || []).filter(o => o.label !== 'Load next 20')"
                       :key="i"
                       type="button"
                       @click="sendMessage(opt.value)"
@@ -115,36 +125,19 @@
           </div>
 
           <!-- Input area -->
-          <div class="flex items-stretch justify-center">
-            <div class="bg-transparent p-4 pt-0 backdrop-blur-sm md:min-w-md max-w-4xl w-full rounded-full">
+          <div class="flex items-stretch justify-center z-100">
+            <div class="bg-transparent p-0.5 pt-0 backdrop-blur-sm md:min-w-md max-w-4xl w-full rounded-full">
               <div :class="[
-                'p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-hidden gradient-container z-0',
+                'p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-x-hidden overflow-y-visible gradient-container z-0',
                 isLoading ? 'animate-ring-gradient !bg-[#02C8FF]' : ''
               ]">
                 <form class="w-full h-full bg-zinc-100 dark:bg-zinc-700 rounded-full p-1 z-10"
                   @submit.prevent="handleSubmit">
-                  <div class="flex items-center gap-1.5 w-full">
+                  <div class="flex items-center gap-1.5 w-full min-w-0">
                     <div class="flex-1 min-w-0 h-full">
                       <input v-model="userInput" type="text" :disabled="isLoading"
                         placeholder="Ask me anything about dive shops..."
-                        class="w-full h-full outline-none text-zinc-900 dark:text-white font-medium text-sm tracking-none disabled:cursor-not-allowed indent-2" />
-                    </div>
-                    <div v-if="selectedShopId && messages.length > 0"
-                      class="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        @click="sendMessage('Let\'s book this')"
-                        class="px-2.5 py-1 text-xs rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer whitespace-nowrap"
-                      >
-                        Book now
-                      </button>
-                      <button
-                        type="button"
-                        @click="sendMessage('Show more')"
-                        class="px-2.5 py-1 text-xs rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer whitespace-nowrap"
-                      >
-                        Next 5 shops
-                      </button>
+                        class="w-full h-full outline-none text-zinc-900 dark:text-white font-medium text-sm tracking-none disabled:cursor-not-allowed indent-2 p-4" />
                     </div>
                     <div class="h-full shrink-0">
                       <button type="submit" :disabled="isLoading || !userInput.trim()"
@@ -168,15 +161,15 @@
           </div>
         </Transition>
 
-        <!-- Shop Detail Panel - Mobile Drawer -->
+        <!-- Shop Detail Panel - Mobile Drawer (only when user taps "View details", not on card tap) -->
         <Transition @enter="onMobileDrawerEnter" @leave="onMobileDrawerLeave" :css="false">
-          <div v-if="selectedShopId && !isDesktop" class="fixed inset-0 z-50 lg:hidden">
+          <div v-if="mobileDetailShopId && !isDesktop" class="fixed inset-0 z-50 lg:hidden">
             <!-- Backdrop -->
             <div @click="closeShopDetail" class="absolute inset-0 bg-black/50"></div>
             <!-- Drawer -->
             <div
               class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-zinc-900 h-full overflow-hidden">
-              <ShopDetailPanel :key="selectedShopId" :shop-id="selectedShopId" @close="closeShopDetail" />
+              <ShopDetailPanel :key="mobileDetailShopId" :shop-id="mobileDetailShopId" @close="closeShopDetail" />
             </div>
           </div>
         </Transition>
@@ -186,7 +179,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, watch, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, watch, onUnmounted } from 'vue'
 import { Menu, ArrowUp } from 'lucide-vue-next'
 import gsap from 'gsap'
 import CardSearchResult from '~/components/CardSearchResult.vue'
@@ -205,7 +198,19 @@ const messagesContainer = ref(null)
 const isRestoringCache = ref(true)
 const abortController = ref(null)
 const selectedShopId = ref(null)
+/** On mobile, drawer opens only when user taps "View details"; card tap only selects for booking. */
+const mobileDetailShopId = ref(null)
 const isPageLoading = ref(true)
+
+// Selected shop name for "Book for [name]" chip (from results list or booking message)
+const selectedShopName = computed(() => {
+  if (!selectedShopId.value) return null
+  const msgWithShops = [...messages.value].reverse().find(m => m.shops?.length)
+  const shop = msgWithShops?.shops?.find(s => s.id === selectedShopId.value)
+  if (shop?.business_name) return shop.business_name
+  const bookingMsg = [...messages.value].reverse().find(m => m.shopId === selectedShopId.value && m.shopName)
+  return bookingMsg?.shopName ?? null
+})
 
 // Desktop detection
 const getInitialDesktop = () => {
@@ -482,17 +487,27 @@ const clearConversation = () => {
   userInput.value = ''
   isLoading.value = false
   selectedShopId.value = null
+  mobileDetailShopId.value = null
   clearCache()
 }
 
-// Handle shop selection
+// Handle shop selection (card tap: select for booking; on mobile does not open drawer)
 const handleShopSelected = (shop) => {
   selectedShopId.value = shop.id
 }
 
-// Close shop detail
+// Handle "View details" button (opens drawer on mobile; on desktop panel already shows when selected)
+const handleViewDetails = (shop) => {
+  selectedShopId.value = shop.id
+  mobileDetailShopId.value = shop.id
+}
+
+// Close shop detail (desktop: clear selection; mobile: close drawer only, keep selection for book chip)
 const closeShopDetail = () => {
-  selectedShopId.value = null
+  if (isDesktop.value) {
+    selectedShopId.value = null
+  }
+  mobileDetailShopId.value = null
 }
 
 // GSAP animations for shop panel
