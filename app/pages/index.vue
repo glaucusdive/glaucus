@@ -108,7 +108,7 @@
               <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3">
                 <div class="flex items-center gap-2">
                   <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-zinc-600"></div>
-                  <span class="text-sm text-zinc-900 dark:text-zinc-200">Searching dive shops...</span>
+                  <span class="text-sm text-zinc-900 dark:text-zinc-200">typing...</span>
                 </div>
               </div>
             </div>

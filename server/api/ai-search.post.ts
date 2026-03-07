@@ -447,45 +447,14 @@ Do not include a MESSAGE. Just return the FILTERS.`
       filters = {}
     }
     
-    // Query the database with extracted filters
-    const query = buildDiveShopQuery(supabaseUrl, supabaseKey, filters)
-    const { data: shops, error: dbError } = await query
-    
-    if (dbError) {
-      console.error('Database error:', dbError)
-      throw new Error('Failed to search dive shops')
-    }
-    
-    // Determine if we should ask follow-up questions or suggest broadening
-    const resultCount = shops?.length || 0
-    let shouldAskFollowUp = false
-    let userAlreadyAnsweredLastQuestion = false
-    let followUpMessage = ''
-    
-    console.log(`[AI Search] Found ${resultCount} results`)
-    console.log(`[AI Search] Filters applied:`, JSON.stringify(filters, null, 2))
-    
-    // Check if user is explicitly asking for more options
+    // Run DB query and both possible second AI calls in parallel (total time ≈ max(DB, AI) instead of DB + AI)
+    const conversationContext = history.map(h => h.content).join(' ')
     const wantsMoreOptions = /\b(more|other|additional|different|expand|broader|widen)\s+(options?|choices?|shops?|results?)\b/i.test(message) ||
                             /\b(show|find|see)\s+more\b/i.test(message) ||
                             /\bwiden\s+(the\s+)?search\b/i.test(message)
-    
-    console.log(`[AI Search] User wants more options:`, wantsMoreOptions)
-    
-    // Selectable options for frontend chips/quick-replies (search flow)
-    let selectableOptions: { label: string; value: string }[] | undefined
 
-    // Handle low results (≤2) or explicit request for more options
-    if (resultCount <= 2 || wantsMoreOptions) {
-      shouldAskFollowUp = true
-      console.log(`[AI Search] Low results (${resultCount}) or user wants more options, suggesting to broaden search...`)
-      
-      // Analyze conversation to understand current search scope
-      const conversationContext = history.map(h => h.content).join(' ')
-      
-      // Build a prompt to suggest broadening the search
-      const broadeningPrompt = `The search returned only ${resultCount} dive shop(s) based on these filters: ${JSON.stringify(filters)}
-      
+    const broadeningPrompt = (placeholderCount: number) => `The search returned only ${placeholderCount} dive shop(s) based on these filters: ${JSON.stringify(filters)}
+
 Previous conversation: ${conversationContext}
 
 ${wantsMoreOptions ? 'The user is asking to see more options.' : 'There are very few results.'}
@@ -496,74 +465,111 @@ Suggest ONE of these approaches (choose the most appropriate):
 
 2. If already at country level or user wants alternatives, suggest 2-3 nearby popular dive destinations in the same region
 
-Be helpful and specific. Use your geographic knowledge. Keep it SHORT (one sentence + the suggestion).
+Be helpful and specific. Use your geographic knowledge. Keep it SHORT (one sentence + the suggestion). When you state how many shops were found, use the number ${placeholderCount} (we will replace it with the actual count).
 
 On a new line after your message, also output exactly 1-3 selectable suggestion phrases as JSON array for the user to tap (e.g. ["Search all of Indonesia", "Search Southeast Asia"]):
-SUGGESTIONS: ["short phrase 1", "short phrase 2"]
+SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
 
-Examples:
-- "I found only 2 shops in Bali. Would you like me to search all of Indonesia? There are many great dive shops throughout the country."
-SUGGESTIONS: ["Search all of Indonesia", "Search Southeast Asia"]
-- "Would you like me to expand the search to all of Thailand? Or I could show you shops in nearby destinations like Koh Tao or Phuket."
-SUGGESTIONS: ["Search all of Thailand", "Koh Tao", "Phuket"]`
-      
-      try {
-        const broadeningResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openrouterApiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://glaucus.app',
-            'X-Title': 'Glaucus Dive Shop Search'
-          },
-          body: JSON.stringify({
-            model: 'openai/gpt-5-mini',
-            messages: [
-              { role: 'system', content: 'You are a helpful dive shop search assistant with knowledge of global dive destinations. Be concise and helpful.' },
-              { role: 'user', content: broadeningPrompt }
-            ],
-            temperature: 0.7,
-            max_tokens: 150
-          })
+    const followUpPrompt = `The search returned many dive shops (we show max 5). Ask ONE short follow-up question to narrow down.
+
+Conversation so far: ${conversationContext}
+
+RULES:
+- Do NOT repeat or rephrase any question that already appears in the conversation above.
+- Pick ONE topic that has NOT been asked yet: location (city/area), trip type (liveaboard/resort/day trips), minimum rating, or language.
+- One short question only.`
+
+    const [dbResult, broadeningResult, followUpAiMessage] = await Promise.all([
+      buildDiveShopQuery(supabaseUrl, supabaseKey, filters),
+      fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openrouterApiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://glaucus.app',
+          'X-Title': 'Glaucus Dive Shop Search'
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-5-mini',
+          messages: [
+            { role: 'system', content: 'You are a helpful dive shop search assistant with knowledge of global dive destinations. Be concise and helpful.' },
+            { role: 'user', content: broadeningPrompt(1) }
+          ],
+          temperature: 0.7,
+          max_tokens: 150
         })
-        
-        if (broadeningResponse.ok) {
-          const broadeningData = await broadeningResponse.json()
-          let broadeningContent = broadeningData.choices[0]?.message?.content || ''
-          const suggestionsMatch = broadeningContent.match(/SUGGESTIONS:\s*(\[[\s\S]*?\])\s*$/m)
-          if (suggestionsMatch) {
-            try {
-              const arr = JSON.parse(suggestionsMatch[1]) as string[]
-              if (Array.isArray(arr) && arr.length > 0) {
-                selectableOptions = arr.map(s => ({ label: String(s).slice(0, 60), value: String(s) }))
-              }
-            } catch (_) { /* ignore */ }
-            broadeningContent = broadeningContent.replace(/\nSUGGESTIONS:\s*\[[\s\S]*?\]\s*$/, '').trim()
-          }
-          followUpMessage = broadeningContent
-          console.log(`[AI Search] Broadening suggestion generated:`, followUpMessage)
-          
-          if (!followUpMessage || followUpMessage.trim() === '') {
-            console.warn('[AI Search] Broadening suggestion was empty, using fallback')
-            followUpMessage = filters.locale 
-              ? `I found only ${resultCount} shop(s) in ${filters.locale}. Would you like me to search ${filters.country || 'the broader region'} instead?`
-              : 'Would you like me to expand the search to include more locations?'
-            if (!selectableOptions && filters.country) selectableOptions = [{ label: `Search all of ${filters.country}`, value: `Search all of ${filters.country}` }]
-          }
-        } else {
-          const errorText = await broadeningResponse.text()
-          console.error(`[AI Search] Broadening API error (${broadeningResponse.status}):`, errorText)
-          followUpMessage = 'Would you like me to expand the search to nearby areas?'
+      }).then(async (res) => {
+        if (!res.ok) return { content: '', suggestions: null as string[] | null }
+        const data = await res.json()
+        let content = data.choices[0]?.message?.content || ''
+        const suggestionsMatch = content.match(/SUGGESTIONS:\s*(\[[\s\S]*?\])\s*$/m)
+        let suggestions: string[] | null = null
+        if (suggestionsMatch) {
+          try {
+            const arr = JSON.parse(suggestionsMatch[1]) as string[]
+            if (Array.isArray(arr) && arr.length > 0) suggestions = arr.map(s => String(s).slice(0, 60))
+          } catch (_) { /* ignore */ }
+          content = content.replace(/\nSUGGESTIONS:\s*\[[\s\S]*?\]\s*$/, '').trim()
         }
-      } catch (broadeningError) {
-        console.error('[AI Search] Error generating broadening suggestion:', broadeningError)
-        followUpMessage = 'Would you like me to broaden the search?'
+        return { content, suggestions }
+      }).catch(() => ({ content: '', suggestions: null as string[] | null })),
+      fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openrouterApiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://glaucus.app',
+          'X-Title': 'Glaucus Dive Shop Search'
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-5-mini',
+          messages: [
+            { role: 'system', content: 'You ask ONE short question at a time. Never repeat a question that was already asked in the conversation.' },
+            { role: 'user', content: followUpPrompt }
+          ],
+          temperature: 0.6,
+          max_tokens: 100
+        })
+      }).then(async (res) => {
+        if (!res.ok) return ''
+        const data = await res.json()
+        return (data.choices[0]?.message?.content?.trim() || '') as string
+      }).catch(() => '')
+    ])
+
+    const { data: shops, error: dbError } = dbResult as { data: unknown[] | null; error: unknown }
+    if (dbError) {
+      console.error('Database error:', dbError)
+      throw new Error('Failed to search dive shops')
+    }
+
+    const resultCount = shops?.length || 0
+    let shouldAskFollowUp = false
+    let userAlreadyAnsweredLastQuestion = false
+    let followUpMessage = ''
+    let selectableOptions: { label: string; value: string }[] | undefined
+
+    console.log(`[AI Search] Found ${resultCount} results`)
+    console.log(`[AI Search] Filters applied:`, JSON.stringify(filters, null, 2))
+    console.log(`[AI Search] User wants more options:`, wantsMoreOptions)
+
+    if (resultCount <= 2 || wantsMoreOptions) {
+      shouldAskFollowUp = true
+      console.log(`[AI Search] Low results (${resultCount}) or user wants more options, suggesting to broaden search...`)
+      followUpMessage = broadeningResult.content
+        ? broadeningResult.content.replace(/\b1\s+dive shop(s?)\b/gi, `${resultCount} dive shop${resultCount === 1 ? '' : 's'}`).replace(/\bonly 1\b/gi, `only ${resultCount}`)
+        : ''
+      if (broadeningResult.suggestions?.length) {
+        selectableOptions = broadeningResult.suggestions.map(s => ({ label: s, value: s }))
+      }
+      if (!followUpMessage?.trim()) {
+        followUpMessage = filters.locale
+          ? `I found only ${resultCount} shop(s) in ${filters.locale}. Would you like me to search ${filters.country || 'the broader region'} instead?`
+          : 'Would you like me to expand the search to include more locations?'
+        if (!selectableOptions?.length && filters.country) selectableOptions = [{ label: `Search all of ${filters.country}`, value: `Search all of ${filters.country}` }]
       }
     } else if (resultCount > 5) {
-      const conversationContext = history.map(h => h.content).join(' ')
       const lastAssistantMessage = history.filter(h => h.role === 'assistant').pop()?.content || ''
-
-      // One rule: last assistant message asked a question (?) and user gave a short direct answer → show results, never repeat
       const lastWasAQuestion = lastAssistantMessage.includes('?')
       const noPreference = /\b(any|all|doesn't matter|don't care|no preference|whatever|either)\b/i.test(message)
       const looksLikeNewSearch = /\b(want to|find|search|looking for|dive in|diving in)\b/i.test(message) && message.trim().length > 25
@@ -580,64 +586,17 @@ SUGGESTIONS: ["Search all of Thailand", "Koh Tao", "Phuket"]`
       } else {
         shouldAskFollowUp = true
         console.log(`[AI Search] Too many results (${resultCount}), asking follow-up question...`)
-
-        const followUpPrompt = `The search returned ${resultCount} dive shops (we show max 5). Ask ONE short follow-up question to narrow down.
-
-Conversation so far: ${conversationContext}
-
-RULES:
-- Do NOT repeat or rephrase any question that already appears in the conversation above.
-- Pick ONE topic that has NOT been asked yet: location (city/area), trip type (liveaboard/resort/day trips), minimum rating, or language.
-- One short question only.`
-
-        try {
-          const followUpResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${openrouterApiKey}`,
-              'Content-Type': 'application/json',
-              'HTTP-Referer': 'https://glaucus.app',
-              'X-Title': 'Glaucus Dive Shop Search'
-            },
-            body: JSON.stringify({
-              model: 'openai/gpt-5-mini',
-              messages: [
-                { role: 'system', content: 'You ask ONE short question at a time. Never repeat a question that was already asked in the conversation.' },
-                { role: 'user', content: followUpPrompt }
-              ],
-              temperature: 0.6,
-              max_tokens: 100
-            })
-          })
-
-          if (followUpResponse.ok) {
-            const followUpData = await followUpResponse.json()
-            followUpMessage = followUpData.choices[0]?.message?.content?.trim() || ''
-          }
-          if (!followUpMessage) {
-            followUpMessage = 'Would you prefer a liveaboard, a resort, or day trips?'
-            selectableOptions = [
-              { label: 'Liveaboard', value: 'I prefer a liveaboard' },
-              { label: 'Resort', value: 'I prefer a resort' },
-              { label: 'Day trips', value: 'Just day trips' }
-            ]
-          } else {
-            selectableOptions = []
-          }
-        } catch (followUpError) {
-          console.error('[AI Search] Error generating follow-up question:', followUpError)
-          followUpMessage = 'Would you prefer a liveaboard, a resort, or day trips?'
-          selectableOptions = [
-            { label: 'Liveaboard', value: 'I prefer a liveaboard' },
-            { label: 'Resort', value: 'I prefer a resort' },
-            { label: 'Day trips', value: 'Just day trips' }
-          ]
-        }
+        followUpMessage = followUpAiMessage || 'Would you prefer a liveaboard, a resort, or day trips?'
+        selectableOptions = followUpAiMessage ? [] : [
+          { label: 'Liveaboard', value: 'I prefer a liveaboard' },
+          { label: 'Resort', value: 'I prefer a resort' },
+          { label: 'Day trips', value: 'Just day trips' }
+        ]
       }
     } else {
       console.log(`[AI Search] Result count (${resultCount}) is within limit, showing results`)
     }
-    
+
     // Prepare response
     let responseShops = []
     let finalMessage = ''

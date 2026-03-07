@@ -49,6 +49,9 @@ export const buildDiveShopQuery = (supabaseUrl: string, supabaseKey: string, fil
   query = query.order('google_rating', { ascending: false, nullsFirst: false })
   query = query.order('business_name', { ascending: true })
 
+  // Cap rows to avoid over-fetching; first page + "show more" only need a bounded set
+  query = query.limit(50)
+
   return query
 }
 
