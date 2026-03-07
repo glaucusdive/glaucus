@@ -37,6 +37,9 @@ interface RequestBody {
   selectedShopId?: string
   lastShops?: { id: string; business_name: string }[]
   bookingPayload?: BookingPayload
+  /** When the last assistant reply was in booking flow, so this message is form input (e.g. name, email). */
+  lastIntent?: 'booking' | 'search'
+  lastBookingShopId?: string
 }
 
 const SYSTEM_PROMPT = `You are an AI assistant helping users find the perfect dive shop for their needs. 
@@ -136,7 +139,7 @@ Do not output BOOKING_READY until every required field is present. If the user c
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody<RequestBody>(event)
-    const { message, history, selectedShopId, lastShops, bookingPayload } = body
+    const { message, history, selectedShopId, lastShops, bookingPayload, lastIntent, lastBookingShopId } = body
 
     if (!message || typeof message !== 'string') {
       throw new Error('Message is required')
@@ -156,6 +159,7 @@ export default defineEventHandler(async (event) => {
     const hasShopContext = !!selectedShopId || (lastShops && lastShops.length > 0)
     const shopNameFromMessage = message.match(/(?:book with|reserve with)\s+([^.?!]+)/i)?.[1]?.trim()
 
+    const continuingBooking = lastIntent === 'booking' && !!lastBookingShopId
     let resolvedShop: Awaited<ReturnType<typeof getShopById>> = null
     if (wantsToBook) {
       if (selectedShopId) {
@@ -173,8 +177,11 @@ export default defineEventHandler(async (event) => {
         if (shop) resolvedShop = await getShopById(supabaseUrl, supabaseKey, shop.id)
       }
     }
+    if (continuingBooking && !resolvedShop && lastBookingShopId) {
+      resolvedShop = await getShopById(supabaseUrl, supabaseKey, lastBookingShopId)
+    }
 
-    if (resolvedShop && wantsToBook) {
+    if (resolvedShop && (wantsToBook || continuingBooking)) {
       const diveSites = await getDiveSitesForShop(supabaseUrl, supabaseKey, resolvedShop.id)
       const diveSiteNames = diveSites.map(d => d.name)
       const systemPrompt = buildBookingSystemPrompt(resolvedShop.business_name, diveSiteNames, bookingPayload)
@@ -235,7 +242,7 @@ export default defineEventHandler(async (event) => {
         }
       }
       const replyMessage = (bookingReadyIdx >= 0 ? aiMessage.slice(0, bookingReadyIdx) : aiMessage).trim() || aiMessage
-      const selectableOptions = diveSiteNames.length > 0 ? diveSiteNames.map(name => ({ label: name, value: name })) : undefined
+      // Do not send dive site names as chips during booking — they're for "which sites?" only and would show wrongly when asking for name/email/dates
       return {
         success: true,
         intent: 'booking' as const,
@@ -244,14 +251,16 @@ export default defineEventHandler(async (event) => {
         shopId: resolvedShop.id,
         shopName: resolvedShop.business_name,
         bookingPayload: bookingPayload ?? undefined,
-        selectableOptions
+        selectableOptions: undefined
       }
     }
 
     // --- Search flow (existing) ---
     // Check if user is asking for more results (pagination)
     const paginationPattern = /\b(next|more|show more|next 5|next results|show next|load more|another|additional)\s*(5|results?|shops?|ones?)?\b/i
-    const isPaginationRequest = paginationPattern.test(message)
+    const next20Pattern = /\b(show next 20|load next 20|next 20)\b/i
+    const isPaginationRequest = paginationPattern.test(message) || next20Pattern.test(message)
+    const paginationPageSize = next20Pattern.test(message) ? 20 : 5
     
     if (isPaginationRequest && history && history.length > 0) {
       // Find the last assistant message that had shops and filters
@@ -324,47 +333,49 @@ Do not include a MESSAGE. Just return the FILTERS.`
             
             const resultCount = shops?.length || 0
             
-            // Count how many shops have been shown already
-            // Count all assistant messages that showed results (each shows 5)
-            // Messages that show results typically say "Here are" or "top results"
-            // Messages that ask questions say "What type" or "Would you" and end with "?"
+            // Count how many shops have been shown already (infer from "next N results" or default 5)
             let alreadyShown = 0
             for (let i = 0; i < history.length; i++) {
               const msg = history[i]
               if (msg.role === 'assistant') {
-                // Check if this message showed shops/results
-                // Pattern: "Here are" or "top results" and NOT asking a question (no "What" or "Would you")
-                const hasResultsPhrase = msg.content.includes('Here are') || 
+                const hasResultsPhrase = msg.content.includes('Here are') ||
                                         msg.content.includes('top results') ||
                                         msg.content.includes('Here are the')
                 const isAskingQuestion = msg.content.includes('What type') ||
                                          msg.content.includes('Would you') ||
                                          (msg.content.includes('?') && msg.content.trim().endsWith('?'))
-                
                 if (hasResultsPhrase && !isAskingQuestion) {
-                  alreadyShown += 5
-                  console.log(`[AI Search] Found result message at index ${i}: "${msg.content.substring(0, 50)}...", total shown: ${alreadyShown}`)
+                  const nextN = msg.content.match(/next (\d+)\s+results?/i)?.[1]
+                  const shown = nextN ? parseInt(nextN, 10) : 5
+                  alreadyShown += Number.isNaN(shown) ? 5 : shown
+                  console.log(`[AI Search] Found result message at index ${i}, shown: ${shown}, total shown: ${alreadyShown}`)
                 }
               }
             }
-            
-            console.log(`[AI Search] Pagination: already shown ${alreadyShown} shops, total results: ${resultCount}`)
-            
-            // Get next 5 shops (skip the ones already shown)
-            const nextShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
+
+            console.log(`[AI Search] Pagination: already shown ${alreadyShown} shops, total results: ${resultCount}, pageSize: ${paginationPageSize}`)
+
+            // Get next N shops (5 or 20)
+            const nextShops = (shops || []).slice(alreadyShown, alreadyShown + paginationPageSize)
             const remaining = Math.max(0, resultCount - alreadyShown - nextShops.length)
             
             if (nextShops.length > 0) {
+              const messageText = remaining > 0
+                ? `Here are the next ${nextShops.length} results. ${remaining} more available.`
+                : `Here are the next ${nextShops.length} results.`
               return {
                 success: true,
-                message: remaining > 0 
-                  ? `Here are the next ${nextShops.length} results. ${remaining} more available.`
-                  : `Here are the next ${nextShops.length} results.`,
+                message: messageText,
                 shops: nextShops,
                 totalResults: resultCount,
                 hasMoreResults: remaining > 0,
                 filters: lastFilters,
-                selectableOptions: undefined
+                selectableOptions: remaining > 0
+                  ? [
+                      { label: 'Load next 5', value: 'Show more' },
+                      { label: 'Load next 20', value: 'Show next 20' }
+                    ]
+                  : undefined
               }
             } else {
               return {
@@ -615,12 +626,22 @@ RULES:
     } else if (userAlreadyAnsweredLastQuestion) {
       responseShops = (shops || []).slice(0, 5)
       finalMessage = `Here are some top options based on what you said. You can confirm details with the shop or ask to narrow by location, rating, or trip type.`
+      if (resultCount > 5) {
+        selectableOptions = [
+          { label: 'Load next 5', value: 'Show more' },
+          { label: 'Load next 20', value: 'Show next 20' }
+        ]
+      }
     } else {
       // Perfect amount (3-5 results) OR user said "any" to a follow-up - show them
       responseShops = (shops || []).slice(0, 5)
       if (resultCount > 5) {
         // User said "any" - show results with a message
         finalMessage = `I found ${resultCount} dive shops. Here are the top results:`
+        selectableOptions = [
+          { label: 'Load next 5', value: 'Show more' },
+          { label: 'Load next 20', value: 'Show next 20' }
+        ]
       } else {
         finalMessage = conversationalMessage
       }

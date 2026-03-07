@@ -123,13 +123,30 @@
               ]">
                 <form class="w-full h-full bg-zinc-100 dark:bg-zinc-700 rounded-full p-1 z-10"
                   @submit.prevent="handleSubmit">
-                  <div class="grid grid-cols-[1fr_auto]">
-                    <div class="cols-span-1 h-full">
+                  <div class="flex items-center gap-1.5 w-full">
+                    <div class="flex-1 min-w-0 h-full">
                       <input v-model="userInput" type="text" :disabled="isLoading"
                         placeholder="Ask me anything about dive shops..."
                         class="w-full h-full outline-none text-zinc-900 dark:text-white font-medium text-sm tracking-none disabled:cursor-not-allowed indent-2" />
                     </div>
-                    <div class="cols-span-1 h-full">
+                    <div v-if="selectedShopId && messages.length > 0"
+                      class="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        @click="sendMessage('Let\'s book this')"
+                        class="px-2.5 py-1 text-xs rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer whitespace-nowrap"
+                      >
+                        Book now
+                      </button>
+                      <button
+                        type="button"
+                        @click="sendMessage('Show more')"
+                        class="px-2.5 py-1 text-xs rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer whitespace-nowrap"
+                      >
+                        Next 5 shops
+                      </button>
+                    </div>
+                    <div class="h-full shrink-0">
                       <button type="submit" :disabled="isLoading || !userInput.trim()"
                         class="p-2 flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-100 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-xl tracking-none cursor-pointer text-zinc-900 dark:text-zinc-900 disabled:bg-zinc-100 disabled:dark:bg-zinc-600 disabled:cursor-not-allowed font-medium disabled:*:opacity-20">
                         <ArrowUp v-if="!isLoading" class="w-6 h-6" />
@@ -365,6 +382,11 @@ const sendMessage = async (messageText) => {
     const lastShopsFromHistory = messages.value.filter(m => m.role === 'assistant' && m.shops?.length).pop()?.shops
     const lastShops = lastShopsFromHistory?.map(s => ({ id: s.id, business_name: s.business_name })) ?? undefined
 
+    const lastAssistantMessage = [...messages.value].reverse().find(m => m.role === 'assistant')
+    const inBookingFlow = lastAssistantMessage?.intent === 'booking' && lastAssistantMessage?.shopId
+    const lastIntent = inBookingFlow ? 'booking' : undefined
+    const lastBookingShopId = inBookingFlow ? lastAssistantMessage.shopId : undefined
+
     const response = await $fetch('/api/ai-search', {
       method: 'POST',
       signal: currentAbortController.signal,
@@ -375,7 +397,9 @@ const sendMessage = async (messageText) => {
           content: m.content
         })),
         selectedShopId: selectedShopId.value || undefined,
-        lastShops
+        lastShops,
+        lastIntent,
+        lastBookingShopId
       }
     })
     
@@ -398,6 +422,10 @@ const sendMessage = async (messageText) => {
         shopName: response.shopName,
         selectableOptions: response.selectableOptions
       })
+      // Keep the shop being booked visible on the right so users always know which shop they're booking
+      if (response.intent === 'booking' && response.shopId) {
+        selectedShopId.value = response.shopId
+      }
     } else {
       // Add error message
       messages.value.push({
