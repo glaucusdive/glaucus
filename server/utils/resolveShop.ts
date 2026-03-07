@@ -1,0 +1,47 @@
+import { createClient } from '@supabase/supabase-js'
+
+export interface ResolvedShop {
+  id: string
+  business_name: string
+  email: string | null
+  [key: string]: unknown
+}
+
+/**
+ * Get a dive shop by ID.
+ */
+export async function getShopById (
+  supabaseUrl: string,
+  supabaseKey: string,
+  shopId: string
+): Promise<ResolvedShop | null> {
+  const client = createClient(supabaseUrl, supabaseKey)
+  const { data, error } = await client
+    .from('diveshops')
+    .select('id, business_name, email')
+    .eq('id', shopId)
+    .single()
+  if (error || !data) return null
+  return data as ResolvedShop
+}
+
+/**
+ * Resolve a dive shop by name (fuzzy match on business_name).
+ * Returns the first match; use when user says "book with [name]".
+ */
+export async function resolveShopByName (
+  supabaseUrl: string,
+  supabaseKey: string,
+  nameQuery: string
+): Promise<ResolvedShop | null> {
+  if (!nameQuery || nameQuery.trim().length < 2) return null
+  const client = createClient(supabaseUrl, supabaseKey)
+  const { data, error } = await client
+    .from('diveshops')
+    .select('id, business_name, email')
+    .ilike('business_name', `%${nameQuery.trim()}%`)
+    .limit(1)
+    .order('google_rating', { ascending: false, nullsFirst: false })
+  if (error || !data || data.length === 0) return null
+  return data[0] as ResolvedShop
+}

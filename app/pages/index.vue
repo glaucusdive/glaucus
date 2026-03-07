@@ -86,6 +86,19 @@
                       Showing top {{ msg.shops.length }} results from {{ msg.totalResults }} dive shops found
                     </div>
                   </div>
+
+                  <!-- Selectable options (chips / quick-replies) -->
+                  <div v-if="msg.selectableOptions && msg.selectableOptions.length > 0" class="flex flex-wrap gap-2 p-2">
+                    <button
+                      v-for="(opt, i) in msg.selectableOptions"
+                      :key="i"
+                      type="button"
+                      @click="sendMessage(opt.value)"
+                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                    >
+                      {{ opt.label }}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -349,6 +362,9 @@ const sendMessage = async (messageText) => {
   
   try {
     // Call API with abort signal
+    const lastShopsFromHistory = messages.value.filter(m => m.role === 'assistant' && m.shops?.length).pop()?.shops
+    const lastShops = lastShopsFromHistory?.map(s => ({ id: s.id, business_name: s.business_name })) ?? undefined
+
     const response = await $fetch('/api/ai-search', {
       method: 'POST',
       signal: currentAbortController.signal,
@@ -357,7 +373,9 @@ const sendMessage = async (messageText) => {
         history: messages.value.filter(m => m.role === 'user' || m.role === 'assistant').map(m => ({
           role: m.role,
           content: m.content
-        }))
+        })),
+        selectedShopId: selectedShopId.value || undefined,
+        lastShops
       }
     })
     
@@ -367,13 +385,18 @@ const sendMessage = async (messageText) => {
     }
     
     if (response.success) {
-      // Add assistant response to chat
       messages.value.push({
         role: 'assistant',
         content: response.message,
         shops: response.shops || [],
         totalResults: response.totalResults,
-        hasMoreResults: response.hasMoreResults
+        hasMoreResults: response.hasMoreResults,
+        intent: response.intent,
+        bookingReady: response.bookingReady,
+        payload: response.payload,
+        shopId: response.shopId,
+        shopName: response.shopName,
+        selectableOptions: response.selectableOptions
       })
     } else {
       // Add error message
