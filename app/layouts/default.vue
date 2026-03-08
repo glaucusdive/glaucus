@@ -70,8 +70,9 @@
           <div
             class="w-auto lg:w-[520px] h-auto bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl absolute lg:relative bottom-2 lg:bottom-auto top-2 lg:top-auto right-2 lg:right-auto left-2 lg:left-auto flex flex-col justify-start overflow-hidden z-50">
             <!-- Dynamic Drawer Content -->
-            <BookingForm v-if="contentType === 'booking-form'" :shop-id="drawerData.shopId"
-              :shop-name="drawerData.shopName" />
+            <BookingForm v-if="contentType === 'booking-form'" :key="'booking-' + drawerOpenKey"
+              :shop-id="drawerData.shopId" :shop-name="drawerData.shopName"
+              :initial-payload="drawerData.bookingPayload" />
           </div>
         </Transition>
       </div>
@@ -90,7 +91,7 @@ import Logo from '~/components/Logo.vue'
 
 const { isDark, toggleTheme } = useTheme()
 
-const { isOpen, contentType, drawerData, isMobileMenuOpen, shouldAnimateMenu, closeMobileMenu } = useDrawer()
+const { isOpen, contentType, drawerData, drawerOpenKey, isMobileMenuOpen, shouldAnimateMenu, closeMobileMenu } = useDrawer()
 
 // Track if screen is desktop size - start as false to prevent flash on mobile
 const getInitialDesktop = () => {

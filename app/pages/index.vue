@@ -21,6 +21,11 @@
             Dive Shop Search</h1>
         </div>
         <div class="flex items-center gap-2 p-1 lg:p-4">
+          <button v-if="canStepBack" @click="stepBack"
+            class="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md cursor-pointer"
+            title="Remove last message and your last reply so you can redo that step">
+            Step back
+          </button>
           <button v-if="messages.length > 0" @click="clearConversation"
             class="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md cursor-pointer">
             New Search
@@ -64,11 +69,20 @@
 
               <!-- Assistant message -->
               <div v-else-if="msg.role === 'assistant'" class="flex justify-start">
-                <div class="md:max-w-[90%] space-y-4">
-                  <!-- AI text response -->
-                  <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3">
-                    <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap">{{ msg.content }}
+                <div class="md:max-w-[90%] space-y-4 flex-1 min-w-0">
+                  <!-- AI text response (chevron inside bubble when shown) -->
+                  <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3 flex items-stretch gap-2">
+                    <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0 py-1">{{ msg.content }}
                     </p>
+                    <button
+                      v-if="bookingShopForDrawer && !(msg.shops && msg.shops.length > 0)"
+                      type="button"
+                      @click="openBookingFormDrawer"
+                      class="w-10 shrink-0 self-stretch flex items-center justify-center rounded-smimage.png border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200 transition-colors cursor-pointer"
+                      aria-label="Open booking form"
+                    >
+                      <ChevronRight class="w-5 h-5" />
+                    </button>
                   </div>
 
                   <!-- Shop results -->
@@ -94,7 +108,7 @@
                     <button
                       v-if="msg.shops?.length && selectedShopId && selectedShopName"
                       type="button"
-                      @click="sendMessage('Let\'s book this')"
+                      @click="sendMessage(selectedShopName ? `Let's book ${selectedShopName}` : 'Let\'s book this')"
                       class="px-3 py-1.5 text-sm rounded-full bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-100 transition-colors cursor-pointer font-medium"
                     >
                       Let's book {{ selectedShopName }}
@@ -180,7 +194,7 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted, watch, onUnmounted } from 'vue'
-import { Menu, ArrowUp } from 'lucide-vue-next'
+import { Menu, ArrowUp, ChevronRight } from 'lucide-vue-next'
 import gsap from 'gsap'
 import CardSearchResult from '~/components/CardSearchResult.vue'
 import ShopDetailPanel from '~/components/ShopDetailPanel.vue'
@@ -210,6 +224,26 @@ const selectedShopName = computed(() => {
   if (shop?.business_name) return shop.business_name
   const bookingMsg = [...messages.value].reverse().find(m => m.shopId === selectedShopId.value && m.shopName)
   return bookingMsg?.shopName ?? null
+})
+
+// Latest booking payload from chat (for pre-filling the booking-form drawer and sending to API)
+const lastBookingPayload = computed(() => {
+  const m = [...messages.value].reverse().find(m => {
+    if (m.role !== 'assistant' || m.intent !== 'booking') return false
+    return m.payload != null || (m && 'bookingPayload' in m && m.bookingPayload != null)
+  })
+  const p = m && (m.payload !== undefined ? m.payload : m.bookingPayload)
+  return p ?? undefined
+})
+
+// Shop to use for booking-form drawer (selected shop, or from any message in conversation)
+const bookingShopForDrawer = computed(() => {
+  if (selectedShopId.value && selectedShopName.value) return { id: selectedShopId.value, name: selectedShopName.value }
+  const m = [...messages.value].reverse().find(m => m.role === 'assistant' && (m.shopId || m.shops?.length))
+  if (m?.shopId && m?.shopName) return { id: m.shopId, name: m.shopName }
+  const shop = m?.shops?.[0]
+  if (shop) return { id: shop.id, name: shop.business_name }
+  return null
 })
 
 // Desktop detection
@@ -247,8 +281,8 @@ const exampleQueries = [
 // Cache helpers
 const { getCache, setCache, clearCache } = useSearchCache()
 
-// Mobile menu
-const { openMobileMenu } = useDrawer()
+// Drawer (mobile menu + booking form)
+const { openMobileMenu, openDrawer } = useDrawer()
 
 const persistCache = () => {
   if (isRestoringCache.value) return
@@ -391,6 +425,7 @@ const sendMessage = async (messageText) => {
     const inBookingFlow = lastAssistantMessage?.intent === 'booking' && lastAssistantMessage?.shopId
     const lastIntent = inBookingFlow ? 'booking' : undefined
     const lastBookingShopId = inBookingFlow ? lastAssistantMessage.shopId : undefined
+    const lastPayload = lastBookingPayload.value
 
     const response = await $fetch('/api/ai-search', {
       method: 'POST',
@@ -404,7 +439,8 @@ const sendMessage = async (messageText) => {
         selectedShopId: selectedShopId.value || undefined,
         lastShops,
         lastIntent,
-        lastBookingShopId
+        lastBookingShopId,
+        ...(inBookingFlow && lastPayload ? { bookingPayload: lastPayload } : {})
       }
     })
     
@@ -414,15 +450,17 @@ const sendMessage = async (messageText) => {
     }
     
     if (response.success) {
+      const storedPayload = response.bookingPayload ?? response.payload
+      const content = (response.message && String(response.message).trim()) ? response.message : 'Got it — what would you like to tell me next?'
       messages.value.push({
         role: 'assistant',
-        content: response.message,
+        content,
         shops: response.shops || [],
         totalResults: response.totalResults,
         hasMoreResults: response.hasMoreResults,
         intent: response.intent,
         bookingReady: response.bookingReady,
-        payload: response.payload,
+        payload: storedPayload,
         shopId: response.shopId,
         shopName: response.shopName,
         selectableOptions: response.selectableOptions
@@ -475,6 +513,20 @@ const handleSubmit = () => {
   sendMessage()
 }
 
+// Step back: remove last assistant + last user message so user can redo that step (for testing)
+const canStepBack = computed(() => {
+  const m = messages.value
+  if (m.length < 2) return false
+  const last = m[m.length - 1]
+  const prev = m[m.length - 2]
+  return last.role === 'assistant' && prev.role === 'user'
+})
+const stepBack = () => {
+  if (!canStepBack.value) return
+  messages.value = messages.value.slice(0, -2)
+  persistCache()
+}
+
 // Clear conversation
 const clearConversation = () => {
   // Cancel any in-progress request
@@ -500,6 +552,17 @@ const handleShopSelected = (shop) => {
 const handleViewDetails = (shop) => {
   selectedShopId.value = shop.id
   mobileDetailShopId.value = shop.id
+}
+
+// Open layout booking-form drawer with current shop and chat-collected payload
+const openBookingFormDrawer = () => {
+  const shop = bookingShopForDrawer.value
+  if (!shop) return
+  openDrawer('booking-form', {
+    shopId: shop.id,
+    shopName: shop.name,
+    bookingPayload: lastBookingPayload.value
+  })
 }
 
 // Close shop detail (desktop: clear selection; mobile: close drawer only, keep selection for book chip)

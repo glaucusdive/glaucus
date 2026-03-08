@@ -104,7 +104,7 @@ function buildBookingSystemPrompt (shopName: string, diveSiteNames: string[], ex
   const collected = existingPayload ? `\nAlready collected: ${JSON.stringify(existingPayload)}` : ''
   return `You are a friendly dive travel agent collecting a dive trip booking. The shop the user is booking with is: ${shopName}.${sitesList}${collected}
 
-Ask for ONE piece of information at a time in this order: 1) name, 2) email, 3) start date and end date for diving, 4) number of divers, 5) for each diver: name, certification number, number of dives completed, height (with unit: cm or ft-in), weight (with unit: kg or lbs), and any rental gear they need. Optionally ask which dive sites they're interested in from the list.
+Ask for ONE piece of information at a time in this order: 1) name (the person making the booking), 2) email, 3) start date and end date for diving, 4) number of divers, 5) confirm whether the person whose name you have is Diver 1 or not: ask "Is [name] one of the divers? I'll use that name for Diver 1 if yes — otherwise tell me Diver 1's full name." If they say yes (or that they are Diver 1), set Diver 1's name to that name. If they say no, ask for Diver 1's full name. 6) For each diver: certification number, number of dives completed, height (with unit: cm or ft-in), weight (with unit: kg or lbs), and any rental gear they need. Optionally ask which dive sites they're interested in from the list.
 
 Dates (step 3): Accept dates in any form the user gives — e.g. "July 24 2026", "24th July", "070826", "7/24/26", "next week", "April 15 to April 18". Parse them into a start and end date. Reply by repeating the dates back in one clean, readable format (e.g. "So that's 24 July 2026 to 27 July 2026 — is that right?") and ask for confirmation. Only when the user confirms (yes, correct, that's right, yep, looks good, etc.) treat the dates as collected and move to the next question. If they correct the dates, parse the correction, repeat back in clean format again, and ask for confirmation. Store startDate and endDate in the payload in YYYY-MM-DD. Do not ask the user to type YYYY-MM-DD.
 
@@ -135,7 +135,11 @@ The JSON must have this shape (use empty string "" for missing optional fields, 
   "desiredDiveSites": ["string"]
 }
 
-Do not output BOOKING_READY until every required field is present. If the user corrects something, update and continue.`
+Do not output BOOKING_READY until every required field is present. If the user corrects something, update and continue.
+
+After every reply (before or after BOOKING_READY if you use it), output a single line with the current collected state as valid JSON so we can pre-fill the form:
+COLLECTED: {"name":"...","email":"...","startDate":"...","endDate":"...","numberOfDivers":1,"divers":[...],"desiredDiveSites":[...]}
+Include every field you have collected so far (use empty string or [] for not yet collected). Use the exact same JSON shape as BOOKING_READY.`
 }
 
 export default defineEventHandler(async (event) => {
@@ -243,7 +247,43 @@ export default defineEventHandler(async (event) => {
           }
         }
       }
-      const replyMessage = (bookingReadyIdx >= 0 ? aiMessage.slice(0, bookingReadyIdx) : aiMessage).trim() || aiMessage
+      let replyMessage = (bookingReadyIdx >= 0 ? aiMessage.slice(0, bookingReadyIdx) : aiMessage).trim() || aiMessage
+      let collectedPayload: BookingPayload | undefined = bookingPayload ?? undefined
+      const collectedIdx = aiMessage.indexOf('COLLECTED:')
+      if (collectedIdx >= 0) {
+        const braceStart = aiMessage.indexOf('{', collectedIdx)
+        if (braceStart >= 0) {
+          let depth = 0
+          let end = braceStart
+          for (let i = braceStart; i < aiMessage.length; i++) {
+            if (aiMessage[i] === '{') depth++
+            else if (aiMessage[i] === '}') { depth--; if (depth === 0) { end = i; break } }
+          }
+          try {
+            const parsed = JSON.parse(aiMessage.slice(braceStart, end + 1)) as BookingPayload
+            parsed.shopId = parsed.shopId || resolvedShop.id
+            collectedPayload = parsed
+          } catch (e) {
+            // ignore parse error, keep previous payload
+          }
+          const inReply = replyMessage.indexOf('COLLECTED:')
+          if (inReply >= 0) {
+            const replyBrace = replyMessage.indexOf('{', inReply)
+            if (replyBrace >= 0) {
+              let d = 0
+              let replyEnd = replyBrace
+              for (let i = replyBrace; i < replyMessage.length; i++) {
+                if (replyMessage[i] === '{') d++
+                else if (replyMessage[i] === '}') { d--; if (d === 0) { replyEnd = i; break } }
+              }
+              replyMessage = (replyMessage.slice(0, inReply) + replyMessage.slice(replyEnd + 1)).replace(/\n\n+/g, '\n').trim()
+            }
+          }
+        }
+      }
+      if (!replyMessage || !replyMessage.trim()) {
+        replyMessage = 'Got it — what would you like to tell me next?'
+      }
       // Do not send dive site names as chips during booking — they're for "which sites?" only and would show wrongly when asking for name/email/dates
       return {
         success: true,
@@ -252,7 +292,7 @@ export default defineEventHandler(async (event) => {
         message: replyMessage,
         shopId: resolvedShop.id,
         shopName: resolvedShop.business_name,
-        bookingPayload: bookingPayload ?? undefined,
+        bookingPayload: collectedPayload,
         selectableOptions: undefined
       }
     }

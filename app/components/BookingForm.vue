@@ -173,7 +173,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { X } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
 
@@ -186,6 +186,11 @@ const props = defineProps({
   shopName: {
     type: String,
     required: true
+  },
+  /** Pre-fill form from chat-collected booking payload */
+  initialPayload: {
+    type: Object,
+    default: undefined
   }
 })
 
@@ -222,6 +227,47 @@ const formData = ref({
   endDate: '',
   desiredDiveSites: []
 })
+
+// Pre-fill from chat-collected payload (or cached data) when drawer opens
+function applyInitialPayload () {
+  const p = props.initialPayload
+  if (!p || typeof p !== 'object') return
+  if (p.shopId != null) formData.value.shopId = String(p.shopId)
+  if (p.name != null) formData.value.name = String(p.name)
+  if (p.email != null) formData.value.email = String(p.email)
+  if (p.startDate != null) formData.value.startDate = String(p.startDate)
+  if (p.endDate != null) formData.value.endDate = String(p.endDate)
+  const numDivers = (p.numberOfDivers != null && Number(p.numberOfDivers) >= 1) ? Number(p.numberOfDivers) : 1
+  formData.value.numberOfDivers = numDivers
+  if (Array.isArray(p.divers) && p.divers.length > 0) {
+    formData.value.divers = p.divers.slice(0, numDivers).map(d => {
+      const item = d && typeof d === 'object' ? d : {}
+      return {
+        name: item.name ?? '',
+        certificationNumber: item.certificationNumber ?? '',
+        numberOfDives: item.numberOfDives ?? '',
+        height: item.height ?? '',
+        heightUnit: item.heightUnit === 'ft-in' ? 'ft-in' : 'cm',
+        weight: item.weight ?? '',
+        weightUnit: item.weightUnit === 'lbs' ? 'lbs' : 'kg',
+        gear: Array.isArray(item.gear) ? item.gear.map(g => ({ gearType: g && typeof g === 'object' ? g.gearType : '' })) : []
+      }
+    })
+    while (formData.value.divers.length < numDivers) {
+      formData.value.divers.push({
+        name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: []
+      })
+    }
+  } else {
+    updateDiversCount(numDivers)
+  }
+  if (Array.isArray(p.desiredDiveSites)) formData.value.desiredDiveSites = p.desiredDiveSites.filter(Boolean)
+}
+
+onMounted(() => {
+  applyInitialPayload()
+})
+watch(() => props.initialPayload, () => applyInitialPayload(), { deep: true })
 
 // Auto-sync main name to Diver 1
 watch(() => formData.value.name, (newName) => {

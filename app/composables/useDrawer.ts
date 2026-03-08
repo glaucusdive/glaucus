@@ -13,6 +13,7 @@ interface DrawerData {
 const isOpen = ref(false)
 const contentType = ref<DrawerContentType>(null)
 const drawerData = ref<DrawerData>({})
+const drawerOpenKey = ref(0)
 
 // Global state for mobile menu (left sidebar)
 const isMobileMenuOpen = ref(false)
@@ -22,6 +23,7 @@ export const useDrawer = () => {
   const openDrawer = (type: DrawerContentType, data: DrawerData = {}) => {
     contentType.value = type
     drawerData.value = data
+    drawerOpenKey.value += 1
     isOpen.value = true
   }
 
@@ -52,6 +54,7 @@ export const useDrawer = () => {
     isOpen,
     contentType,
     drawerData,
+    drawerOpenKey,
     openDrawer,
     closeDrawer,
     isMobileMenuOpen,
