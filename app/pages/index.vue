@@ -123,6 +123,53 @@
                       {{ opt.label }}
                     </button>
                   </div>
+
+                  <!-- Rental gear: multi-select chips (shop-specific equipment only) -->
+                  <div v-if="msg.rentalEquipmentOptions && msg.rentalEquipmentOptions.length > 0" class="flex flex-wrap gap-2 p-2">
+                    <button
+                      v-for="eq in msg.rentalEquipmentOptions"
+                      :key="eq.id"
+                      type="button"
+                      @click="sendMessage(eq.name)"
+                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                    >
+                      {{ eq.name }}
+                    </button>
+                    <button
+                      type="button"
+                      @click="sendMessage('none')"
+                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"
+                    >
+                      None
+                    </button>
+                    <button
+                      type="button"
+                      @click="sendMessage('done')"
+                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                    >
+                      Done
+                    </button>
+                  </div>
+
+                  <!-- Dive sites: chips for shop-specific sites -->
+                  <div v-if="msg.diveSiteOptions && msg.diveSiteOptions.length > 0" class="flex flex-wrap gap-2 p-2">
+                    <button
+                      v-for="site in msg.diveSiteOptions"
+                      :key="site.id"
+                      type="button"
+                      @click="sendMessage(site.name)"
+                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                    >
+                      {{ site.name }}
+                    </button>
+                    <button
+                      type="button"
+                      @click="sendMessage('any')"
+                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"
+                    >
+                      Any
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -426,6 +473,7 @@ const sendMessage = async (messageText) => {
     const inBookingFlow = lastAssistantMessage?.intent === 'booking' && lastAssistantMessage?.shopId
     const lastIntent = inBookingFlow ? 'booking' : undefined
     const lastBookingShopId = inBookingFlow ? lastAssistantMessage.shopId : undefined
+    const lastBookingShopName = inBookingFlow ? (lastAssistantMessage.shopName ?? selectedShopName.value) : undefined
     const lastPayload = lastBookingPayload.value
 
     const response = await $fetch('/api/ai-search', {
@@ -441,6 +489,7 @@ const sendMessage = async (messageText) => {
         lastShops,
         lastIntent,
         lastBookingShopId,
+        ...(inBookingFlow && lastBookingShopName ? { lastBookingShopName } : {}),
         ...(inBookingFlow && lastPayload ? { bookingPayload: lastPayload } : {})
       }
     })
@@ -464,7 +513,9 @@ const sendMessage = async (messageText) => {
         payload: storedPayload,
         shopId: response.shopId,
         shopName: response.shopName,
-        selectableOptions: response.selectableOptions
+        selectableOptions: response.selectableOptions,
+        rentalEquipmentOptions: response.rentalEquipmentOptions || undefined,
+        diveSiteOptions: response.diveSiteOptions || undefined
       })
       // Keep the shop being booked visible on the right so users always know which shop they're booking
       if (response.intent === 'booking' && response.shopId) {
