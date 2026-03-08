@@ -198,7 +198,7 @@ export function tryFastPath (
         if (i < numDivers - 1) {
           return { message: `Got it — ${n}'s gear is set. What's Diver ${i + 2}'s full name?`, payload: p }
         }
-        return { message: `Got it — ${n}'s gear is set. Which dive sites are you interested in? (Optional — or say "any" to continue.)`, payload: p }
+        return { message: `Got it — ${n}'s gear is set. Pick one or more below, or say "any". Add another or say "done" when finished.`, payload: p }
       }
       if (isNone || (isDone && !divers[i]?.gear?.length)) {
         if (!divers[i]) return null
@@ -208,7 +208,7 @@ export function tryFastPath (
         if (i < numDivers - 1) {
           return { message: `Got it — no rental gear for ${divers[i].name}. What's Diver ${i + 2}'s full name?`, payload: p }
         }
-        return { message: `Got it — no rental gear. Which dive sites are you interested in? (Optional — or say "any" to continue.)`, payload: p }
+        return { message: `Got it — no rental gear. Pick one or more below, or say "any". Add another or say "done" when finished.`, payload: p }
       }
       const equipmentNames = options?.rentalEquipmentNames ?? []
       if (equipmentNames.length > 0) {

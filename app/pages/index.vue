@@ -169,6 +169,13 @@
                     >
                       Any
                     </button>
+                    <button
+                      type="button"
+                      @click="sendMessage('done')"
+                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                    >
+                      Done
+                    </button>
                   </div>
                 </div>
               </div>

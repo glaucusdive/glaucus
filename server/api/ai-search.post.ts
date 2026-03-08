@@ -247,8 +247,10 @@ export default defineEventHandler(async (event) => {
       const addDiveSiteOptions = (payload: BookingPayload) =>
         getNextBookingStep(payload)?.step === 'diveSites' && diveSites.length > 0 ? diveSites : undefined
       const messageAsksForGear = (text: string) => /rental gear|need any.*gear|available rental|more gear|next detail/i.test(text)
-      const messageAsksForDiveSites = (text: string) => /dive sites|which sites|sites would you like|available sites/i.test(text)
+      const messageAsksForDiveSites = (text: string) => /dive sites|which sites|sites would you like|available sites|pick one or more/i.test(text)
       const messageIsAddAnotherGear = (text: string) => /add another or say/i.test(text)
+      /** Copy for dive-sites step: makes multi-select and "done" obvious so users don't think one tap commits. */
+      const DIVE_SITES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.'
 
       // Fast path: simple field (name, email, certification, height, weight, "none" or single gear item) → instant template response, no LLM
       if (continuingBooking && bookingPayload) {
@@ -283,14 +285,12 @@ export default defineEventHandler(async (event) => {
             }
           }
         }
-        // "Done" (or "none" meaning no more) when last diver has gear: move on without LLM
+        // "Done" (or "none" meaning no more) when last diver has gear: ask if they want to add another diver (don't assume Diver 3)
         const numDiversForDone = Math.max(1, bookingPayload.numberOfDivers ?? 1)
         const lastDiverForDone = bookingPayload.divers?.[numDiversForDone - 1]
         if (lastDiverForDone?.gear?.length && (/^(done|that's all|finish|that's it)$/i.test(msgTrim) || msgTrim.toLowerCase() === 'none')) {
           const name = lastDiverForDone.name || 'They'
-          const nextMsg = numDiversForDone > 1
-            ? `Got it — ${name}'s gear is set. What's Diver ${numDiversForDone + 1}'s full name?`
-            : `Got it — ${name}'s gear is set. Which dive sites would you like to dive? (Optional — pick one or more, or say "any".)`
+          const nextMsg = `Got it — ${name}'s gear is set. Do you want to add another diver? (yes/no)`
           return {
             success: true,
             intent: 'booking' as const,
@@ -299,9 +299,51 @@ export default defineEventHandler(async (event) => {
             shopId: resolvedShop.id,
             shopName: resolvedShop.business_name,
             bookingPayload: bookingPayload,
-            selectableOptions: undefined,
+            selectableOptions: [{ label: 'No — just these divers', value: 'no' }, { label: 'Yes — add another', value: 'yes' }],
             rentalEquipmentOptions: undefined,
-            diveSiteOptions: numDiversForDone === 1 && diveSites.length > 0 ? diveSites : undefined
+            diveSiteOptions: undefined
+          }
+        }
+        // Reply to "Do you want to add another diver?" — no → dive sites; yes → add diver and ask for name
+        const lastAssistantContent = history?.filter(m => m.role === 'assistant').pop()?.content ?? ''
+        if (lastAssistantContent && /add another diver/i.test(lastAssistantContent) && continuingBooking && bookingPayload) {
+          const numDivers = Math.max(1, bookingPayload.numberOfDivers ?? 1)
+          const noMore = /^(no|nope|nah|that's all|just (these|two|them)|no other|no more|there's no|there are only|only two|just the two)$/i.test(msgTrim) || /no other diver|just (the )?two divers/i.test(msgTrim)
+          if (noMore) {
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message: `All set — ${numDivers} diver${numDivers === 1 ? '' : 's'}. ${DIVE_SITES_LINE}`,
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              bookingPayload: bookingPayload,
+              selectableOptions: undefined,
+              rentalEquipmentOptions: undefined,
+              diveSiteOptions: diveSites.length > 0 ? diveSites : undefined
+            }
+          }
+          const yesMore = /^(yes|yeah|yep|add one|add another|yes please|sure)$/i.test(msgTrim)
+          if (yesMore) {
+            const newNum = numDivers + 1
+            const p = { ...bookingPayload, numberOfDivers: newNum }
+            const divers = Array.isArray(bookingPayload.divers) ? [...bookingPayload.divers] : []
+            while (divers.length < newNum) {
+              divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: [] })
+            }
+            p.divers = divers
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message: `What's Diver ${newNum}'s full name?`,
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              bookingPayload: p,
+              selectableOptions: undefined,
+              rentalEquipmentOptions: undefined,
+              diveSiteOptions: undefined
+            }
           }
         }
         if (/^(lbs?|kg|pounds)$/i.test(msgTrim)) {
@@ -317,6 +359,44 @@ export default defineEventHandler(async (event) => {
               bookingPayload: fastUnit.payload,
               selectableOptions: undefined,
               rentalEquipmentOptions: addGearOptions(fastUnit.payload)
+            }
+          }
+        }
+        // Dive-sites fast path: tap a site → add and re-show chips instantly; "any"/"done" → booking ready. No LLM.
+        const nextStepForDive = getNextBookingStep(bookingPayload)
+        if (nextStepForDive?.step === 'diveSites' && diveSites.length > 0) {
+          const matchedSite = diveSiteNames.find(n => n.toLowerCase() === msgTrim.toLowerCase())
+          if (matchedSite) {
+            const sites = [...(bookingPayload.desiredDiveSites || [])]
+            if (!sites.includes(matchedSite)) sites.push(matchedSite)
+            const p = { ...bookingPayload, desiredDiveSites: sites }
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message: `Added ${matchedSite}. ${DIVE_SITES_LINE}`,
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              bookingPayload: p,
+              selectableOptions: undefined,
+              rentalEquipmentOptions: undefined,
+              diveSiteOptions: diveSites
+            }
+          }
+          const isDone = /^(done|that's all|finish|that's it|no more)$/i.test(msgTrim)
+          const isAny = /^any$/i.test(msgTrim)
+          if (isDone || isAny) {
+            const p = { ...bookingPayload, desiredDiveSites: isAny ? [] : (bookingPayload.desiredDiveSites || []) }
+            p.shopId = resolvedShop.id
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: true,
+              payload: p,
+              message: `I have everything I need. Ready to send your booking request to ${resolvedShop.business_name}.`,
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              selectableOptions: undefined
             }
           }
         }
@@ -458,8 +538,9 @@ export default defineEventHandler(async (event) => {
           }
         }
       }
+      const genericFallback = 'Got it — continuing with your booking. What\'s the next detail? (e.g. more gear, or Diver 2\'s name if you have more than one diver)'
       if (!replyMessage || !replyMessage.trim()) {
-        replyMessage = 'Got it — continuing with your booking. What\'s the next detail? (e.g. more gear, or Diver 2\'s name if you have more than one diver)'
+        replyMessage = genericFallback
       }
       const gearChips = rentalEquipment.length > 0 ? rentalEquipment : undefined
       // When showing gear chips, strip redundant listing from message (chips replace the equipment list and "please list items")
@@ -481,6 +562,13 @@ export default defineEventHandler(async (event) => {
           .replace(/\s*You can pick one or several[^.]*\.?/gi, '')
           .replace(/\s{2,}/g, ' ')
           .trim()
+      }
+      // If we're showing dive site chips but the message is still the generic fallback (e.g. AI reply was stripped to empty), show context
+      const willShowDiveSiteOptions = (collectedPayload ? addDiveSiteOptions(collectedPayload) : undefined) ||
+        (messageAsksForDiveSites(replyMessage) && diveSiteChips ? diveSiteChips : undefined) ||
+        (bookingPayload && addDiveSiteOptions(bookingPayload) ? diveSiteChips : undefined)
+      if (willShowDiveSiteOptions && replyMessage === genericFallback) {
+        replyMessage = DIVE_SITES_LINE
       }
       return {
         success: true,
