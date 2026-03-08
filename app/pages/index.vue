@@ -28,7 +28,7 @@
           </button>
           <button v-if="messages.length > 0" @click="clearConversation"
             class="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md cursor-pointer">
-            New Search
+            New Chat
           </button>
         </div>
       </div>

@@ -46,13 +46,17 @@ function ensureDivers (p: BookingPayloadLocal): BookingDiverLocal[] {
   return p.divers
 }
 
-/** Determine which field we're waiting for based on current payload. */
+/** Determine which field we're waiting for based on current payload. Order: name → email → dates → diveSites → numberOfDivers → (per-diver details + gear). */
 export function getNextBookingStep (payload: BookingPayloadLocal): NextStepResult | null {
   if (!payload) return null
   if (!payload.name || String(payload.name).trim() === '') return { step: 'name' }
   if (!payload.email || String(payload.email).trim() === '') return { step: 'email' }
   if (!payload.startDate || !payload.endDate) return { step: 'dates' }
-  const numDivers = payload.numberOfDivers != null && payload.numberOfDivers >= 1 ? payload.numberOfDivers : 1
+  // Dive sites right after dates (before number of divers / diver details)
+  if (payload.desiredDiveSites === undefined) return { step: 'diveSites' }
+  // Number of divers
+  if (payload.numberOfDivers == null || payload.numberOfDivers < 1) return { step: 'numberOfDivers' }
+  const numDivers = payload.numberOfDivers
   const divers = ensureDivers(payload)
   for (let j = divers.length; j < numDivers; j++) {
     divers.push({
@@ -78,7 +82,7 @@ export function getNextBookingStep (payload: BookingPayloadLocal): NextStepResul
   if (lastDiver && gearEmpty) {
     return { step: 'gear', diverIndex: numDivers - 1, diverName: lastDiver.name || 'Diver ' + numDivers }
   }
-  return { step: 'diveSites' }
+  return { step: 'ready' }
 }
 
 /** Try to parse a simple value and return next message + updated payload, or null to use LLM. */
@@ -198,7 +202,7 @@ export function tryFastPath (
         if (i < numDivers - 1) {
           return { message: `Got it — ${n}'s gear is set. What's Diver ${i + 2}'s full name?`, payload: p }
         }
-        return { message: `Got it — ${n}'s gear is set. Pick one or more below, or say "any". Add another or say "done" when finished.`, payload: p }
+        return { message: `Got it — ${n}'s gear is set. All set — ready to send your booking request.`, payload: p }
       }
       if (isNone || (isDone && !divers[i]?.gear?.length)) {
         if (!divers[i]) return null
@@ -208,7 +212,7 @@ export function tryFastPath (
         if (i < numDivers - 1) {
           return { message: `Got it — no rental gear for ${divers[i].name}. What's Diver ${i + 2}'s full name?`, payload: p }
         }
-        return { message: `Got it — no rental gear. Pick one or more below, or say "any". Add another or say "done" when finished.`, payload: p }
+        return { message: `Got it — no rental gear. All set — ready to send your booking request.`, payload: p }
       }
       const equipmentNames = options?.rentalEquipmentNames ?? []
       if (equipmentNames.length > 0) {

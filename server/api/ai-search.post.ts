@@ -133,7 +133,7 @@ function buildBookingSystemPrompt (
     : ''
   return `You are a friendly dive travel agent collecting a dive trip booking. The shop the user is booking with is: ${shopName}.${sitesList}${equipmentList}${collected}${nextLine}
 
-Ask for ONE piece of information at a time in this order: 1) name (the person making the booking), 2) email, 3) start date and end date for diving, 4) number of divers, 5) confirm whether the person whose name you have is Diver 1 or not: ask "Is [name] one of the divers? I'll use that name for Diver 1 if yes — otherwise tell me Diver 1's full name." If they say yes (or that they are Diver 1), set Diver 1's name to that name. If they say no, ask for Diver 1's full name. 6) For each diver: certification number, number of dives completed, height (with unit: cm or ft-in), weight (with unit: kg or lbs), and any rental gear they need. Optionally ask which dive sites they're interested in from the list.
+Ask for ONE piece of information at a time in this order: 1) name (the person making the booking), 2) email, 3) start date and end date for diving, 4) which dive sites they want from the list (optional — they can say "any" or pick sites), 5) number of divers, 6) confirm whether the person whose name you have is Diver 1 or not: ask "Is [name] one of the divers? I'll use that name for Diver 1 if yes — otherwise tell me Diver 1's full name." If they say yes (or that they are Diver 1), set Diver 1's name to that name. If they say no, ask for Diver 1's full name. 7) For each diver: certification number, number of dives completed, height (with unit: cm or ft-in), weight (with unit: kg or lbs), and any rental gear they need.
 
 Dates (step 3): Accept dates in any form the user gives — e.g. "July 24 2026", "24th July", "070826", "7/24/26", "next week", "April 15 to April 18". Parse them into a start and end date. Reply by repeating the dates back in one clean, readable format (e.g. "So that's 24 July 2026 to 27 July 2026 — is that right?") and ask for confirmation. Only when the user confirms (yes, correct, that's right, yep, looks good, etc.) treat the dates as collected and move to the next question. If they correct the dates, parse the correction, repeat back in clean format again, and ask for confirmation. Store startDate and endDate in the payload in YYYY-MM-DD. Do not ask the user to type YYYY-MM-DD.
 
@@ -168,7 +168,7 @@ Do not output BOOKING_READY until every required field is present. If the user c
 
 After every reply you must output the current collected state so we can pre-fill the form. IMPORTANT: always write your full conversational reply first (ask the next question or confirm — e.g. "Thanks, got the gear. What's Diver 2's full name?"). Then on a new line, output only:
 COLLECTED: {"name":"...","email":"...","startDate":"...","endDate":"...","numberOfDivers":1,"divers":[...],"desiredDiveSites":[...]}
-Never put COLLECTED in the middle of your reply — your message to the user must come first, then COLLECTED on its own line. Include every field you have collected so far (use empty string or [] for not yet collected). Use the exact same JSON shape as BOOKING_READY. Always proceed to the next empty field question (e.g. after gear for Diver 1, ask for Diver 2's name if numberOfDivers > 1, or ask for dive sites or output BOOKING_READY if all required fields are done).`
+Never put COLLECTED in the middle of your reply — your message to the user must come first, then COLLECTED on its own line. Include every field you have collected so far (use empty string or [] for not yet collected). Use the exact same JSON shape as BOOKING_READY. Always proceed to the next empty field question (e.g. after dates ask for dive sites; after dive sites ask for number of divers; after gear for last diver, output BOOKING_READY).`
 }
 
 export default defineEventHandler(async (event) => {
@@ -285,7 +285,63 @@ export default defineEventHandler(async (event) => {
             }
           }
         }
-        // "Done" (or "none" meaning no more) when last diver has gear: ask if they want to add another diver (don't assume Diver 3)
+        // Dive-sites fast path first (so "done" on dive sites isn't caught by gear "done"). No LLM.
+        const nextStepForDive = getNextBookingStep(bookingPayload)
+        if (nextStepForDive?.step === 'diveSites') {
+          if (diveSites.length === 0) {
+            const p = { ...bookingPayload, desiredDiveSites: [] }
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message: 'No specific dive sites for this shop. How many divers will be on the trip?',
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              bookingPayload: p,
+              selectableOptions: undefined,
+              rentalEquipmentOptions: undefined,
+              diveSiteOptions: undefined
+            }
+          }
+        }
+        if (nextStepForDive?.step === 'diveSites' && diveSites.length > 0) {
+          const matchedSite = diveSiteNames.find(n => n.toLowerCase() === msgTrim.toLowerCase())
+          if (matchedSite) {
+            const sites = [...(bookingPayload.desiredDiveSites || [])]
+            if (!sites.includes(matchedSite)) sites.push(matchedSite)
+            const p = { ...bookingPayload, desiredDiveSites: sites }
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message: `Added ${matchedSite}. ${DIVE_SITES_LINE}`,
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              bookingPayload: p,
+              selectableOptions: undefined,
+              rentalEquipmentOptions: undefined,
+              diveSiteOptions: diveSites
+            }
+          }
+          const isDone = /^(done|that's all|finish|that's it|no more)$/i.test(msgTrim)
+          const isAny = /^any$/i.test(msgTrim)
+          if (isDone || isAny) {
+            const p = { ...bookingPayload, desiredDiveSites: isAny ? [] : (bookingPayload.desiredDiveSites || []) }
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message: 'How many divers will be on the trip?',
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              bookingPayload: p,
+              selectableOptions: undefined,
+              rentalEquipmentOptions: undefined,
+              diveSiteOptions: undefined
+            }
+          }
+        }
+        // "Done" (or "none") when last diver has gear: ask if they want to add another diver (don't assume Diver 3)
         const numDiversForDone = Math.max(1, bookingPayload.numberOfDivers ?? 1)
         const lastDiverForDone = bookingPayload.divers?.[numDiversForDone - 1]
         if (lastDiverForDone?.gear?.length && (/^(done|that's all|finish|that's it)$/i.test(msgTrim) || msgTrim.toLowerCase() === 'none')) {
@@ -304,23 +360,22 @@ export default defineEventHandler(async (event) => {
             diveSiteOptions: undefined
           }
         }
-        // Reply to "Do you want to add another diver?" — no → dive sites; yes → add diver and ask for name
+        // Reply to "Do you want to add another diver?" — no → booking ready (dive sites already asked earlier); yes → add diver and ask for name
         const lastAssistantContent = history?.filter(m => m.role === 'assistant').pop()?.content ?? ''
         if (lastAssistantContent && /add another diver/i.test(lastAssistantContent) && continuingBooking && bookingPayload) {
           const numDivers = Math.max(1, bookingPayload.numberOfDivers ?? 1)
           const noMore = /^(no|nope|nah|that's all|just (these|two|them)|no other|no more|there's no|there are only|only two|just the two)$/i.test(msgTrim) || /no other diver|just (the )?two divers/i.test(msgTrim)
           if (noMore) {
+            const p = { ...bookingPayload, shopId: resolvedShop.id }
             return {
               success: true,
               intent: 'booking' as const,
-              bookingReady: false,
-              message: `All set — ${numDivers} diver${numDivers === 1 ? '' : 's'}. ${DIVE_SITES_LINE}`,
+              bookingReady: true,
+              payload: p,
+              message: `I have everything I need. Ready to send your booking request to ${resolvedShop.business_name}.`,
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
-              bookingPayload: bookingPayload,
-              selectableOptions: undefined,
-              rentalEquipmentOptions: undefined,
-              diveSiteOptions: diveSites.length > 0 ? diveSites : undefined
+              selectableOptions: undefined
             }
           }
           const yesMore = /^(yes|yeah|yep|add one|add another|yes please|sure)$/i.test(msgTrim)
@@ -362,48 +417,24 @@ export default defineEventHandler(async (event) => {
             }
           }
         }
-        // Dive-sites fast path: tap a site → add and re-show chips instantly; "any"/"done" → booking ready. No LLM.
-        const nextStepForDive = getNextBookingStep(bookingPayload)
-        if (nextStepForDive?.step === 'diveSites' && diveSites.length > 0) {
-          const matchedSite = diveSiteNames.find(n => n.toLowerCase() === msgTrim.toLowerCase())
-          if (matchedSite) {
-            const sites = [...(bookingPayload.desiredDiveSites || [])]
-            if (!sites.includes(matchedSite)) sites.push(matchedSite)
-            const p = { ...bookingPayload, desiredDiveSites: sites }
-            return {
-              success: true,
-              intent: 'booking' as const,
-              bookingReady: false,
-              message: `Added ${matchedSite}. ${DIVE_SITES_LINE}`,
-              shopId: resolvedShop.id,
-              shopName: resolvedShop.business_name,
-              bookingPayload: p,
-              selectableOptions: undefined,
-              rentalEquipmentOptions: undefined,
-              diveSiteOptions: diveSites
-            }
-          }
-          const isDone = /^(done|that's all|finish|that's it|no more)$/i.test(msgTrim)
-          const isAny = /^any$/i.test(msgTrim)
-          if (isDone || isAny) {
-            const p = { ...bookingPayload, desiredDiveSites: isAny ? [] : (bookingPayload.desiredDiveSites || []) }
-            p.shopId = resolvedShop.id
-            return {
-              success: true,
-              intent: 'booking' as const,
-              bookingReady: true,
-              payload: p,
-              message: `I have everything I need. Ready to send your booking request to ${resolvedShop.business_name}.`,
-              shopId: resolvedShop.id,
-              shopName: resolvedShop.business_name,
-              selectableOptions: undefined
-            }
-          }
-        }
         const nextStep = getNextBookingStep(bookingPayload)
         if (nextStep) {
           const fast = tryFastPath(nextStep, message, bookingPayload, resolvedShop.business_name, nextStep.step === 'gear' ? { rentalEquipmentNames } : undefined)
           if (fast) {
+            const nextAfterFast = getNextBookingStep(fast.payload)?.step
+            if (nextAfterFast === 'ready') {
+              const p = { ...fast.payload, shopId: resolvedShop.id }
+              return {
+                success: true,
+                intent: 'booking' as const,
+                bookingReady: true,
+                payload: p,
+                message: `I have everything I need. Ready to send your booking request to ${resolvedShop.business_name}.`,
+                shopId: resolvedShop.id,
+                shopName: resolvedShop.business_name,
+                selectableOptions: undefined
+              }
+            }
             const gearChipsForFast = rentalEquipment.length > 0 ? rentalEquipment : undefined
             return {
               success: true,
