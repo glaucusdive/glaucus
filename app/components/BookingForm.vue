@@ -47,14 +47,16 @@
           </div>
         </fieldset>
 
-        <!-- Desired Dive Sites -->
+        <!-- Desired Dive Sites (from Supabase for this shop) -->
         <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2">
           <label class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Desired Dive Sites</label>
-          <div class="flex flex-col gap-1 px-2">
-            <label v-for="site in diveSites" :key="site"
+          <div v-if="diveSitesLoading" class="px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">Loading dive sites…</div>
+          <div v-else-if="diveSites.length === 0" class="px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">No dive sites listed for this shop.</div>
+          <div v-else class="flex flex-col gap-1 px-2">
+            <label v-for="site in diveSites" :key="site.id"
               class="flex items-center gap-2 p-1 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 rounded-sm cursor-pointer">
-              <input type="checkbox" :value="site" v-model="formData.desiredDiveSites" class="cursor-pointer" />
-              <span class="text-sm text-zinc-900 dark:text-white">{{ site }}</span>
+              <input type="checkbox" :value="site.name" v-model="formData.desiredDiveSites" class="cursor-pointer" />
+              <span class="text-sm text-zinc-900 dark:text-white">{{ site.name }}</span>
             </label>
           </div>
         </fieldset>
@@ -195,6 +197,7 @@ const props = defineProps({
 })
 
 const { closeDrawer } = useDrawer()
+const { client } = useSupabase()
 
 // Get today's date in YYYY-MM-DD format for date inputs
 const today = computed(() => {
@@ -266,6 +269,7 @@ function applyInitialPayload () {
 
 onMounted(() => {
   applyInitialPayload()
+  fetchDiveSitesForShop()
 })
 watch(() => props.initialPayload, () => applyInitialPayload(), { deep: true })
 
@@ -325,17 +329,31 @@ const gearTypes = [
   'Tank'
 ]
 
-// Available dive sites (static for now, can be pulled from DB later)
-const diveSites = [
-  'Coral Garden',
-  'Blue Hole',
-  'Shark Point',
-  'Wreck Dive',
-  'Cave System',
-  'Wall Dive',
-  'Drift Dive',
-  'Night Dive'
-]
+// Dive sites for this shop (from Supabase: diveshop_dive_sites -> dive_sites)
+const diveSites = ref([])
+const diveSitesLoading = ref(true)
+
+async function fetchDiveSitesForShop () {
+  if (!props.shopId) {
+    diveSitesLoading.value = false
+    return
+  }
+  try {
+    const { data, error } = await client
+      .from('diveshop_dive_sites')
+      .select('dive_site_id, dive_sites(id, name)')
+      .eq('diveshop_id', props.shopId)
+    if (error || !data) {
+      diveSites.value = []
+      return
+    }
+    diveSites.value = data
+      .filter(row => row.dive_sites != null)
+      .map(row => ({ id: row.dive_sites.id, name: row.dive_sites.name }))
+  } finally {
+    diveSitesLoading.value = false
+  }
+}
 
 // Form submission
 const handleSubmit = () => {
