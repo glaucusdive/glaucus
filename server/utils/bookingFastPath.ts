@@ -85,6 +85,14 @@ export function getNextBookingStep (payload: BookingPayloadLocal): NextStepResul
   return { step: 'ready' }
 }
 
+/** True if the string looks like a single name (one word) rather than a full name. */
+function looksLikeSingleName (s: string): boolean {
+  const t = s.trim()
+  if (!t) return false
+  const parts = t.split(/\s+/)
+  return parts.length === 1
+}
+
 /** Try to parse a simple value and return next message + updated payload, or null to use LLM. */
 export function tryFastPath (
   step: NextStepResult,
@@ -103,6 +111,9 @@ export function tryFastPath (
   switch (step.step) {
     case 'name': {
       if (msg.length < 2 || msg.length > 100) return null
+      if (looksLikeSingleName(msg)) {
+        return { message: `Got it — could you give me your full name (first and last)?`, payload: p }
+      }
       p.name = msg
       return { message: `Thanks — got your name. What's the best email address for the booking?`, payload: p }
     }
@@ -130,6 +141,9 @@ export function tryFastPath (
     }
     case 'diverName': {
       if (msg.length < 2 || msg.length > 80) return null
+      if (looksLikeSingleName(msg)) {
+        return { message: `Could you give me Diver ${i + 1}'s full name (first and last)?`, payload: p }
+      }
       if (!divers[i]) divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: [] })
       divers[i].name = msg
       p.divers = divers

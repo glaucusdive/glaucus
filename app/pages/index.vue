@@ -20,7 +20,7 @@
             class="text-base sm:text-lg lg:text-2xl font-semibold text-zinc-900 dark:text-white overflow-auto truncate">
             Dive Shop Search</h1>
         </div>
-        <div class="flex items-center gap-2 p-1 lg:p-4">
+        <div class="flex items-center gap-1 p-1 lg:p-4">
           <button v-if="canStepBack" @click="stepBack"
             class="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md cursor-pointer"
             title="Remove last message and your last reply so you can redo that step">
@@ -42,7 +42,7 @@
         ]">
           <!-- Messages Container -->
           <div ref="messagesContainer"
-            class="flex-1 overflow-y-auto p-2 md:p-4 space-y-6 *:max-w-3xl *:mx-auto *:w-full">
+            class="flex-1 overflow-y-auto p-2 md:p-4 flex flex-col gap-2 *:max-w-3xl *:mx-auto *:w-full">
 
             <div v-if="messages.length === 0" class="flex flex-col items-center justify-center gap-8 h-full">
               <div class="text-center space-y-4 flex flex-col items-center">
@@ -59,20 +59,20 @@
             </div>
 
             <!-- Message history -->
-            <div v-for="(msg, index) in messages" :key="index" class="space-y-4">
+            <div v-for="(msg, index) in messages" :key="index" class="">
               <!-- User message -->
               <div v-if="msg.role === 'user'" class="flex justify-end">
-                <div class="max-w-[80%] bg-blue-600 text-white rounded-lg px-4 py-3">
+                <div class="max-w-[80%] bg-blue-600 text-white rounded-lg p-2">
                   <p class="text-sm lg:text-base">{{ msg.content }}</p>
                 </div>
               </div>
 
               <!-- Assistant message -->
               <div v-else-if="msg.role === 'assistant'" class="flex justify-start">
-                <div class="md:max-w-[90%] space-y-4 flex-1 min-w-0">
+                <div class="md:max-w-[90%] flex-1 min-w-0 flex flex-col gap-2">
                   <!-- AI text response (chevron inside bubble when shown) -->
-                  <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3 flex items-stretch gap-2">
-                    <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0 py-1">{{ msg.content }}
+                  <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 flex items-stretch gap-2">
+                    <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0">{{ msg.content }}
                     </p>
                     <button
                       v-if="bookingShopForDrawer && !(msg.shops && msg.shops.length > 0)"
@@ -152,7 +152,7 @@
                   </div>
 
                   <!-- Dive sites: chips for shop-specific sites -->
-                  <div v-if="msg.diveSiteOptions && msg.diveSiteOptions.length > 0" class="flex flex-wrap gap-2 p-2">
+                  <div v-if="msg.diveSiteOptions && msg.diveSiteOptions.length > 0" class="flex flex-wrap gap-2">
                     <button
                       v-for="site in msg.diveSiteOptions"
                       :key="site.id"

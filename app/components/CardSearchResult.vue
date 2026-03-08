@@ -20,6 +20,11 @@
         <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ shop.google_rating }}</span>
       </div>
     </div>
+
+    <!-- Diveshop type(s): Dive Shop, Liveaboard, Dive Resort -->
+    <p v-if="shopTypeDisplay" class="text-sm text-zinc-500 dark:text-zinc-400">
+      {{ shopTypeDisplay }}
+    </p>
     
     <!-- Location -->
     <div class="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
@@ -79,6 +84,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { Star, MapPin, Languages, Globe, Phone, Mail, ChevronRight } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -93,5 +99,13 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['shop-selected', 'view-details'])
+
+// Format shop.type (e.g. "Dive Shop, Liveaboard" or "Dive Resort") as "Dive Shop | Liveaboard"
+const shopTypeDisplay = computed(() => {
+  const raw = props.shop?.type
+  if (!raw || typeof raw !== 'string') return ''
+  const parts = raw.split(',').map(s => s.trim()).filter(Boolean)
+  return parts.length ? parts.join(' | ') : ''
+})
 </script>
 

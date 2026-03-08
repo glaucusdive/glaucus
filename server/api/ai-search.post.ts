@@ -10,6 +10,33 @@ interface Message {
   content: string
 }
 
+/** When the AI omits country but user clearly said a location (e.g. trip-type-only reply), infer country from conversation. */
+function inferCountryFromConversation (conversationText: string): string | null {
+  // Match "in Thailand", "Thailand", "dive shops in Thailand", etc. Use word boundary so "Thailand-based" matches.
+  const countryPatterns: { pattern: RegExp; country: string }[] = [
+    { pattern: /\bthailand\b/i, country: 'Thailand' },
+    { pattern: /\bindonesia\b/i, country: 'Indonesia' },
+    { pattern: /\bmaldives\b/i, country: 'Maldives' },
+    { pattern: /\bphilippines\b/i, country: 'Philippines' },
+    { pattern: /\bmexico\b/i, country: 'Mexico' },
+    { pattern: /\begypt\b/i, country: 'Egypt' },
+    { pattern: /\bbali\b/i, country: 'Indonesia' },
+    { pattern: /\bunited states\b|\busa\b|\bu\.s\./i, country: 'United States' },
+    { pattern: /\baustralia\b/i, country: 'Australia' },
+    { pattern: /\bmalaysia\b/i, country: 'Malaysia' },
+    { pattern: /\bbelize\b/i, country: 'Belize' },
+    { pattern: /\bhonduras\b/i, country: 'Honduras' },
+    { pattern: /\bcuba\b/i, country: 'Cuba' },
+    { pattern: /\bsouth africa\b/i, country: 'South Africa' },
+    { pattern: /\bgreece\b/i, country: 'Greece' },
+    { pattern: /\bcroatia\b/i, country: 'Croatia' }
+  ]
+  for (const { pattern, country } of countryPatterns) {
+    if (pattern.test(conversationText)) return country
+  }
+  return null
+}
+
 /** Booking payload shape (frontend sends accumulated state; backend returns updated payload when in booking flow). */
 export interface BookingDiver {
   name: string
@@ -59,6 +86,7 @@ Available dive shop data fields you can filter on:
 - region: The specific region within a country
 - google_rating: The Google rating (0-5)
 - languages: Array of languages spoken at the shop
+- diveTypes: Trip/shop type — set when user says they want a liveaboard, resort, or day trips. Use exactly: ["Liveaboard"] for liveaboard, ["Dive Resort"] for resort, ["Dive Shop"] for day trips. Only one type per search.
 - operating_hours: Shop operating hours
 - website_url, phone, email: Contact information
 
@@ -70,13 +98,16 @@ FILTERS: {
   "locale": "string or null", 
   "region": "string or null",
   "minRating": number or null,
-  "languages": ["array", "of", "languages"] or null
+  "languages": ["array", "of", "languages"] or null,
+  "diveTypes": ["Liveaboard"] or ["Dive Resort"] or ["Dive Shop"] or null
 }
 MESSAGE: Your conversational response to the user
 
 Rules:
 - Extract location information carefully (e.g., "Bali" -> locale: "Bali", country: "Indonesia")
 - If user mentions quality/rating requirements, set minRating appropriately
+- If user says they prefer a liveaboard (or "I prefer a liveaboard"), set diveTypes to ["Liveaboard"]. If they prefer a resort, set diveTypes to ["Dive Resort"]. If they prefer day trips, set diveTypes to ["Dive Shop"]. If no trip type mentioned, leave diveTypes null.
+- CRITICAL — Preserve location from the full conversation: If the user already said where they want to dive (e.g. "in Thailand", "dive shops in Thailand", "Bali", "Maldives") in ANY earlier message in this chat, you MUST include that in FILTERS (country and optionally locale). Do NOT set country or locale to null when the user has already stated a location. When they then answer a follow-up (e.g. "I prefer a liveaboard"), keep their stated country in FILTERS.
 - Be conversational and friendly in your MESSAGE
 - Keep your MESSAGE SHORT and concise (1-2 sentences max)
 - Do NOT ask multiple questions - keep responses simple
@@ -86,19 +117,23 @@ Rules:
 Examples:
 
 User: "I want to dive in Bali"
-FILTERS: {"country": "Indonesia", "locale": "Bali", "region": null, "minRating": null, "languages": null}
+FILTERS: {"country": "Indonesia", "locale": "Bali", "region": null, "minRating": null, "languages": null, "diveTypes": null}
 MESSAGE: I'll help you find dive shops in Bali! Let me search for options.
 
 User: "Looking for highly rated shops"
-FILTERS: {"country": null, "locale": null, "region": null, "minRating": 4.5, "languages": null}
+FILTERS: {"country": null, "locale": null, "region": null, "minRating": 4.5, "languages": null, "diveTypes": null}
 MESSAGE: I'll find highly-rated dive shops for you.
 
+User: "Highly rated dive shops in Thailand" then user says "I prefer a liveaboard"
+FILTERS: {"country": "Thailand", "locale": null, "region": null, "minRating": 4, "languages": null, "diveTypes": ["Liveaboard"]}
+MESSAGE: I'll find highly-rated liveaboards in Thailand.
+
 User: "Shops that speak English and Spanish"
-FILTERS: {"country": null, "locale": null, "region": null, "minRating": null, "languages": ["English", "Spanish"]}
+FILTERS: {"country": null, "locale": null, "region": null, "minRating": null, "languages": ["English", "Spanish"], "diveTypes": null}
 MESSAGE: Looking for shops where staff speaks English and Spanish.
 
 User: "any type of diving"
-FILTERS: {"country": null, "locale": null, "region": null, "minRating": null, "languages": null}
+FILTERS: {"country": null, "locale": null, "region": null, "minRating": null, "languages": null, "diveTypes": null}
 MESSAGE: Got it! I'll search for all dive shops without filtering by activity type.`
 
 const BOOKING_INTENT_PATTERN = /\b(book|reserve|booking|reservation|i want to book|i'd like to book|send my request|submit my request)\b/i
@@ -110,7 +145,7 @@ function buildBookingSystemPrompt (
   nextStepHint?: { step: string; diverIndex?: number; diverName?: string } | null,
   rentalEquipmentNames: string[] = []
 ): string {
-  const sitesList = diveSiteNames.length > 0 ? `\nDive sites available at this shop (offer as selectable options): ${diveSiteNames.join(', ')}` : ''
+  const sitesList = diveSiteNames.length > 0 ? `\nDive sites at this shop (for recognizing user choices only — do NOT list these in your message; the user sees them as chips): ${diveSiteNames.join(', ')}. When asking for dive sites, ask only e.g. "Which dive sites would you like to dive?" — do not repeat the site names.` : ''
   const equipmentList = rentalEquipmentNames.length > 0 ? `\nRental equipment at this shop (for COLLECTED payload only; do not invent others): ${rentalEquipmentNames.join(', ')}. When asking for rental gear, ask only "Does [name] need any rental gear?" — do NOT list the equipment in your message (chips are shown separately).` : ''
   const collected = existingPayload ? `\nAlready collected: ${JSON.stringify(existingPayload)}` : ''
   const stepLabel: Record<string, string> = {
@@ -133,7 +168,9 @@ function buildBookingSystemPrompt (
     : ''
   return `You are a friendly dive travel agent collecting a dive trip booking. The shop the user is booking with is: ${shopName}.${sitesList}${equipmentList}${collected}${nextLine}
 
-Ask for ONE piece of information at a time in this order: 1) name (the person making the booking), 2) email, 3) start date and end date for diving, 4) which dive sites they want from the list (optional — they can say "any" or pick sites), 5) number of divers, 6) confirm whether the person whose name you have is Diver 1 or not: ask "Is [name] one of the divers? I'll use that name for Diver 1 if yes — otherwise tell me Diver 1's full name." If they say yes (or that they are Diver 1), set Diver 1's name to that name. If they say no, ask for Diver 1's full name. 7) For each diver: certification number, number of dives completed, height (with unit: cm or ft-in), weight (with unit: kg or lbs), and any rental gear they need.
+Names: For the booking contact and for each diver, you need a full name (first and last). If the user gives only one name (e.g. just "Chris" or "Smith"), politely ask for their full name before moving on — e.g. "Could you give me your full name (first and last)?"
+
+Ask for ONE piece of information at a time in this order: 1) name (the person making the booking), 2) email, 3) start date and end date for diving, 4) which dive sites they want (optional — they can say "any" or pick from the chips; do not list the site names in your message), 5) number of divers, 6) confirm whether the person whose name you have is Diver 1 or not: ask "Is [name] one of the divers? I'll use that name for Diver 1 if yes — otherwise tell me Diver 1's full name." If they say yes (or that they are Diver 1), set Diver 1's name to that name. If they say no, ask for Diver 1's full name. 7) For each diver: certification number, number of dives completed, height (with unit: cm or ft-in), weight (with unit: kg or lbs), and any rental gear they need.
 
 Dates (step 3): Accept dates in any form the user gives — e.g. "July 24 2026", "24th July", "070826", "7/24/26", "next week", "April 15 to April 18". Parse them into a start and end date. Reply by repeating the dates back in one clean, readable format (e.g. "So that's 24 July 2026 to 27 July 2026 — is that right?") and ask for confirmation. Only when the user confirms (yes, correct, that's right, yep, looks good, etc.) treat the dates as collected and move to the next question. If they correct the dates, parse the correction, repeat back in clean format again, and ask for confirmation. Store startDate and endDate in the payload in YYYY-MM-DD. Do not ask the user to type YYYY-MM-DD.
 
@@ -586,11 +623,13 @@ export default defineEventHandler(async (event) => {
           .trim()
       }
       const diveSiteChips = diveSites.length > 0 ? diveSites : undefined
-      // When showing dive site chips, strip redundant "Our available sites are: X, Y, Z" from message
+      // When showing dive site chips, strip redundant listing of site names from message (chips already show them)
       if (diveSiteChips && messageAsksForDiveSites(replyMessage)) {
         replyMessage = replyMessage
           .replace(/\s*(Our )?available sites are:[^.]*\./gi, '')
-          .replace(/\s*You can pick one or several[^.]*\.?/gi, '')
+          .replace(/\s*You can pick (one or several|from):[^.]*\.?/gi, '')
+          .replace(/\s*, or just say ["']any["'][^.]*\.?/gi, '')
+          .replace(/\s*— or just say ["']any["'][^.]*\.?/gi, '')
           .replace(/\s{2,}/g, ' ')
           .trim()
       }
@@ -599,7 +638,7 @@ export default defineEventHandler(async (event) => {
         (messageAsksForDiveSites(replyMessage) && diveSiteChips ? diveSiteChips : undefined) ||
         (bookingPayload && addDiveSiteOptions(bookingPayload) ? diveSiteChips : undefined)
       if (willShowDiveSiteOptions && replyMessage === genericFallback) {
-        replyMessage = DIVE_SITES_LINE
+        replyMessage = 'Which dive sites would you like to dive?'
       }
       return {
         success: true,
@@ -653,7 +692,8 @@ FILTERS: {
   "locale": "string or null", 
   "region": "string or null",
   "minRating": number or null,
-  "languages": ["array", "of", "languages"] or null
+  "languages": ["array", "of", "languages"] or null,
+  "diveTypes": ["Liveaboard"] or ["Dive Resort"] or ["Dive Shop"] or null
 }
 
 Do not include a MESSAGE. Just return the FILTERS.`
@@ -688,8 +728,8 @@ Do not include a MESSAGE. Just return the FILTERS.`
             console.log(`[AI Search] Extracted filters for pagination:`, lastFilters)
             
             // Query with same filters
-            const query = buildDiveShopQuery(supabaseUrl, supabaseKey, lastFilters)
-            const { data: shops, error: dbError } = await query
+            const queryResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, lastFilters)
+            const { data: shops, error: dbError } = queryResult
             
             if (dbError) {
               console.error('Database error during pagination:', dbError)
@@ -759,11 +799,13 @@ Do not include a MESSAGE. Just return the FILTERS.`
     }
 
     // Trip-type first: show chips immediately (no AI call) so user doesn't see "typing..."
-    const tripTypeChoiceInMessage = /\b(liveaboard|resort|day trips?|i prefer a liveaboard|i prefer a resort|just day trips?)\b/i.test(message)
-    const assistantAlreadyAskedTripType = (history || []).some(
-      m => m.role === 'assistant' && /\bliveaboard\b/i.test(m.content) && /\bresort\b/i.test(m.content) && /\bday trips?\b/i.test(m.content)
+    const tripTypePattern = /\b(liveaboard|resort|day trips?|i prefer a liveaboard|i prefer a resort|just day trips?)\b/i
+    const tripTypeChoiceInMessage = tripTypePattern.test(message)
+    // Session memory: if the user already specified a trip type in any earlier message, don't ask again
+    const userAlreadySpecifiedTripType = (history || []).some(
+      m => m.role === 'user' && tripTypePattern.test(String(m.content || ''))
     )
-    if (!assistantAlreadyAskedTripType && !tripTypeChoiceInMessage) {
+    if (!userAlreadySpecifiedTripType && !tripTypeChoiceInMessage) {
       return {
         success: true,
         message: 'What type of trip are you looking for?',
@@ -839,6 +881,16 @@ Do not include a MESSAGE. Just return the FILTERS.`
       // If parsing fails, use the entire message and empty filters
       conversationalMessage = aiMessage
       filters = {}
+    }
+
+    // Fallback: if AI omitted country but user said a location in the conversation, infer it (e.g. "Thailand" in first message, then "I prefer a liveaboard")
+    const conversationText = [...(history || []).map(h => h.content), message].join(' ')
+    if (!filters.country?.trim()) {
+      const inferred = inferCountryFromConversation(conversationText)
+      if (inferred) {
+        filters.country = inferred
+        console.log('[AI Search] Inferred country from conversation:', inferred)
+      }
     }
     
     // Run DB query and both possible second AI calls in parallel (total time ≈ max(DB, AI) instead of DB + AI)
@@ -980,12 +1032,19 @@ RULES:
       } else {
         shouldAskFollowUp = true
         console.log(`[AI Search] Too many results (${resultCount}), asking follow-up question...`)
-        followUpMessage = followUpAiMessage || 'Would you prefer a liveaboard, a resort, or day trips?'
-        selectableOptions = followUpAiMessage ? [] : [
-          { label: 'Liveaboard', value: 'I prefer a liveaboard' },
-          { label: 'Resort', value: 'I prefer a resort' },
-          { label: 'Day trips', value: 'Just day trips' }
-        ]
+        // Session memory: don't re-ask trip type if user already specified it this session
+        const alreadyHasTripType = tripTypeChoiceInMessage || userAlreadySpecifiedTripType
+        if (alreadyHasTripType) {
+          followUpMessage = followUpAiMessage || 'Would you like to narrow by location, rating, or something else?'
+          selectableOptions = followUpAiMessage ? [] : []
+        } else {
+          followUpMessage = followUpAiMessage || 'Would you prefer a liveaboard, a resort, or day trips?'
+          selectableOptions = followUpAiMessage ? [] : [
+            { label: 'Liveaboard', value: 'I prefer a liveaboard' },
+            { label: 'Resort', value: 'I prefer a resort' },
+            { label: 'Day trips', value: 'Just day trips' }
+          ]
+        }
       }
     } else {
       console.log(`[AI Search] Result count (${resultCount}) is within limit, showing results`)
