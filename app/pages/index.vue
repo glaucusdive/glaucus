@@ -149,7 +149,7 @@
                   @submit.prevent="handleSubmit">
                   <div class="flex items-center gap-1.5 w-full min-w-0">
                     <div class="flex-1 min-w-0 h-full">
-                      <input v-model="userInput" type="text" :disabled="isLoading"
+                      <input ref="chatInputRef" v-model="userInput" type="text" :disabled="isLoading"
                         placeholder="Ask me anything about dive shops..."
                         class="w-full h-full outline-none text-zinc-900 dark:text-white font-medium text-sm tracking-none disabled:cursor-not-allowed indent-2 p-4" />
                     </div>
@@ -206,6 +206,7 @@ const route = useRoute()
 
 // State
 const userInput = ref('')
+const chatInputRef = ref(null)
 const isLoading = ref(false)
 const messages = ref([])
 const messagesContainer = ref(null)
@@ -504,6 +505,8 @@ const sendMessage = async (messageText) => {
       abortController.value = null
       await scrollToBottom()
       persistCache()
+      await nextTick()
+      chatInputRef.value?.focus()
     }
   }
 }

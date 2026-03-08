@@ -137,9 +137,9 @@ The JSON must have this shape (use empty string "" for missing optional fields, 
 
 Do not output BOOKING_READY until every required field is present. If the user corrects something, update and continue.
 
-After every reply (before or after BOOKING_READY if you use it), output a single line with the current collected state as valid JSON so we can pre-fill the form:
+After every reply you must output the current collected state so we can pre-fill the form. IMPORTANT: always write your full conversational reply first (ask the next question or confirm — e.g. "Thanks, got the gear. What's Diver 2's full name?"). Then on a new line, output only:
 COLLECTED: {"name":"...","email":"...","startDate":"...","endDate":"...","numberOfDivers":1,"divers":[...],"desiredDiveSites":[...]}
-Include every field you have collected so far (use empty string or [] for not yet collected). Use the exact same JSON shape as BOOKING_READY.`
+Never put COLLECTED in the middle of your reply — your message to the user must come first, then COLLECTED on its own line. Include every field you have collected so far (use empty string or [] for not yet collected). Use the exact same JSON shape as BOOKING_READY. Always proceed to the next empty field question (e.g. after gear for Diver 1, ask for Diver 2's name if numberOfDivers > 1, or ask for dive sites or output BOOKING_READY if all required fields are done).`
 }
 
 export default defineEventHandler(async (event) => {
@@ -282,7 +282,7 @@ export default defineEventHandler(async (event) => {
         }
       }
       if (!replyMessage || !replyMessage.trim()) {
-        replyMessage = 'Got it — what would you like to tell me next?'
+        replyMessage = 'Got it — continuing with your booking. What\'s the next detail? (e.g. more gear, or Diver 2\'s name if you have more than one diver)'
       }
       // Do not send dive site names as chips during booking — they're for "which sites?" only and would show wrongly when asking for name/email/dates
       return {
