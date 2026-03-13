@@ -144,11 +144,16 @@ MESSAGE: Got it! I'll search for all dive shops without filtering by activity ty
 
 const BOOKING_INTENT_PATTERN = /\b(book|reserve|booking|reservation|i want to book|i'd like to book|send my request|submit my request)\b/i
 
-/** Extract dive shop name when user says e.g. "book with X", "book a dive with X", "I want to book with Dive Porter". */
+/** Extract dive shop name when user says e.g. "book with X", "dive at X", "I want to dive at Dive Shash". */
 function extractShopNameFromMessage (message: string): string | null {
   const trimmed = message.trim()
   // "book with X", "reserve with X", "book a dive with X", "book with Dive Porter"
-  const m = trimmed.match(/(?:book|reserve)(?:\s+(?:a\s+)?dive)?\s+with\s+([^.?!]+)/i)
+  let m = trimmed.match(/(?:book|reserve)(?:\s+(?:a\s+)?dive)?\s+with\s+([^.?!]+)/i)
+  if (m?.[1]) return m[1].trim() || null
+  // "dive at X", "I want to dive at X", "I'd like to dive at X", "diving at X"
+  m = trimmed.match(/(?:i\s+(?:want|'d\s+like)\s+to\s+)?(?:go\s+)?dive(?:\s+dive)?\s+at\s+([^.?!]+)/i)
+  if (m?.[1]) return m[1].trim() || null
+  m = trimmed.match(/(?:diving|dive)\s+at\s+([^.?!]+)/i)
   if (m?.[1]) return m[1].trim() || null
   return null
 }
@@ -266,12 +271,15 @@ export default defineEventHandler(async (event) => {
     const shopNameFromMessage = extractShopNameFromMessage(message)
 
     let resolvedShop: Awaited<ReturnType<typeof getShopById>> = null
-    if (wantsToBook) {
+    let resolvedByNamedShop = false
+    // Resolve by name when user says "book with X" or "dive at X" / "I want to dive at X" — so we can skip browse and go straight to booking
+    if (shopNameFromMessage) {
+      resolvedShop = await resolveShopByName(supabaseUrl, supabaseKey, shopNameFromMessage)
+      if (resolvedShop) resolvedByNamedShop = true
+    }
+    if (wantsToBook && !resolvedShop) {
       if (selectedShopId) {
         resolvedShop = await getShopById(supabaseUrl, supabaseKey, selectedShopId)
-      }
-      if (!resolvedShop && shopNameFromMessage) {
-        resolvedShop = await resolveShopByName(supabaseUrl, supabaseKey, shopNameFromMessage)
       }
       if (!resolvedShop && lastShops?.length === 1) {
         resolvedShop = await getShopById(supabaseUrl, supabaseKey, lastShops[0].id)
@@ -286,7 +294,7 @@ export default defineEventHandler(async (event) => {
       resolvedShop = await getShopById(supabaseUrl, supabaseKey, lastBookingShopId)
     }
 
-    if (resolvedShop && (wantsToBook || continuingBooking)) {
+    if (resolvedShop && (wantsToBook || continuingBooking || resolvedByNamedShop)) {
       // Use carried-over payload when starting a new booking after "Pick a new diveshop"
       const bookingPayload = continuingBooking
         ? bodyBookingPayload
@@ -300,7 +308,7 @@ export default defineEventHandler(async (event) => {
       const rentalEquipmentNames = rentalEquipment.map(e => e.name)
 
       // When user explicitly named a shop and we resolved it: go straight to form details (first question: name)
-      const startingFreshBooking = wantsToBook && !continuingBooking
+      const startingFreshBooking = (wantsToBook || resolvedByNamedShop) && !continuingBooking
       const noPayloadYet = !bookingPayload || !(bookingPayload.name && String(bookingPayload.name).trim())
       if (startingFreshBooking && noPayloadYet) {
         const initialPayload = { shopId: resolvedShop.id, ...(bookingPayload || {}) }
