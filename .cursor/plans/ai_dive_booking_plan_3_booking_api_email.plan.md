@@ -1,6 +1,6 @@
 ---
 name: AI Booking Plan 3 — Booking API and email
-overview: "POST /api/booking to accept payload, validate, send email to diveshop and confirmation to user via Resend/SendGrid. Part of the AI Dive Trip Booking Agent (Plan 1)."
+overview: POST /api/booking to accept payload, validate, send email to diveshop and confirmation to user via Resend/SendGrid. Part of the AI Dive Trip Booking Agent (Plan 1).
 todos: []
 isProject: false
 ---
@@ -45,3 +45,6 @@ isProject: false
 - POST /api/booking.
 - Email sending with two templates.
 - ENV_SETUP.md update for email API key.
+
+
+

@@ -8,7 +8,10 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Private keys - only available server-side
     openrouterApiKey: process.env.NUXT_OPENROUTER_API_KEY,
-    
+    resendApiKey: process.env.RESEND_API_KEY,
+    /** From address for booking emails (e.g. "Glaucus <bookings@yourdomain.com>"). Defaults to Resend onboarding domain if unset. */
+    bookingFromEmail: process.env.BOOKING_FROM_EMAIL || 'Glaucus <onboarding@resend.dev>',
+
     // Public keys - available both client and server-side
     public: {
       supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,

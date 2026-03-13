@@ -72,7 +72,7 @@
                 <div class="md:max-w-[90%] flex-1 min-w-0 flex flex-col gap-2">
                   <!-- AI text response (chevron inside bubble when shown) -->
                   <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 flex items-stretch gap-2">
-                    <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0">{{ msg.content }}
+                    <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis">{{ msg.content }}
                     </p>
                     <button
                       v-if="bookingShopForDrawer && !(msg.shops && msg.shops.length > 0)"
@@ -97,9 +97,9 @@
                         @view-details="handleViewDetails" />
                     </div>
 
-                    <!-- Results summary - only show when shops are displayed -->
+                    <!-- Results summary: show which range we're on (e.g. results 11–15 of 16) -->
                     <div v-if="msg.totalResults && msg.totalResults > msg.shops.length" class="text-sm text-zinc-500">
-                      Showing top {{ msg.shops.length }} results from {{ msg.totalResults }} dive shops found
+                      {{ getResultsRangeLabel(index) }}
                     </div>
                   </div>
 
@@ -117,15 +117,15 @@
                       v-for="(opt, i) in (msg.selectableOptions || []).filter(o => o.label !== 'Load next 20')"
                       :key="i"
                       type="button"
-                      @click="sendMessage(opt.value)"
+                      @click="sendMessage(opt.value, opt.label)"
                       class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
                     >
                       {{ opt.label }}
                     </button>
                   </div>
 
-                  <!-- Rental gear: multi-select chips (shop-specific equipment only) -->
-                  <div v-if="msg.rentalEquipmentOptions && msg.rentalEquipmentOptions.length > 0" class="flex flex-wrap gap-2 p-2">
+                  <!-- Rental gear: equipment chips when available, always None + Done when options present (even empty) -->
+                  <div v-if="Array.isArray(msg.rentalEquipmentOptions)" class="flex flex-wrap gap-2 p-2">
                     <button
                       v-for="eq in msg.rentalEquipmentOptions"
                       :key="eq.id"
@@ -151,30 +151,32 @@
                     </button>
                   </div>
 
-                  <!-- Dive sites: chips for shop-specific sites -->
+                  <!-- Dive sites: Any + Done first (50/50), then shop-specific site chips (w-fit) -->
                   <div v-if="msg.diveSiteOptions && msg.diveSiteOptions.length > 0" class="flex flex-wrap gap-2">
+                    <div class="flex gap-2 w-full">
+                      <button
+                        type="button"
+                        @click="sendMessage('any')"
+                        class="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"
+                      >
+                        Any
+                      </button>
+                      <button
+                        type="button"
+                        @click="sendMessage('done')"
+                        class="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                      >
+                        Done
+                      </button>
+                    </div>
                     <button
                       v-for="site in msg.diveSiteOptions"
                       :key="site.id"
                       type="button"
                       @click="sendMessage(site.name)"
-                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                      class="w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
                     >
                       {{ site.name }}
-                    </button>
-                    <button
-                      type="button"
-                      @click="sendMessage('any')"
-                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"
-                    >
-                      Any
-                    </button>
-                    <button
-                      type="button"
-                      @click="sendMessage('done')"
-                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
-                    >
-                      Done
                     </button>
                   </div>
                 </div>
@@ -193,7 +195,7 @@
           </div>
 
           <!-- Input area -->
-          <div class="flex items-stretch justify-center z-100">
+          <div class="flex items-stretch justify-center z-100 overflow-hidden">
             <div class="bg-transparent p-0.5 pt-0 backdrop-blur-sm md:min-w-md max-w-4xl w-full rounded-full">
               <div :class="[
                 'p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-x-hidden overflow-y-visible gradient-container z-0',
@@ -267,6 +269,8 @@ const messagesContainer = ref(null)
 const isRestoringCache = ref(true)
 const abortController = ref(null)
 const selectedShopId = ref(null)
+/** Carried-over booking form data when user chose "Pick a new diveshop"; sent with next "Book with X" so details transfer. */
+const pendingBookingPayload = ref(null)
 /** On mobile, drawer opens only when user taps "View details"; card tap only selects for booking. */
 const mobileDetailShopId = ref(null)
 const isPageLoading = ref(true)
@@ -439,9 +443,28 @@ watch(() => messages.value.length, () => {
   scrollToBottom()
 })
 
-// Send message to AI
-const sendMessage = async (messageText) => {
-  const message = messageText || userInput.value.trim()
+// Pagination status: which range this message's results represent (1-based). E.g. first page 1–5, second 6–10.
+function getResultsRange (msgIndex) {
+  let previous = 0
+  for (let i = 0; i < msgIndex; i++) {
+    const m = messages.value[i]
+    if (m?.role === 'assistant' && m.shops?.length) previous += m.shops.length
+  }
+  const msg = messages.value[msgIndex]
+  const count = msg?.shops?.length ?? 0
+  const total = msg?.totalResults ?? 0
+  return { start: previous + 1, end: previous + count, total }
+}
+
+function getResultsRangeLabel (msgIndex) {
+  const { start, end, total } = getResultsRange(msgIndex)
+  if (start === end) return `Showing result ${start} of ${total} dive shops found`
+  return `Showing results ${start}–${end} of ${total} dive shops found`
+}
+
+// Send message to AI. Optional displayText: show this in the chat bubble while sending messageText to the API (e.g. chip label vs value).
+const sendMessage = async (messageText, displayText) => {
+  const message = messageText ?? userInput.value.trim()
   
   if (!message) return
   
@@ -451,11 +474,13 @@ const sendMessage = async (messageText) => {
     abortController.value = null
     isLoading.value = false
   }
-  
-  // Add user message to chat
+
+  const textToShow = displayText ?? message
+
+  // Add user message to chat (show label in bubble when provided, e.g. "Load next 5" instead of "Show more")
   messages.value.push({
     role: 'user',
-    content: message
+    content: textToShow
   })
   
   // Clear input
@@ -483,6 +508,10 @@ const sendMessage = async (messageText) => {
     const lastBookingShopName = inBookingFlow ? (lastAssistantMessage.shopName ?? selectedShopName.value) : undefined
     const lastPayload = lastBookingPayload.value
 
+    const shopsAlreadyShownCount = messages.value
+      .filter(m => m.role === 'assistant' && m.shops?.length)
+      .reduce((sum, m) => sum + (m.shops?.length ?? 0), 0)
+
     const response = await $fetch('/api/ai-search', {
       method: 'POST',
       signal: currentAbortController.signal,
@@ -494,10 +523,12 @@ const sendMessage = async (messageText) => {
         })),
         selectedShopId: selectedShopId.value || undefined,
         lastShops,
+        shopsAlreadyShownCount,
         lastIntent,
         lastBookingShopId,
         ...(inBookingFlow && lastBookingShopName ? { lastBookingShopName } : {}),
-        ...(inBookingFlow && lastPayload ? { bookingPayload: lastPayload } : {})
+        ...(inBookingFlow && lastPayload ? { bookingPayload: lastPayload } : {}),
+        ...(pendingBookingPayload.value ? { pendingBookingPayload: pendingBookingPayload.value } : {})
       }
     })
     
@@ -508,6 +539,66 @@ const sendMessage = async (messageText) => {
     
     if (response.success) {
       const storedPayload = response.bookingPayload ?? response.payload
+      const userSaidConfirmSend = /^(yes|yeah|yep|ok|okay|sure|send|submit|confirm|go ahead|do it|please send|ready)$/i.test(String(message).trim()) ||
+        /^(send|submit)\s+(booking\s+)?(request)?$/i.test(String(message).trim())
+      const hasValidDivers = Array.isArray(storedPayload?.divers) && storedPayload.divers.length >= 1 &&
+        storedPayload.divers.some(d => d?.name && String(d.name).trim())
+      // When user said "send" (or similar) and we got bookingReady with payload, submit the booking now
+      if (response.bookingReady && storedPayload?.shopId && hasValidDivers && userSaidConfirmSend) {
+        try {
+          const body = {
+            shopId: storedPayload.shopId,
+            name: storedPayload.name ?? '',
+            email: storedPayload.email ?? '',
+            startDate: storedPayload.startDate ?? '',
+            endDate: storedPayload.endDate ?? '',
+            desiredDiveSites: Array.isArray(storedPayload.desiredDiveSites) ? storedPayload.desiredDiveSites : [],
+            divers: (storedPayload.divers ?? []).map(d => ({
+              name: d.name ?? '',
+              certificationNumber: d.certificationNumber ?? '',
+              numberOfDives: d.numberOfDives ?? '',
+              height: d.height ?? '',
+              heightUnit: d.heightUnit ?? 'cm',
+              weight: d.weight ?? '',
+              weightUnit: d.weightUnit ?? 'kg',
+              gear: (d.gear ?? []).map(g => ({ gearType: g?.gearType ?? '' }))
+            }))
+          }
+          const bookRes = await $fetch('/api/booking', { method: 'POST', body })
+          if (bookRes?.sent) {
+            messages.value.push({
+              role: 'assistant',
+              content: 'Request sent. Check your email for confirmation.',
+              shops: [],
+              totalResults: 0,
+              hasMoreResults: false,
+              intent: response.intent,
+              bookingReady: false,
+              payload: undefined,
+              shopId: response.shopId,
+              shopName: response.shopName
+            })
+            return
+          }
+        } catch (bookErr) {
+          const err = bookErr && typeof bookErr === 'object' ? bookErr : {}
+          const data = err.data && typeof err.data === 'object' ? err.data : {}
+          const errMsg = data.resendError ?? data.message ?? data.statusMessage ?? err.statusMessage ?? err.message ?? 'Failed to send email to the dive shop.'
+          messages.value.push({
+            role: 'assistant',
+            content: `${errMsg} You can try again using the arrow to open the form and submit, or contact the dive shop directly.`,
+            shops: [],
+            totalResults: 0,
+            hasMoreResults: false,
+            intent: response.intent,
+            bookingReady: true,
+            payload: storedPayload,
+            shopId: response.shopId,
+            shopName: response.shopName
+          })
+          return
+        }
+      }
       const content = (response.message && String(response.message).trim()) ? response.message : 'Got it — what would you like to tell me next?'
       messages.value.push({
         role: 'assistant',
@@ -524,6 +615,13 @@ const sendMessage = async (messageText) => {
         rentalEquipmentOptions: response.rentalEquipmentOptions || undefined,
         diveSiteOptions: response.diveSiteOptions || undefined
       })
+      // Carry-over payload when user chose "Pick a new diveshop" — clear current shop and store payload for next booking
+      if (response.pendingBookingPayload) {
+        pendingBookingPayload.value = response.pendingBookingPayload
+        selectedShopId.value = null
+      } else {
+        pendingBookingPayload.value = null
+      }
       // Keep the shop being booked visible on the right so users always know which shop they're booking
       if (response.intent === 'booking' && response.shopId) {
         selectedShopId.value = response.shopId
@@ -600,6 +698,7 @@ const clearConversation = () => {
   userInput.value = ''
   isLoading.value = false
   selectedShopId.value = null
+  pendingBookingPayload.value = null
   mobileDetailShopId.value = null
   clearCache()
 }

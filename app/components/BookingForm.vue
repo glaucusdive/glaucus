@@ -49,7 +49,7 @@
 
         <!-- Desired Dive Sites (from Supabase for this shop) -->
         <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2">
-          <label class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Desired Dive Sites</label>
+          <label class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Desired Dive Sites (optional)</label>
           <div v-if="diveSitesLoading" class="px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">Loading dive sites…</div>
           <div v-else-if="diveSites.length === 0" class="px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">No dive sites listed for this shop.</div>
           <div v-else class="flex flex-col gap-1 px-2">
@@ -162,11 +162,16 @@
           </div>
         </div>
 
+        <!-- Submit error -->
+        <div v-if="submitError" class="mx-2 p-2 rounded-md bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-sm">
+          {{ submitError }}
+        </div>
+
         <!-- Submit Button -->
         <div class="sticky bottom-0 bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-300 dark:border-zinc-700 p-2 mt-2">
-          <button type="submit"
-            class="bg-zinc-900 dark:bg-zinc-800 hover:bg-zinc-800 dark:hover:bg-zinc-700 text-white font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">
-            Submit Booking Request
+          <button type="submit" :disabled="submitLoading"
+            class="bg-zinc-900 dark:bg-zinc-800 hover:bg-zinc-800 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">
+            {{ submitLoading ? 'Sending…' : 'Submit Booking Request' }}
           </button>
         </div>
       </form>
@@ -174,10 +179,15 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch, computed, onMounted } from 'vue'
 import { X } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
+
+interface BookingApiResponse {
+  sent: boolean
+  message?: string
+}
 
 // Props
 const props = defineProps({
@@ -355,13 +365,44 @@ async function fetchDiveSitesForShop () {
   }
 }
 
+// Submit state
+const submitLoading = ref(false)
+const submitError = ref('')
+
 // Form submission
-const handleSubmit = () => {
-  console.log('Form submitted:', formData.value)
-  console.log('Shop ID:', props.shopId)
-  console.log('Shop Name:', props.shopName)
-  // TODO: Send to API with shop ID included
-  closeDrawer()
+const handleSubmit = async () => {
+  submitError.value = ''
+  submitLoading.value = true
+  try {
+    const payload = {
+      shopId: formData.value.shopId || props.shopId,
+      name: formData.value.name,
+      email: formData.value.email,
+      startDate: formData.value.startDate,
+      endDate: formData.value.endDate,
+      desiredDiveSites: formData.value.desiredDiveSites || [],
+      divers: formData.value.divers.map(d => ({
+        name: d.name,
+        certificationNumber: d.certificationNumber,
+        numberOfDives: d.numberOfDives,
+        height: d.height,
+        heightUnit: d.heightUnit,
+        weight: d.weight,
+        weightUnit: d.weightUnit,
+        gear: (d.gear || []).map(g => ({ gearType: g.gearType || '' }))
+      }))
+    }
+    const res = await $fetch('/api/booking', { method: 'POST', body: payload }) as BookingApiResponse
+    if (res?.sent) {
+      closeDrawer()
+      // Optional: show toast — "Request sent. Check your email for confirmation."
+    }
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string; statusMessage?: string }; statusMessage?: string; message?: string }
+    submitError.value = err?.data?.message || err?.data?.statusMessage || err?.statusMessage || err?.message || 'Failed to send booking request. Please try again.'
+  } finally {
+    submitLoading.value = false
+  }
 }
 </script>
 

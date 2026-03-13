@@ -8,6 +8,8 @@ interface BookingDiverLocal {
   weight: string
   weightUnit: string
   gear: { gearType: string }[]
+  /** True once we've asked for gear and they answered (none or items). Ensures we ask for every diver, not just the last. */
+  gearAsked?: boolean
 }
 
 interface BookingPayloadLocal {
@@ -75,13 +77,12 @@ export function getNextBookingStep (payload: BookingPayloadLocal): NextStepResul
     if (!d.weight || String(d.weight).trim() === '') return { step: 'weight', diverIndex: idx, diverName: d.name }
     const wu = String(d.weightUnit || '').trim().toLowerCase()
     if (d.weight && wu !== 'lbs' && wu !== 'kg') return { step: 'weight', diverIndex: idx, diverName: d.name }
+    // Ask for gear for every diver (not just the last)
+    if (!d.gearAsked) {
+      return { step: 'gear', diverIndex: idx, diverName: d.name || 'Diver ' + (idx + 1) }
+    }
   }
 
-  const lastDiver = divers[numDivers - 1]
-  const gearEmpty = !lastDiver?.gear || !Array.isArray(lastDiver.gear) || lastDiver.gear.length === 0
-  if (lastDiver && gearEmpty) {
-    return { step: 'gear', diverIndex: numDivers - 1, diverName: lastDiver.name || 'Diver ' + numDivers }
-  }
   return { step: 'ready' }
 }
 
@@ -93,6 +94,12 @@ function looksLikeSingleName (s: string): boolean {
   return parts.length === 1
 }
 
+export interface FastPathResult {
+  message: string
+  payload: BookingPayloadLocal
+  selectableOptions?: { label: string; value: string }[]
+}
+
 /** Try to parse a simple value and return next message + updated payload, or null to use LLM. */
 export function tryFastPath (
   step: NextStepResult,
@@ -100,7 +107,7 @@ export function tryFastPath (
   payload: BookingPayloadLocal,
   _shopName: string,
   options?: { rentalEquipmentNames?: string[] }
-): { message: string; payload: BookingPayloadLocal } | null {
+): FastPathResult | null {
   const msg = userMessage.trim()
   if (!msg) return null
 
@@ -140,6 +147,17 @@ export function tryFastPath (
       return { message: `Is ${contactName} one of the divers? I'll use that name for Diver 1 if yes — otherwise tell me Diver 1's full name.`, payload: p }
     }
     case 'diverName': {
+      // Diver 1: if we have a contact name and user confirms they are Diver 1 (yes/yep/correct), use contact name and move on
+      if (i === 0 && p.name && String(p.name).trim()) {
+        const affirm = /\b(yes|yeah|yep|yup|correct|that's me|that is me|i am|i'm one|sure|please do)\b/i.test(msg) || /^\s*y\s*$/i.test(msg)
+        if (affirm) {
+          if (!divers[0]) divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: [] })
+          divers[0].name = String(p.name).trim()
+          p.divers = divers
+          const name = divers[0].name
+          return { message: `Thanks — I'll use ${name} for Diver 1. What is ${name}'s certification number?`, payload: p }
+        }
+      }
       if (msg.length < 2 || msg.length > 80) return null
       if (looksLikeSingleName(msg)) {
         return { message: `Could you give me Diver ${i + 1}'s full name (first and last)?`, payload: p }
@@ -209,7 +227,39 @@ export function tryFastPath (
       const lower = msg.toLowerCase()
       const isDone = /\b(done|that's all|finish|that's it)\b/.test(lower)
       const isNone = /\b(none|no|nope|nothing|n\/a)\b/.test(lower) || (msg.trim() === '' && !isDone)
+      // "I understand" (after no-rental-gear message) → same as none, continue
+      const isIUnderstand = /\b(i understand|understood|got it|ok|okay)\b/i.test(msg)
+      if (isIUnderstand && (!divers[i]?.gear || divers[i].gear.length === 0)) {
+        if (!divers[i]) return null
+        divers[i].gear = []
+        divers[i].gearAsked = true
+        p.divers = divers
+        const numDivers = p.numberOfDivers ?? 1
+        if (i < numDivers - 1) {
+          return { message: `Got it — no rental gear for ${divers[i].name}. What's Diver ${i + 2}'s full name?`, payload: p }
+        }
+        return { message: `Got it — no rental gear. All set — ready to send your booking request.`, payload: p }
+      }
+      // "Yes" / "they do" etc. → acknowledge and ask what gear (chips shown by API); avoids LLM emitting JSON
+      const wantsGear = /\b(yes|yeah|yep|yup|they do|she does|he does|we do|i do|please|sure)\b/i.test(msg) || /^\s*y\s*$/i.test(msg)
+      const noRentalGearAvailable = !options?.rentalEquipmentNames || options.rentalEquipmentNames.length === 0
+      if (wantsGear && (!divers[i]?.gear || divers[i].gear.length === 0)) {
+        const n = divers[i]?.name || 'They'
+        p.divers = divers
+        if (noRentalGearAvailable) {
+          return {
+            message: `This dive shop doesn't offer rental gear. Please keep that in mind or arrange gear elsewhere.`,
+            payload: p,
+            selectableOptions: [
+              { label: 'I understand', value: 'I understand' },
+              { label: 'Pick a new diveshop', value: 'Pick a new diveshop' }
+            ]
+          }
+        }
+        return { message: `Got it — ${n} will need rental gear. What would ${n} like to rent? Pick from the options below or say "none" when done.`, payload: p }
+      }
       if (isDone && divers[i]?.gear?.length) {
+        if (divers[i]) divers[i].gearAsked = true
         p.divers = divers
         const numDivers = p.numberOfDivers ?? 1
         const n = divers[i].name || 'They'
@@ -221,6 +271,7 @@ export function tryFastPath (
       if (isNone || (isDone && !divers[i]?.gear?.length)) {
         if (!divers[i]) return null
         divers[i].gear = []
+        divers[i].gearAsked = true
         p.divers = divers
         const numDivers = p.numberOfDivers ?? 1
         if (i < numDivers - 1) {

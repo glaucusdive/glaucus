@@ -10138,6 +10138,8 @@ AND (
     WHERE ds2.name = ds.name AND ds2.country_id = (SELECT country_id FROM diveshops WHERE id = '2eddb150-0109-441f-83cc-dc2341a26436'::uuid)
   )
 );
+INSERT INTO diveshop_rental_equipment (diveshop_id, rental_equipment_id)
+SELECT 'f947f18f-f3d9-4d8b-96bc-1ce9db89abf3'::uuid, id FROM rental_equipment WHERE name IN ('Wetsuit', 'Regulator', 'Fins', 'Mask', 'BCD', 'Snorkel', 'Dive Computer');
 INSERT INTO diveshop_courses (diveshop_id, course_id)
 SELECT 'f947f18f-f3d9-4d8b-96bc-1ce9db89abf3'::uuid, id FROM courses WHERE certification_name IN ('Open Water Diver', 'Open Water Scuba Diver', 'Discover Scuba Diving', 'Try Scuba / Intro Scuba', 'Advanced Open Water Diver', 'Advanced Adventurer', 'Rescue Diver', 'Deep Diver', 'Night Diver', 'Underwater Navigator', 'Divemaster');
 INSERT INTO diveshop_gases (diveshop_id, gas_id)

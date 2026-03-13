@@ -93,15 +93,8 @@ const { isDark, toggleTheme } = useTheme()
 
 const { isOpen, contentType, drawerData, drawerOpenKey, isMobileMenuOpen, shouldAnimateMenu, closeMobileMenu } = useDrawer()
 
-// Track if screen is desktop size - start as false to prevent flash on mobile
-const getInitialDesktop = () => {
-  if (typeof window === 'undefined') {
-    return true
-  }
-  return window.innerWidth >= 1024
-}
-
-const isDesktop = ref(getInitialDesktop())
+// Track if screen is desktop size. Always start true so SSR and first client render match (avoids hydration mismatch); update to real value in onMounted.
+const isDesktop = ref(true)
 
 // Update isDesktop on mount and resize
 const updateIsDesktop = () => {

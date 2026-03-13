@@ -37,6 +37,12 @@ NUXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 # OpenRouter API Configuration
 # Get your API key from: https://openrouter.ai/keys
 NUXT_OPENROUTER_API_KEY=your_openrouter_api_key_here
+
+# Resend (booking emails to diveshops)
+# Get your API key from: https://resend.com/api-keys
+RESEND_API_KEY=re_xxxxxxxxxxxx
+# Optional: verified sender (e.g. "Glaucus <bookings@yourdomain.com>"). If unset, uses Resend's onboarding domain.
+# BOOKING_FROM_EMAIL=Glaucus <bookings@yourdomain.com>
 ```
 
 ## Getting an OpenRouter API Key
@@ -54,4 +60,10 @@ The AI search feature uses OpenAI's GPT-5 Mini model via OpenRouter:
 - Web search: $10 per 1000 searches (not currently used)
 
 Typical conversation costs are minimal (a few cents per search session).
+
+## Resend (booking emails)
+
+1. Sign up at [resend.com](https://resend.com) and create an API key at [resend.com/api-keys](https://resend.com/api-keys).
+2. Add `RESEND_API_KEY` to your `.env`.
+3. For production, verify your domain at [resend.com/domains](https://resend.com/domains) and set `BOOKING_FROM_EMAIL` (e.g. `Glaucus <bookings@yourdomain.com>`). Without a verified domain, you can use the default `onboarding@resend.dev` for testing.
 

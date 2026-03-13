@@ -47,6 +47,8 @@ export interface BookingDiver {
   weight: string
   weightUnit: string
   gear: { gearType: string }[]
+  /** Set when we've asked for gear and user answered (so we ask for every diver). */
+  gearAsked?: boolean
 }
 
 export interface BookingPayload {
@@ -65,7 +67,11 @@ interface RequestBody {
   history: Message[]
   selectedShopId?: string
   lastShops?: { id: string; business_name: string }[]
+  /** Total number of shop cards already shown in this conversation (for pagination). */
+  shopsAlreadyShownCount?: number
   bookingPayload?: BookingPayload
+  /** Carried-over form data when user chose "Pick a new diveshop"; merge with new shop when they book. */
+  pendingBookingPayload?: Omit<BookingPayload, 'shopId'>
   /** When the last assistant reply was in booking flow, so this message is form input (e.g. name, email). */
   lastIntent?: 'booking' | 'search'
   lastBookingShopId?: string
@@ -137,6 +143,15 @@ FILTERS: {"country": null, "locale": null, "region": null, "minRating": null, "l
 MESSAGE: Got it! I'll search for all dive shops without filtering by activity type.`
 
 const BOOKING_INTENT_PATTERN = /\b(book|reserve|booking|reservation|i want to book|i'd like to book|send my request|submit my request)\b/i
+
+/** Extract dive shop name when user says e.g. "book with X", "book a dive with X", "I want to book with Dive Porter". */
+function extractShopNameFromMessage (message: string): string | null {
+  const trimmed = message.trim()
+  // "book with X", "reserve with X", "book a dive with X", "book with Dive Porter"
+  const m = trimmed.match(/(?:book|reserve)(?:\s+(?:a\s+)?dive)?\s+with\s+([^.?!]+)/i)
+  if (m?.[1]) return m[1].trim() || null
+  return null
+}
 
 function buildBookingSystemPrompt (
   shopName: string,
@@ -211,7 +226,7 @@ Never put COLLECTED in the middle of your reply — your message to the user mus
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody<RequestBody>(event)
-    const { message, history, selectedShopId, lastShops, bookingPayload, lastIntent, lastBookingShopId, lastBookingShopName } = body
+    const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName } = body
 
     if (!message || typeof message !== 'string') {
       throw new Error('Message is required')
@@ -219,8 +234,8 @@ export default defineEventHandler(async (event) => {
 
     // Unit-only "lbs"/"kg" fast path: instant reply. Skip early return when next step is gear so we can attach rentalEquipmentOptions (chips) to the first "Does X need any rental gear?" message.
     const continuingBooking = lastIntent === 'booking' && !!lastBookingShopId
-    if (continuingBooking && bookingPayload && /^(lbs?|kg|pounds)$/i.test(message.trim())) {
-      const fastUnit = tryFastPathUnitOnly(message, bookingPayload, lastBookingShopName || '')
+    if (continuingBooking && bodyBookingPayload && /^(lbs?|kg|pounds)$/i.test(message.trim())) {
+      const fastUnit = tryFastPathUnitOnly(message, bodyBookingPayload, lastBookingShopName || '')
       const nextStepAfterUnit = fastUnit ? getNextBookingStep(fastUnit.payload)?.step : null
       if (fastUnit && nextStepAfterUnit !== 'gear') {
         return {
@@ -248,7 +263,7 @@ export default defineEventHandler(async (event) => {
     // --- Intent: booking vs search ---
     const wantsToBook = BOOKING_INTENT_PATTERN.test(message)
     const hasShopContext = !!selectedShopId || (lastShops && lastShops.length > 0)
-    const shopNameFromMessage = message.match(/(?:book with|reserve with)\s+([^.?!]+)/i)?.[1]?.trim()
+    const shopNameFromMessage = extractShopNameFromMessage(message)
 
     let resolvedShop: Awaited<ReturnType<typeof getShopById>> = null
     if (wantsToBook) {
@@ -272,6 +287,11 @@ export default defineEventHandler(async (event) => {
     }
 
     if (resolvedShop && (wantsToBook || continuingBooking)) {
+      // Use carried-over payload when starting a new booking after "Pick a new diveshop"
+      const bookingPayload = continuingBooking
+        ? bodyBookingPayload
+        : (wantsToBook && bodyPendingPayload ? { ...bodyPendingPayload, shopId: resolvedShop.id } : bodyBookingPayload)
+
       const [diveSites, rentalEquipment] = await Promise.all([
         getDiveSitesForShop(supabaseUrl, supabaseKey, resolvedShop.id),
         getRentalEquipmentForShop(supabaseUrl, supabaseKey, resolvedShop.id)
@@ -279,11 +299,31 @@ export default defineEventHandler(async (event) => {
       const diveSiteNames = diveSites.map(d => d.name)
       const rentalEquipmentNames = rentalEquipment.map(e => e.name)
 
+      // When user explicitly named a shop and we resolved it: go straight to form details (first question: name)
+      const startingFreshBooking = wantsToBook && !continuingBooking
+      const noPayloadYet = !bookingPayload || !(bookingPayload.name && String(bookingPayload.name).trim())
+      if (startingFreshBooking && noPayloadYet) {
+        const initialPayload = { shopId: resolvedShop.id, ...(bookingPayload || {}) }
+        return {
+          success: true,
+          intent: 'booking' as const,
+          bookingReady: false,
+          message: `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`,
+          shopId: resolvedShop.id,
+          shopName: resolvedShop.business_name,
+          bookingPayload: initialPayload,
+          selectableOptions: undefined,
+          rentalEquipmentOptions: undefined,
+          diveSiteOptions: undefined
+        }
+      }
+
       const addGearOptions = (payload: BookingPayload) =>
         getNextBookingStep(payload)?.step === 'gear' ? rentalEquipment : undefined
       const addDiveSiteOptions = (payload: BookingPayload) =>
         getNextBookingStep(payload)?.step === 'diveSites' && diveSites.length > 0 ? diveSites : undefined
       const messageAsksForGear = (text: string) => /rental gear|need any.*gear|available rental|more gear|next detail/i.test(text)
+      const messageAsksForGearSelection = (text: string) => /what would .+ like to rent|pick from the options below/i.test(text)
       const messageAsksForDiveSites = (text: string) => /dive sites|which sites|sites would you like|available sites|pick one or more/i.test(text)
       const messageIsAddAnotherGear = (text: string) => /add another or say/i.test(text)
       /** Copy for dive-sites step: makes multi-select and "done" obvious so users don't think one tap commits. */
@@ -292,8 +332,182 @@ export default defineEventHandler(async (event) => {
       // Fast path: simple field (name, email, certification, height, weight, "none" or single gear item) → instant template response, no LLM
       if (continuingBooking && bookingPayload) {
         const msgTrim = message.trim()
-        // Equipment-name tap (e.g. "Dive Computer", "Regulator"): add to last diver and return immediately — avoids LLM when user has already added one item (next step would be diveSites)
-        if (rentalEquipmentNames.length > 0 && msgTrim.length > 0) {
+        // User already saw "Ready to send" and is confirming — never re-ask for gear; return ready so client can submit
+        const lastAssistantContent = history?.filter(m => m.role === 'assistant').pop()?.content ?? ''
+        const lastWasReadyToSend = /ready to send your booking request/i.test(lastAssistantContent)
+        const confirmSend = /^(yes|yeah|yep|ok|okay|sure|send|submit|confirm|go ahead|do it|please send|ready)$/i.test(msgTrim) ||
+          /^(send|submit)\s+(booking\s+)?(request)?$/i.test(msgTrim) ||
+          (lastWasReadyToSend && /^(yes|send|submit|confirm|ok)$/i.test(msgTrim))
+        if (lastWasReadyToSend && confirmSend) {
+          const p = { ...bookingPayload, shopId: resolvedShop.id }
+          return {
+            success: true,
+            intent: 'booking' as const,
+            bookingReady: true,
+            payload: p,
+            message: `I have everything I need. Ready to send your booking request to ${resolvedShop.business_name}.`,
+            shopId: resolvedShop.id,
+            shopName: resolvedShop.business_name,
+            selectableOptions: undefined
+          }
+        }
+        // "Pick a new diveshop" → return current form data so client can carry it over to the next shop
+        if (/pick a new diveshop|choose another shop|different (shop|diveshop)/i.test(msgTrim)) {
+          const { shopId: _s, ...payloadWithoutShop } = bookingPayload
+          return {
+            success: true,
+            intent: 'booking' as const,
+            bookingReady: false,
+            message: 'No problem — search or pick from your results, then say "Book with [shop name]" to start a booking with a different shop. Your details will be carried over.',
+            shopId: undefined,
+            shopName: undefined,
+            bookingPayload: undefined,
+            pendingBookingPayload: payloadWithoutShop,
+            selectableOptions: undefined,
+            rentalEquipmentOptions: undefined,
+            diveSiteOptions: undefined
+          }
+        }
+        // Edit/review intents: user asks to change a specific form item — clear it and re-ask
+        const editEmail = /(?:change|update|edit|fix)\s+(?:my\s+)?(?:email|e-?mail)/i.test(msgTrim) || /(?:update|change)\s+email/i.test(msgTrim)
+        const editName = /(?:change|update|edit|fix)\s+(?:my\s+)?name/i.test(msgTrim)
+        const editDates = /(?:change|update|edit|fix)\s+(?:my\s+)?(?:dates?|trip dates?)/i.test(msgTrim) || /(?:update|change)\s+dates/i.test(msgTrim)
+        const editGearDiver1 = /(?:change|update|edit)\s+(?:diver\s*1'?s?|my)\s+(?:rental\s+)?gear/i.test(msgTrim) || /(?:rental\s+)?gear\s+for\s+(?:diver\s*1|me)/i.test(msgTrim)
+        const editGearDiver2 = /(?:change|update|edit)\s+diver\s*2'?s?\s+(?:rental\s+)?gear/i.test(msgTrim) || /(?:rental\s+)?gear\s+for\s+diver\s*2/i.test(msgTrim)
+        const reviewBooking = /\b(?:review|show|see|check)\s+(?:my\s+)?(?:booking|details|form|info)\b/i.test(msgTrim)
+        // "Add gear for Chris Porter" / "I need to add gear for [name]" — go back to that diver's gear step (by name)
+        const addGearForNameMatch = msgTrim.match(/(?:add|need to add|want to add)\s+(?:some\s+)?(?:rental\s+)?gear\s+for\s+(.+?)(?:\.|$)/i)
+        const addGearForName = addGearForNameMatch?.[1]?.trim()
+        if (editEmail || editName || editDates || editGearDiver1 || editGearDiver2 || reviewBooking || addGearForName) {
+          const p = { ...bookingPayload, divers: [...(bookingPayload.divers || [])].map(d => ({ ...d })) }
+          if (addGearForName && p.divers?.length) {
+            const nameLower = addGearForName.toLowerCase()
+            const diverIdx = p.divers.findIndex(d => d?.name && String(d.name).trim().toLowerCase().includes(nameLower))
+            if (diverIdx >= 0 && p.divers[diverIdx]) {
+              p.divers[diverIdx] = { ...p.divers[diverIdx], gearAsked: false }
+              const name = p.divers[diverIdx].name || 'Diver ' + (diverIdx + 1)
+              return {
+                success: true,
+                intent: 'booking' as const,
+                bookingReady: false,
+                message: `Does ${name} need any rental gear?`,
+                shopId: resolvedShop.id,
+                shopName: resolvedShop.business_name,
+                bookingPayload: p,
+                selectableOptions: undefined,
+                rentalEquipmentOptions: rentalEquipment.length > 0 ? rentalEquipment : undefined,
+                diveSiteOptions: undefined
+              }
+            }
+          }
+          if (editEmail) {
+            p.email = ''
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message: "No problem — what's the best email address for the booking?",
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              bookingPayload: p,
+              selectableOptions: undefined,
+              rentalEquipmentOptions: undefined,
+              diveSiteOptions: undefined
+            }
+          }
+          if (editName) {
+            p.name = ''
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message: "What's the name for the booking?",
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              bookingPayload: p,
+              selectableOptions: undefined,
+              rentalEquipmentOptions: undefined,
+              diveSiteOptions: undefined
+            }
+          }
+          if (editDates) {
+            p.startDate = undefined
+            p.endDate = undefined
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message: 'What are your diving start and end dates? You can say them in any format (e.g. April 4–20, 2026).',
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              bookingPayload: p,
+              selectableOptions: undefined,
+              rentalEquipmentOptions: undefined,
+              diveSiteOptions: undefined
+            }
+          }
+          const numDivers = Math.max(1, p.numberOfDivers ?? 1)
+          if (editGearDiver1 && p.divers?.[0]) {
+            p.divers[0] = { ...p.divers[0], gear: [], gearAsked: false }
+            const name = p.divers[0].name || 'Diver 1'
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message: `Does ${name} need any rental gear?`,
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              bookingPayload: p,
+              selectableOptions: undefined,
+              rentalEquipmentOptions: rentalEquipment.length > 0 ? rentalEquipment : undefined,
+              diveSiteOptions: undefined
+            }
+          }
+          if (editGearDiver2 && numDivers >= 2 && p.divers?.[1]) {
+            p.divers[1] = { ...p.divers[1], gear: [], gearAsked: false }
+            const name = p.divers[1].name || 'Diver 2'
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message: `Does ${name} need any rental gear?`,
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              bookingPayload: p,
+              selectableOptions: undefined,
+              rentalEquipmentOptions: rentalEquipment.length > 0 ? rentalEquipment : undefined,
+              diveSiteOptions: undefined
+            }
+          }
+          if (reviewBooking) {
+            const parts: string[] = []
+            if (p.name) parts.push(`Name: ${p.name}`)
+            if (p.email) parts.push(`Email: ${p.email}`)
+            if (p.startDate && p.endDate) parts.push(`Dates: ${p.startDate} to ${p.endDate}`)
+            if (p.numberOfDivers) parts.push(`${p.numberOfDivers} diver(s)`)
+            const diverLines = (p.divers || []).slice(0, p.numberOfDivers ?? 0).map((d, i) => {
+              const gearList = (d.gear?.length ? d.gear.map(g => g.gearType).join(', ') : 'none') || 'none'
+              return `Diver ${i + 1}: ${d.name || '—'} — gear: ${gearList}`
+            })
+            if (diverLines.length) parts.push(diverLines.join('; '))
+            const summary = parts.length ? parts.join('. ') : "You haven't filled anything yet."
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message: `${summary} You can say "change my email", "update diver 1's gear", or "edit dates" to change something.`,
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              bookingPayload: p,
+              selectableOptions: undefined,
+              rentalEquipmentOptions: undefined,
+              diveSiteOptions: undefined
+            }
+          }
+        }
+        // Equipment-name tap (e.g. "Regulator", "Fins"): add to the diver we're currently asking for (gear step), not always the last diver
+        const nextStepForGearTap = getNextBookingStep(bookingPayload)
+        if (rentalEquipmentNames.length > 0 && msgTrim.length > 0 && nextStepForGearTap?.step === 'gear' && nextStepForGearTap.diverIndex != null) {
           const matched = rentalEquipmentNames.find(n => n.toLowerCase() === msgTrim.toLowerCase())
           if (matched) {
             const numDivers = Math.max(1, bookingPayload.numberOfDivers ?? 1)
@@ -301,12 +515,12 @@ export default defineEventHandler(async (event) => {
             while (divers.length < numDivers) {
               divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: [] })
             }
-            const lastIdx = numDivers - 1
-            const lastDiver = divers[lastIdx]
-            if (lastDiver && !lastDiver.gear?.some((g: { gearType?: string }) => (g.gearType || '').toLowerCase() === msgTrim.toLowerCase())) {
+            const targetIdx = nextStepForGearTap.diverIndex
+            const targetDiver = divers[targetIdx]
+            if (targetDiver && !targetDiver.gear?.some((g: { gearType?: string }) => (g.gearType || '').toLowerCase() === msgTrim.toLowerCase())) {
               const p = { ...bookingPayload, divers: [...divers] }
-              p.divers[lastIdx] = { ...lastDiver, gear: [...(lastDiver.gear || []), { gearType: matched }] }
-              const name = p.divers[lastIdx].name || 'They'
+              p.divers[targetIdx] = { ...targetDiver, gear: [...(targetDiver.gear || []), { gearType: matched }] }
+              const name = p.divers[targetIdx].name || 'They'
               const gearChipsForFast = rentalEquipment.length > 0 ? rentalEquipment : undefined
               return {
                 success: true,
@@ -384,6 +598,11 @@ export default defineEventHandler(async (event) => {
         if (lastDiverForDone?.gear?.length && (/^(done|that's all|finish|that's it)$/i.test(msgTrim) || msgTrim.toLowerCase() === 'none')) {
           const name = lastDiverForDone.name || 'They'
           const nextMsg = `Got it — ${name}'s gear is set. Do you want to add another diver? (yes/no)`
+          const payloadWithGearAsked = { ...bookingPayload, divers: [...(bookingPayload.divers || [])] }
+          const lastIdx = numDiversForDone - 1
+          if (payloadWithGearAsked.divers && payloadWithGearAsked.divers[lastIdx]) {
+            payloadWithGearAsked.divers[lastIdx] = { ...payloadWithGearAsked.divers[lastIdx], gearAsked: true }
+          }
           return {
             success: true,
             intent: 'booking' as const,
@@ -391,14 +610,13 @@ export default defineEventHandler(async (event) => {
             message: nextMsg,
             shopId: resolvedShop.id,
             shopName: resolvedShop.business_name,
-            bookingPayload: bookingPayload,
+            bookingPayload: payloadWithGearAsked,
             selectableOptions: [{ label: 'No — just these divers', value: 'no' }, { label: 'Yes — add another', value: 'yes' }],
             rentalEquipmentOptions: undefined,
             diveSiteOptions: undefined
           }
         }
         // Reply to "Do you want to add another diver?" — no → booking ready (dive sites already asked earlier); yes → add diver and ask for name
-        const lastAssistantContent = history?.filter(m => m.role === 'assistant').pop()?.content ?? ''
         if (lastAssistantContent && /add another diver/i.test(lastAssistantContent) && continuingBooking && bookingPayload) {
           const numDivers = Math.max(1, bookingPayload.numberOfDivers ?? 1)
           const noMore = /^(no|nope|nah|that's all|just (these|two|them)|no other|no more|there's no|there are only|only two|just the two)$/i.test(msgTrim) || /no other diver|just (the )?two divers/i.test(msgTrim)
@@ -455,6 +673,23 @@ export default defineEventHandler(async (event) => {
           }
         }
         const nextStep = getNextBookingStep(bookingPayload)
+        // Already complete: user said "send" / "yes" / "confirm" — return ready to send, don't re-ask or call LLM
+        if (nextStep?.step === 'ready') {
+          const confirmSend = /^(yes|yeah|yep|ok|okay|sure|send|submit|confirm|go ahead|do it|please send|ready)$/i.test(msgTrim)
+          if (confirmSend) {
+            const p = { ...bookingPayload, shopId: resolvedShop.id }
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: true,
+              payload: p,
+              message: `I have everything I need. Ready to send your booking request to ${resolvedShop.business_name}.`,
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              selectableOptions: undefined
+            }
+          }
+        }
         if (nextStep) {
           const fast = tryFastPath(nextStep, message, bookingPayload, resolvedShop.business_name, nextStep.step === 'gear' ? { rentalEquipmentNames } : undefined)
           if (fast) {
@@ -472,7 +707,32 @@ export default defineEventHandler(async (event) => {
                 selectableOptions: undefined
               }
             }
+            // Shop has no rental gear and we're at the gear step → tell user and offer I understand / Pick a new diveshop (don't show "Does X need gear?" with None/Done)
+            if (nextAfterFast === 'gear' && rentalEquipment.length === 0) {
+              return {
+                success: true,
+                intent: 'booking' as const,
+                bookingReady: false,
+                message: "This dive shop doesn't offer rental gear. Please keep that in mind or arrange gear elsewhere.",
+                shopId: resolvedShop.id,
+                shopName: resolvedShop.business_name,
+                bookingPayload: fast.payload,
+                selectableOptions: [
+                  { label: 'I understand', value: 'I understand' },
+                  { label: 'Pick a new diveshop', value: 'Pick a new diveshop' }
+                ],
+                rentalEquipmentOptions: undefined,
+                diveSiteOptions: addDiveSiteOptions(fast.payload)
+              }
+            }
             const gearChipsForFast = rentalEquipment.length > 0 ? rentalEquipment : undefined
+            // When fast path returns selectableOptions (e.g. no-rental-gear: "I understand" / "Pick a new diveshop"), use them and skip gear chips
+            const noRentalGearOptions = fast.selectableOptions?.length ? fast.selectableOptions : undefined
+            const showGearChips = noRentalGearOptions ? undefined : (
+              (addGearOptions(fast.payload) && gearChipsForFast) ||
+              (messageIsAddAnotherGear(fast.message) && gearChipsForFast ? gearChipsForFast : undefined) ||
+              (messageAsksForGearSelection(fast.message) && gearChipsForFast ? gearChipsForFast : undefined)
+            )
             return {
               success: true,
               intent: 'booking' as const,
@@ -481,8 +741,8 @@ export default defineEventHandler(async (event) => {
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               bookingPayload: fast.payload,
-              selectableOptions: undefined,
-              rentalEquipmentOptions: addGearOptions(fast.payload) || (messageIsAddAnotherGear(fast.message) && gearChipsForFast ? gearChipsForFast : undefined),
+              selectableOptions: noRentalGearOptions ?? undefined,
+              rentalEquipmentOptions: showGearChips ?? undefined,
               diveSiteOptions: addDiveSiteOptions(fast.payload)
             }
           }
@@ -562,6 +822,12 @@ export default defineEventHandler(async (event) => {
           try {
             const parsed = JSON.parse(aiMessage.slice(braceStart, end + 1)) as BookingPayload
             parsed.shopId = parsed.shopId || resolvedShop.id
+            // Mark gear as "asked" for divers that have gear in COLLECTED so we don't re-ask
+            if (parsed.divers && Array.isArray(parsed.divers)) {
+              for (const d of parsed.divers) {
+                if (d && 'gear' in d) (d as BookingDiver).gearAsked = true
+              }
+            }
             collectedPayload = parsed
           } catch (e) {
             // ignore parse error, keep previous payload
@@ -582,7 +848,24 @@ export default defineEventHandler(async (event) => {
           replyMessage = (replyMessage.slice(0, inReply) + replyMessage.slice(replyEnd + 1)).replace(/\n\n+/g, '\n').trim()
         } else break
       }
-      // Also strip any raw {...} that looks like booking payload (LLM sometimes emits JSON without COLLECTED: prefix)
+      // Also strip any raw {...} that looks like booking payload (LLM sometimes emits JSON without COLLECTED: prefix).
+      // Use brace-matching that skips { } inside string literals so we don't cut mid-JSON.
+      const findMatchingBrace = (s: string, start: number): number => {
+        let d = 0
+        let inString: '"' | "'" | null = null
+        let escape = false
+        for (let j = start; j < s.length; j++) {
+          const c = s[j]
+          if (escape) { escape = false; continue }
+          if (c === '\\' && inString) { escape = true; continue }
+          if (!inString) {
+            if (c === '{') d++
+            else if (c === '}') { d--; if (d === 0) return j }
+            else if (c === '"' || c === "'") inString = c
+          } else if (c === inString) inString = null
+        }
+        return -1
+      }
       const payloadLike = /\b(shopId|shopid|numberOfDivers|startDate|endDate|"divers")\b/
       let prev = ''
       while (prev !== replyMessage) {
@@ -591,12 +874,8 @@ export default defineEventHandler(async (event) => {
         while (i < replyMessage.length) {
           const brace = replyMessage.indexOf('{', i)
           if (brace < 0) break
-          let d = 0
-          let end = brace
-          for (let j = brace; j < replyMessage.length; j++) {
-            if (replyMessage[j] === '{') d++
-            else if (replyMessage[j] === '}') { d--; if (d === 0) { end = j; break } }
-          }
+          const end = findMatchingBrace(replyMessage, brace)
+          if (end < 0) { i = brace + 1; continue }
           const slice = replyMessage.slice(brace, end + 1)
           if (payloadLike.test(slice)) {
             replyMessage = (replyMessage.slice(0, brace) + replyMessage.slice(end + 1)).replace(/\n\n+/g, '\n').trim()
@@ -605,6 +884,14 @@ export default defineEventHandler(async (event) => {
             i = end + 1
           }
         }
+      }
+      // Fallback: LLM may emit JSON without outer braces — strip any trailing payload-like content so it never appears in chat
+      const payloadKeyMatch = replyMessage.match(/"shopId"|"numberOfDivers"|"startDate"|"endDate"|"divers"\s*:/)
+      if (payloadKeyMatch && payloadKeyMatch.index !== undefined) {
+        const cut = payloadKeyMatch.index
+        const lineStart = replyMessage.lastIndexOf('\n', cut - 1)
+        const trimTo = lineStart >= 0 ? lineStart : cut
+        replyMessage = replyMessage.slice(0, trimTo).replace(/\n+$/, '').trim()
       }
       const genericFallback = 'Got it — continuing with your booking. What\'s the next detail? (e.g. more gear, or Diver 2\'s name if you have more than one diver)'
       if (!replyMessage || !replyMessage.trim()) {
@@ -640,6 +927,40 @@ export default defineEventHandler(async (event) => {
       if (willShowDiveSiteOptions && replyMessage === genericFallback) {
         replyMessage = 'Which dive sites would you like to dive?'
       }
+      // Same for gear: if next step is gear and we're showing gear chips but message was stripped, ask for rental gear
+      const willShowGearOptions = (collectedPayload ? addGearOptions(collectedPayload) : undefined) ||
+        (messageAsksForGear(replyMessage) && gearChips ? gearChips : undefined) ||
+        (messageIsAddAnotherGear(replyMessage) && gearChips ? gearChips : undefined) ||
+        (bookingPayload && addGearOptions(bookingPayload) && gearChips ? gearChips : undefined)
+      if (willShowGearOptions && replyMessage === genericFallback) {
+        const numDivers = Math.max(1, (collectedPayload ?? bookingPayload)?.numberOfDivers ?? 1)
+        const divers = (collectedPayload ?? bookingPayload)?.divers ?? []
+        const lastName = divers[numDivers - 1]?.name || `Diver ${numDivers}`
+        replyMessage = `Does ${lastName} need any rental gear?`
+      }
+      // Shop has no rental gear and we're at the gear step → tell user and offer I understand / Pick a new diveshop (LLM path)
+      const nextStepAfterReply = getNextBookingStep(collectedPayload ?? bookingPayload)?.step
+      if (nextStepAfterReply === 'gear' && rentalEquipment.length === 0) {
+        return {
+          success: true,
+          intent: 'booking' as const,
+          bookingReady: false,
+          message: "This dive shop doesn't offer rental gear. Please keep that in mind or arrange gear elsewhere.",
+          shopId: resolvedShop.id,
+          shopName: resolvedShop.business_name,
+          bookingPayload: collectedPayload ?? bookingPayload,
+          selectableOptions: [
+            { label: 'I understand', value: 'I understand' },
+            { label: 'Pick a new diveshop', value: 'Pick a new diveshop' }
+          ],
+          rentalEquipmentOptions: undefined,
+          diveSiteOptions: undefined
+        }
+      }
+      const finalGearOptions = (collectedPayload ? addGearOptions(collectedPayload) : undefined) ||
+        (messageAsksForGear(replyMessage) && gearChips ? gearChips : undefined) ||
+        (messageIsAddAnotherGear(replyMessage) && gearChips ? gearChips : undefined) ||
+        (bookingPayload && addGearOptions(bookingPayload) && gearChips ? gearChips : undefined)
       return {
         success: true,
         intent: 'booking' as const,
@@ -649,10 +970,7 @@ export default defineEventHandler(async (event) => {
         shopName: resolvedShop.business_name,
         bookingPayload: collectedPayload,
         selectableOptions: undefined,
-        rentalEquipmentOptions: (collectedPayload ? addGearOptions(collectedPayload) : undefined) ||
-          (messageAsksForGear(replyMessage) && gearChips ? gearChips : undefined) ||
-          (messageIsAddAnotherGear(replyMessage) && gearChips ? gearChips : undefined) ||
-          (bookingPayload && addGearOptions(bookingPayload) && gearChips ? gearChips : undefined),
+        rentalEquipmentOptions: finalGearOptions && (Array.isArray(finalGearOptions) ? finalGearOptions.length > 0 : true) ? finalGearOptions : undefined,
         diveSiteOptions: (collectedPayload ? addDiveSiteOptions(collectedPayload) : undefined) ||
           (messageAsksForDiveSites(replyMessage) && diveSiteChips ? diveSiteChips : undefined) ||
           (bookingPayload && addDiveSiteOptions(bookingPayload) ? diveSiteChips : undefined)
@@ -737,23 +1055,27 @@ Do not include a MESSAGE. Just return the FILTERS.`
             }
             
             const resultCount = shops?.length || 0
-            
-            // Count how many shops have been shown already (infer from "next N results" or default 5)
-            let alreadyShown = 0
-            for (let i = 0; i < history.length; i++) {
-              const msg = history[i]
-              if (msg.role === 'assistant') {
-                const hasResultsPhrase = msg.content.includes('Here are') ||
-                                        msg.content.includes('top results') ||
-                                        msg.content.includes('Here are the')
-                const isAskingQuestion = msg.content.includes('What type') ||
-                                         msg.content.includes('Would you') ||
-                                         (msg.content.includes('?') && msg.content.trim().endsWith('?'))
-                if (hasResultsPhrase && !isAskingQuestion) {
-                  const nextN = msg.content.match(/next (\d+)\s+results?/i)?.[1]
-                  const shown = nextN ? parseInt(nextN, 10) : 5
-                  alreadyShown += Number.isNaN(shown) ? 5 : shown
-                  console.log(`[AI Search] Found result message at index ${i}, shown: ${shown}, total shown: ${alreadyShown}`)
+
+            // Use client-provided count when available (reliable); otherwise infer from message content
+            let alreadyShown = typeof shopsAlreadyShownCount === 'number' && shopsAlreadyShownCount >= 0
+              ? shopsAlreadyShownCount
+              : 0
+            if (alreadyShown === 0 && history?.length) {
+              for (let i = 0; i < history.length; i++) {
+                const msg = history[i]
+                if (msg.role === 'assistant') {
+                  const hasResultsPhrase = msg.content?.includes('Here are') ||
+                                          msg.content?.includes('top results') ||
+                                          msg.content?.includes('Here are the')
+                  const isAskingQuestion = msg.content?.includes('What type') ||
+                                           msg.content?.includes('Would you') ||
+                                           (msg.content?.trim().endsWith('?'))
+                  if (hasResultsPhrase && !isAskingQuestion) {
+                    const nextN = msg.content?.match(/next (\d+)\s+results?/i)?.[1]
+                    const shown = nextN ? parseInt(nextN, 10) : 5
+                    alreadyShown += Number.isNaN(shown) ? 5 : shown
+                    console.log(`[AI Search] Found result message at index ${i}, shown: ${shown}, total shown: ${alreadyShown}`)
+                  }
                 }
               }
             }
@@ -1055,12 +1377,28 @@ RULES:
     let finalMessage = ''
     
     if (resultCount <= 2 || wantsMoreOptions) {
-      // Show the few results we have + suggestion to broaden
-      responseShops = shops || []
-      if (resultCount > 0) {
-        finalMessage = `Here ${resultCount === 1 ? 'is' : 'are'} the ${resultCount} dive shop${resultCount === 1 ? '' : 's'} I found. ${followUpMessage}`
+      // Show the few results we have + suggestion to broaden. When many results, paginate so we never return 16 in one go.
+      if (resultCount > 5) {
+        const alreadyShown = Math.min(Math.max(0, shopsAlreadyShownCount ?? 0), resultCount)
+        responseShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
+        const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
+        if (alreadyShown === 0) {
+          finalMessage = `Here are the first 5 of ${resultCount} dive shops I found. ${followUpMessage}`
+        } else {
+          finalMessage = remaining > 0
+            ? `Here are the next ${responseShops.length} results. ${remaining} more available.`
+            : `Here are the next ${responseShops.length} results.`
+        }
+        if (remaining > 0) {
+          selectableOptions = [{ label: 'Load next 5', value: 'Show more' }]
+        }
       } else {
-        finalMessage = `I didn't find any dive shops matching those criteria. ${followUpMessage}`
+        responseShops = shops || []
+        if (resultCount > 0) {
+          finalMessage = `Here ${resultCount === 1 ? 'is' : 'are'} the ${resultCount} dive shop${resultCount === 1 ? '' : 's'} I found. ${followUpMessage}`
+        } else {
+          finalMessage = `I didn't find any dive shops matching those criteria. ${followUpMessage}`
+        }
       }
     } else if (shouldAskFollowUp && resultCount > 5) {
       responseShops = []
