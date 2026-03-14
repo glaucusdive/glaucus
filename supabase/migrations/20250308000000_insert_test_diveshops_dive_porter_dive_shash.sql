@@ -1,4 +1,5 @@
 -- Test dive shops for email/booking flow: Dive Porter and Dive Shash (team emails)
+-- Idempotent: skip if rows already exist so migration can be re-run safely.
 INSERT INTO diveshops (id, business_name, street_address, website_url, city, state, locale, phone, email, type, country_id, region_id)
 VALUES
   (
@@ -28,23 +29,30 @@ VALUES
     'Dive Shop',
     (SELECT id FROM countries WHERE name = 'United States' LIMIT 1),
     (SELECT id FROM regions WHERE name = 'North America' LIMIT 1)
-  );
+  )
+ON CONFLICT (id) DO NOTHING;
 
 -- Dive Porter: courses, rental equipment, gases
 INSERT INTO diveshop_courses (diveshop_id, course_id)
-SELECT 'a0000001-0000-4000-8000-000000000001'::uuid, id FROM courses WHERE certification_name IN ('Open Water Diver', 'Advanced Open Water Diver', 'Enriched Air Nitrox', 'Rescue Diver', 'Discover Scuba Diving');
+SELECT 'a0000001-0000-4000-8000-000000000001'::uuid, id FROM courses WHERE certification_name IN ('Open Water Diver', 'Advanced Open Water Diver', 'Enriched Air Nitrox', 'Rescue Diver', 'Discover Scuba Diving')
+ON CONFLICT (diveshop_id, course_id) DO NOTHING;
 INSERT INTO diveshop_rental_equipment (diveshop_id, rental_equipment_id)
-SELECT 'a0000001-0000-4000-8000-000000000001'::uuid, id FROM rental_equipment WHERE name IN ('BCD', 'Regulator', 'Fins', 'Mask', 'Snorkel', 'Wetsuit');
+SELECT 'a0000001-0000-4000-8000-000000000001'::uuid, id FROM rental_equipment WHERE name IN ('BCD', 'Regulator', 'Fins', 'Mask', 'Snorkel', 'Wetsuit')
+ON CONFLICT (diveshop_id, rental_equipment_id) DO NOTHING;
 INSERT INTO diveshop_gases (diveshop_id, gas_id)
-SELECT 'a0000001-0000-4000-8000-000000000001'::uuid, id FROM gases WHERE name IN ('Nitrox');
+SELECT 'a0000001-0000-4000-8000-000000000001'::uuid, id FROM gases WHERE name IN ('Nitrox')
+ON CONFLICT (diveshop_id, gas_id) DO NOTHING;
 
 -- Dive Shash: different courses and gear
 INSERT INTO diveshop_courses (diveshop_id, course_id)
-SELECT 'a0000002-0000-4000-8000-000000000002'::uuid, id FROM courses WHERE certification_name IN ('Discover Scuba Diving', 'Try Scuba / Intro Scuba', 'Open Water Diver', 'Deep Diver', 'Wreck Diver', 'Divemaster');
+SELECT 'a0000002-0000-4000-8000-000000000002'::uuid, id FROM courses WHERE certification_name IN ('Discover Scuba Diving', 'Try Scuba / Intro Scuba', 'Open Water Diver', 'Deep Diver', 'Wreck Diver', 'Divemaster')
+ON CONFLICT (diveshop_id, course_id) DO NOTHING;
 INSERT INTO diveshop_rental_equipment (diveshop_id, rental_equipment_id)
-SELECT 'a0000002-0000-4000-8000-000000000002'::uuid, id FROM rental_equipment WHERE name IN ('Wetsuit', 'BCD', 'Regulator', 'Dive Computer', 'Mask', 'Fins');
+SELECT 'a0000002-0000-4000-8000-000000000002'::uuid, id FROM rental_equipment WHERE name IN ('Wetsuit', 'BCD', 'Regulator', 'Dive Computer', 'Mask', 'Fins')
+ON CONFLICT (diveshop_id, rental_equipment_id) DO NOTHING;
 INSERT INTO diveshop_gases (diveshop_id, gas_id)
-SELECT 'a0000002-0000-4000-8000-000000000002'::uuid, id FROM gases WHERE name IN ('Nitrox');
+SELECT 'a0000002-0000-4000-8000-000000000002'::uuid, id FROM gases WHERE name IN ('Nitrox')
+ON CONFLICT (diveshop_id, gas_id) DO NOTHING;
 
 -- Dive sites (US sites for both test shops)
 INSERT INTO diveshop_dive_sites (diveshop_id, dive_site_id)
@@ -56,7 +64,8 @@ AND (
     SELECT 1 FROM dive_sites ds2
     WHERE ds2.name = ds.name AND ds2.country_id = (SELECT country_id FROM diveshops WHERE id = 'a0000001-0000-4000-8000-000000000001'::uuid)
   )
-);
+)
+ON CONFLICT (diveshop_id, dive_site_id) DO NOTHING;
 
 INSERT INTO diveshop_dive_sites (diveshop_id, dive_site_id)
 SELECT 'a0000002-0000-4000-8000-000000000002'::uuid, ds.id FROM dive_sites ds
@@ -67,4 +76,5 @@ AND (
     SELECT 1 FROM dive_sites ds2
     WHERE ds2.name = ds.name AND ds2.country_id = (SELECT country_id FROM diveshops WHERE id = 'a0000002-0000-4000-8000-000000000002'::uuid)
   )
-);
+)
+ON CONFLICT (diveshop_id, dive_site_id) DO NOTHING;

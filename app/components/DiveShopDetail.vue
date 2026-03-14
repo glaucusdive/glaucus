@@ -82,38 +82,32 @@
             </div>
             <!-- Dive Destinations Tab -->
             <div v-if="activeTab === 'destinations'" class="flex flex-col gap-2 p-2 h-full">
-              <div class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-1 gap-2">
-                <CardInfo title="Beginner / Training Dives" image="/images/fpo/destinations-beginner.png"
-                  :items="['House Reef', 'Lagoon around Bandos']" />
-                <CardInfo title="Shark & Ray / Big Pelagic Dives" image="/images/fpo/destinations-beginner.png"
-                  :items="['House Reef', 'Lankan Reef', 'Banana Reef']" />
-                <CardInfo title="Wreck Diving" image="/images/fpo/destinations-beginner.png"
-                  :items="['Victory Wreck', 'Other small wrecks']" />
-                <CardInfo title="Deep / Advanced Dives (20-30m)" image="/images/fpo/destinations-beginner.png"
-                  :items="['Bandos Rock', 'Banana Reef', 'Victory Wreck']" />
-                <CardInfo title="Current / Drift Dives" image="/images/fpo/destinations-beginner.png"
-                  :items="['Banana Reef', 'Bandos Rock', 'Other thilas']" />
-                <CardInfo title="Night Diving" image="/images/fpo/destinations-beginner.png"
-                  :items="['House Reef']" />
-                <CardInfo title="Overhangs / Swim-Throughs" image="/images/fpo/destinations-beginner.png"
-                  :items="['Banana Reef', 'Other nearby reefs']" />
+              <div v-if="groupedDestinations.length === 0" class="text-zinc-500 dark:text-zinc-400 italic p-4">
+                No dive destinations listed.
+              </div>
+              <div v-else class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-1 gap-2">
+                <CardInfo
+                  v-for="dest in groupedDestinations"
+                  :key="dest.title"
+                  :title="dest.title"
+                  image="/images/fpo/destinations-beginner.png"
+                  :items="dest.items"
+                />
               </div>
             </div>
             <!-- Courses Tab -->
             <div v-if="activeTab === 'courses'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
-              <div class="grid grid-cols-1 cq:grid-cols-2 gap-2">
-                <CardInfo title="Open Water Diver" image="/images/fpo/destinations-beginner.png"
-                  :items="['5-10 hrs', 'Contact shop for dates', 'eLearning only']" />
-                <CardInfo title="Advanced Open Water" image="/images/fpo/destinations-beginner.png"
-                  :items="['3-5 days', 'Contact shop for dates', 'eLearning + practical']" />
-                <CardInfo title="Rescue Diver" image="/images/fpo/destinations-beginner.png"
-                  :items="['3-4 days', 'Contact shop for dates', 'eLearning + practical']" />
-                <CardInfo title="Divemaster" image="/images/fpo/destinations-beginner.png"
-                  :items="['2-3 weeks', 'Contact shop for dates', 'Intensive program']" />
-                <CardInfo title="Specialty Courses" image="/images/fpo/destinations-beginner.png"
-                  :items="['1-2 days', 'Contact shop for dates', 'Various specialties']" />
-                <CardInfo title="Instructor Course" image="/images/fpo/destinations-beginner.png"
-                  :items="['2-3 weeks', 'Contact shop for dates', 'Professional level']" />
+              <div v-if="coursesList.length === 0" class="text-zinc-500 dark:text-zinc-400 italic p-4">
+                No courses listed.
+              </div>
+              <div v-else class="grid grid-cols-1 cq:grid-cols-2 gap-2">
+                <CardInfo
+                  v-for="(course, idx) in coursesList"
+                  :key="course.title + String(idx)"
+                  :title="course.title"
+                  image="/images/fpo/destinations-beginner.png"
+                  :items="course.items.length ? course.items : ['Contact shop for dates']"
+                />
               </div>
             </div>
             <!-- More Information Tab -->
@@ -122,36 +116,23 @@
                 <div class="w-full p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-1">
                   <div class="flex flex-col gap-2">
                     <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Equipment Rental</h3>
-                    <ul class="text-sm space-y-1 text-zinc-900 dark:text-zinc-300">
-                      <li>BCD</li>
-                      <li>Boots</li>
-                      <li>Camera</li>
-                      <li>Children sizes</li>
-                      <li>Compass</li>
-                      <li>Dive Computer</li>
-                      <li>Flashlight</li>
-                      <li>Full-foot fins</li>
-                      <li>Gauges</li>
-                      <li>Large Cylinders (15L / 100 cu. ft.)</li>
-                      <li>Mask & Snorkel</li>
-                      <li>Open-heel fins</li>
-                      <li>Regulator</li>
-                      <li>Scooter (DPV)</li>
-                      <li>Small Cylinders (10L / 71.2 cu. ft.)</li>
-                      <li>Wetsuit – 3mm</li>
-                      <li>Wetsuit – shorty</li>
+                    <ul v-if="equipmentList.length > 0" class="text-sm space-y-1 text-zinc-900 dark:text-zinc-300">
+                      <li v-for="item in equipmentList" :key="item">{{ item }}</li>
                     </ul>
+                    <p v-else class="text-sm text-zinc-500 dark:text-zinc-400 italic">No equipment listed.</p>
                   </div>
                 </div>
                 <div class="w-full p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-1">
                   <div class="flex flex-col gap-2">
                     <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Gas Mixture</h3>
-                    <ul class="text-sm space-y-1 text-zinc-900 dark:text-zinc-300">
-                      <li>Air Fills</li>
-                      <li>Nitrox</li>
+                    <ul v-if="gasesList.length > 0" class="text-sm space-y-1 text-zinc-900 dark:text-zinc-300">
+                      <li v-for="item in gasesList" :key="item">{{ item }}</li>
                     </ul>
+                    <p v-else class="text-sm text-zinc-500 dark:text-zinc-400 italic">No gas mixture listed.</p>
                   </div>
                 </div>
+                <!-- TODO: wire when payment_methods + diveshop_payment_methods exist -->
+                <!--
                 <div class="w-full p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-1">
                   <div class="flex flex-col gap-2">
                     <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Payment Methods</h3>
@@ -165,55 +146,43 @@
                     </ul>
                   </div>
                 </div>
+                -->
               </div>
             </div>
-            <!-- Reviews Tab -->
+            <!-- TODO: wire when shop_reviews table exists -->
+            <!--
             <div v-if="activeTab === 'reviews'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
               <section class="flex flex-col gap-0">
                 <div class="relative">
-                  <!-- Review Items -->
                   <div class="grid grid-cols-1 cq:grid-cols-2 gap-2 w-full relative">
-                    <CardReview reviewer-name="Alexandra Park"
-                      reviewer-image="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face"
-                      review-date="1 week ago" :rating="5"
-                      review-text="Incredible experience! The dive masters were so knowledgeable about the local marine life. We saw turtles, rays, and so many colorful fish. The equipment was in perfect condition and the boat ride was smooth." />
-
-                    <CardReview reviewer-name="Roberto Silva"
-                      reviewer-image="https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=150&h=150&fit=crop&crop=face"
-                      review-date="2 weeks ago" :rating="5"
-                      review-text="Fantastic dive shop! The staff was incredibly professional and made sure everyone felt safe and comfortable. The underwater visibility was amazing and we saw some rare species. Highly recommend this place!" />
-
-                    <CardReview reviewer-name="Jennifer Lee"
-                      reviewer-image="https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150&h=150&fit=crop&crop=face"
-                      review-date="3 days ago" :rating="4"
-                      review-text="Great diving experience overall! The instructors were patient and thorough with the safety briefing. The dive sites were beautiful with lots of coral and fish. Only downside was the group was a bit large, but still had a wonderful time." />
-
-                    <CardReview reviewer-name="Marcus Johnson"
-                      reviewer-image="https://images.unsplash.com/photo-1463453091185-61582044d556?w=150&h=150&fit=crop&crop=face"
-                      review-date="1 month ago" :rating="5"
-                      review-text="Outstanding service from start to finish! The booking process was easy, the equipment was top quality, and the dive sites were spectacular. The instructor was experienced and made sure we had the best possible dive. Will definitely return!" />
-
-                    <CardReview reviewer-name="Sophie Williams"
-                      reviewer-image="https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=150&h=150&fit=crop&crop=face"
-                      review-date="4 days ago" :rating="5"
-                      review-text="Amazing first diving experience! As a complete beginner, I was nervous but the instructor was so reassuring and professional. The equipment fit perfectly and the underwater world was absolutely breathtaking. Thank you for making my first dive unforgettable!" />
-
-                    <CardReview reviewer-name="Thomas Brown"
-                      reviewer-image="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=face"
-                      review-date="6 days ago" :rating="4"
-                      review-text="Really good dive operation with excellent safety standards. The boat was clean and well-maintained, and the dive master was very experienced. The marine life was incredible - saw sharks, turtles, and schools of tropical fish. Highly recommended!" />
+                    <CardReview ... />
                   </div>
                 </div>
               </section>
             </div>
+            -->
             <!-- Nearby Dive Shops Tab -->
             <div v-if="activeTab === 'nearby'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
               <section class="flex flex-col gap-4">
-                <div class="grid grid-cols-1 cq:grid-cols-2 gap-2">
-                  <CardInfo image="/images/fpo/destinations-beginner.png" title="Dive Bandos – Bandos Maldives"
-                    :items="['Bandos Island, Maldives']" />
-                  <CardInfo image="/images/fpo/destinations-beginner.png" title="Dive Bandos – Bandos Maldives"
-                    :items="['Bandos Island, Maldives']" />
+                <p v-if="nearbyShops.length === 0" class="text-zinc-500 dark:text-zinc-400 italic p-4">
+                  No nearby dive shops in this region.
+                </p>
+                <div v-else class="grid grid-cols-1 cq:grid-cols-2 gap-2">
+                  <NuxtLink
+                    v-for="shop in nearbyShops"
+                    :key="shop.id"
+                    :to="`/shops/${shop.id}`"
+                    class="block"
+                  >
+                    <CardInfo
+                      image="/images/fpo/destinations-beginner.png"
+                      :title="shop.business_name"
+                      :items="[
+                        [shop.locale, shop.country?.name].filter(Boolean).join(', '),
+                        ...(shop.distance_miles != null ? [`${shop.distance_miles} mi away`] : [])
+                      ].filter(Boolean)"
+                    />
+                  </NuxtLink>
                 </div>
               </section>
             </div>
@@ -310,60 +279,17 @@ const tabs = [
   { id: 'destinations', label: 'Dive Destinations' },
   { id: 'courses', label: 'Courses' },
   { id: 'information', label: 'More Information' },
-  { id: 'reviews', label: 'Reviews' },
+  // TODO: wire when shop_reviews table exists
+  // { id: 'reviews', label: 'Reviews' },
   { id: 'nearby', label: 'Nearby Dive Shops' }
 ]
 
-// Fetch dive shop data
-const { client } = useSupabase()
+// Fetch dive shop data (shared with shops/[id] page via useShopDetail)
+const { shopData, nearbyShops, pending, error } = useShopDetail(props.shopId)
 
-const { data: shopData, pending, error } = await useAsyncData(`diveshop-${props.shopId}`, async () => {
-  try {
-    console.log('Fetching dive shop data for ID:', props.shopId)
-    
-    const { data, error: supabaseError } = await client
-      .from('diveshops')
-      .select('*, country:countries(name), region:regions(name)')
-      .eq('id', props.shopId)
-      .single()
-
-    if (supabaseError) {
-      console.error('Supabase error:', supabaseError)
-      throw createError({
-        statusCode: 404,
-        statusMessage: 'Dive shop not found'
-      })
-    }
-
-    if (!data) {
-      console.log('No dive shop found for ID:', props.shopId)
-      throw createError({
-        statusCode: 404,
-        statusMessage: 'Dive shop not found'
-      })
-    }
-
-    console.log('Fetched shop data:', data)
-    return data
-  } catch (err) {
-    console.error('Error fetching dive shop:', err)
-    if (err && typeof err === 'object' && 'statusCode' in err) {
-      throw err
-    }
-    throw createError({
-      statusCode: 404,
-      statusMessage: 'Dive shop not found'
-    })
-  }
-}, {
-  server: false,
-  lazy: false,
-  default: () => null
-})
-
-// Computed properties for dynamic truncation
+// Computed properties for dynamic truncation (description from notes)
 const paragraphs = computed(() => {
-  const description = isDemoMode.value ? demoDescription : shopData.value?.description
+  const description = isDemoMode.value ? demoDescription : (shopData.value?.notes ?? shopData.value?.description)
   if (!description) return []
   return description.split('\n\n').filter(para => para.trim() !== '')
 })
@@ -424,5 +350,51 @@ const displayLanguages = computed(() => {
     return demoLanguages
   }
   return shopData.value?.languages || null
+})
+
+// Destinations: group dive sites by type from diveshop_dive_sites -> dive_sites -> dive_site_type
+const groupedDestinations = computed(() => {
+  const rows = shopData.value?.diveshop_dive_sites ?? []
+  const byType = new Map()
+  for (const row of rows) {
+    const site = row.dive_sites ?? row.dive_site
+    if (!site?.name) continue
+    const typeName = site.dive_site_type?.name ?? site.dive_site_types?.name ?? 'Other'
+    if (!byType.has(typeName)) byType.set(typeName, [])
+    byType.get(typeName).push(site.name)
+  }
+  return Array.from(byType.entries()).map(([title, items]) => ({ title, items }))
+})
+
+// Courses from diveshop_courses -> courses
+const coursesList = computed(() => {
+  const rows = shopData.value?.diveshop_courses ?? []
+  return rows
+    .map(row => row.courses ?? row.course)
+    .filter(Boolean)
+    .map(c => ({
+      title: c.certification_name,
+      items: [c.depth_limit, c.description].filter(Boolean).slice(0, 3)
+    }))
+})
+
+// Equipment from diveshop_rental_equipment -> rental_equipment; filter out placeholder names
+const EXCLUDED_EQUIPMENT = new Set(['None listed', 'Yes (unspecified gear)'])
+const equipmentList = computed(() => {
+  const rows = shopData.value?.diveshop_rental_equipment ?? []
+  const names = rows
+    .map(row => row.rental_equipment?.name)
+    .filter(Boolean)
+    .filter(name => !EXCLUDED_EQUIPMENT.has(name))
+  return [...new Set(names)]
+})
+
+// Gases from diveshop_gases -> gases
+const gasesList = computed(() => {
+  const rows = shopData.value?.diveshop_gases ?? []
+  const names = rows
+    .map(row => row.gases?.name ?? row.gas?.name)
+    .filter(Boolean)
+  return [...new Set(names)]
 })
 </script>
