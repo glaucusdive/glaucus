@@ -1,10 +1,14 @@
 <template>
-  <div class="w-full p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-1">
+  <div class="w-full p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-2">
     <!-- Image (optional) -->
     <div v-if="image" class="w-full h-24 xl:h-32 bg-zinc-200 dark:bg-zinc-700 rounded-sm overflow-hidden mb-2">
       <img :src="image" :alt="title" class="w-full h-full object-cover" />
     </div>
-    <h2 class="text-sm font-bold text-zinc-900 dark:text-white">{{ title }}</h2>
+    <header class="pb-2 border-b border-zinc-300 dark:border-zinc-700">
+      <h2 class="text-sm font-bold text-zinc-900 dark:text-white">
+        {{ title }}
+      </h2>
+    </header>
     <!-- Custom content slot -->
     <div v-if="$slots.default" class="text-sm text-zinc-900 dark:text-zinc-300">
       <slot />

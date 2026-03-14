@@ -46,7 +46,7 @@
     <div class="w-full h-0 flex-1 cq:lg:overflow-y-auto">
       <!-- Main Content with Sidebar -->
       <div
-        class="flex flex-col cq:lg:flex-row justify-between cq:lg:justify-stretch items-start cq:lg:items-stretch gap-0 divide-y cq:lg:divide-x cq:lg:divide-y-0 divide-zinc-300 dark:divide-zinc-700 w-full h-full">
+        class="flex flex-col cq:lg:flex-row justify-between cq:lg:justify-stretch items-start cq:lg:items-stretch gap-0 divide-y cq:lg:divide-x cq:lg:divide-y-0 cq:divide-zinc-700 divide-zinc-300 dark:divide-zinc-700 w-full h-full">
         <!-- Tab Content -->
         <div class="w-full flex flex-col border-b-0 cq:lg:order-1 overflow-y-auto">
           <div class="flex flex-col gap-4 h-full w-full p-0">
@@ -90,7 +90,6 @@
                   v-for="dest in groupedDestinations"
                   :key="dest.title"
                   :title="dest.title"
-                  image="/images/fpo/destinations-beginner.png"
                   :items="dest.items"
                 />
               </div>
@@ -105,7 +104,6 @@
                   v-for="(course, idx) in coursesList"
                   :key="course.title + String(idx)"
                   :title="course.title"
-                  image="/images/fpo/destinations-beginner.png"
                   :items="course.items.length ? course.items : ['Contact shop for dates']"
                 />
               </div>
@@ -190,7 +188,7 @@
         </div>
         <!-- Sidebar -->
         <div
-          class="w-full cq:lg:min-w-1/2 cq:lg:w-1/2 cq:xl:min-w-1/3 cq:xl:w-1/3 p-2 pb-20 h-auto cq:xl:h-full cq:lg:order-1 sticky bottom-0 cq:2xl:bottom-auto bg-zinc-50 dark:bg-zinc-900">
+          class="w-full cq:lg:min-w-1/2 cq:lg:w-1/2 cq:xl:min-w-1/3 cq:xl:w-1/3 p-2 h-auto cq:xl:h-full cq:lg:order-1 sticky bottom-0 cq:2xl:bottom-auto bg-zinc-50 dark:bg-zinc-900">
           <div class="h-full">
             <div class="flex flex-col gap-2">
               <!-- Book Now Button -->
@@ -198,7 +196,7 @@
                 <h2 class="hidden cq:lg:block cq:lg:text-2xl font-semibold text-zinc-900 dark:text-white">Book Now</h2>
                 <p class="hidden cq:lg:block text-sm text-zinc-600 dark:text-zinc-400">Ready to dive? Click below to start your booking.</p>
                 <button @click="openBookingDrawer"
-                  class="bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">
+                  class="border border-zinc-900 dark:border-zinc-100 hover:border-zinc-800 dark:hover:border-zinc-200 bg-transparent text-white dark:text-white font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">
                   Start Booking
                 </button>
               </div>
