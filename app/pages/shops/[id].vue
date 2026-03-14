@@ -31,61 +31,15 @@
 <script setup>
 import DiveShopDetail from '~/components/DiveShopDetail.vue'
 
-// Get the route parameter
 const route = useRoute()
 const router = useRouter()
 const shopId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
 
-// Fetch dive shop data for page title and loading state
-const { client } = useSupabase()
+// Shared fetch with DiveShopDetail (single request via useShopDetail)
+const { shopData, pending, error } = useShopDetail(shopId)
 
-const { data: shopData, pending, error } = await useAsyncData(`diveshop-${shopId}`, async () => {
-  try {
-    console.log('Fetching dive shop data for ID:', shopId)
-    
-    const { data, error: supabaseError } = await client
-      .from('diveshops')
-      .select('*, country:countries(name), region:regions(name)')
-      .eq('id', shopId)
-      .single()
-
-    if (supabaseError) {
-      console.error('Supabase error:', supabaseError)
-      throw createError({
-        statusCode: 404,
-        statusMessage: 'Dive shop not found'
-      })
-    }
-
-    if (!data) {
-      console.log('No dive shop found for ID:', shopId)
-      throw createError({
-        statusCode: 404,
-        statusMessage: 'Dive shop not found'
-      })
-    }
-
-    console.log('Fetched shop data:', data)
-    return data
-  } catch (err) {
-    console.error('Error fetching dive shop:', err)
-    if (err && typeof err === 'object' && 'statusCode' in err) {
-      throw err
-    }
-    throw createError({
-      statusCode: 404,
-      statusMessage: 'Dive shop not found'
-    })
-  }
-}, {
-  server: false,
-  lazy: false,
-  default: () => null
-})
-
-// Set page title
 useHead({
-  title: shopData.value?.business_name || 'Dive Shop'
+  title: computed(() => shopData.value?.business_name || 'Dive Shop')
 })
 
 // Scroll position management
