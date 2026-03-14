@@ -46,7 +46,7 @@
     <div class="w-full h-0 flex-1 cq:lg:overflow-y-auto">
       <!-- Main Content with Sidebar -->
       <div
-        class="flex flex-col cq:lg:flex-row justify-between cq:lg:justify-stretch items-start cq:lg:items-stretch gap-0 divide-y cq:lg:divide-x cq:lg:divide-y-0 cq:divide-zinc-700 divide-zinc-300 dark:divide-zinc-700 w-full h-full">
+        class="flex flex-col cq:lg:flex-row justify-between cq:lg:justify-stretch items-start cq:lg:items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 cq:divide-zinc-700 divide-zinc-700 dark:divide-zinc-700 w-full h-full">
         <!-- Tab Content -->
         <div class="w-full flex flex-col border-b-0 cq:lg:order-1 overflow-y-auto">
           <div class="flex flex-col gap-4 h-full w-full p-0">
@@ -111,39 +111,19 @@
             <!-- More Information Tab -->
             <div v-if="activeTab === 'information'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
               <div class="flex flex-col cq:lg:flex-row gap-2 rounded-md">
-                <div class="w-full p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-1">
-                  <div class="flex flex-col gap-2">
-                    <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Equipment Rental</h3>
-                    <ul v-if="equipmentList.length > 0" class="text-sm space-y-1 text-zinc-900 dark:text-zinc-300">
-                      <li v-for="item in equipmentList" :key="item">{{ item }}</li>
-                    </ul>
-                    <p v-else class="text-sm text-zinc-500 dark:text-zinc-400 italic">No equipment listed.</p>
-                  </div>
-                </div>
-                <div class="w-full p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-1">
-                  <div class="flex flex-col gap-2">
-                    <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Gas Mixture</h3>
-                    <ul v-if="gasesList.length > 0" class="text-sm space-y-1 text-zinc-900 dark:text-zinc-300">
-                      <li v-for="item in gasesList" :key="item">{{ item }}</li>
-                    </ul>
-                    <p v-else class="text-sm text-zinc-500 dark:text-zinc-400 italic">No gas mixture listed.</p>
-                  </div>
-                </div>
+                <CardInfo
+                  title="Equipment Rental"
+                  :items="equipmentList"
+                  empty-message="No equipment listed."
+                />
+                <CardInfo
+                  title="Gas Mixture"
+                  :items="gasesList"
+                  empty-message="No gas mixture listed."
+                />
                 <!-- TODO: wire when payment_methods + diveshop_payment_methods exist -->
                 <!--
-                <div class="w-full p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-1">
-                  <div class="flex flex-col gap-2">
-                    <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Payment Methods</h3>
-                    <ul class="text-sm space-y-1 text-zinc-900 dark:text-zinc-300">
-                      <li>Bank Transfer</li>
-                      <li>VISA</li>
-                      <li>Mastercard</li>
-                      <li>AMEX</li>
-                      <li>Discover</li>
-                      <li>Cash (USD)</li>
-                    </ul>
-                  </div>
-                </div>
+                <CardInfo title="Payment Methods" :items="['Bank Transfer', 'VISA', 'Mastercard', 'AMEX', 'Discover', 'Cash (USD)']" />
                 -->
               </div>
             </div>
@@ -173,7 +153,6 @@
                     class="block"
                   >
                     <CardInfo
-                      image="/images/fpo/destinations-beginner.png"
                       :title="shop.business_name"
                       :items="[
                         [shop.locale, shop.country?.name].filter(Boolean).join(', '),
@@ -202,7 +181,7 @@
               </div>
               <!-- Contact Information -->
               <div class="flex flex-col gap-2 border border-zinc-300 dark:border-zinc-700 rounded-md cq:lg:order-2">
-                <ul class="flex flex-row cq:lg:flex-col justify-between cq:lg:justify-start divide-x cq:lg:divide-y divide-zinc-300 dark:divide-zinc-700">
+                <ul class="flex flex-row cq:lg:flex-col justify-between lg:justify-start divide-x lg:divide-y divide-zinc-300 dark:divide-zinc-700">
                   <li class="w-full flex justify-center cq:lg:justify-start" v-if="contactInfo?.address">
                     <a :href="`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contactInfo.address)}`"
                       target="_blank" class="w-full justify-center p-4 flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 overflow-hidden">
