@@ -1,9 +1,10 @@
 import { _ as __nuxt_component_0 } from './nuxt-layout-D1Os6LCO.mjs';
-import { defineComponent, ref, mergeProps, withCtx, unref, createVNode, createBlock, openBlock, Fragment, renderList, toDisplayString, useSSRContext } from 'vue';
+import { _ as __nuxt_component_0$1 } from './server.mjs';
+import { defineComponent, ref, mergeProps, withCtx, createTextVNode, unref, createVNode, createBlock, openBlock, Fragment, renderList, toDisplayString, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrRenderList, ssrInterpolate, ssrIncludeBooleanAttr } from 'vue/server-renderer';
 import { u as useAuth } from './useAuth-BUYZlfj2.mjs';
 import { u as useDrawer } from './useDrawer-Jm8d8DDv.mjs';
-import './server.mjs';
+import 'vue-router';
 import '../nitro/nitro.mjs';
 import '@supabase/supabase-js';
 import 'node:http';
@@ -15,7 +16,6 @@ import 'node:path';
 import 'node:crypto';
 import '@iconify/utils';
 import 'consola';
-import 'vue-router';
 import 'tailwindcss/colors';
 import '@iconify/vue';
 import 'reka-ui';
@@ -31,7 +31,7 @@ import 'unhead/utils';
 import './useSupabase-DR_u3VFp.mjs';
 
 const _sfc_main = /* @__PURE__ */ defineComponent({
-  __name: "index",
+  __name: "drafts",
   __ssrInlineRender: true,
   setup(__props) {
     const { accessToken } = useAuth();
@@ -80,10 +80,27 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
     }
     return (_ctx, _push, _parent, _attrs) => {
       const _component_NuxtLayout = __nuxt_component_0;
+      const _component_NuxtLink = __nuxt_component_0$1;
       _push(ssrRenderComponent(_component_NuxtLayout, mergeProps({ name: "default" }, _attrs), {
         default: withCtx((_, _push2, _parent2, _scopeId) => {
           if (_push2) {
-            _push2(`<div class="min-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4"${_scopeId}><h1 class="text-xl font-bold text-zinc-900 dark:text-white mb-4"${_scopeId}>Profile</h1><section class="mb-8"${_scopeId}><h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-200 mb-3"${_scopeId}>My drafts</h2>`);
+            _push2(`<div class="min-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4"${_scopeId}>`);
+            _push2(ssrRenderComponent(_component_NuxtLink, {
+              to: "/profile",
+              class: "inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white mb-4 cursor-pointer"
+            }, {
+              default: withCtx((_2, _push3, _parent3, _scopeId2) => {
+                if (_push3) {
+                  _push3(` ← Profile `);
+                } else {
+                  return [
+                    createTextVNode(" ← Profile ")
+                  ];
+                }
+              }),
+              _: 1
+            }, _parent2, _scopeId));
+            _push2(`<h1 class="text-xl font-bold text-zinc-900 dark:text-white mb-2"${_scopeId}>My drafts</h1><p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6"${_scopeId}>Resume or delete saved booking drafts.</p>`);
             if (unref(draftsLoading)) {
               _push2(`<p class="text-sm text-zinc-500 dark:text-zinc-400"${_scopeId}>Loading drafts…</p>`);
             } else if (!unref(drafts).length) {
@@ -95,50 +112,57 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
               });
               _push2(`<!--]--></ul>`);
             }
-            _push2(`</section></div>`);
+            _push2(`</div>`);
           } else {
             return [
               createVNode("div", { class: "min-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4" }, [
-                createVNode("h1", { class: "text-xl font-bold text-zinc-900 dark:text-white mb-4" }, "Profile"),
-                createVNode("section", { class: "mb-8" }, [
-                  createVNode("h2", { class: "text-lg font-semibold text-zinc-800 dark:text-zinc-200 mb-3" }, "My drafts"),
-                  unref(draftsLoading) ? (openBlock(), createBlock("p", {
-                    key: 0,
-                    class: "text-sm text-zinc-500 dark:text-zinc-400"
-                  }, "Loading drafts…")) : !unref(drafts).length ? (openBlock(), createBlock("p", {
-                    key: 1,
-                    class: "text-sm text-zinc-500 dark:text-zinc-400"
-                  }, "No saved drafts. Start a booking and use “Save as draft” to continue later.")) : (openBlock(), createBlock("ul", {
-                    key: 2,
-                    class: "space-y-2"
-                  }, [
-                    (openBlock(true), createBlock(Fragment, null, renderList(unref(drafts), (d) => {
-                      return openBlock(), createBlock("li", {
-                        key: d.id,
-                        class: "flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800"
-                      }, [
-                        createVNode("div", { class: "min-w-0 flex-1" }, [
-                          createVNode("span", { class: "font-medium text-zinc-900 dark:text-white" }, toDisplayString(d.shopName || "Dive shop"), 1),
-                          createVNode("span", { class: "text-sm text-zinc-500 dark:text-zinc-400 ml-2" }, toDisplayString(d.updated_at ? formatDate(d.updated_at) : ""), 1)
-                        ]),
-                        createVNode("div", { class: "flex gap-2 shrink-0" }, [
-                          createVNode("button", {
-                            type: "button",
-                            onClick: ($event) => resumeDraft(d),
-                            disabled: unref(resumeLoading) === d.id,
-                            class: "px-3 py-1.5 text-sm font-medium rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 cursor-pointer transition-colors"
-                          }, toDisplayString(unref(resumeLoading) === d.id ? "Opening…" : "Resume"), 9, ["onClick", "disabled"]),
-                          createVNode("button", {
-                            type: "button",
-                            onClick: ($event) => deleteDraft(d.id),
-                            disabled: unref(deleteLoading) === d.id,
-                            class: "px-3 py-1.5 text-sm font-medium rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-50 cursor-pointer transition-colors"
-                          }, toDisplayString(unref(deleteLoading) === d.id ? "Deleting…" : "Delete"), 9, ["onClick", "disabled"])
-                        ])
-                      ]);
-                    }), 128))
-                  ]))
-                ])
+                createVNode(_component_NuxtLink, {
+                  to: "/profile",
+                  class: "inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white mb-4 cursor-pointer"
+                }, {
+                  default: withCtx(() => [
+                    createTextVNode(" ← Profile ")
+                  ]),
+                  _: 1
+                }),
+                createVNode("h1", { class: "text-xl font-bold text-zinc-900 dark:text-white mb-2" }, "My drafts"),
+                createVNode("p", { class: "text-sm text-zinc-500 dark:text-zinc-400 mb-6" }, "Resume or delete saved booking drafts."),
+                unref(draftsLoading) ? (openBlock(), createBlock("p", {
+                  key: 0,
+                  class: "text-sm text-zinc-500 dark:text-zinc-400"
+                }, "Loading drafts…")) : !unref(drafts).length ? (openBlock(), createBlock("p", {
+                  key: 1,
+                  class: "text-sm text-zinc-500 dark:text-zinc-400"
+                }, "No saved drafts. Start a booking and use “Save as draft” to continue later.")) : (openBlock(), createBlock("ul", {
+                  key: 2,
+                  class: "space-y-2"
+                }, [
+                  (openBlock(true), createBlock(Fragment, null, renderList(unref(drafts), (d) => {
+                    return openBlock(), createBlock("li", {
+                      key: d.id,
+                      class: "flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800"
+                    }, [
+                      createVNode("div", { class: "min-w-0 flex-1" }, [
+                        createVNode("span", { class: "font-medium text-zinc-900 dark:text-white" }, toDisplayString(d.shopName || "Dive shop"), 1),
+                        createVNode("span", { class: "text-sm text-zinc-500 dark:text-zinc-400 ml-2" }, toDisplayString(d.updated_at ? formatDate(d.updated_at) : ""), 1)
+                      ]),
+                      createVNode("div", { class: "flex gap-2 shrink-0" }, [
+                        createVNode("button", {
+                          type: "button",
+                          onClick: ($event) => resumeDraft(d),
+                          disabled: unref(resumeLoading) === d.id,
+                          class: "px-3 py-1.5 text-sm font-medium rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 cursor-pointer transition-colors"
+                        }, toDisplayString(unref(resumeLoading) === d.id ? "Opening…" : "Resume"), 9, ["onClick", "disabled"]),
+                        createVNode("button", {
+                          type: "button",
+                          onClick: ($event) => deleteDraft(d.id),
+                          disabled: unref(deleteLoading) === d.id,
+                          class: "px-3 py-1.5 text-sm font-medium rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-50 cursor-pointer transition-colors"
+                        }, toDisplayString(unref(deleteLoading) === d.id ? "Deleting…" : "Delete"), 9, ["onClick", "disabled"])
+                      ])
+                    ]);
+                  }), 128))
+                ]))
               ])
             ];
           }
@@ -151,9 +175,9 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
 const _sfc_setup = _sfc_main.setup;
 _sfc_main.setup = (props, ctx) => {
   const ssrContext = useSSRContext();
-  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("pages/profile/index.vue");
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("pages/profile/drafts.vue");
   return _sfc_setup ? _sfc_setup(props, ctx) : void 0;
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-DnBJO-Fg.mjs.map
+//# sourceMappingURL=drafts-DMhmdEq9.mjs.map

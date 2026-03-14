@@ -509,12 +509,24 @@ const _routes = [
     name: "profile",
     path: "/profile",
     meta: { "middleware": "auth" },
-    component: () => import('./index-DnBJO-Fg.mjs')
+    component: () => import('./index-CNRl_m6U.mjs')
+  },
+  {
+    name: "profile-drafts",
+    path: "/profile/drafts",
+    meta: { "middleware": "auth" },
+    component: () => import('./drafts-DMhmdEq9.mjs')
   },
   {
     name: "community",
     path: "/community",
     component: () => import('./index-BBeGKYQC.mjs')
+  },
+  {
+    name: "profile-defaults",
+    path: "/profile/defaults",
+    meta: { "middleware": "auth" },
+    component: () => import('./defaults-BIPwOlsc.mjs')
   }
 ];
 const _wrapInTransition = (props, children) => {
