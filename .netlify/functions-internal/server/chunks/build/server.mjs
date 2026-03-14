@@ -1,5 +1,5 @@
 import { defineComponent, shallowRef, h, resolveComponent, hasInjectionContext, inject, computed, toValue, getCurrentInstance, onServerPrefetch, mergeProps, unref, provide, cloneVNode, createElementBlock, ref, toRef, nextTick, defineAsyncComponent, useSSRContext, Suspense, Fragment, createApp, mergeModels, useModel, withCtx, renderSlot, createVNode, createBlock, createCommentVNode, openBlock, createTextVNode, toDisplayString, watch, resolveDynamicComponent, renderList, useId, shallowReactive, onErrorCaptured, reactive, effectScope, isReadonly, isRef, isShallow, isReactive, toRaw, useSlots, withModifiers, getCurrentScope, markRaw } from 'vue';
-import { v as serialize, w as parseQuery, i as createError$1, x as hasProtocol, y as isScriptProtocol, z as joinURL, A as withQuery, B as sanitizeStatusCode, C as withTrailingSlash, D as withoutTrailingSlash, E as klona, F as defuFn, G as getContext, $ as $fetch$1, H as baseURL, I as defu, J as createHooks, K as executeAsync, L as isEqual, M as toRouteMatcher, N as createRouter$1 } from '../nitro/nitro.mjs';
+import { z as serialize, A as parseQuery, i as createError$1, B as hasProtocol, C as isScriptProtocol, D as joinURL, E as withQuery, F as sanitizeStatusCode, G as withTrailingSlash, H as withoutTrailingSlash, I as klona, J as defuFn, K as getContext, $ as $fetch$1, L as baseURL, M as defu, N as createHooks, O as executeAsync, P as isEqual, Q as toRouteMatcher, R as createRouter$1 } from '../nitro/nitro.mjs';
 import { RouterView, createMemoryHistory, createRouter, START_LOCATION } from 'vue-router';
 import colors from 'tailwindcss/colors';
 import { Icon, getIcon, loadIcon as loadIcon$1, _api, addAPIProvider, setCustomIconsLoader } from '@iconify/vue';
@@ -483,27 +483,38 @@ const _routes = [
   {
     name: "index",
     path: "/",
-    component: () => import('./index-BzXQb7ne.mjs')
+    component: () => import('./index-BJ9r54MD.mjs')
+  },
+  {
+    name: "auth",
+    path: "/auth",
+    component: () => import('./index-EdaT6HFk.mjs')
   },
   {
     name: "shops-id",
     path: "/shops/:id()",
-    component: () => import('./_id_--9K9UTbj.mjs')
+    component: () => import('./_id_-CrN89ZRT.mjs')
+  },
+  {
+    name: "auth-signup",
+    path: "/auth/signup",
+    component: () => import('./signup-F6_--zNs.mjs')
   },
   {
     name: "shops",
     path: "/shops",
-    component: () => import('./index-BmtrYxT5.mjs')
+    component: () => import('./index-B87j7dvl.mjs')
   },
   {
     name: "profile",
     path: "/profile",
-    component: () => import('./index-DGZNDGXL.mjs')
+    meta: { "middleware": "auth" },
+    component: () => import('./index-DnBJO-Fg.mjs')
   },
   {
     name: "community",
     path: "/community",
-    component: () => import('./index-BOyeEs5s.mjs')
+    component: () => import('./index-BBeGKYQC.mjs')
   }
 ];
 const _wrapInTransition = (props, children) => {
@@ -623,7 +634,9 @@ const globalMiddleware = [
   validate,
   manifest_45route_45rule
 ];
-const namedMiddleware = {};
+const namedMiddleware = {
+  auth: () => import('./auth-XP0F-GLF.mjs')
+};
 const plugin = /* @__PURE__ */ defineNuxtPlugin({
   name: "nuxt:router",
   enforce: "pre",
@@ -5094,5 +5107,5 @@ let entry;
 }
 const entry$1 = (ssrContext) => entry(ssrContext);
 
-export { LayoutMetaSymbol as L, PageRouteSymbol as P, __nuxt_component_0$1 as _, useRoute as a, useRouter as b, useAsyncData as c, createError as d, entry$1 as default, _sfc_main$d as e, useNuxtApp as f, appLayoutTransition as g, _wrapInTransition as h, __nuxt_component_2 as i, useRuntimeConfig as j, navigateTo as n, useHead as u };
+export { LayoutMetaSymbol as L, PageRouteSymbol as P, __nuxt_component_0$1 as _, useRoute as a, useRouter as b, useAsyncData as c, createError as d, entry$1 as default, _sfc_main$d as e, useNuxtApp as f, appLayoutTransition as g, _wrapInTransition as h, defineNuxtRouteMiddleware as i, __nuxt_component_2 as j, useRuntimeConfig as k, navigateTo as n, useHead as u };
 //# sourceMappingURL=server.mjs.map

@@ -26,7 +26,11 @@
           <nav class="w-full flex flex-col gap-1">
             <NavLink to="/shops" @click="handleCloseMobileMenu">Shops</NavLink>
             <NavLink to="/community" disabled>Community</NavLink>
-            <NavLink to="/profile" disabled>Profile</NavLink>
+            <NavLink v-if="isSignedIn" to="/profile" @click="handleCloseMobileMenu">Profile</NavLink>
+            <NavLink v-else to="/auth" @click="handleCloseMobileMenu">Sign in</NavLink>
+            <button v-if="isSignedIn" @click="handleSignOut" class="text-left w-full px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md cursor-pointer">
+              Sign out
+            </button>
           </nav>
 
           <!-- Theme Toggle Button -->
@@ -72,7 +76,7 @@
             <!-- Dynamic Drawer Content -->
             <BookingForm v-if="contentType === 'booking-form'" :key="'booking-' + drawerOpenKey"
               :shop-id="drawerData.shopId" :shop-name="drawerData.shopName"
-              :initial-payload="drawerData.bookingPayload" />
+              :initial-payload="drawerData.bookingPayload" :draft-id="drawerData.draftId" />
           </div>
         </Transition>
       </div>
@@ -86,10 +90,17 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { X, Sun, Moon } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
 import { useTheme } from '~/composables/useTheme'
+import { useAuth } from '~/composables/useAuth'
 import BookingForm from '~/components/BookingForm.vue'
 import Logo from '~/components/Logo.vue'
 
 const { isDark, toggleTheme } = useTheme()
+const { isSignedIn, signOut } = useAuth()
+
+async function handleSignOut () {
+  await signOut()
+  handleCloseMobileMenu()
+}
 
 const { isOpen, contentType, drawerData, drawerOpenKey, isMobileMenuOpen, shouldAnimateMenu, closeMobileMenu } = useDrawer()
 

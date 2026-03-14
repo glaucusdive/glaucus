@@ -256,9 +256,55 @@ import CardSearchResult from '~/components/CardSearchResult.vue'
 import ShopDetailPanel from '~/components/ShopDetailPanel.vue'
 import { useSearchCache } from '~/composables/useSearchCache'
 import { useDrawer } from '~/composables/useDrawer'
+import { useAuth } from '~/composables/useAuth'
+import { useSupabase } from '~/composables/useSupabase'
 
 // Get route to check for initial query
 const route = useRoute()
+const { isSignedIn } = useAuth()
+const { client } = useSupabase()
+/** Profile snapshot for agent prefill (name, email, defaultDiver); set when signed in. */
+const profilePrefillSnapshot = ref(null)
+watch(isSignedIn, async (signedIn) => {
+  if (!signedIn) {
+    profilePrefillSnapshot.value = null
+    return
+  }
+  try {
+    const { data } = await client.from('profiles').select('display_name, email, default_diver, default_divers').single()
+    if (data) {
+      const defaultDivers = Array.isArray(data.default_divers) && data.default_divers.length > 0
+        ? data.default_divers.map((d) => ({
+            name: d.name,
+            certification_number: d.certification_number,
+            number_of_dives: d.number_of_dives,
+            height: d.height,
+            height_unit: d.height_unit,
+            weight: d.weight,
+            weight_unit: d.weight_unit,
+            gear: Array.isArray(d.gear) ? d.gear.map((g) => ({ gear_type: g.gear_type ?? g.gearType })) : []
+          }))
+        : null
+      const dd = data.default_diver && typeof data.default_diver === 'object' ? data.default_diver : null
+      profilePrefillSnapshot.value = {
+        name: data.display_name ?? undefined,
+        email: data.email ?? undefined,
+        defaultDivers: defaultDivers ?? undefined,
+        defaultDiver: !defaultDivers && dd ? {
+          name: dd.name,
+          certification_number: dd.certification_number,
+          number_of_dives: dd.number_of_dives,
+          height: dd.height,
+          height_unit: dd.height_unit,
+          weight: dd.weight,
+          weight_unit: dd.weight_unit
+        } : undefined
+      }
+    }
+  } catch {
+    profilePrefillSnapshot.value = null
+  }
+}, { immediate: true })
 
 // State
 const userInput = ref('')
@@ -528,7 +574,8 @@ const sendMessage = async (messageText, displayText) => {
         lastBookingShopId,
         ...(inBookingFlow && lastBookingShopName ? { lastBookingShopName } : {}),
         ...(inBookingFlow && lastPayload ? { bookingPayload: lastPayload } : {}),
-        ...(pendingBookingPayload.value ? { pendingBookingPayload: pendingBookingPayload.value } : {})
+        ...(pendingBookingPayload.value ? { pendingBookingPayload: pendingBookingPayload.value } : {}),
+        ...(profilePrefillSnapshot.value ? { profilePrefill: profilePrefillSnapshot.value } : {})
       }
     })
     

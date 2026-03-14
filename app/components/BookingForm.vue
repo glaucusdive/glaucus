@@ -167,6 +167,17 @@
           {{ submitError }}
         </div>
 
+        <!-- Save draft (signed in) or Sign in to save draft (guest) -->
+        <div class="mx-2 flex gap-2">
+          <NuxtLink v-if="!isSignedIn" to="/auth" class="flex-1 text-center py-2 px-3 rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer">
+            Sign in to save draft
+          </NuxtLink>
+          <button v-else type="button" @click="saveDraft" :disabled="draftLoading"
+            class="flex-1 py-2 px-3 rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 cursor-pointer transition-colors">
+            {{ draftLoading ? 'Saving…' : 'Save as draft' }}
+          </button>
+        </div>
+
         <!-- Submit Button -->
         <div class="sticky bottom-0 bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-300 dark:border-zinc-700 p-2 mt-2">
           <button type="submit" :disabled="submitLoading"
@@ -199,15 +210,21 @@ const props = defineProps({
     type: String,
     required: true
   },
-  /** Pre-fill form from chat-collected booking payload */
+  /** Pre-fill form from chat-collected booking payload or resumed draft */
   initialPayload: {
     type: Object,
+    default: undefined
+  },
+  /** When resuming a draft, pass draft id to update existing draft on save */
+  draftId: {
+    type: String,
     default: undefined
   }
 })
 
 const { closeDrawer } = useDrawer()
 const { client } = useSupabase()
+const { isSignedIn, accessToken, user } = useAuth()
 
 // Get today's date in YYYY-MM-DD format for date inputs
 const today = computed(() => {
@@ -240,6 +257,58 @@ const formData = ref({
   endDate: '',
   desiredDiveSites: []
 })
+
+// Pre-fill from profile (when signed in): name, email, all divers from default_divers (or default_diver for first diver only)
+async function applyProfilePrefill () {
+  if (!isSignedIn.value) return
+  try {
+    const { data: profile, error } = await client
+      .from('profiles')
+      .select('display_name, email, default_diver, default_divers')
+      .single()
+    if (error || !profile) return
+    if (profile.display_name != null) formData.value.name = String(profile.display_name)
+    if (profile.email != null) formData.value.email = String(profile.email)
+    const defaultDivers = profile.default_divers
+    if (Array.isArray(defaultDivers) && defaultDivers.length > 0) {
+      formData.value.numberOfDivers = defaultDivers.length
+      formData.value.divers = defaultDivers.slice(0, 50).map((d: Record<string, unknown>) => ({
+        name: (d.name != null ? String(d.name) : '') || '',
+        certificationNumber: (d.certification_number != null ? String(d.certification_number) : '') || '',
+        numberOfDives: (d.number_of_dives != null ? String(d.number_of_dives) : '') || '',
+        height: (d.height != null ? String(d.height) : '') || '',
+        heightUnit: d.height_unit === 'ft-in' ? 'ft-in' : 'cm',
+        weight: (d.weight != null ? String(d.weight) : '') || '',
+        weightUnit: d.weight_unit === 'lbs' ? 'lbs' : 'kg',
+        gear: Array.isArray(d.gear) ? (d.gear as Record<string, unknown>[]).map(g => ({ gearType: (g && g.gear_type != null ? String(g.gear_type) : '') || (g && (g as { gearType?: string }).gearType != null ? String((g as { gearType: string }).gearType) : '') })) : []
+      }))
+      while (formData.value.divers.length < formData.value.numberOfDivers) {
+        formData.value.divers.push({
+          name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: []
+        })
+      }
+    } else {
+      const dd = profile.default_diver
+      if (dd && typeof dd === 'object' && formData.value.divers[0]) {
+        const d = dd as Record<string, unknown>
+        formData.value.divers[0].name = (d.name != null ? String(d.name) : '') || formData.value.divers[0].name
+        formData.value.divers[0].certificationNumber = (d.certification_number != null ? String(d.certification_number) : '') || formData.value.divers[0].certificationNumber
+        formData.value.divers[0].numberOfDives = (d.number_of_dives != null ? String(d.number_of_dives) : '') || formData.value.divers[0].numberOfDives
+        formData.value.divers[0].height = (d.height != null ? String(d.height) : '') || formData.value.divers[0].height
+        formData.value.divers[0].heightUnit = (d.height_unit === 'ft-in' ? 'ft-in' : 'cm') || formData.value.divers[0].heightUnit
+        formData.value.divers[0].weight = (d.weight != null ? String(d.weight) : '') || formData.value.divers[0].weight
+        formData.value.divers[0].weightUnit = (d.weight_unit === 'lbs' ? 'lbs' : 'kg') || formData.value.divers[0].weightUnit
+        if (Array.isArray(d.gear)) {
+          formData.value.divers[0].gear = (d.gear as Record<string, unknown>[]).map(g => ({
+            gearType: (g && g.gear_type != null ? String(g.gear_type) : '') || (g && (g as { gearType?: string }).gearType != null ? String((g as { gearType: string }).gearType) : '')
+          }))
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+}
 
 // Pre-fill from chat-collected payload (or cached data) when drawer opens
 function applyInitialPayload () {
@@ -277,7 +346,8 @@ function applyInitialPayload () {
   if (Array.isArray(p.desiredDiveSites)) formData.value.desiredDiveSites = p.desiredDiveSites.filter(Boolean)
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await applyProfilePrefill()
   applyInitialPayload()
   fetchDiveSitesForShop()
 })
@@ -368,34 +438,91 @@ async function fetchDiveSitesForShop () {
 // Submit state
 const submitLoading = ref(false)
 const submitError = ref('')
+const draftLoading = ref(false)
+
+function buildPayload () {
+  return {
+    shopId: formData.value.shopId || props.shopId,
+    name: formData.value.name,
+    email: formData.value.email,
+    startDate: formData.value.startDate,
+    endDate: formData.value.endDate,
+    desiredDiveSites: formData.value.desiredDiveSites || [],
+    divers: formData.value.divers.map(d => ({
+      name: d.name,
+      certificationNumber: d.certificationNumber,
+      numberOfDives: d.numberOfDives,
+      height: d.height,
+      heightUnit: d.heightUnit,
+      weight: d.weight,
+      weightUnit: d.weightUnit,
+      gear: (d.gear || []).map(g => ({ gearType: g.gearType || '' }))
+    }))
+  }
+}
+
+async function saveDraft () {
+  if (!accessToken.value) return
+  draftLoading.value = true
+  try {
+    const payload = buildPayload()
+    await $fetch('/api/booking/draft', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken.value}` },
+      body: {
+        shopId: payload.shopId,
+        payload,
+        ...(props.draftId ? { draftId: props.draftId } : {})
+      }
+    })
+    // Optional: show brief "Draft saved"
+  } catch {
+    // could set a draftError ref
+  } finally {
+    draftLoading.value = false
+  }
+}
 
 // Form submission
 const handleSubmit = async () => {
   submitError.value = ''
   submitLoading.value = true
   try {
-    const payload = {
-      shopId: formData.value.shopId || props.shopId,
-      name: formData.value.name,
-      email: formData.value.email,
-      startDate: formData.value.startDate,
-      endDate: formData.value.endDate,
-      desiredDiveSites: formData.value.desiredDiveSites || [],
-      divers: formData.value.divers.map(d => ({
-        name: d.name,
-        certificationNumber: d.certificationNumber,
-        numberOfDives: d.numberOfDives,
-        height: d.height,
-        heightUnit: d.heightUnit,
-        weight: d.weight,
-        weightUnit: d.weightUnit,
-        gear: (d.gear || []).map(g => ({ gearType: g.gearType || '' }))
-      }))
-    }
+    const payload = buildPayload()
     const res = await $fetch('/api/booking', { method: 'POST', body: payload }) as BookingApiResponse
     if (res?.sent) {
+      if (isSignedIn.value && user.value?.id && Array.isArray(payload.divers) && payload.divers.length > 0) {
+        try {
+          const default_divers = payload.divers.map(d => ({
+            name: d.name ?? '',
+            certification_number: d.certificationNumber ?? '',
+            number_of_dives: d.numberOfDives ?? '',
+            height: d.height ?? '',
+            height_unit: d.heightUnit ?? 'cm',
+            weight: d.weight ?? '',
+            weight_unit: d.weightUnit ?? 'kg',
+            gear: (d.gear || []).map(g => ({ gear_type: (g && (g as { gearType?: string }).gearType) ?? '' }))
+          }))
+          await client.from('profiles').update({
+            display_name: payload.name ?? undefined,
+            email: payload.email ?? undefined,
+            default_divers,
+            default_diver: default_divers[0] ? {
+              name: default_divers[0].name,
+              certification_number: default_divers[0].certification_number,
+              number_of_dives: default_divers[0].number_of_dives,
+              height: default_divers[0].height,
+              height_unit: default_divers[0].height_unit,
+              weight: default_divers[0].weight,
+              weight_unit: default_divers[0].weight_unit,
+              gear: default_divers[0].gear
+            } : undefined
+          }).eq('id', user.value.id)
+        } catch {
+          // ignore
+        }
+      }
       closeDrawer()
-      // Optional: show toast — "Request sent. Check your email for confirmation."
     }
   } catch (e: unknown) {
     const err = e as { data?: { message?: string; statusMessage?: string }; statusMessage?: string; message?: string }

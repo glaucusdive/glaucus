@@ -779,6 +779,20 @@ function isError(input) {
 function getQuery(event) {
   return getQuery$1(event.path || "");
 }
+function getRouterParams(event, opts = {}) {
+  let params = event.context.params || {};
+  if (opts.decode) {
+    params = { ...params };
+    for (const key in params) {
+      params[key] = decode(params[key]);
+    }
+  }
+  return params;
+}
+function getRouterParam(event, name, opts = {}) {
+  const params = getRouterParams(event, opts);
+  return params[name];
+}
 function isMethod(event, expected, allowHead) {
   if (typeof expected === "string") {
     if (event.method === expected) {
@@ -810,6 +824,7 @@ function getRequestHeader(event, name) {
   const value = headers[name.toLowerCase()];
   return value;
 }
+const getHeader = getRequestHeader;
 function getRequestHost(event, opts = {}) {
   if (opts.xForwardedHost) {
     const _header = event.node.req.headers["x-forwarded-host"];
@@ -4279,7 +4294,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "d526fb68-0b3b-44b7-b44b-63c32290ff8b",
+    "buildId": "61741418-ea51-484a-8197-4ac7222ca97e",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -4318,6 +4333,7 @@ const _inlineRuntimeConfig = {
   "openrouterApiKey": "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",
   "resendApiKey": "re_4ZVmKUEj_DhgKFYmb5euQAdHjNEdeAp3o",
   "bookingFromEmail": "Glaucus <bookings@glaucusdive.com>",
+  "supabaseServiceRoleKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5bGRnbG5pbmtnbmdhd2Vlam13Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDU5MjQ5OSwiZXhwIjoyMDcwMTY4NDk5fQ.AdrjZhhp5VG2CE3lDTC7kCIXbcU0jOm8eEzIciFjxd8",
   "icon": {
     "serverKnownCssClasses": []
   }
@@ -5115,6 +5131,29 @@ async function buildDiveShopQuery(supabaseUrl, supabaseKey, filters) {
   return await query;
 }
 
+function getBearerToken(event) {
+  const auth = getHeader(event, "authorization");
+  if (!auth || !auth.startsWith("Bearer ")) return null;
+  return auth.slice(7).trim() || null;
+}
+function createSupabaseClientForUser(supabaseUrl, supabaseAnonKey, accessToken) {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: `Bearer ${accessToken}` } }
+  });
+}
+async function getAuthUser(event) {
+  const config = useRuntimeConfig();
+  const url = config.public.supabaseUrl;
+  const key = config.public.supabaseKey;
+  if (!url || !key) return null;
+  const token = getBearerToken(event);
+  if (!token) return null;
+  const client = createSupabaseClientForUser(url, key, token);
+  const { data: { user }, error } = await client.auth.getUser(token);
+  if (error || !user) return null;
+  return user;
+}
+
 async function getDiveSitesForShop(supabaseUrl, supabaseKey, shopId) {
   const client = createClient(supabaseUrl, supabaseKey);
   const { data, error } = await client.from("diveshop_dive_sites").select("dive_site_id, dive_sites(id, name)").eq("diveshop_id", shopId);
@@ -5201,11 +5240,21 @@ const _SxA8c9 = defineEventHandler(() => {});
 
 const _lazy_PzLKu4 = () => import('../routes/api/ai-search.post.mjs');
 const _lazy_0oVG0z = () => import('../routes/api/booking.post.mjs');
+const _lazy_YY5mu_ = () => import('../routes/api/booking/draft.post.mjs');
+const _lazy_SM6QX1 = () => import('../routes/api/booking/drafts/_id_.delete.mjs');
+const _lazy_XkUdlC = () => import('../routes/api/booking/drafts/_id_.get.mjs');
+const _lazy_jcB8Mw = () => import('../routes/api/booking/index.get.mjs');
+const _lazy_CtPe0M = () => import('../routes/api/geocode-shop.post.mjs');
 const _lazy_o23dZ7 = () => import('../routes/renderer.mjs').then(function (n) { return n.r; });
 
 const handlers = [
   { route: '/api/ai-search', handler: _lazy_PzLKu4, lazy: true, middleware: false, method: "post" },
   { route: '/api/booking', handler: _lazy_0oVG0z, lazy: true, middleware: false, method: "post" },
+  { route: '/api/booking/draft', handler: _lazy_YY5mu_, lazy: true, middleware: false, method: "post" },
+  { route: '/api/booking/drafts/:id', handler: _lazy_SM6QX1, lazy: true, middleware: false, method: "delete" },
+  { route: '/api/booking/drafts/:id', handler: _lazy_XkUdlC, lazy: true, middleware: false, method: "get" },
+  { route: '/api/booking/drafts', handler: _lazy_jcB8Mw, lazy: true, middleware: false, method: "get" },
+  { route: '/api/geocode-shop', handler: _lazy_CtPe0M, lazy: true, middleware: false, method: "post" },
   { route: '/__nuxt_error', handler: _lazy_o23dZ7, lazy: true, middleware: false, method: undefined },
   { route: '/api/_nuxt_icon/:collection', handler: _FdR7bb, lazy: false, middleware: false, method: undefined },
   { route: '/__nuxt_island/**', handler: _SxA8c9, lazy: false, middleware: false, method: undefined },
@@ -5396,5 +5445,5 @@ function getCacheHeaders(url) {
   return {};
 }
 
-export { $fetch$1 as $, withQuery as A, sanitizeStatusCode as B, withTrailingSlash as C, withoutTrailingSlash as D, klona as E, defuFn as F, getContext as G, baseURL as H, defu as I, createHooks as J, executeAsync as K, isEqual as L, toRouteMatcher as M, createRouter$1 as N, handler as O, resolveShopByName as a, getShopById as b, getDiveSitesForShop as c, defineEventHandler as d, getRentalEquipmentForShop as e, tryFastPath as f, getNextBookingStep as g, buildDiveShopQuery as h, createError$1 as i, buildAssetsURL as j, getResponseStatusText as k, getResponseStatus as l, defineRenderHandler as m, getQuery as n, destr as o, publicAssetsURL as p, getRouteRules as q, readBody as r, useNitroApp as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, serialize$1 as v, parseQuery as w, hasProtocol as x, isScriptProtocol as y, joinURL as z };
+export { $fetch$1 as $, parseQuery as A, hasProtocol as B, isScriptProtocol as C, joinURL as D, withQuery as E, sanitizeStatusCode as F, withTrailingSlash as G, withoutTrailingSlash as H, klona as I, defuFn as J, getContext as K, baseURL as L, defu as M, createHooks as N, executeAsync as O, isEqual as P, toRouteMatcher as Q, createRouter$1 as R, handler as S, resolveShopByName as a, getShopById as b, getDiveSitesForShop as c, defineEventHandler as d, getRentalEquipmentForShop as e, tryFastPath as f, getNextBookingStep as g, buildDiveShopQuery as h, createError$1 as i, getAuthUser as j, getBearerToken as k, createSupabaseClientForUser as l, getRouterParam as m, buildAssetsURL as n, getResponseStatusText as o, getResponseStatus as p, defineRenderHandler as q, readBody as r, publicAssetsURL as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, getQuery as v, destr as w, getRouteRules as x, useNitroApp as y, serialize$1 as z };
 //# sourceMappingURL=nitro.mjs.map

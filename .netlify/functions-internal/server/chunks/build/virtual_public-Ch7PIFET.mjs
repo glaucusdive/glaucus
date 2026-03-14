@@ -1,4 +1,4 @@
-import { p as publicAssetsURL } from '../nitro/nitro.mjs';
+import { s as publicAssetsURL } from '../nitro/nitro.mjs';
 
 const _imports_0 = publicAssetsURL("/images/glaucus-logo-emblem.svg");
 

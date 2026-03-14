@@ -77,6 +77,14 @@ interface RequestBody {
   lastBookingShopId?: string
   /** Shop name when in booking flow (avoids fetching shop for unit-only fast path). */
   lastBookingShopName?: string
+  /** Optional prefill from user profile (name, email, all divers) for signed-in users. */
+  profilePrefill?: {
+    name?: string
+    email?: string
+    defaultDiver?: { name?: string; certification_number?: string; number_of_dives?: string; height?: string; height_unit?: string; weight?: string; weight_unit?: string; gear?: { gear_type?: string }[] }
+    /** Full list of divers from last booking (name, certification_number, number_of_dives, height, height_unit, weight, weight_unit, gear). */
+    defaultDivers?: Array<{ name?: string; certification_number?: string; number_of_dives?: string; height?: string; height_unit?: string; weight?: string; weight_unit?: string; gear?: { gear_type?: string }[] }>
+  }
 }
 
 const SYSTEM_PROMPT = `You are an AI assistant helping users find the perfect dive shop for their needs. 
@@ -192,6 +200,8 @@ Names: For the booking contact and for each diver, you need a full name (first a
 
 Ask for ONE piece of information at a time in this order: 1) name (the person making the booking), 2) email, 3) start date and end date for diving, 4) which dive sites they want (optional — they can say "any" or pick from the chips; do not list the site names in your message), 5) number of divers, 6) confirm whether the person whose name you have is Diver 1 or not: ask "Is [name] one of the divers? I'll use that name for Diver 1 if yes — otherwise tell me Diver 1's full name." If they say yes (or that they are Diver 1), set Diver 1's name to that name. If they say no, ask for Diver 1's full name. 7) For each diver: certification number, number of dives completed, height (with unit: cm or ft-in), weight (with unit: kg or lbs), and any rental gear they need.
 
+When "Already collected" includes diver details from a previous booking (e.g. numberOfDives or gear already filled): (1) For number of dives — briefly confirm or ask to update, e.g. "Last time you had 21 dives — is this trip still 21 or have they done another?" or "Is this still 21 dives or 22 now?" so the count stays accurate. (2) For rental gear — mention what they had last time and that they can add or remove for this trip, e.g. "Last time you had Wetsuit and BCD. This shop offers [list from rental equipment]. Add or remove any for this trip?" Then let them pick from the chips or say "same" / "none" / etc.
+
 Dates (step 3): Accept dates in any form the user gives — e.g. "July 24 2026", "24th July", "070826", "7/24/26", "next week", "April 15 to April 18". Parse them into a start and end date. Reply by repeating the dates back in one clean, readable format (e.g. "So that's 24 July 2026 to 27 July 2026 — is that right?") and ask for confirmation. Only when the user confirms (yes, correct, that's right, yep, looks good, etc.) treat the dates as collected and move to the next question. If they correct the dates, parse the correction, repeat back in clean format again, and ask for confirmation. Store startDate and endDate in the payload in YYYY-MM-DD. Do not ask the user to type YYYY-MM-DD.
 
 Be warm and conversational. When you have collected all required fields (name, email, startDate, endDate, numberOfDivers, and for each diver: name, certificationNumber, numberOfDives, height, heightUnit, weight, weightUnit; gear can be empty array), output exactly:
@@ -231,7 +241,7 @@ Never put COLLECTED in the middle of your reply — your message to the user mus
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody<RequestBody>(event)
-    const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName } = body
+    const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill } = body
 
     if (!message || typeof message !== 'string') {
       throw new Error('Message is required')
@@ -311,12 +321,53 @@ export default defineEventHandler(async (event) => {
       const startingFreshBooking = (wantsToBook || resolvedByNamedShop) && !continuingBooking
       const noPayloadYet = !bookingPayload || !(bookingPayload.name && String(bookingPayload.name).trim())
       if (startingFreshBooking && noPayloadYet) {
-        const initialPayload = { shopId: resolvedShop.id, ...(bookingPayload || {}) }
+        const base = bookingPayload || {}
+        let fromProfile: Record<string, unknown> = {}
+        if (profilePrefill) {
+          fromProfile = {
+            name: profilePrefill.name ?? base.name,
+            email: profilePrefill.email ?? base.email
+          }
+          if (Array.isArray(profilePrefill.defaultDivers) && profilePrefill.defaultDivers.length > 0) {
+            fromProfile.numberOfDivers = profilePrefill.defaultDivers.length
+            fromProfile.divers = profilePrefill.defaultDivers.map((d, i) => ({
+              name: d.name ?? '',
+              certificationNumber: d.certification_number ?? '',
+              numberOfDives: d.number_of_dives ?? (base.divers?.[i]?.numberOfDives) ?? '',
+              height: d.height ?? '',
+              heightUnit: d.height_unit === 'ft-in' ? 'ft-in' : 'cm',
+              weight: d.weight ?? '',
+              weightUnit: d.weight_unit === 'lbs' ? 'lbs' : 'kg',
+              gear: Array.isArray(d.gear) ? d.gear.map((g: { gear_type?: string }) => ({ gearType: g.gear_type ?? '' })) : (base.divers?.[i]?.gear) ?? []
+            }))
+          } else if (profilePrefill.defaultDiver) {
+            const d = profilePrefill.defaultDiver
+            fromProfile.divers = [{
+              name: d.name ?? '',
+              certificationNumber: d.certification_number ?? '',
+              numberOfDives: d.number_of_dives ?? (base.divers?.[0]?.numberOfDives) ?? '',
+              height: d.height ?? '',
+              heightUnit: d.height_unit === 'ft-in' ? 'ft-in' : 'cm',
+              weight: d.weight ?? '',
+              weightUnit: d.weight_unit === 'lbs' ? 'lbs' : 'kg',
+              gear: Array.isArray(d.gear) ? d.gear.map((g: { gear_type?: string }) => ({ gearType: g.gear_type ?? '' })) : (base.divers?.[0]?.gear) ?? []
+            }]
+          }
+        }
+        const initialPayload = { shopId: resolvedShop.id, ...base, ...fromProfile }
+        const nextHint = getNextBookingStep(initialPayload)
+        const firstMessage = nextHint?.step === 'name'
+          ? `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`
+          : nextHint?.step === 'email'
+            ? `Great — I'll help you book with ${resolvedShop.business_name}. What email should we use for the booking?`
+            : nextHint?.step === 'dates'
+              ? `Great — I'll help you book with ${resolvedShop.business_name}. What are your trip dates (start and end)?`
+              : `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`
         return {
           success: true,
           intent: 'booking' as const,
           bookingReady: false,
-          message: `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`,
+          message: firstMessage,
           shopId: resolvedShop.id,
           shopName: resolvedShop.business_name,
           bookingPayload: initialPayload,
