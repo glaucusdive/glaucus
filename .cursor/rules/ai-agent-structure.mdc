@@ -1,0 +1,44 @@
+---
+description: Abstract structure for AI agents — tools, decisions, retries, steps, state
+alwaysApply: true
+---
+
+# AI Agent Structure (Abstract View)
+
+When designing or implementing AI agents in this project, ensure each capability below is explicitly decided and documented.
+
+## 1. Can your AI call tools?
+
+- **Define the contract**: List which tools the agent can invoke (e.g. search, book, send email, load data). Each tool has a name, input schema, and side-effect description.
+- **Expose tools to the model**: Via function-calling / tool definitions in the LLM API, or via structured output that the backend maps to tool invocations.
+- **Rule**: If the agent cannot call tools, it is a stateless conversational layer only. If it can, document every tool and who (model vs orchestrator) triggers it.
+
+## 2. Can it decide which tool to use?
+
+- **Locus of choice**: Either the **model** chooses (e.g. returns a tool name + arguments) or an **orchestrator** chooses (e.g. backend branches on intent/keywords and calls one tool).
+- **Rule**: Decide up front. Document: "Tool selection is done by [model | orchestrator] because …". Avoid mixing both without a clear hierarchy (e.g. orchestrator for intent, model for sub-tools).
+
+## 3. Can it retry when tools fail?
+
+- **Policy**: Define retry behavior per tool or globally: max attempts, backoff, and what the user sees (e.g. "Something went wrong, try again" vs. "Search failed; here are filters you can change").
+- **Rule**: Idempotent tools (e.g. read-only search) can retry transparently. Non-idempotent tools (e.g. send email, create booking) must not retry blindly — either no auto-retry or confirm with user/state before retry.
+
+## 4. Can it perform multiple steps?
+
+- **Step model**: Single-turn (one tool call per user message) vs multi-turn (agent can chain tool calls or ask follow-ups before responding).
+- **Rule**: Document the step boundary: "One user message → [one tool call and response | N tool calls then one response | conversation until a terminal state]." For multi-step, define a clear stopping condition (e.g. BOOKING_READY, search result returned).
+
+## 5. Can it update system state?
+
+- **State ownership**: Who holds state — frontend (e.g. booking payload), backend/session, or database? Can the agent write to it?
+- **Rule**: Prefer explicit state flow: e.g. "Frontend holds payload; backend is stateless and returns updated payload." If the agent updates state, define exactly what it can write (e.g. draft, preferences) and what it cannot (e.g. payment, final booking) until a separate confirmation step.
+
+---
+
+## Checklist for new agents
+
+- [ ] Tools: listed and documented; caller (model vs orchestrator) is clear.
+- [ ] Tool selection: model vs orchestrator decided and documented.
+- [ ] Retries: policy per tool type; no blind retry on non-idempotent actions.
+- [ ] Steps: single vs multi-step and stopping condition defined.
+- [ ] State: who holds it; what the agent can read/write; confirmation before destructive updates.

@@ -275,6 +275,13 @@ export default defineEventHandler(async (event) => {
       throw new Error('OpenRouter API key not configured')
     }
 
+    // --- Booking agent (per .cursor/rules/ai-agent-structure.mdc) ---
+    // Tools: resolveShopByName, getShopById, getDiveSitesForShop, getRentalEquipmentForShop, tryFastPath, tryFastPathUnitOnly, LLM chat.
+    // Tool selection: Orchestrator (this handler) chooses — intent (book vs search), then fast path vs LLM; no model-driven tool calls.
+    // Retries: Idempotent reads (shop, sites, gear) can retry; non-idempotent (send booking email) has no auto-retry; user must resubmit.
+    // Steps: Multi-turn until BOOKING_READY or user chooses "Pick a new diveshop"; one user message → one API response (possibly with selectableOptions chips).
+    // State: Frontend holds messages + selectedShopId + pendingBookingPayload; backend is stateless; agent returns updated bookingPayload; destructive (send email) only after explicit user confirm.
+
     // --- Intent: booking vs search ---
     const wantsToBook = BOOKING_INTENT_PATTERN.test(message)
     const hasShopContext = !!selectedShopId || (lastShops && lastShops.length > 0)
@@ -320,6 +327,26 @@ export default defineEventHandler(async (event) => {
       // When user explicitly named a shop and we resolved it: go straight to form details (first question: name)
       const startingFreshBooking = (wantsToBook || resolvedByNamedShop) && !continuingBooking
       const noPayloadYet = !bookingPayload || !(bookingPayload.name && String(bookingPayload.name).trim())
+
+      // If shop has no rental gear and user is just starting booking, tell them and offer to continue or pick another shop
+      if (startingFreshBooking && noPayloadYet && rentalEquipment.length === 0) {
+        return {
+          success: true,
+          intent: 'booking' as const,
+          bookingReady: false,
+          message: `${resolvedShop.business_name} doesn't offer rental gear. You can still book with them (arrange gear elsewhere) or choose a different dive shop.`,
+          shopId: resolvedShop.id,
+          shopName: resolvedShop.business_name,
+          bookingPayload: undefined,
+          selectableOptions: [
+            { label: 'Continue with this shop', value: 'Continue with this shop' },
+            { label: 'Pick a new diveshop', value: 'Pick a new diveshop' }
+          ],
+          rentalEquipmentOptions: undefined,
+          diveSiteOptions: undefined
+        }
+      }
+
       if (startingFreshBooking && noPayloadYet) {
         const base = bookingPayload || {}
         let fromProfile: Record<string, unknown> = {}
@@ -387,6 +414,74 @@ export default defineEventHandler(async (event) => {
       const messageIsAddAnotherGear = (text: string) => /add another or say/i.test(text)
       /** Copy for dive-sites step: makes multi-select and "done" obvious so users don't think one tap commits. */
       const DIVE_SITES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.'
+
+      // User replied to "shop has no gear" with no payload yet: Pick a new diveshop (clear shop) or Continue (start form)
+      if (continuingBooking && !bookingPayload) {
+        const msgTrim = message.trim()
+        if (/pick a new diveshop|choose another shop|different (shop|diveshop)/i.test(msgTrim)) {
+          return {
+            success: true,
+            intent: 'booking' as const,
+            bookingReady: false,
+            message: 'No problem — search or pick from your results, then say "Book with [shop name]" to start a booking with a different shop.',
+            shopId: undefined,
+            shopName: undefined,
+            bookingPayload: undefined,
+            pendingBookingPayload: undefined,
+            selectableOptions: undefined,
+            rentalEquipmentOptions: undefined,
+            diveSiteOptions: undefined
+          }
+        }
+        if (/continue with this shop|continue booking|proceed with this shop/i.test(msgTrim)) {
+          const base: BookingPayload = { shopId: resolvedShop.id }
+          let fromProfile: Record<string, unknown> = {}
+          if (profilePrefill) {
+            fromProfile = {
+              name: profilePrefill.name ?? base.name,
+              email: profilePrefill.email ?? base.email
+            }
+            if (Array.isArray(profilePrefill.defaultDivers) && profilePrefill.defaultDivers.length > 0) {
+              fromProfile.numberOfDivers = profilePrefill.defaultDivers.length
+              fromProfile.divers = profilePrefill.defaultDivers.map((d, i) => ({
+                name: d.name ?? '',
+                certificationNumber: d.certification_number ?? '',
+                numberOfDives: d.number_of_dives ?? (base.divers?.[i]?.numberOfDives) ?? '',
+                height: d.height ?? '',
+                heightUnit: d.height_unit === 'ft-in' ? 'ft-in' : 'cm',
+                weight: d.weight ?? '',
+                weightUnit: d.weight_unit === 'lbs' ? 'lbs' : 'kg',
+                gear: Array.isArray(d.gear) ? d.gear.map((g: { gear_type?: string }) => ({ gearType: g.gear_type ?? '' })) : (base.divers?.[i]?.gear) ?? []
+              }))
+            } else if (profilePrefill.defaultDiver) {
+              const d = profilePrefill.defaultDiver
+              fromProfile.divers = [{
+                name: d.name ?? '',
+                certificationNumber: d.certification_number ?? '',
+                numberOfDives: d.number_of_dives ?? (base.divers?.[0]?.numberOfDives) ?? '',
+                height: d.height ?? '',
+                heightUnit: d.height_unit === 'ft-in' ? 'ft-in' : 'cm',
+                weight: d.weight ?? '',
+                weightUnit: d.weight_unit === 'lbs' ? 'lbs' : 'kg',
+                gear: Array.isArray(d.gear) ? d.gear.map((g: { gear_type?: string }) => ({ gearType: g.gear_type ?? '' })) : (base.divers?.[0]?.gear) ?? []
+              }]
+            }
+          }
+          const initialPayload = { ...base, ...fromProfile } as BookingPayload
+          return {
+            success: true,
+            intent: 'booking' as const,
+            bookingReady: false,
+            message: `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`,
+            shopId: resolvedShop.id,
+            shopName: resolvedShop.business_name,
+            bookingPayload: initialPayload,
+            selectableOptions: undefined,
+            rentalEquipmentOptions: undefined,
+            diveSiteOptions: undefined
+          }
+        }
+      }
 
       // Fast path: simple field (name, email, certification, height, weight, "none" or single gear item) → instant template response, no LLM
       if (continuingBooking && bookingPayload) {
