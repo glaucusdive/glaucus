@@ -204,6 +204,8 @@ When "Already collected" includes diver details from a previous booking (e.g. nu
 
 Dates (step 3): Accept dates in any form the user gives — e.g. "July 24 2026", "24th July", "070826", "7/24/26", "next week", "April 15 to April 18". Parse them into a start and end date. Reply by repeating the dates back in one clean, readable format (e.g. "So that's 24 July 2026 to 27 July 2026 — is that right?") and ask for confirmation. Only when the user confirms (yes, correct, that's right, yep, looks good, etc.) treat the dates as collected and move to the next question. If they correct the dates, parse the correction, repeat back in clean format again, and ask for confirmation. Store startDate and endDate in the payload in YYYY-MM-DD. Do not ask the user to type YYYY-MM-DD.
 
+Weight (step 7): If the user gives only a number for weight (e.g. "200" or "85") with no unit (kg or lbs), do NOT assume a unit. Ask for clarification: "Is that [number] kg or [number] lbs?" and only set weightUnit in COLLECTED when they specify. Never record weight as e.g. "200 kg" unless the user said "kg" or "lbs".
+
 Be warm and conversational. When you have collected all required fields (name, email, startDate, endDate, numberOfDivers, and for each diver: name, certificationNumber, numberOfDives, height, heightUnit, weight, weightUnit; gear can be empty array), output exactly:
 
 BOOKING_READY: <valid JSON object>
@@ -408,6 +410,14 @@ export default defineEventHandler(async (event) => {
         getNextBookingStep(payload)?.step === 'gear' ? rentalEquipment : undefined
       const addDiveSiteOptions = (payload: BookingPayload) =>
         getNextBookingStep(payload)?.step === 'diveSites' && diveSites.length > 0 ? diveSites : undefined
+      /** When true, frontend hides "None" for gear step (user already selected at least one item). */
+      const hideNoneForGear = (payload: BookingPayload | undefined): boolean => {
+        if (!payload) return false
+        const next = getNextBookingStep(payload)
+        if (next?.step !== 'gear' || next.diverIndex == null) return false
+        const gear = payload.divers?.[next.diverIndex]?.gear
+        return Array.isArray(gear) && gear.length > 0
+      }
       const messageAsksForGear = (text: string) => /rental gear|need any.*gear|available rental|more gear|next detail/i.test(text)
       const messageAsksForGearSelection = (text: string) => /what would .+ like to rent|pick from the options below/i.test(text)
       const messageAsksForDiveSites = (text: string) => /dive sites|which sites|sites would you like|available sites|pick one or more/i.test(text)
@@ -550,6 +560,7 @@ export default defineEventHandler(async (event) => {
                 bookingPayload: p,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: rentalEquipment.length > 0 ? rentalEquipment : undefined,
+                hideNoneForGear: hideNoneForGear(p),
                 diveSiteOptions: undefined
               }
             }
@@ -614,6 +625,7 @@ export default defineEventHandler(async (event) => {
               bookingPayload: p,
               selectableOptions: undefined,
               rentalEquipmentOptions: rentalEquipment.length > 0 ? rentalEquipment : undefined,
+              hideNoneForGear: hideNoneForGear(p),
               diveSiteOptions: undefined
             }
           }
@@ -630,6 +642,7 @@ export default defineEventHandler(async (event) => {
               bookingPayload: p,
               selectableOptions: undefined,
               rentalEquipmentOptions: rentalEquipment.length > 0 ? rentalEquipment : undefined,
+              hideNoneForGear: hideNoneForGear(p),
               diveSiteOptions: undefined
             }
           }
@@ -680,12 +693,13 @@ export default defineEventHandler(async (event) => {
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
-                message: `Added ${matched} for ${name}. Add another or say "none" when done.`,
+                message: `Added ${matched} for ${name}. Add another or say "done" when finished.`,
                 shopId: resolvedShop.id,
                 shopName: resolvedShop.business_name,
                 bookingPayload: p,
                 selectableOptions: undefined,
-                rentalEquipmentOptions: gearChipsForFast
+                rentalEquipmentOptions: gearChipsForFast,
+                hideNoneForGear: hideNoneForGear(p)
               }
             }
           }
@@ -822,7 +836,8 @@ export default defineEventHandler(async (event) => {
               shopName: resolvedShop.business_name,
               bookingPayload: fastUnit.payload,
               selectableOptions: undefined,
-              rentalEquipmentOptions: addGearOptions(fastUnit.payload)
+              rentalEquipmentOptions: addGearOptions(fastUnit.payload),
+              hideNoneForGear: hideNoneForGear(fastUnit.payload)
             }
           }
         }
@@ -897,6 +912,7 @@ export default defineEventHandler(async (event) => {
               bookingPayload: fast.payload,
               selectableOptions: noRentalGearOptions ?? undefined,
               rentalEquipmentOptions: showGearChips ?? undefined,
+              hideNoneForGear: hideNoneForGear(fast.payload),
               diveSiteOptions: addDiveSiteOptions(fast.payload)
             }
           }
@@ -1125,6 +1141,7 @@ export default defineEventHandler(async (event) => {
         bookingPayload: collectedPayload,
         selectableOptions: undefined,
         rentalEquipmentOptions: finalGearOptions && (Array.isArray(finalGearOptions) ? finalGearOptions.length > 0 : true) ? finalGearOptions : undefined,
+        hideNoneForGear: hideNoneForGear(collectedPayload ?? bookingPayload),
         diveSiteOptions: (collectedPayload ? addDiveSiteOptions(collectedPayload) : undefined) ||
           (messageAsksForDiveSites(replyMessage) && diveSiteChips ? diveSiteChips : undefined) ||
           (bookingPayload && addDiveSiteOptions(bookingPayload) ? diveSiteChips : undefined)
