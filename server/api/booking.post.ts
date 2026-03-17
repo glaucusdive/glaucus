@@ -32,22 +32,32 @@ function buildDiveshopEmailBody (payload: BookingBody, shopName: string): string
     ''
   ]
   if (Array.isArray(payload.desiredDiveSites) && payload.desiredDiveSites.length > 0) {
-    lines.push('Desired dive sites: ' + payload.desiredDiveSites.join(', '))
+    for (const site of payload.desiredDiveSites) {
+      lines.push(`Desired dive site: ${site}`)
+    }
     lines.push('')
   }
   lines.push('— Divers —')
   for (let i = 0; i < (payload.divers?.length ?? 0); i++) {
     const d = payload.divers[i]
-    const gearList = Array.isArray(d.gear) && d.gear.length > 0
-      ? d.gear.map(g => g?.gearType).filter(Boolean).join(', ') || 'None'
-      : 'None'
+    const gearItems = Array.isArray(d.gear) && d.gear.length > 0
+      ? d.gear.map(g => g?.gearType).filter(Boolean) as string[]
+      : []
     lines.push(
       `Diver ${i + 1}: ${d.name ?? '—'}`,
-      `  Certification: ${d.certificationNumber ?? '—'}, Dives completed: ${d.numberOfDives ?? '—'}`,
-      `  Height: ${d.height ?? '—'} ${d.heightUnit ?? ''}, Weight: ${d.weight ?? '—'} ${d.weightUnit ?? ''}`,
-      `  Rental gear: ${gearList}`,
-      ''
+      `  Certification: ${d.certificationNumber ?? '—'}`,
+      `  Dives completed: ${d.numberOfDives ?? '—'}`,
+      `  Height: ${d.height ?? '—'} ${(d.heightUnit ?? '').trim()}`.trim(),
+      `  Weight: ${d.weight ?? '—'} ${(d.weightUnit ?? '').trim()}`.trim()
     )
+    if (gearItems.length > 0) {
+      for (const item of gearItems) {
+        lines.push(`  Rental gear: ${item}`)
+      }
+    } else {
+      lines.push('  Rental gear: None')
+    }
+    lines.push('')
   }
   lines.push('— Guest contact —', `Name: ${payload.name}`, `Email: ${payload.email}`)
   return lines.join('\n')

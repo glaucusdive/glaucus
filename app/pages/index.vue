@@ -124,7 +124,7 @@
                     </button>
                   </div>
 
-                  <!-- Rental gear: equipment chips when available, always None + Done when options present (even empty) -->
+                  <!-- Rental gear: equipment chips when available; None only when no gear selected yet; Done = white bg, black text -->
                   <div v-if="Array.isArray(msg.rentalEquipmentOptions)" class="flex flex-wrap gap-2 p-2">
                     <button
                       v-for="eq in msg.rentalEquipmentOptions"
@@ -136,6 +136,7 @@
                       {{ eq.name }}
                     </button>
                     <button
+                      v-if="!msg.hideNoneForGear"
                       type="button"
                       @click="sendMessage('none')"
                       class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"
@@ -145,7 +146,7 @@
                     <button
                       type="button"
                       @click="sendMessage('done')"
-                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer font-medium"
                     >
                       Done
                     </button>
@@ -660,6 +661,7 @@ const sendMessage = async (messageText, displayText) => {
         shopName: response.shopName,
         selectableOptions: response.selectableOptions,
         rentalEquipmentOptions: response.rentalEquipmentOptions || undefined,
+        hideNoneForGear: response.hideNoneForGear ?? false,
         diveSiteOptions: response.diveSiteOptions || undefined
       })
       // Carry-over payload when user chose "Pick a new diveshop" — clear current shop and store payload for next booking

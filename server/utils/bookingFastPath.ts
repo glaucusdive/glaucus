@@ -212,7 +212,23 @@ export function tryFastPath (
       const weightMatch = msg.match(/^([\d.]+)\s*(lbs?|kg)?$/i)
       const value = (weightMatch && weightMatch[1]) ? weightMatch[1].trim() : msg.replace(/\s*(lbs?|kg)\s*/gi, ' ').trim()
       if (!value || Number.isNaN(parseFloat(value))) return null
-      const unit = (weightMatch && weightMatch[2]) ? (weightMatch[2].toLowerCase().startsWith('lb') ? 'lbs' : 'kg') : (/\d+\s*lbs?/i.test(msg) ? 'lbs' : 'kg')
+      const hasUnitInMessage = weightMatch && weightMatch[2]
+      // Do not assume unit when user gives only a number — ask for clarification (per AI agent rules)
+      if (!hasUnitInMessage) {
+        divers[i].weight = value
+        divers[i].weightUnit = ''
+        p.divers = divers
+        const n = divers[i].name || 'They'
+        return {
+          message: `Is that ${value} kg or ${value} lbs?`,
+          payload: p,
+          selectableOptions: [
+            { label: 'kg', value: 'kg' },
+            { label: 'lbs', value: 'lbs' }
+          ]
+        }
+      }
+      const unit = weightMatch[2].toLowerCase().startsWith('lb') ? 'lbs' : 'kg'
       divers[i].weight = value
       divers[i].weightUnit = unit
       p.divers = divers
@@ -288,7 +304,7 @@ export function tryFastPath (
           if (!already) divers[i].gear.push({ gearType: matched })
           p.divers = divers
           const n = divers[i].name || 'They'
-          return { message: `Added ${matched} for ${n}. Add another or say "none" when done.`, payload: p }
+          return { message: `Added ${matched} for ${n}. Add another or say "done" when finished.`, payload: p }
         }
       }
       return null
