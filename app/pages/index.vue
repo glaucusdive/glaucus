@@ -75,10 +75,10 @@
                     <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis">{{ msg.content }}
                     </p>
                     <button
-                      v-if="bookingShopForDrawer && !(msg.shops && msg.shops.length > 0)"
+                      v-if="(bookingShopForDrawer || (msg.shopId && msg.shopName)) && !(msg.shops && msg.shops.length > 0)"
                       type="button"
-                      @click="openBookingFormDrawer"
-                      class="w-10 shrink-0 self-stretch flex items-center justify-center rounded-smimage.png border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200 transition-colors cursor-pointer"
+                      @click="openBookingFormDrawerFromMessage(msg)"
+                      class="w-10 shrink-0 self-stretch flex items-center justify-center rounded-sm border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200 transition-colors cursor-pointer"
                       aria-label="Open booking form"
                     >
                       <ChevronRight class="w-5 h-5" />
@@ -413,15 +413,21 @@ const exampleQueries = [
 const { getCache, setCache, clearCache } = useSearchCache()
 
 // Drawer (mobile menu + booking form)
-const { openMobileMenu, openDrawer } = useDrawer()
+const { openMobileMenu, openDrawer, isOpen, contentType, drawerData } = useDrawer()
 
 const persistCache = () => {
   if (isRestoringCache.value) return
 
+  const drawerWasOpen = isOpen.value && contentType.value === 'booking-form'
   setCache({
     messages: messages.value,
     userInput: userInput.value,
-    lastQuery: typeof route.query.q === 'string' ? route.query.q : null
+    lastQuery: typeof route.query.q === 'string' ? route.query.q : null,
+    selectedShopId: selectedShopId.value,
+    mobileDetailShopId: mobileDetailShopId.value,
+    drawerOpen: drawerWasOpen,
+    drawerShopId: drawerWasOpen ? (drawerData.shopId ?? null) : null,
+    drawerShopName: drawerWasOpen ? (drawerData.shopName ?? null) : null
   })
 }
 
@@ -433,6 +439,9 @@ onMounted(async () => {
   if (cachedState && Array.isArray(cachedState.messages) && cachedState.messages.length > 0) {
     messages.value = cachedState.messages
     userInput.value = cachedState.userInput || ''
+    // Restore layout: selected dive shop panel and/or booking form drawer
+    if (cachedState.selectedShopId) selectedShopId.value = cachedState.selectedShopId
+    if (cachedState.mobileDetailShopId) mobileDetailShopId.value = cachedState.mobileDetailShopId
 
     if (!initialQuery || initialQuery === cachedState.lastQuery) {
       isRestoringCache.value = false
@@ -441,6 +450,19 @@ onMounted(async () => {
       requestAnimationFrame(() => {
         setTimeout(() => {
           isPageLoading.value = false
+          // Reopen booking form drawer if it was open when cache was saved (e.g. after sign-in)
+          if (cachedState.drawerOpen && cachedState.drawerShopId) {
+            const payload = [...(cachedState.messages || [])].reverse().find((m) => {
+              if (m?.role !== 'assistant' || m?.intent !== 'booking') return false
+              return m.payload != null || (m && 'bookingPayload' in m && m.bookingPayload != null)
+            })
+            const bookingPayload = payload && (payload.payload !== undefined ? payload.payload : payload.bookingPayload)
+            openDrawer('booking-form', {
+              shopId: cachedState.drawerShopId,
+              shopName: cachedState.drawerShopName || 'Dive shop',
+              bookingPayload: bookingPayload ?? undefined
+            })
+          }
         }, 300)
       })
       return
@@ -478,6 +500,7 @@ onMounted(async () => {
 
 // Persist cache when state changes
 watch([messages, userInput], persistCache, { deep: true })
+watch([selectedShopId, mobileDetailShopId, isOpen, drawerData], persistCache, { deep: true })
 
 // Auto-scroll to bottom when new messages arrive
 const scrollToBottom = async () => {
@@ -798,6 +821,21 @@ const openBookingFormDrawer = () => {
     shopId: shop.id,
     shopName: shop.name,
     bookingPayload: lastBookingPayload.value
+  })
+}
+
+// Open booking form from chevron on a specific message (use message's shop context so it works when global computed lags)
+function openBookingFormDrawerFromMessage (msg) {
+  const shop = bookingShopForDrawer.value || (msg.shopId && msg.shopName ? { id: msg.shopId, name: msg.shopName } : null)
+  if (!shop) return
+  // On desktop, show the dive shop detail pane; on mobile, ensure detail is available if they tap "View details"
+  selectedShopId.value = shop.id
+  mobileDetailShopId.value = shop.id
+  const payload = msg.payload !== undefined ? msg.payload : msg.bookingPayload
+  openDrawer('booking-form', {
+    shopId: shop.id,
+    shopName: shop.name,
+    bookingPayload: payload ?? lastBookingPayload.value
   })
 }
 
