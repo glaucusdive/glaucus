@@ -189,7 +189,7 @@
               <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3">
                 <div class="flex items-center gap-2">
                   <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-zinc-600"></div>
-                  <span class="text-sm text-zinc-900 dark:text-zinc-200">typing...</span>
+                  <span class="text-sm text-zinc-900 dark:text-zinc-200">thinking...</span>
                 </div>
               </div>
             </div>
@@ -228,7 +228,11 @@
         <Transition @enter="onShopPanelEnter" @leave="onShopPanelLeave" :css="false">
           <div v-if="selectedShopId && isDesktop"
             class="w-1/2 h-full border-l border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
-            <ShopDetailPanel :key="selectedShopId" :shop-id="selectedShopId" @close="closeShopDetail" />
+            <ShopDetailPanel :key="selectedShopId" :shop-id="selectedShopId"
+              :is-in-booking-flow="isInBookingFlowForShop(selectedShopId)"
+              :on-start-booking="handleStartBookingFromPanel"
+              :on-show-form="handleShowFormFromPanel"
+              @close="closeShopDetail" />
           </div>
         </Transition>
 
@@ -240,7 +244,11 @@
             <!-- Drawer -->
             <div
               class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-zinc-900 h-full overflow-hidden">
-              <ShopDetailPanel :key="mobileDetailShopId" :shop-id="mobileDetailShopId" @close="closeShopDetail" />
+              <ShopDetailPanel :key="mobileDetailShopId" :shop-id="mobileDetailShopId"
+              :is-in-booking-flow="isInBookingFlowForShop(mobileDetailShopId)"
+              :on-start-booking="handleStartBookingFromPanel"
+              :on-show-form="handleShowFormFromPanel"
+              @close="closeShopDetail" />
             </div>
           </div>
         </Transition>
@@ -351,6 +359,23 @@ const bookingShopForDrawer = computed(() => {
   if (shop) return { id: shop.id, name: shop.business_name }
   return null
 })
+
+// True when we're in the AI booking flow for this shop (so panel shows "Show form" instead of "Start Booking")
+function isInBookingFlowForShop (shopId) {
+  if (!shopId || bookingShopForDrawer.value?.id !== shopId) return false
+  return messages.value.some(m => m.role === 'assistant' && m.intent === 'booking')
+}
+
+// Start booking via AI agent (from "Start Booking" in right panel)
+function handleStartBookingFromPanel (shopId, shopName) {
+  selectedShopId.value = shopId
+  sendMessage(shopName ? `Let's book ${shopName}` : "Let's book this")
+}
+
+// Open booking form drawer (from "Show form" in right panel when already in booking flow)
+function handleShowFormFromPanel () {
+  openBookingFormDrawer()
+}
 
 // Desktop detection
 const getInitialDesktop = () => {
