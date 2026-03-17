@@ -3,6 +3,13 @@ interface SearchCacheState {
   userInput: string
   lastQuery: string | null
   timestamp: number
+  /** Restore selected shop (detail panel) on load */
+  selectedShopId?: string | null
+  mobileDetailShopId?: string | null
+  /** Restore booking form drawer if it was open */
+  drawerOpen?: boolean
+  drawerShopId?: string | null
+  drawerShopName?: string | null
 }
 
 const STORAGE_KEY = 'glaucus-ai-search-cache'
@@ -48,7 +55,17 @@ export const useSearchCache = () => {
   const getCache = () => readCache()
 
   const setCache = (state: Omit<SearchCacheState, 'timestamp'>) => {
-    writeCache({ ...state, timestamp: Date.now() })
+    writeCache({
+      messages: state.messages ?? [],
+      userInput: state.userInput ?? '',
+      lastQuery: state.lastQuery ?? null,
+      timestamp: Date.now(),
+      selectedShopId: state.selectedShopId ?? null,
+      mobileDetailShopId: state.mobileDetailShopId ?? null,
+      drawerOpen: state.drawerOpen ?? false,
+      drawerShopId: state.drawerShopId ?? null,
+      drawerShopName: state.drawerShopName ?? null
+    })
   }
 
   const clearCache = () => {

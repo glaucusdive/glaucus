@@ -64,7 +64,7 @@
       <!-- Main Content -->
       <div class="p-2 lg:pl-0 grow h-dvh w-dvw min-w-0 flex flex-row gap-2 relative">
         <div
-          class="bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-sm lg:rounded-xl h-full w-full relative overflow-hidden min-w-0">
+          class="bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-sm lg:rounded-xl h-full flex-1 min-w-0 relative overflow-hidden">
 
           <slot />
 
