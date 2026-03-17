@@ -810,15 +810,25 @@ export default defineEventHandler(async (event) => {
               divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: [] })
             }
             p.divers = divers
+            const defaultDiversList = (Array.isArray(profilePrefill?.defaultDivers) && profilePrefill.defaultDivers.length > 0)
+              ? profilePrefill.defaultDivers
+              : (profilePrefill?.defaultDiver ? [profilePrefill.defaultDiver] : [])
+            const hasProfileDivers = defaultDiversList.length > 0
+            const selectableOptions = hasProfileDivers
+              ? [
+                  ...defaultDiversList.map((d) => ({ label: `Use ${(d.name || 'Diver').trim() || 'Diver'}`, value: `Use ${(d.name || 'Diver').trim() || 'Diver'}` })),
+                  { label: 'Create new diver', value: 'Create new diver' }
+                ]
+              : undefined
             return {
               success: true,
               intent: 'booking' as const,
               bookingReady: false,
-              message: `What's Diver ${newNum}'s full name?`,
+              message: hasProfileDivers ? 'Use an existing diver from your profile or create a new one?' : `What's Diver ${newNum}'s full name?`,
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               bookingPayload: p,
-              selectableOptions: undefined,
+              selectableOptions,
               rentalEquipmentOptions: undefined,
               diveSiteOptions: undefined
             }
@@ -860,7 +870,10 @@ export default defineEventHandler(async (event) => {
           }
         }
         if (nextStep) {
-          const fast = tryFastPath(nextStep, message, bookingPayload, resolvedShop.business_name, nextStep.step === 'gear' ? { rentalEquipmentNames } : undefined)
+          const fastOptions: { rentalEquipmentNames?: string[]; profilePrefill?: typeof body.profilePrefill } = {}
+          if (nextStep.step === 'gear') fastOptions.rentalEquipmentNames = rentalEquipmentNames
+          if (profilePrefill) fastOptions.profilePrefill = profilePrefill
+          const fast = tryFastPath(nextStep, message, bookingPayload, resolvedShop.business_name, fastOptions)
           if (fast) {
             const nextAfterFast = getNextBookingStep(fast.payload)?.step
             if (nextAfterFast === 'ready') {

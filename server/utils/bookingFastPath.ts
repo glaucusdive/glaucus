@@ -100,16 +100,46 @@ export interface FastPathResult {
   selectableOptions?: { label: string; value: string }[]
 }
 
+/** Profile diver shape (from profiles.default_divers) for "use existing diver" flow. */
+export interface ProfileDiverPrefill {
+  name?: string
+  certification_number?: string
+  number_of_dives?: string
+  height?: string
+  height_unit?: string
+  weight?: string
+  weight_unit?: string
+  gear?: { gear_type?: string }[]
+}
+
+function profileDiverToPayload (d: ProfileDiverPrefill): BookingDiverLocal {
+  const hu = (d.height_unit || 'cm').toLowerCase()
+  const wu = (d.weight_unit || 'kg').toLowerCase()
+  return {
+    name: d.name ?? '',
+    certificationNumber: d.certification_number ?? '',
+    numberOfDives: d.number_of_dives ?? '',
+    height: d.height ?? '',
+    heightUnit: hu.includes('ft') || hu === 'ft-in' ? 'ft-in' : 'cm',
+    weight: d.weight ?? '',
+    weightUnit: wu.startsWith('lb') ? 'lbs' : 'kg',
+    gear: (d.gear || []).map((g) => ({ gearType: (g && g.gear_type) ?? '' }))
+  }
+}
+
 /** Try to parse a simple value and return next message + updated payload, or null to use LLM. */
 export function tryFastPath (
   step: NextStepResult,
   userMessage: string,
   payload: BookingPayloadLocal,
   _shopName: string,
-  options?: { rentalEquipmentNames?: string[] }
+  options?: { rentalEquipmentNames?: string[]; profilePrefill?: { defaultDivers?: ProfileDiverPrefill[]; defaultDiver?: ProfileDiverPrefill } }
 ): FastPathResult | null {
   const msg = userMessage.trim()
   if (!msg) return null
+
+  const pref = options?.profilePrefill
+  const defaultDiversList = (pref?.defaultDivers?.length ? pref.defaultDivers : pref?.defaultDiver ? [pref.defaultDiver] : []) as ProfileDiverPrefill[]
 
   const p = JSON.parse(JSON.stringify(payload)) as BookingPayloadLocal
   const divers = ensureDivers(p)
@@ -143,10 +173,36 @@ export function tryFastPath (
           weight: '', weightUnit: 'kg', gear: []
         })
       }
+      if (defaultDiversList.length) {
+        const chips: { label: string; value: string }[] = defaultDiversList.map((d) => ({
+          label: `Use ${(d.name || 'Diver').trim() || 'Diver'}`,
+          value: `Use ${(d.name || 'Diver').trim() || 'Diver'}`
+        }))
+        chips.push({ label: 'Create new diver', value: 'Create new diver' })
+        return { message: 'Use an existing diver from your profile or create a new one?', payload: p, selectableOptions: chips }
+      }
       const contactName = p.name || 'You'
       return { message: `Is ${contactName} one of the divers? I'll use that name for Diver 1 if yes — otherwise tell me Diver 1's full name.`, payload: p }
     }
     case 'diverName': {
+      if (defaultDiversList.length) {
+        if (/^create\s+new\s+diver$/i.test(msg)) {
+          return { message: `What's Diver ${i + 1}'s full name?`, payload: p }
+        }
+        const useMatch = msg.match(/^use\s+(.+)$/i)
+        if (useMatch) {
+          const namePart = useMatch[1].trim()
+          const match = defaultDiversList.find((d) => (d.name || '').trim().toLowerCase() === namePart.toLowerCase())
+          if (match) {
+            if (!divers[i]) divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: [] })
+            const filled = profileDiverToPayload(match)
+            divers[i] = { ...filled, gearAsked: divers[i].gearAsked }
+            p.divers = divers
+            const name = divers[i].name || 'They'
+            return { message: `Thanks — I've added ${name} from your profile. Does ${name} need any rental gear?`, payload: p }
+          }
+        }
+      }
       // Diver 1: if we have a contact name and user confirms they are Diver 1 (yes/yep/correct), use contact name and move on
       if (i === 0 && p.name && String(p.name).trim()) {
         const affirm = /\b(yes|yeah|yep|yup|correct|that's me|that is me|i am|i'm one|sure|please do)\b/i.test(msg) || /^\s*y\s*$/i.test(msg)
