@@ -118,7 +118,7 @@
                       :key="i"
                       type="button"
                       @click="sendMessage(opt.value, opt.label)"
-                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
                     >
                       {{ opt.label }}
                     </button>
@@ -132,8 +132,8 @@
                       type="button"
                       @click="sendMessage(getGearChipClickValue(msg, eq))"
                       :class="isGearChipSelected(msg, eq)
-                        ? 'px-3 py-1.5 text-sm rounded-full border border-blue-500 dark:border-blue-400 bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-500 transition-colors cursor-pointer font-medium'
-                        : 'px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer'"
+                        ? 'px-3 py-1.5 text-sm rounded-full border border-black dark:border-white text-black dark:text-white transition-colors cursor-pointer font-medium'
+                        : 'px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-300 hover:border-zinc-500 dark:hover:border-zinc-400 dark:hover:text-white transition-colors cursor-pointer'"
                     >
                       {{ eq.name }}
                     </button>
