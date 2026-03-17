@@ -91,11 +91,13 @@ import { X, Sun, Moon } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
 import { useTheme } from '~/composables/useTheme'
 import { useAuth } from '~/composables/useAuth'
+import { useSaveDraftFromCache } from '~/composables/useSaveDraftFromCache'
 import BookingForm from '~/components/BookingForm.vue'
 import Logo from '~/components/Logo.vue'
 
 const { isDark, toggleTheme } = useTheme()
-const { isSignedIn, signOut } = useAuth()
+const { isSignedIn, signOut, onAuthStateChange, accessToken } = useAuth()
+const { saveDraftFromCacheIfNeeded } = useSaveDraftFromCache()
 
 async function handleSignOut () {
   await signOut()
@@ -125,6 +127,19 @@ const updateIsDesktop = () => {
 onMounted(() => {
   updateIsDesktop()
   window.addEventListener('resize', updateIsDesktop)
+})
+
+// When user signs in (e.g. after starting a booking as guest), save cache as draft so they don't lose it
+let unsubscribeAuth = null
+onMounted(() => {
+  unsubscribeAuth = onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session?.access_token) {
+      saveDraftFromCacheIfNeeded(session.access_token)
+    }
+  })
+})
+onUnmounted(() => {
+  if (unsubscribeAuth) unsubscribeAuth()
 })
 
 onUnmounted(() => {
