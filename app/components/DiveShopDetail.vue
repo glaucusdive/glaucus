@@ -170,13 +170,15 @@
           class="w-full cq:lg:min-w-1/2 cq:lg:w-1/2 cq:xl:min-w-1/3 cq:xl:w-1/3 p-2 h-auto cq:xl:h-full cq:lg:order-1 sticky bottom-0 cq:2xl:bottom-auto bg-zinc-50 dark:bg-zinc-900">
           <div class="h-full">
             <div class="flex flex-col gap-2">
-              <!-- Book Now Button -->
+              <!-- Book Now / Show form Button -->
               <div class="flex flex-col gap-2 cq:lg:p-4 bg-zinc-100 dark:bg-zinc-800 rounded-md cq:lg:order-1">
                 <h2 class="hidden cq:lg:block cq:lg:text-2xl font-semibold text-zinc-900 dark:text-white">Book Now</h2>
-                <p class="hidden cq:lg:block text-sm text-zinc-600 dark:text-zinc-400">Ready to dive? Click below to start your booking.</p>
-                <button @click="openBookingDrawer"
+                <p class="hidden cq:lg:block text-sm text-zinc-600 dark:text-zinc-400">
+                  {{ isInBookingFlow ? 'View or edit your booking details in the form.' : 'Ready to dive? Click below to start your booking.' }}
+                </p>
+                <button @click="handleBookingButtonClick"
                   class="border border-zinc-900 dark:border-zinc-100 hover:border-zinc-800 dark:hover:border-zinc-200 bg-transparent text-white dark:text-white font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">
-                  Start Booking
+                  {{ isInBookingFlow ? 'Show form' : 'Start Booking' }}
                 </button>
               </div>
               <!-- Contact Information -->
@@ -239,6 +241,18 @@ const props = defineProps({
   showCloseButton: {
     type: Boolean,
     default: false
+  },
+  isInBookingFlow: {
+    type: Boolean,
+    default: false
+  },
+  onStartBooking: {
+    type: Function,
+    default: null
+  },
+  onShowForm: {
+    type: Function,
+    default: null
   }
 })
 
@@ -295,7 +309,16 @@ const handleClose = () => {
 // Drawer functionality
 const { openDrawer } = useDrawer()
 
-const openBookingDrawer = () => {
+function handleBookingButtonClick () {
+  if (props.isInBookingFlow && props.onShowForm) {
+    props.onShowForm()
+    return
+  }
+  if (props.onStartBooking) {
+    props.onStartBooking(props.shopId, shopData.value?.business_name || 'Dive Shop')
+    return
+  }
+  // Fallback: open form directly (e.g. when used outside index)
   openDrawer('booking-form', {
     shopId: props.shopId,
     shopName: shopData.value?.business_name || 'Dive Shop'
