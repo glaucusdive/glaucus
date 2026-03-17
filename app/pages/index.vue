@@ -669,9 +669,11 @@ const sendMessage = async (messageText, displayText) => {
       } else {
         pendingBookingPayload.value = null
       }
-      // Keep the shop being booked visible on the right so users always know which shop they're booking
+      // Keep the shop being booked visible on the right; clear selection when backend says no shop (e.g. "Pick a new diveshop")
       if (response.intent === 'booking' && response.shopId) {
         selectedShopId.value = response.shopId
+      } else if (response.intent === 'booking' && response.shopId == null) {
+        selectedShopId.value = null
       }
     } else {
       // Add error message
