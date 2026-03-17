@@ -174,11 +174,11 @@
               <div class="flex flex-col gap-2 cq:lg:p-4 bg-zinc-100 dark:bg-zinc-800 rounded-md cq:lg:order-1">
                 <h2 class="hidden cq:lg:block cq:lg:text-2xl font-semibold text-zinc-900 dark:text-white">Book Now</h2>
                 <p class="hidden cq:lg:block text-sm text-zinc-600 dark:text-zinc-400">
-                  {{ isInBookingFlow ? 'View or edit your booking details in the form.' : 'Ready to dive? Click below to start your booking.' }}
+                  {{ isInBookingFlow ? (isFormOpen ? 'Booking form is open. Click to hide it.' : 'View or edit your booking details in the form.') : 'Ready to dive? Click below to start your booking.' }}
                 </p>
                 <button @click="handleBookingButtonClick"
                   class="border border-zinc-900 dark:border-zinc-100 hover:border-zinc-800 dark:hover:border-zinc-200 bg-transparent text-white dark:text-white font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">
-                  {{ isInBookingFlow ? 'Show form' : 'Start Booking' }}
+                  {{ isInBookingFlow ? (isFormOpen ? 'Hide form' : 'Show form') : 'Start Booking' }}
                 </button>
               </div>
               <!-- Contact Information -->
@@ -246,11 +246,19 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  isFormOpen: {
+    type: Boolean,
+    default: false
+  },
   onStartBooking: {
     type: Function,
     default: null
   },
   onShowForm: {
+    type: Function,
+    default: null
+  },
+  onHideForm: {
     type: Function,
     default: null
   }
@@ -310,9 +318,15 @@ const handleClose = () => {
 const { openDrawer } = useDrawer()
 
 function handleBookingButtonClick () {
-  if (props.isInBookingFlow && props.onShowForm) {
-    props.onShowForm()
-    return
+  if (props.isInBookingFlow) {
+    if (props.isFormOpen && props.onHideForm) {
+      props.onHideForm()
+      return
+    }
+    if (props.onShowForm) {
+      props.onShowForm()
+      return
+    }
   }
   if (props.onStartBooking) {
     props.onStartBooking(props.shopId, shopData.value?.business_name || 'Dive Shop')
