@@ -103,8 +103,12 @@
                     </div>
                   </div>
 
-                  <!-- Selectable options: Book chip (white) first, then Load next 5 -->
-                  <div v-if="(msg.selectableOptions && msg.selectableOptions.length > 0) || (msg.shops?.length && selectedShopId && selectedShopName)" class="flex flex-wrap gap-2 p-2">
+                  <!-- Selectable options: Book chip (white) first, then Load next 5; past messages = faded, not clickable -->
+                  <div
+                    v-if="(msg.selectableOptions && msg.selectableOptions.length > 0) || (msg.shops?.length && selectedShopId && selectedShopName)"
+                    class="flex flex-wrap gap-2 p-2 transition-opacity duration-200"
+                    :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
+                  >
                     <button
                       v-if="msg.shops?.length && selectedShopId && selectedShopName"
                       type="button"
@@ -124,8 +128,12 @@
                     </button>
                   </div>
 
-                  <!-- Rental gear: equipment chips when available; selected = filled style, click toggles add/remove -->
-                  <div v-if="Array.isArray(msg.rentalEquipmentOptions)" class="flex flex-wrap gap-2 p-2">
+                  <!-- Rental gear: equipment chips when available; selected = filled style, click toggles add/remove; past = faded -->
+                  <div
+                    v-if="Array.isArray(msg.rentalEquipmentOptions)"
+                    class="flex flex-wrap gap-2 p-2 transition-opacity duration-200"
+                    :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
+                  >
                     <button
                       v-for="eq in msg.rentalEquipmentOptions"
                       :key="eq.id"
@@ -154,8 +162,12 @@
                     </button>
                   </div>
 
-                  <!-- Dive sites: Any + Done first (50/50), then shop-specific site chips (w-fit) -->
-                  <div v-if="msg.diveSiteOptions && msg.diveSiteOptions.length > 0" class="flex flex-wrap gap-2">
+                  <!-- Dive sites: Any + Done first (50/50), then shop-specific site chips (w-fit); past = faded -->
+                  <div
+                    v-if="msg.diveSiteOptions && msg.diveSiteOptions.length > 0"
+                    class="flex flex-wrap gap-2 transition-opacity duration-200"
+                    :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
+                  >
                     <div class="flex gap-2 w-full">
                       <button
                         type="button"
@@ -365,6 +377,21 @@ const bookingShopForDrawer = computed(() => {
   const shop = m?.shops?.[0]
   if (shop) return { id: shop.id, name: shop.business_name }
   return null
+})
+
+// Index of the last assistant message that has chips (selectable options, gear, dive sites) — only that message's chips are active; older ones are faded for history
+const activeChipMessageIndex = computed(() => {
+  const list = messages.value
+  for (let i = list.length - 1; i >= 0; i--) {
+    const m = list[i]
+    if (m.role !== 'assistant') continue
+    const hasSelectable = m.selectableOptions && m.selectableOptions.length > 0
+    const hasGear = Array.isArray(m.rentalEquipmentOptions) && m.rentalEquipmentOptions.length > 0
+    const hasDiveSites = m.diveSiteOptions && m.diveSiteOptions.length > 0
+    const hasBookChip = m.shops?.length && selectedShopId.value && selectedShopName.value
+    if (hasSelectable || hasGear || hasDiveSites || hasBookChip) return i
+  }
+  return -1
 })
 
 // True when we're in the AI booking flow for this shop (so panel shows "Show form" instead of "Start Booking")
