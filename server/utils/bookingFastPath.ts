@@ -110,6 +110,8 @@ export interface ProfileDiverPrefill {
   weight?: string
   weight_unit?: string
   gear?: { gear_type?: string }[]
+  /** Number of times this diver has been used in a booking; used to show "most used" in chips. */
+  times_used?: number
 }
 
 function profileDiverToPayload (d: ProfileDiverPrefill): BookingDiverLocal {
@@ -139,7 +141,10 @@ export function tryFastPath (
   if (!msg) return null
 
   const pref = options?.profilePrefill
-  const defaultDiversList = (pref?.defaultDivers?.length ? pref.defaultDivers : pref?.defaultDiver ? [pref.defaultDiver] : []) as ProfileDiverPrefill[]
+  const defaultDiversListFull = (pref?.defaultDivers?.length ? pref.defaultDivers : pref?.defaultDiver ? [pref.defaultDiver] : []) as ProfileDiverPrefill[]
+  /** Top 2 most-used divers for chips (by times_used desc); fallback to first 2 if no usage. */
+  const defaultDiversList = [...defaultDiversListFull].sort((a, b) => (b.times_used ?? 0) - (a.times_used ?? 0)).slice(0, 2)
+  const defaultDiversListForMatch = defaultDiversListFull
 
   const p = JSON.parse(JSON.stringify(payload)) as BookingPayloadLocal
   const divers = ensureDivers(p)
@@ -173,26 +178,33 @@ export function tryFastPath (
           weight: '', weightUnit: 'kg', gear: []
         })
       }
-      if (defaultDiversList.length) {
-        const chips: { label: string; value: string }[] = defaultDiversList.map((d) => ({
-          label: `Use ${(d.name || 'Diver').trim() || 'Diver'}`,
-          value: `Use ${(d.name || 'Diver').trim() || 'Diver'}`
-        }))
-        chips.push({ label: 'Create new diver', value: 'Create new diver' })
+      const useProfileChips = defaultDiversList
+        .filter((d) => (d.name || '').trim())
+        .map((d) => ({ label: `Use ${(d.name || '').trim()}`, value: `Use ${(d.name || '').trim()}` }))
+      if (defaultDiversListFull.length > 0 && useProfileChips.length > 0) {
+        const chips: { label: string; value: string }[] = [...useProfileChips, { label: 'Create new diver', value: 'Create new diver' }]
         return { message: 'Use an existing diver from your profile or create a new one?', payload: p, selectableOptions: chips }
       }
-      const contactName = p.name || 'You'
-      return { message: `Is ${contactName} one of the divers? I'll use that name for Diver 1 if yes — otherwise tell me Diver 1's full name.`, payload: p }
+      const contactName = (p.name || '').trim() || 'you'
+      const contactDisplay = contactName.charAt(0).toUpperCase() + contactName.slice(1)
+      return {
+        message: `Is ${contactDisplay} one of the divers? I'll use that name for Diver 1 if yes — otherwise tell me Diver 1's full name.`,
+        payload: p,
+        selectableOptions: contactName !== 'you' ? [{ label: `Yes, use ${contactDisplay}`, value: 'yes' }, { label: "No, I'll give you the name", value: 'no' }] : undefined
+      }
     }
     case 'diverName': {
-      if (defaultDiversList.length) {
+      if (i === 0 && p.name && (/^no\s*$/i.test(msg) || /different|i'll give|i will give|give you the name/i.test(msg))) {
+        return { message: `What's Diver 1's full name?`, payload: p }
+      }
+      if (defaultDiversListForMatch.length) {
         if (/^create\s+new\s+diver$/i.test(msg)) {
           return { message: `What's Diver ${i + 1}'s full name?`, payload: p }
         }
         const useMatch = msg.match(/^use\s+(.+)$/i)
         if (useMatch) {
           const namePart = useMatch[1].trim()
-          const match = defaultDiversList.find((d) => (d.name || '').trim().toLowerCase() === namePart.toLowerCase())
+          const match = defaultDiversListForMatch.find((d) => (d.name || '').trim().toLowerCase() === namePart.toLowerCase())
           if (match) {
             if (!divers[i]) divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: [] })
             const filled = profileDiverToPayload(match)
@@ -259,10 +271,6 @@ export function tryFastPath (
         divers[i].weightUnit = lower.startsWith('lb') || lower === 'pounds' ? 'lbs' : 'kg'
         p.divers = divers
         const n = divers[i].name || 'They'
-        const numDivers = p.numberOfDivers ?? 1
-        if (i < numDivers - 1) {
-          return { message: `Got it — recorded ${n}'s weight as ${divers[i].weight} ${divers[i].weightUnit}. What's Diver ${i + 2}'s full name?`, payload: p }
-        }
         return { message: `Got it — recorded ${n}'s weight as ${divers[i].weight} ${divers[i].weightUnit}. Does ${n} need any rental gear?`, payload: p }
       }
       const weightMatch = msg.match(/^([\d.]+)\s*(lbs?|kg)?$/i)
@@ -289,10 +297,6 @@ export function tryFastPath (
       divers[i].weightUnit = unit
       p.divers = divers
       const n = divers[i].name || 'They'
-      const numDivers = p.numberOfDivers ?? 1
-      if (i < numDivers - 1) {
-        return { message: `Thanks — recorded ${n}'s weight as ${value} ${unit}. What's Diver ${i + 2}'s full name?`, payload: p }
-      }
       return { message: `Thanks — recorded ${n}'s weight as ${value} ${unit}. Does ${n} need any rental gear?`, payload: p }
     }
     case 'gear': {
@@ -353,6 +357,21 @@ export function tryFastPath (
       }
       const equipmentNames = options?.rentalEquipmentNames ?? []
       if (equipmentNames.length > 0) {
+        const removeMatch = msg.match(/^remove\s+(.+)$/i)
+        if (removeMatch) {
+          const toRemove = removeMatch[1].trim()
+          const matchedName = equipmentNames.find(n => n.toLowerCase() === toRemove.toLowerCase())
+          if (matchedName && divers[i].gear) {
+            const before = divers[i].gear.length
+            divers[i].gear = divers[i].gear.filter(g => (g.gearType || '').toLowerCase() !== matchedName.toLowerCase())
+            if (divers[i].gear.length < before) {
+              p.divers = divers
+              const n = divers[i].name || 'They'
+              const rest = divers[i].gear.length ? ' Add another or say "done" when finished.' : ' Do they need any other rental gear, or say "none" / "done"?'
+              return { message: `Removed ${matchedName} for ${n}.${rest}`, payload: p }
+            }
+          }
+        }
         const matched = equipmentNames.find(n => n.toLowerCase() === lower)
         if (matched) {
           if (!divers[i].gear) divers[i].gear = []
@@ -396,9 +415,5 @@ export function tryFastPathUnitOnly (
   d[targetIdx].weightUnit = unit
   p.divers = d
   const n = d[targetIdx].name || 'They'
-  const numDivers = p.numberOfDivers ?? 1
-  if (targetIdx < numDivers - 1) {
-    return { message: `Got it — recorded ${n}'s weight as ${d[targetIdx].weight} ${unit}. What's Diver ${targetIdx + 2}'s full name?`, payload: p }
-  }
   return { message: `Got it — recorded ${n}'s weight as ${d[targetIdx].weight} ${unit}. Does ${n} need any rental gear?`, payload: p }
 }

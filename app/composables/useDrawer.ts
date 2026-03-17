@@ -36,6 +36,13 @@ export const useDrawer = () => {
     }, 400) // Match GSAP animation duration
   }
 
+  /** Update booking payload when form is open so chat-collected diver data stays in sync */
+  const updateBookingPayloadIfOpen = (payload: Record<string, unknown> | undefined) => {
+    if (contentType.value === 'booking-form' && payload && isOpen.value) {
+      drawerData.value = { ...drawerData.value, bookingPayload: payload }
+    }
+  }
+
   const openMobileMenu = () => {
     shouldAnimateMenu.value = true
     isMobileMenuOpen.value = true
@@ -57,6 +64,7 @@ export const useDrawer = () => {
     drawerOpenKey,
     openDrawer,
     closeDrawer,
+    updateBookingPayloadIfOpen,
     isMobileMenuOpen,
     shouldAnimateMenu,
     openMobileMenu,

@@ -124,14 +124,16 @@
                     </button>
                   </div>
 
-                  <!-- Rental gear: equipment chips when available; None only when no gear selected yet; Done = white bg, black text -->
+                  <!-- Rental gear: equipment chips when available; selected = filled style, click toggles add/remove -->
                   <div v-if="Array.isArray(msg.rentalEquipmentOptions)" class="flex flex-wrap gap-2 p-2">
                     <button
                       v-for="eq in msg.rentalEquipmentOptions"
                       :key="eq.id"
                       type="button"
-                      @click="sendMessage(eq.name)"
-                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                      @click="sendMessage(getGearChipClickValue(msg, eq))"
+                      :class="isGearChipSelected(msg, eq)
+                        ? 'px-3 py-1.5 text-sm rounded-full border border-blue-500 dark:border-blue-400 bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-500 transition-colors cursor-pointer font-medium'
+                        : 'px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer'"
                     >
                       {{ eq.name }}
                     </button>
@@ -295,7 +297,8 @@ watch(isSignedIn, async (signedIn) => {
             height_unit: d.height_unit,
             weight: d.weight,
             weight_unit: d.weight_unit,
-            gear: Array.isArray(d.gear) ? d.gear.map((g) => ({ gear_type: g.gear_type ?? g.gearType })) : []
+            gear: Array.isArray(d.gear) ? d.gear.map((g) => ({ gear_type: g.gear_type ?? g.gearType })) : [],
+            times_used: typeof d.times_used === 'number' ? d.times_used : undefined
           }))
         : null
       const dd = data.default_diver && typeof data.default_diver === 'object' ? data.default_diver : null
@@ -421,7 +424,7 @@ const exampleQueries = [
 const { getCache, setCache, clearCache } = useSearchCache()
 
 // Drawer (mobile menu + booking form)
-const { openMobileMenu, openDrawer, closeDrawer, isOpen, contentType, drawerData } = useDrawer()
+const { openMobileMenu, openDrawer, closeDrawer, isOpen, contentType, drawerData, updateBookingPayloadIfOpen } = useDrawer()
 
 const isBookingFormOpen = computed(() => isOpen.value && contentType.value === 'booking-form')
 
@@ -565,6 +568,24 @@ function getResultsRangeLabel (msgIndex) {
   const { start, end, total } = getResultsRange(msgIndex)
   if (start === end) return `Showing result ${start} of ${total} dive shops found`
   return `Showing results ${start}–${end} of ${total} dive shops found`
+}
+
+/** Current diver's selected gear names (for messages showing gear chips) — used to show selected state and toggle remove */
+function getSelectedGearNamesForMessage (msg) {
+  const payload = msg.payload ?? msg.bookingPayload
+  const divers = payload?.divers ?? []
+  const current = divers.find(d => !d.gearAsked)
+  const gear = current?.gear ?? []
+  return new Set(gear.map(g => (g.gearType ?? g.gear_type ?? '').toString().trim().toLowerCase()).filter(Boolean))
+}
+function getGearChipClickValue (msg, eq) {
+  const selected = getSelectedGearNamesForMessage(msg)
+  const name = (eq.name ?? '').toString().trim()
+  if (selected.has(name.toLowerCase())) return `remove ${name}`
+  return name
+}
+function isGearChipSelected (msg, eq) {
+  return getSelectedGearNamesForMessage(msg).has((eq.name ?? '').toString().trim().toLowerCase())
 }
 
 // Send message to AI. Optional displayText: show this in the chat bubble while sending messageText to the API (e.g. chip label vs value).
@@ -722,6 +743,9 @@ const sendMessage = async (messageText, displayText) => {
         hideNoneForGear: response.hideNoneForGear ?? false,
         diveSiteOptions: response.diveSiteOptions || undefined
       })
+      if (response.intent === 'booking' && storedPayload) {
+        updateBookingPayloadIfOpen(storedPayload)
+      }
       // Carry-over payload when user chose "Pick a new diveshop" — clear current shop and store payload for next booking
       if (response.pendingBookingPayload) {
         pendingBookingPayload.value = response.pendingBookingPayload

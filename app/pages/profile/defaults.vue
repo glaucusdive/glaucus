@@ -122,6 +122,7 @@ const defaultsForm = ref({
     weightUnit: string
     gear: Array<{ gearType: string }>
     gearToAdd?: string
+    times_used?: number
   }>
 })
 const defaultsLoading = ref(true)
@@ -180,7 +181,8 @@ async function loadDefaults () {
         heightUnit: (d.height_unit === 'ft-in' ? 'ft-in' : 'cm') as string,
         weight: (d.weight ?? '') as string,
         weightUnit: (d.weight_unit === 'lbs' ? 'lbs' : 'kg') as string,
-        gear: Array.isArray(d.gear) ? (d.gear as Array<{ gear_type?: string; gearType?: string }>).map(g => ({ gearType: (g.gear_type ?? g.gearType ?? '') as string })) : []
+        gear: Array.isArray(d.gear) ? (d.gear as Array<{ gear_type?: string; gearType?: string }>).map(g => ({ gearType: (g.gear_type ?? g.gearType ?? '') as string })) : [],
+        times_used: typeof d.times_used === 'number' ? d.times_used : undefined
       }))
     } else if (defaultsForm.value.divers.length === 0) {
       defaultsForm.value.divers = [{ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: [] }]
@@ -203,7 +205,8 @@ async function saveDefaults () {
       height_unit: d.heightUnit ?? 'cm',
       weight: d.weight ?? '',
       weight_unit: d.weightUnit ?? 'kg',
-      gear: (d.gear || []).map(g => ({ gear_type: (g as { gearType?: string }).gearType ?? '' }))
+      gear: (d.gear || []).map(g => ({ gear_type: (g as { gearType?: string }).gearType ?? '' })),
+      ...(typeof d.times_used === 'number' ? { times_used: d.times_used } : {})
     }))
     const { error } = await client.from('profiles').update({
       display_name: defaultsForm.value.name || null,
