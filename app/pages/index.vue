@@ -230,8 +230,10 @@
             class="w-1/2 h-full border-l border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
             <ShopDetailPanel :key="selectedShopId" :shop-id="selectedShopId"
               :is-in-booking-flow="isInBookingFlowForShop(selectedShopId)"
+              :is-form-open="isBookingFormOpen"
               :on-start-booking="handleStartBookingFromPanel"
               :on-show-form="handleShowFormFromPanel"
+              :on-hide-form="handleHideFormFromPanel"
               @close="closeShopDetail" />
           </div>
         </Transition>
@@ -246,8 +248,10 @@
               class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-zinc-900 h-full overflow-hidden">
               <ShopDetailPanel :key="mobileDetailShopId" :shop-id="mobileDetailShopId"
               :is-in-booking-flow="isInBookingFlowForShop(mobileDetailShopId)"
+              :is-form-open="isBookingFormOpen"
               :on-start-booking="handleStartBookingFromPanel"
               :on-show-form="handleShowFormFromPanel"
+              :on-hide-form="handleHideFormFromPanel"
               @close="closeShopDetail" />
             </div>
           </div>
@@ -377,6 +381,10 @@ function handleShowFormFromPanel () {
   openBookingFormDrawer()
 }
 
+function handleHideFormFromPanel () {
+  closeDrawer()
+}
+
 // Desktop detection
 const getInitialDesktop = () => {
   if (typeof window === 'undefined') {
@@ -413,7 +421,9 @@ const exampleQueries = [
 const { getCache, setCache, clearCache } = useSearchCache()
 
 // Drawer (mobile menu + booking form)
-const { openMobileMenu, openDrawer, isOpen, contentType, drawerData } = useDrawer()
+const { openMobileMenu, openDrawer, closeDrawer, isOpen, contentType, drawerData } = useDrawer()
+
+const isBookingFormOpen = computed(() => isOpen.value && contentType.value === 'booking-form')
 
 const persistCache = () => {
   if (isRestoringCache.value) return
