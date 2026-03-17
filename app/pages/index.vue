@@ -197,7 +197,7 @@
 
           <!-- Input area -->
           <div class="flex items-stretch justify-center z-100 overflow-hidden">
-            <div class="bg-transparent p-0.5 pt-0 backdrop-blur-sm md:min-w-md max-w-4xl w-full rounded-full">
+            <div class="bg-transparent p-0.5 pt-0 backdrop-blur-sm 2xl:min-w-md max-w-4xl w-full rounded-full">
               <div :class="[
                 'p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-x-hidden overflow-y-visible gradient-container z-0',
                 isLoading ? 'animate-ring-gradient !bg-[#02C8FF]' : ''

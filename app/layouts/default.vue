@@ -72,7 +72,7 @@
         <!-- Drawer Sidebar -->
         <Transition v-if="isOpen" @enter="onDrawerEnter" @leave="onDrawerLeave" :css="false">
           <div
-            class="w-auto lg:w-[520px] h-auto bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl absolute lg:relative bottom-2 lg:bottom-auto top-2 lg:top-auto right-2 lg:right-auto left-2 lg:left-auto flex flex-col justify-start overflow-hidden z-50">
+            class="w-auto lg:w-[20%] lg:min-w-[380px] lg:max-w-[420px] h-auto bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl absolute lg:relative bottom-2 lg:bottom-auto top-2 lg:top-auto right-2 lg:right-auto left-2 lg:left-auto flex flex-col justify-start overflow-hidden z-50">
             <!-- Dynamic Drawer Content -->
             <BookingForm v-if="contentType === 'booking-form'" :key="'booking-' + drawerOpenKey"
               :shop-id="drawerData.shopId" :shop-name="drawerData.shopName"
