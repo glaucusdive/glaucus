@@ -810,13 +810,17 @@ export default defineEventHandler(async (event) => {
               divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: [] })
             }
             p.divers = divers
-            const defaultDiversList = (Array.isArray(profilePrefill?.defaultDivers) && profilePrefill.defaultDivers.length > 0)
+            const defaultDiversListFull = (Array.isArray(profilePrefill?.defaultDivers) && profilePrefill.defaultDivers.length > 0)
               ? profilePrefill.defaultDivers
               : (profilePrefill?.defaultDiver ? [profilePrefill.defaultDiver] : [])
-            const hasProfileDivers = defaultDiversList.length > 0
-            const selectableOptions = hasProfileDivers
+            const topTwo = [...defaultDiversListFull]
+              .sort((a, b) => (b.times_used ?? 0) - (a.times_used ?? 0))
+              .slice(0, 2)
+              .filter((d) => (d.name || '').trim())
+            const hasNamedProfileDivers = topTwo.length > 0
+            const selectableOptions = hasNamedProfileDivers
               ? [
-                  ...defaultDiversList.map((d) => ({ label: `Use ${(d.name || 'Diver').trim() || 'Diver'}`, value: `Use ${(d.name || 'Diver').trim() || 'Diver'}` })),
+                  ...topTwo.map((d) => ({ label: `Use ${(d.name || '').trim()}`, value: `Use ${(d.name || '').trim()}` })),
                   { label: 'Create new diver', value: 'Create new diver' }
                 ]
               : undefined
@@ -824,7 +828,7 @@ export default defineEventHandler(async (event) => {
               success: true,
               intent: 'booking' as const,
               bookingReady: false,
-              message: hasProfileDivers ? 'Use an existing diver from your profile or create a new one?' : `What's Diver ${newNum}'s full name?`,
+              message: hasNamedProfileDivers ? 'Use an existing diver from your profile or create a new one?' : `What's Diver ${newNum}'s full name?`,
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               bookingPayload: p,
