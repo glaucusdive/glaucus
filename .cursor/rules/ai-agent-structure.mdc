@@ -72,6 +72,7 @@ When the referent is **ambiguous** (multiple entity categories match) or **unkno
 
 - **Backend:** stateless between requests.
 - **Frontend:** holds `bookingPayload`, `selectedShopId`, `pendingBookingPayload`, and echoes **`pendingEntityClarifyPhrase`** only when the outgoing message is an `entity_clarify:*` token, using **`entityClarifyPending.phrase`** from the prior assistant message (`app/pages/index.vue`).
+- **Profile diver defaults (`profiles.default_divers`):** while signed in, the chat client merges each booking assistant payload into Supabase incrementally (`mergeProfileDefaultDivers.ts`, `bumpTimesUsed: false`); after a successful chat-initiated `/api/booking`, the same merge runs with `bumpTimesUsed: true` (aligned with `BookingForm.vue`). The profile defaults page and drawer form remain explicit save/submit paths.
 
 ### Steps
 

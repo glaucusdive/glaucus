@@ -194,6 +194,7 @@
 import { ref, watch, computed, onMounted } from 'vue'
 import { X } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
+import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst } from '~/utils/mergeProfileDefaultDivers'
 
 interface BookingApiResponse {
   sent: boolean
@@ -494,49 +495,13 @@ const handleSubmit = async () => {
       if (isSignedIn.value && user.value?.id && Array.isArray(payload.divers) && payload.divers.length > 0) {
         try {
           const { data: profile } = await client.from('profiles').select('default_divers').eq('id', user.value.id).single()
-          const existing = (Array.isArray(profile?.default_divers) ? profile.default_divers : []) as Array<Record<string, unknown> & { times_used?: number }>
-          const byName = new Map<string, typeof existing[0]>()
-          for (const e of existing) {
-            const k = (e.name as string || '').trim().toLowerCase()
-            if (k) byName.set(k, e)
-          }
-          const merged: Array<Record<string, unknown> & { times_used?: number }> = []
-          for (const d of payload.divers) {
-            const row = {
-              name: d.name ?? '',
-              certification_number: d.certificationNumber ?? '',
-              number_of_dives: d.numberOfDives ?? '',
-              height: d.height ?? '',
-              height_unit: d.heightUnit ?? 'cm',
-              weight: d.weight ?? '',
-              weight_unit: d.weightUnit ?? 'kg',
-              gear: (d.gear || []).map((g: { gearType?: string }) => ({ gear_type: g?.gearType ?? '' }))
-            }
-            const k = (row.name as string).trim().toLowerCase()
-            const prev = k ? byName.get(k) : undefined
-            const times_used = prev ? (prev.times_used ?? 0) + 1 : 1
-            merged.push({ ...row, times_used })
-            if (k) byName.set(k, { ...row, times_used })
-          }
-          for (const e of existing) {
-            const k = (e.name as string || '').trim().toLowerCase()
-            if (k && !byName.has(k)) merged.push({ ...e })
-          }
-          const default_divers = merged.sort((a, b) => (b.times_used ?? 0) - (a.times_used ?? 0))
+          const existing = profile?.default_divers
+          const default_divers = mergeDefaultDiversFromBookingPayload(existing, payload.divers, { bumpTimesUsed: true })
           await client.from('profiles').update({
             display_name: payload.name ?? undefined,
             email: payload.email ?? undefined,
             default_divers,
-            default_diver: default_divers[0] ? {
-              name: default_divers[0].name,
-              certification_number: default_divers[0].certification_number,
-              number_of_dives: default_divers[0].number_of_dives,
-              height: default_divers[0].height,
-              height_unit: default_divers[0].height_unit,
-              weight: default_divers[0].weight,
-              weight_unit: default_divers[0].weight_unit,
-              gear: default_divers[0].gear
-            } : undefined
+            default_diver: defaultDiverJsonFromFirst(default_divers[0]) ?? undefined
           }).eq('id', user.value.id)
         } catch {
           // ignore
