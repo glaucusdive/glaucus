@@ -456,7 +456,10 @@ const _sfc_main = {
   __ssrInlineRender: true,
   setup(__props) {
     const route = useRoute();
-    computed(() => route.path === "/");
+    computed(() => {
+      const p = route.path;
+      return p === "/" || p.startsWith("/auth") || p.startsWith("/profile");
+    });
     useChatSessions();
     useTheme();
     const { isSignedIn } = useAuth();
@@ -646,4 +649,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=default-Dihlscjw.mjs.map
+//# sourceMappingURL=default-D5fqILPz.mjs.map

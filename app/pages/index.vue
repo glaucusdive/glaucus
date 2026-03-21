@@ -3,7 +3,7 @@
     <!-- Loading Screen -->
     <Transition @enter="onLoadingEnter" @leave="onLoadingLeave" :css="false">
       <div v-if="isPageLoading"
-        class="fixed inset-0 z-[100] bg-white dark:bg-zinc-900 flex items-center justify-center">
+        class="fixed inset-0 z-[200] bg-white dark:bg-zinc-900 flex items-center justify-center">
         <img src="/images/glaucus-logo-emblem.svg" alt="Glaucus" class="w-24 h-24" />
       </div>
     </Transition>
@@ -207,15 +207,15 @@
 
           <!-- Input area -->
           <div class="flex items-stretch justify-center z-100 overflow-hidden">
-            <div class="bg-transparent p-0.5 pt-0 backdrop-blur-sm 2xl:min-w-md max-w-4xl w-full rounded-full">
+            <div class="bg-transparent p-0.5 pt-0 backdrop-blur-sm 2xl:min-w-md max-w-4xl w-full rounded-full overflow-hidden">
               <div :class="[
-                'p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-x-hidden overflow-y-visible gradient-container z-0',
+                'p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-hidden gradient-container z-0',
                 isLoading ? 'animate-ring-gradient !bg-[#02C8FF]' : ''
               ]">
-                <form class="w-full h-full bg-zinc-100 dark:bg-zinc-700 rounded-full p-1 z-10"
+                <form class="w-full h-full bg-zinc-100 dark:bg-zinc-700 rounded-full p-1 z-10 overflow-hidden"
                   @submit.prevent="handleSubmit">
-                  <div class="flex items-center gap-1.5 w-full min-w-0">
-                    <div class="flex-1 min-w-0 h-full">
+                  <div class="flex items-center gap-1.5 w-full min-w-0 overflow-hidden">
+                    <div class="flex-1 min-w-0 h-full overflow-hidden">
                       <input ref="chatInputRef" v-model="userInput" type="text" :disabled="isLoading"
                         placeholder="Ask me anything about dive shops..."
                         class="w-full h-full outline-none text-zinc-900 dark:text-white font-medium text-sm tracking-none disabled:cursor-not-allowed indent-2 p-4" />
