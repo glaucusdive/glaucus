@@ -251,10 +251,11 @@
         <!-- Shop Detail Panel - Mobile Drawer (only when user taps "View details", not on card tap) -->
         <Transition @enter="onMobileDrawerEnter" @leave="onMobileDrawerLeave" :css="false">
           <div v-if="mobileDetailShopId && !isDesktop" class="fixed inset-0 z-50 lg:hidden">
-            <!-- Backdrop -->
-            <div @click="closeShopDetail" class="absolute inset-0 bg-black/50"></div>
+            <!-- Backdrop: ignore clicks for a beat after open so the same gesture doesn't close (mousedown on chevron, mouseup on backdrop) -->
+            <div @click="onMobileShopDetailBackdropClick" class="absolute inset-0 bg-black/50"></div>
             <!-- Drawer -->
             <div
+              @click.stop
               class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-zinc-900 h-full overflow-hidden">
               <ShopDetailPanel :key="mobileDetailShopId" :shop-lookup="mobileDetailShopId"
               :is-in-booking-flow="isInBookingFlowForShop(mobileDetailShopId)"
@@ -518,6 +519,15 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', updateIsDesktop)
   clearTimeout(debounceProfileFromChatTimer)
+})
+
+/** Same pointer sequence that opens the mobile overlay can finish with a click on the new backdrop; skip closing briefly. */
+const MOBILE_SHOP_DETAIL_BACKDROP_GRACE_MS = 400
+const mobileShopDetailOpenedAt = ref(0)
+watch([mobileDetailShopId, isDesktop], () => {
+  if (mobileDetailShopId.value && !isDesktop.value) {
+    mobileShopDetailOpenedAt.value = Date.now()
+  }
 })
 
 // Example queries for initial state
@@ -883,6 +893,41 @@ const sendMessage = async (messageText, displayText) => {
     }
     
     if (response.success) {
+      if (response.searchFlowReset) {
+        closeDrawer()
+        selectedShopId.value = null
+        pendingBookingPayload.value = null
+        mobileDetailShopId.value = null
+        const resetContent = (response.message && String(response.message).trim())
+          ? response.message
+          : 'What type of trip are you looking for?'
+        messages.value = [
+          { role: 'user', content: textToShow },
+          {
+            role: 'assistant',
+            content: resetContent,
+            shops: response.shops || [],
+            totalResults: response.totalResults,
+            hasMoreResults: response.hasMoreResults,
+            intent: response.intent,
+            bookingReady: response.bookingReady,
+            payload: undefined,
+            shopId: undefined,
+            shopName: undefined,
+            selectableOptions: response.selectableOptions,
+            rentalEquipmentOptions: response.rentalEquipmentOptions || undefined,
+            hideNoneForGear: response.hideNoneForGear ?? false,
+            diveSiteOptions: response.diveSiteOptions || undefined,
+            ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {}),
+            ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {})
+          }
+        ]
+        isLoading.value = false
+        abortController.value = null
+        await scrollToBottom()
+        return
+      }
+
       const storedPayload = response.bookingPayload ?? response.payload
       const userSaidConfirmSend = /^(yes|yeah|yep|ok|okay|sure|send|submit|confirm|go ahead|do it|please send|ready)$/i.test(String(message).trim()) ||
         /^(send|submit)\s+(booking\s+)?(request)?$/i.test(String(message).trim())
@@ -1086,6 +1131,11 @@ const closeShopDetail = () => {
     selectedShopId.value = null
   }
   mobileDetailShopId.value = null
+}
+
+function onMobileShopDetailBackdropClick () {
+  if (Date.now() - mobileShopDetailOpenedAt.value < MOBILE_SHOP_DETAIL_BACKDROP_GRACE_MS) return
+  closeShopDetail()
 }
 
 // GSAP animations for shop panel
