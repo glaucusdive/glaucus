@@ -215,7 +215,7 @@
                   <NuxtLink
                     v-for="shop in nearbyShops"
                     :key="shop.id"
-                    :to="`/shops/${shop.id}`"
+                    :to="`/shops/${shop.slug || shop.id}`"
                     class="block"
                   >
                     <CardInfo
@@ -304,7 +304,8 @@ import { formatOperatingHours, demoHours, demoLanguages, demoDescription } from 
 
 // Props
 const props = defineProps({
-  shopId: {
+  /** Route slug (e.g. dive-porter) or legacy UUID — used only to load the shop row */
+  shopLookup: {
     type: String,
     required: true
   },
@@ -352,12 +353,14 @@ const tabs = [
   { id: 'nearby', label: 'Nearby Dive Shops' }
 ]
 
-// Fetch dive shop data (shared with shops/[id] page via useShopDetail)
-const { shopData, nearbyShops, pending, error } = useShopDetail(props.shopId)
+// Fetch dive shop (by public slug or legacy UUID)
+const { shopData, nearbyShops, pending, error } = useShopDetail(props.shopLookup)
+
+const shopRowId = computed(() => shopData.value?.id ?? '')
 
 const { user, isAppAdmin } = useAuth()
 const { client } = useSupabase()
-const { reviews, topReviews, pending: reviewsPending, refresh: refreshReviews } = useShopReviews(props.shopId)
+const { reviews, topReviews, pending: reviewsPending, refresh: refreshReviews } = useShopReviews(shopRowId)
 
 const myReview = computed(() => {
   const uid = user.value?.id
@@ -427,7 +430,7 @@ const { openDrawer } = useDrawer()
 function openReviewDrawer () {
   const my = myReview.value
   openDrawer('review-form', {
-    shopId: props.shopId,
+    shopId: shopRowId.value,
     shopName: shopData.value?.business_name || 'Dive Shop',
     initialRating: my?.rating ?? 5,
     initialBody: my?.body ?? '',
@@ -454,12 +457,12 @@ function handleBookingButtonClick () {
     }
   }
   if (props.onStartBooking) {
-    props.onStartBooking(props.shopId, shopData.value?.business_name || 'Dive Shop')
+    props.onStartBooking(shopRowId.value, shopData.value?.business_name || 'Dive Shop')
     return
   }
   // Fallback: open form directly (e.g. when used outside index)
   openDrawer('booking-form', {
-    shopId: props.shopId,
+    shopId: shopRowId.value,
     shopName: shopData.value?.business_name || 'Dive Shop'
   })
 }

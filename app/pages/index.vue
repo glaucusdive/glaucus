@@ -242,7 +242,7 @@
         <Transition @enter="onShopPanelEnter" @leave="onShopPanelLeave" :css="false">
           <div v-if="selectedShopId && isDesktop"
             class="w-1/2 h-full border-l border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
-            <ShopDetailPanel :key="selectedShopId" :shop-id="selectedShopId"
+            <ShopDetailPanel :key="selectedShopId" :shop-lookup="selectedShopId"
               :is-in-booking-flow="isInBookingFlowForShop(selectedShopId)"
               :is-form-open="isBookingFormOpen"
               :on-start-booking="handleStartBookingFromPanel"
@@ -260,7 +260,7 @@
             <!-- Drawer -->
             <div
               class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-zinc-900 h-full overflow-hidden">
-              <ShopDetailPanel :key="mobileDetailShopId" :shop-id="mobileDetailShopId"
+              <ShopDetailPanel :key="mobileDetailShopId" :shop-lookup="mobileDetailShopId"
               :is-in-booking-flow="isInBookingFlowForShop(mobileDetailShopId)"
               :is-form-open="isBookingFormOpen"
               :on-start-booking="handleStartBookingFromPanel"

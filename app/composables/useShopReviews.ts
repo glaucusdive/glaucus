@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 
 /**
  * Fetches shop reviews for a dive shop; supports top-3 (by rating, then date) and full list (newest first).
@@ -40,17 +41,24 @@ export async function deleteShopReview (client: SupabaseClient, reviewId: string
   if (error) throw error
 }
 
-export function useShopReviews (shopId: string) {
+/** `shopId` is the diveshops.id UUID (may start empty until shop detail loads). */
+export function useShopReviews (shopId: MaybeRefOrGetter<string>) {
   const { client } = useSupabase()
 
+  const resolvedId = computed(() => {
+    const v = toValue(shopId)
+    return typeof v === 'string' ? v : ''
+  })
+
   const { data, pending, error, refresh } = useAsyncData(
-    `shop-reviews-${shopId}`,
+    () => `shop-reviews-${resolvedId.value || 'none'}`,
     async () => {
-      if (!shopId) return [] as ShopReviewRow[]
+      const id = resolvedId.value
+      if (!id) return [] as ShopReviewRow[]
       const { data: rows, error: supabaseError } = await client
         .from('shop_reviews')
         .select('*')
-        .eq('diveshop_id', shopId)
+        .eq('diveshop_id', id)
         .order('created_at', { ascending: false })
 
       if (supabaseError) throw supabaseError
@@ -59,6 +67,7 @@ export function useShopReviews (shopId: string) {
     {
       server: false,
       lazy: false,
+      watch: [resolvedId],
       default: () => [] as ShopReviewRow[]
     }
   )

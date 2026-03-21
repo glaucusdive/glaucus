@@ -35,13 +35,7 @@ const props = defineProps({
 const emit = defineEmits(['click'])
 
 const route = useRoute()
-const isActive = computed(() => {
-  // Handle exact matches and nested routes
-  if (props.to === '/shops') {
-    return route.path === '/shops' || route.path.startsWith('/shops/')
-  }
-  return route.path === props.to
-})
+const isActive = computed(() => route.path === props.to)
 
 const handleClick = (event) => {
   emit('click', event)
