@@ -47,7 +47,14 @@ export const useAuth = () => {
       options: displayName ? { data: { display_name: displayName } } : undefined
     })
     if (error) throw error
-    return data
+    /**
+     * With "Confirm email" on, GoTrue hides duplicate signups: HTTP 200 and either no user, or a
+     * sanitized fake user with empty `identities` (no confirmation email is sent). A real new
+     * signup still includes at least one identity (email) before the user confirms.
+     */
+    const obfuscatedDuplicate =
+      !data.user || !Array.isArray(data.user.identities) || data.user.identities.length === 0
+    return { ...data, obfuscatedDuplicate }
   }
 
   async function signInWithEmail (email: string, password: string) {
