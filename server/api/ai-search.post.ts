@@ -518,9 +518,9 @@ export default defineEventHandler(async (event) => {
       // Fast path: simple field (name, email, certification, height, weight, "none" or single gear item) → instant template response, no LLM
       if (continuingBooking && bookingPayload) {
         const msgTrim = message.trim()
-        // User already saw "Ready to send" and is confirming — never re-ask for gear; return ready so client can submit
+        // User already saw the booking-ready prompt and is confirming — never re-ask for gear; return ready so client can submit
         const lastAssistantContent = history?.filter(m => m.role === 'assistant').pop()?.content ?? ''
-        const lastWasReadyToSend = /ready to send your booking request/i.test(lastAssistantContent)
+        const lastWasReadyToSend = /(?:ready to send your booking request|can i send the booking request)/i.test(lastAssistantContent)
         const confirmSend = /^(yes|yeah|yep|ok|okay|sure|send|submit|confirm|go ahead|do it|please send|ready)$/i.test(msgTrim) ||
           /^(send|submit)\s+(booking\s+)?(request)?$/i.test(msgTrim) ||
           (lastWasReadyToSend && /^(yes|send|submit|confirm|ok)$/i.test(msgTrim))
@@ -531,7 +531,7 @@ export default defineEventHandler(async (event) => {
             intent: 'booking' as const,
             bookingReady: true,
             payload: p,
-            message: `I have everything I need. Ready to send your booking request to ${resolvedShop.business_name}.`,
+            message: 'I have everything I need. Can I send the booking request?',
             shopId: resolvedShop.id,
             shopName: resolvedShop.business_name,
             selectableOptions: undefined
@@ -817,7 +817,7 @@ export default defineEventHandler(async (event) => {
               intent: 'booking' as const,
               bookingReady: true,
               payload: p,
-              message: `I have everything I need. Ready to send your booking request to ${resolvedShop.business_name}.`,
+              message: 'I have everything I need. Can I send the booking request?',
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               selectableOptions: undefined
@@ -888,7 +888,7 @@ export default defineEventHandler(async (event) => {
               intent: 'booking' as const,
               bookingReady: true,
               payload: p,
-              message: `I have everything I need. Ready to send your booking request to ${resolvedShop.business_name}.`,
+              message: 'I have everything I need. Can I send the booking request?',
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               selectableOptions: undefined
@@ -909,7 +909,7 @@ export default defineEventHandler(async (event) => {
                 intent: 'booking' as const,
                 bookingReady: true,
                 payload: p,
-                message: `I have everything I need. Ready to send your booking request to ${resolvedShop.business_name}.`,
+                message: 'I have everything I need. Can I send the booking request?',
                 shopId: resolvedShop.id,
                 shopName: resolvedShop.business_name,
                 selectableOptions: undefined
@@ -1006,7 +1006,7 @@ export default defineEventHandler(async (event) => {
               intent: 'booking' as const,
               bookingReady: true,
               payload,
-              message: `I have everything I need. Ready to send your booking request to ${resolvedShop.business_name}.`,
+              message: 'I have everything I need. Can I send the booking request?',
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               selectableOptions: undefined
