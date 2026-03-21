@@ -4294,7 +4294,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "68e400ea-d1e0-406b-9d02-d5d05e7340ba",
+    "buildId": "58216bed-ce3a-4c5f-bedb-3085a100cb75",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -5204,6 +5204,286 @@ async function buildDiveShopQuery(supabaseUrl, supabaseKey, filters) {
   return await query;
 }
 
+const ENTITY_CLARIFY_PREFIX = "entity_clarify:";
+function parseEntityClarifyMessage(message) {
+  const t = message.trim();
+  if (!t.startsWith(ENTITY_CLARIFY_PREFIX)) return null;
+  const k = t.slice(ENTITY_CLARIFY_PREFIX.length).trim();
+  if (k === "dive_shop" || k === "dive_site" || k === "city" || k === "country" || k === "browse") {
+    return k;
+  }
+  return null;
+}
+function entityClarifySelectableOptions() {
+  return [
+    { label: "It's a dive shop", value: `${ENTITY_CLARIFY_PREFIX}dive_shop` },
+    { label: "Dive site", value: `${ENTITY_CLARIFY_PREFIX}dive_site` },
+    { label: "City or area", value: `${ENTITY_CLARIFY_PREFIX}city` },
+    { label: "Country", value: `${ENTITY_CLARIFY_PREFIX}country` },
+    { label: "Not sure \u2014 help me find options", value: `${ENTITY_CLARIFY_PREFIX}browse` }
+  ];
+}
+
+async function getShopById(supabaseUrl, supabaseKey, shopId) {
+  const client = createClient(supabaseUrl, supabaseKey);
+  const { data, error } = await client.from("diveshops").select("id, business_name, email").eq("id", shopId).single();
+  if (error || !data) return null;
+  return data;
+}
+async function listShopsMatchingName(supabaseUrl, supabaseKey, nameQuery, limit = 5) {
+  if (!nameQuery || nameQuery.trim().length < 2) return [];
+  const client = createClient(supabaseUrl, supabaseKey);
+  const { data, error } = await client.from("diveshops").select("id, business_name, email").ilike("business_name", `%${nameQuery.trim()}%`).limit(limit).order("google_rating", { ascending: false, nullsFirst: false });
+  if (error || !(data == null ? void 0 : data.length)) return [];
+  return data;
+}
+
+function sanitizeIlike(s) {
+  return s.trim().replace(/[%_\\]/g, "");
+}
+async function probeReferentPhrase(supabaseUrl, supabaseKey, phraseRaw) {
+  const phrase = sanitizeIlike(phraseRaw);
+  const client = createClient(supabaseUrl, supabaseKey);
+  const [shops, diveSitesRes, countriesRes, regionsRes, localeRes] = await Promise.all([
+    listShopsMatchingName(supabaseUrl, supabaseKey, phrase, 5),
+    client.from("dive_sites").select("id, name").ilike("name", `%${phrase}%`).limit(5),
+    probeCountries(client, phrase),
+    client.from("regions").select("id, name").ilike("name", `%${phrase}%`).limit(5),
+    client.from("diveshops").select("id").or(`city.ilike.%${phrase}%,state.ilike.%${phrase}%,locale.ilike.%${phrase}%`).limit(1)
+  ]);
+  const diveSites = diveSitesRes.data || [];
+  const regions = regionsRes.data || [];
+  const localeHit = !!(localeRes.data && localeRes.data.length > 0);
+  return {
+    phrase,
+    shops,
+    diveSites,
+    countries: countriesRes,
+    regions,
+    localeHit
+  };
+}
+async function probeCountries(client, phrase) {
+  const byName = await client.from("countries").select("id, name").ilike("name", `%${phrase}%`).limit(5);
+  const byAlias = await client.from("country_aliases").select("country_id").ilike("alias", `%${phrase}%`).limit(15);
+  const map = /* @__PURE__ */ new Map();
+  for (const row of byName.data || []) {
+    const r = row;
+    map.set(r.id, r);
+  }
+  const aliasIds = [...new Set((byAlias.data || []).map((a) => a.country_id))];
+  if (aliasIds.length) {
+    const { data: extra } = await client.from("countries").select("id, name").in("id", aliasIds);
+    for (const row of extra || []) {
+      const r = row;
+      map.set(r.id, r);
+    }
+  }
+  return [...map.values()].slice(0, 5);
+}
+function activeCategories(p) {
+  const c = [];
+  if (p.shops.length > 0) c.push("shop");
+  if (p.diveSites.length > 0) c.push("dive_site");
+  if (p.countries.length > 0) c.push("country");
+  if (p.regions.length > 0) c.push("region");
+  if (p.localeHit) c.push("locale");
+  return c;
+}
+async function fetchShopsByDiveSiteIds(supabaseUrl, supabaseKey, siteIds) {
+  if (!siteIds.length) return { data: [], error: null };
+  const client = createClient(supabaseUrl, supabaseKey);
+  const { data: junction, error: jErr } = await client.from("diveshop_dive_sites").select("diveshop_id").in("dive_site_id", siteIds);
+  if (jErr || !(junction == null ? void 0 : junction.length)) return { data: [], error: jErr };
+  const shopIds = [...new Set(junction.map((j) => j.diveshop_id))];
+  const res = await client.from("diveshops").select("*, country:countries(name), region:regions(name)").in("id", shopIds).order("google_rating", { ascending: false, nullsFirst: false }).order("business_name", { ascending: true }).limit(50);
+  return { data: res.data, error: res.error };
+}
+function formatEntitySearchResponse(filters, shops, message) {
+  const list = shops || [];
+  const resultCount = list.length;
+  const responseShops = list.slice(0, 5);
+  const selectableOptions = resultCount > 5 ? [{ label: "Load next 5", value: "Show more" }] : void 0;
+  return {
+    success: true,
+    message,
+    shops: responseShops,
+    totalResults: resultCount,
+    hasMoreResults: resultCount > 5,
+    filters,
+    selectableOptions
+  };
+}
+async function routeReferentFromProbe(supabaseUrl, supabaseKey, probe) {
+  var _a;
+  const cats = activeCategories(probe);
+  const phrase = probe.phrase;
+  if (cats.length === 0 || cats.length > 1) {
+    return { type: "clarify", phrase: probe.phrase };
+  }
+  const only = cats[0];
+  if (only === "shop") {
+    return { type: "booking", shop: probe.shops[0] };
+  }
+  if (only === "dive_site") {
+    const ids = probe.diveSites.map((s) => s.id);
+    const { data: data2, error: error2 } = await fetchShopsByDiveSiteIds(supabaseUrl, supabaseKey, ids);
+    if (error2) {
+      return { type: "clarify", phrase: probe.phrase };
+    }
+    const siteNames = probe.diveSites.map((s) => s.name).join(", ");
+    const msg = ((_a = data2 == null ? void 0 : data2.length) != null ? _a : 0) > 0 ? `Here are dive shops that offer ${siteNames}. You can pick one or narrow further.` : `I found "${phrase}" as a dive site but no linked dive shops in our directory yet.`;
+    return {
+      type: "search",
+      response: formatEntitySearchResponse(
+        {},
+        data2,
+        msg
+      )
+    };
+  }
+  if (only === "country") {
+    const countryName = probe.countries[0].name;
+    const dbResult2 = await buildDiveShopQuery(supabaseUrl, supabaseKey, { country: countryName });
+    const { data: data2, error: error2 } = dbResult2;
+    if (error2) {
+      return { type: "clarify", phrase: probe.phrase };
+    }
+    return {
+      type: "search",
+      response: formatEntitySearchResponse(
+        { country: countryName },
+        data2,
+        `Here are dive shops in ${countryName}.`
+      )
+    };
+  }
+  if (only === "region") {
+    const regionName = probe.regions[0].name;
+    const dbResult2 = await buildDiveShopQuery(supabaseUrl, supabaseKey, { region: regionName });
+    const { data: data2, error: error2 } = dbResult2;
+    if (error2) {
+      return { type: "clarify", phrase: probe.phrase };
+    }
+    return {
+      type: "search",
+      response: formatEntitySearchResponse(
+        { region: regionName },
+        data2,
+        `Here are dive shops in the ${regionName} region.`
+      )
+    };
+  }
+  const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, { locale: phrase });
+  const { data, error } = dbResult;
+  if (error) {
+    return { type: "clarify", phrase: probe.phrase };
+  }
+  return {
+    type: "search",
+    response: formatEntitySearchResponse(
+      { locale: phrase },
+      data,
+      `Here are dive shops in or near ${phrase}.`
+    )
+  };
+}
+async function handleForcedEntityClarify(kind, phraseRaw, supabaseUrl, supabaseKey) {
+  var _a;
+  const phrase = sanitizeIlike(phraseRaw);
+  if (!phrase) return { kind: "clarify", phrase: phraseRaw };
+  if (kind === "browse") {
+    return { kind: "browse" };
+  }
+  if (kind === "dive_shop") {
+    const shops = await listShopsMatchingName(supabaseUrl, supabaseKey, phrase, 5);
+    if (shops.length === 0) {
+      return { kind: "clarify", phrase };
+    }
+    return { kind: "booking", shop: shops[0] };
+  }
+  if (kind === "dive_site") {
+    const client = createClient(supabaseUrl, supabaseKey);
+    const { data: sites } = await client.from("dive_sites").select("id, name").ilike("name", `%${phrase}%`).limit(5);
+    const diveSites = sites || [];
+    if (!diveSites.length) {
+      return { kind: "clarify", phrase };
+    }
+    const { data, error } = await fetchShopsByDiveSiteIds(supabaseUrl, supabaseKey, diveSites.map((s) => s.id));
+    if (error) return { kind: "clarify", phrase };
+    const siteNames = diveSites.map((s) => s.name).join(", ");
+    return {
+      kind: "search",
+      response: formatEntitySearchResponse(
+        {},
+        data,
+        ((_a = data == null ? void 0 : data.length) != null ? _a : 0) > 0 ? `Here are dive shops that offer ${siteNames}.` : `I couldn't find linked shops for that dive site.`
+      )
+    };
+  }
+  if (kind === "city") {
+    const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, { locale: phrase });
+    const { data, error } = dbResult;
+    if (error) return { kind: "clarify", phrase };
+    return {
+      kind: "search",
+      response: formatEntitySearchResponse(
+        { locale: phrase },
+        data,
+        `Here are dive shops in or near ${phrase}.`
+      )
+    };
+  }
+  if (kind === "country") {
+    const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, { country: phrase });
+    const { data, error } = dbResult;
+    if (error) return { kind: "clarify", phrase };
+    return {
+      kind: "search",
+      response: formatEntitySearchResponse(
+        { country: phrase },
+        data,
+        `Here are dive shops in ${phrase}.`
+      )
+    };
+  }
+  return { kind: "clarify", phrase: phraseRaw };
+}
+function clarifyResponsePayload(phrase) {
+  return {
+    success: true,
+    message: `I'm not sure what "${phrase}" refers to in our directory. What kind of place or name is it?`,
+    shops: [],
+    totalResults: 0,
+    hasMoreResults: false,
+    filters: {},
+    selectableOptions: entityClarifySelectableOptions(),
+    entityClarifyPending: { phrase }
+  };
+}
+
+function extractReferredEntityPhrase(message) {
+  const trimmed = message.trim();
+  let m = trimmed.match(/(?:book|reserve)(?:\s+(?:a\s+)?dive)?\s+with\s+([^.?!]+)/i);
+  if (m == null ? void 0 : m[1]) return normalizePhrase(m[1]);
+  m = trimmed.match(/(?:i\s+(?:want|'d\s+like)\s+to\s+)?(?:go\s+)?(?:dive|diving)\s+with\s+([^.?!]+)/i);
+  if (m == null ? void 0 : m[1]) return normalizePhrase(m[1]);
+  m = trimmed.match(/(?:go\s+)?diving\s+with\s+([^.?!]+)/i);
+  if (m == null ? void 0 : m[1]) return normalizePhrase(m[1]);
+  m = trimmed.match(/(?:i\s+(?:want|'d\s+like)\s+to\s+)?(?:go\s+)?dive(?:\s+dive)?\s+at\s+([^.?!]+)/i);
+  if (m == null ? void 0 : m[1]) return normalizePhrase(m[1]);
+  m = trimmed.match(/(?:diving|dive)\s+at\s+([^.?!]+)/i);
+  if (m == null ? void 0 : m[1]) return normalizePhrase(m[1]);
+  return null;
+}
+function normalizePhrase(raw) {
+  let s = raw.trim();
+  if (!s) return null;
+  s = s.replace(/^the\s+/i, "").trim();
+  if (s.length < 2) return null;
+  return s;
+}
+
 function getBearerToken(event) {
   const auth = getHeader(event, "authorization");
   if (!auth || !auth.startsWith("Bearer ")) return null;
@@ -5239,20 +5519,6 @@ async function getRentalEquipmentForShop(supabaseUrl, supabaseKey, shopId) {
   const { data, error } = await client.from("diveshop_rental_equipment").select("rental_equipment_id, rental_equipment(id, name)").eq("diveshop_id", shopId);
   if (error || !data) return [];
   return data.filter((row) => row.rental_equipment != null && row.rental_equipment.name !== "None listed" && row.rental_equipment.name !== "Yes (unspecified gear)").map((row) => ({ id: row.rental_equipment.id, name: row.rental_equipment.name }));
-}
-
-async function getShopById(supabaseUrl, supabaseKey, shopId) {
-  const client = createClient(supabaseUrl, supabaseKey);
-  const { data, error } = await client.from("diveshops").select("id, business_name, email").eq("id", shopId).single();
-  if (error || !data) return null;
-  return data;
-}
-async function resolveShopByName(supabaseUrl, supabaseKey, nameQuery) {
-  if (!nameQuery || nameQuery.trim().length < 2) return null;
-  const client = createClient(supabaseUrl, supabaseKey);
-  const { data, error } = await client.from("diveshops").select("id, business_name, email").ilike("business_name", `%${nameQuery.trim()}%`).limit(1).order("google_rating", { ascending: false, nullsFirst: false });
-  if (error || !data || data.length === 0) return null;
-  return data[0];
 }
 
 const collections = {
@@ -5518,5 +5784,5 @@ function getCacheHeaders(url) {
   return {};
 }
 
-export { $fetch$1 as $, parseQuery as A, hasProtocol as B, isScriptProtocol as C, joinURL as D, withQuery as E, sanitizeStatusCode as F, withTrailingSlash as G, withoutTrailingSlash as H, klona as I, defuFn as J, getContext as K, baseURL as L, defu as M, createHooks as N, executeAsync as O, isEqual as P, toRouteMatcher as Q, createRouter$1 as R, handler as S, resolveShopByName as a, getShopById as b, getDiveSitesForShop as c, defineEventHandler as d, getRentalEquipmentForShop as e, tryFastPath as f, getNextBookingStep as g, buildDiveShopQuery as h, createError$1 as i, getAuthUser as j, getBearerToken as k, createSupabaseClientForUser as l, getRouterParam as m, buildAssetsURL as n, getResponseStatusText as o, getResponseStatus as p, defineRenderHandler as q, readBody as r, publicAssetsURL as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, getQuery as v, destr as w, getRouteRules as x, useNitroApp as y, serialize$1 as z };
+export { $fetch$1 as $, getQuery as A, destr as B, getRouteRules as C, useNitroApp as D, serialize$1 as E, parseQuery as F, hasProtocol as G, isScriptProtocol as H, joinURL as I, withQuery as J, sanitizeStatusCode as K, withTrailingSlash as L, withoutTrailingSlash as M, klona as N, defuFn as O, getContext as P, baseURL as Q, defu as R, createHooks as S, executeAsync as T, isEqual as U, toRouteMatcher as V, createRouter$1 as W, handler as X, probeReferentPhrase as a, routeReferentFromProbe as b, clarifyResponsePayload as c, defineEventHandler as d, extractReferredEntityPhrase as e, getShopById as f, getNextBookingStep as g, handleForcedEntityClarify as h, getDiveSitesForShop as i, getRentalEquipmentForShop as j, tryFastPath as k, buildDiveShopQuery as l, createError$1 as m, getAuthUser as n, getBearerToken as o, parseEntityClarifyMessage as p, createSupabaseClientForUser as q, readBody as r, getRouterParam as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, buildAssetsURL as v, getResponseStatusText as w, getResponseStatus as x, defineRenderHandler as y, publicAssetsURL as z };
 //# sourceMappingURL=nitro.mjs.map

@@ -1,4 +1,4 @@
-import { d as defineEventHandler, j as getAuthUser, i as createError, m as getRouterParam, k as getBearerToken, l as createSupabaseClientForUser, u as useRuntimeConfig } from '../../../../nitro/nitro.mjs';
+import { d as defineEventHandler, n as getAuthUser, m as createError, s as getRouterParam, o as getBearerToken, q as createSupabaseClientForUser, u as useRuntimeConfig } from '../../../../nitro/nitro.mjs';
 import '@supabase/supabase-js';
 import 'node:http';
 import 'node:https';

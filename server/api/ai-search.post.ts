@@ -1,9 +1,17 @@
 import { defineEventHandler, readBody } from 'h3'
 import { buildDiveShopQuery, type SearchFilters } from '../utils/buildDiveShopQuery'
-import { getShopById, resolveShopByName } from '../utils/resolveShop'
+import { getShopById } from '../utils/resolveShop'
 import { getDiveSitesForShop } from '../utils/getDiveSitesForShop'
 import { getRentalEquipmentForShop } from '../utils/getRentalEquipmentForShop'
 import { getNextBookingStep, tryFastPath, tryFastPathUnitOnly } from '../utils/bookingFastPath'
+import { extractReferredEntityPhrase } from '../utils/extractReferredEntityPhrase'
+import { parseEntityClarifyMessage } from '../utils/entityClarify'
+import {
+  clarifyResponsePayload,
+  handleForcedEntityClarify,
+  probeReferentPhrase,
+  routeReferentFromProbe
+} from '../utils/entityRouting'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -85,6 +93,8 @@ interface RequestBody {
     /** Full list of divers from last booking (name, certification_number, number_of_dives, height, height_unit, weight, weight_unit, gear). */
     defaultDivers?: Array<{ name?: string; certification_number?: string; number_of_dives?: string; height?: string; height_unit?: string; weight?: string; weight_unit?: string; gear?: { gear_type?: string }[] }>
   }
+  /** Phrase from last assistant entityClarifyPending (user is answering with a clarification chip). */
+  pendingEntityClarifyPhrase?: string
 }
 
 const SYSTEM_PROMPT = `You are an AI assistant helping users find the perfect dive shop for their needs. 
@@ -151,20 +161,6 @@ FILTERS: {"country": null, "locale": null, "region": null, "minRating": null, "l
 MESSAGE: Got it! I'll search for all dive shops without filtering by activity type.`
 
 const BOOKING_INTENT_PATTERN = /\b(book|reserve|booking|reservation|i want to book|i'd like to book|send my request|submit my request)\b/i
-
-/** Extract dive shop name when user says e.g. "book with X", "dive at X", "I want to dive at Dive Shash". */
-function extractShopNameFromMessage (message: string): string | null {
-  const trimmed = message.trim()
-  // "book with X", "reserve with X", "book a dive with X", "book with Dive Porter"
-  let m = trimmed.match(/(?:book|reserve)(?:\s+(?:a\s+)?dive)?\s+with\s+([^.?!]+)/i)
-  if (m?.[1]) return m[1].trim() || null
-  // "dive at X", "I want to dive at X", "I'd like to dive at X", "diving at X"
-  m = trimmed.match(/(?:i\s+(?:want|'d\s+like)\s+to\s+)?(?:go\s+)?dive(?:\s+dive)?\s+at\s+([^.?!]+)/i)
-  if (m?.[1]) return m[1].trim() || null
-  m = trimmed.match(/(?:diving|dive)\s+at\s+([^.?!]+)/i)
-  if (m?.[1]) return m[1].trim() || null
-  return null
-}
 
 function buildBookingSystemPrompt (
   shopName: string,
@@ -243,7 +239,7 @@ Never put COLLECTED in the middle of your reply — your message to the user mus
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody<RequestBody>(event)
-    const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill } = body
+    const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill, pendingEntityClarifyPhrase } = body
 
     if (!message || typeof message !== 'string') {
       throw new Error('Message is required')
@@ -278,7 +274,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // --- Booking agent (per .cursor/rules/ai-agent-structure.mdc) ---
-    // Tools: resolveShopByName, getShopById, getDiveSitesForShop, getRentalEquipmentForShop, tryFastPath, tryFastPathUnitOnly, LLM chat.
+    // Tools: entity routing (extractReferredEntityPhrase, probeReferentPhrase, routeReferentFromProbe, handleForcedEntityClarify), getShopById, listShopsMatchingName, getDiveSitesForShop, getRentalEquipmentForShop, buildDiveShopQuery, tryFastPath, tryFastPathUnitOnly, LLM chat.
     // Tool selection: Orchestrator (this handler) chooses — intent (book vs search), then fast path vs LLM; no model-driven tool calls.
     // Retries: Idempotent reads (shop, sites, gear) can retry; non-idempotent (send booking email) has no auto-retry; user must resubmit.
     // Steps: Multi-turn until BOOKING_READY or user chooses "Pick a new diveshop"; one user message → one API response (possibly with selectableOptions chips).
@@ -287,14 +283,40 @@ export default defineEventHandler(async (event) => {
     // --- Intent: booking vs search ---
     const wantsToBook = BOOKING_INTENT_PATTERN.test(message)
     const hasShopContext = !!selectedShopId || (lastShops && lastShops.length > 0)
-    const shopNameFromMessage = extractShopNameFromMessage(message)
 
     let resolvedShop: Awaited<ReturnType<typeof getShopById>> = null
     let resolvedByNamedShop = false
-    // Resolve by name when user says "book with X" or "dive at X" / "I want to dive at X" — so we can skip browse and go straight to booking
-    if (shopNameFromMessage) {
-      resolvedShop = await resolveShopByName(supabaseUrl, supabaseKey, shopNameFromMessage)
-      if (resolvedShop) resolvedByNamedShop = true
+
+    // --- Entity-aware routing: "dive with X", clarification chips (orchestrator; see .cursor/rules/ai-agent-structure.mdc) ---
+    const clarifyChoice = parseEntityClarifyMessage(message)
+    if (clarifyChoice && pendingEntityClarifyPhrase?.trim()) {
+      const phraseCtx = pendingEntityClarifyPhrase.trim()
+      const forced = await handleForcedEntityClarify(clarifyChoice, phraseCtx, supabaseUrl, supabaseKey)
+      if (forced.kind === 'search') {
+        return { ...forced.response, intent: 'search' as const }
+      }
+      if (forced.kind === 'clarify') {
+        return { ...clarifyResponsePayload(forced.phrase), intent: 'search' as const }
+      }
+      if (forced.kind === 'booking') {
+        resolvedShop = forced.shop
+        resolvedByNamedShop = true
+      }
+      // forced.kind === 'browse': fall through to normal search flow (trip-type / LLM)
+    } else if (!continuingBooking && !clarifyChoice) {
+      const referredPhrase = extractReferredEntityPhrase(message)
+      if (referredPhrase) {
+        const probe = await probeReferentPhrase(supabaseUrl, supabaseKey, referredPhrase)
+        const routed = await routeReferentFromProbe(supabaseUrl, supabaseKey, probe)
+        if (routed.type === 'clarify') {
+          return { ...clarifyResponsePayload(routed.phrase), intent: 'search' as const }
+        }
+        if (routed.type === 'search') {
+          return { ...routed.response, intent: 'search' as const }
+        }
+        resolvedShop = routed.shop
+        resolvedByNamedShop = true
+      }
     }
     if (wantsToBook && !resolvedShop) {
       if (selectedShopId) {

@@ -448,6 +448,17 @@ const _sfc_main = {
     function isGearChipSelected(msg, eq) {
       return getSelectedGearNamesForMessage(msg).has((eq.name ?? "").toString().trim().toLowerCase());
     }
+    function getPendingEntityClarifyPhraseForOutgoing(outgoingMessage) {
+      if (!/^entity_clarify:/i.test(String(outgoingMessage).trim())) return void 0;
+      const arr = messages.value;
+      for (let i = arr.length - 2; i >= 0; i--) {
+        const m = arr[i];
+        if (m?.role === "assistant" && m.entityClarifyPending?.phrase) {
+          return m.entityClarifyPending.phrase;
+        }
+      }
+      return void 0;
+    }
     const sendMessage = async (messageText, displayText) => {
       const message = messageText ?? userInput.value.trim();
       if (!message) return;
@@ -476,6 +487,7 @@ const _sfc_main = {
         const lastBookingShopName = inBookingFlow ? lastAssistantMessage.shopName ?? selectedShopName.value : void 0;
         const lastPayload = lastBookingPayload.value;
         const shopsAlreadyShownCount = messages.value.filter((m) => m.role === "assistant" && m.shops?.length).reduce((sum, m) => sum + (m.shops?.length ?? 0), 0);
+        const pendingEntityClarifyPhrase = getPendingEntityClarifyPhraseForOutgoing(message);
         const response = await $fetch("/api/ai-search", {
           method: "POST",
           signal: currentAbortController.signal,
@@ -493,7 +505,8 @@ const _sfc_main = {
             ...inBookingFlow && lastBookingShopName ? { lastBookingShopName } : {},
             ...inBookingFlow && lastPayload ? { bookingPayload: lastPayload } : {},
             ...pendingBookingPayload.value ? { pendingBookingPayload: pendingBookingPayload.value } : {},
-            ...profilePrefillSnapshot.value ? { profilePrefill: profilePrefillSnapshot.value } : {}
+            ...profilePrefillSnapshot.value ? { profilePrefill: profilePrefillSnapshot.value } : {},
+            ...pendingEntityClarifyPhrase ? { pendingEntityClarifyPhrase } : {}
           }
         });
         if (currentAbortController.signal.aborted) {
@@ -574,7 +587,8 @@ const _sfc_main = {
             rentalEquipmentOptions: response.rentalEquipmentOptions || void 0,
             hideNoneForGear: response.hideNoneForGear ?? false,
             diveSiteOptions: response.diveSiteOptions || void 0,
-            ...response.filters && typeof response.filters === "object" ? { filters: response.filters } : {}
+            ...response.filters && typeof response.filters === "object" ? { filters: response.filters } : {},
+            ...response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {}
           });
           if (response.intent === "booking" && storedPayload) {
             updateBookingPayloadIfOpen(storedPayload);
@@ -745,7 +759,7 @@ const _sfc_main = {
           if (_push2) {
             _push2(``);
             if (isPageLoading.value) {
-              _push2(`<div class="fixed inset-0 z-[100] bg-white dark:bg-zinc-900 flex items-center justify-center"${_scopeId}><img${ssrRenderAttr("src", _imports_0)} alt="Glaucus" class="w-24 h-24"${_scopeId}></div>`);
+              _push2(`<div class="fixed inset-0 z-[200] bg-white dark:bg-zinc-900 flex items-center justify-center"${_scopeId}><img${ssrRenderAttr("src", _imports_0)} alt="Glaucus" class="w-24 h-24"${_scopeId}></div>`);
             } else {
               _push2(`<!---->`);
             }
@@ -857,10 +871,10 @@ const _sfc_main = {
             } else {
               _push2(`<!---->`);
             }
-            _push2(`</div><div class="flex items-stretch justify-center z-100 overflow-hidden"${_scopeId}><div class="bg-transparent p-0.5 pt-0 backdrop-blur-sm 2xl:min-w-md max-w-4xl w-full rounded-full"${_scopeId}><div class="${ssrRenderClass([
-              "p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-x-hidden overflow-y-visible gradient-container z-0",
+            _push2(`</div><div class="flex items-stretch justify-center z-100 overflow-hidden"${_scopeId}><div class="bg-transparent p-0.5 pt-0 backdrop-blur-sm 2xl:min-w-md max-w-4xl w-full rounded-full overflow-hidden"${_scopeId}><div class="${ssrRenderClass([
+              "p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-hidden gradient-container z-0",
               isLoading.value ? "animate-ring-gradient !bg-[#02C8FF]" : ""
-            ])}"${_scopeId}><form class="w-full h-full bg-zinc-100 dark:bg-zinc-700 rounded-full p-1 z-10"${_scopeId}><div class="flex items-center gap-1.5 w-full min-w-0"${_scopeId}><div class="flex-1 min-w-0 h-full"${_scopeId}><input${ssrRenderAttr("value", userInput.value)} type="text"${ssrIncludeBooleanAttr(isLoading.value) ? " disabled" : ""} placeholder="Ask me anything about dive shops..." class="w-full h-full outline-none text-zinc-900 dark:text-white font-medium text-sm tracking-none disabled:cursor-not-allowed indent-2 p-4"${_scopeId}></div><div class="h-full shrink-0"${_scopeId}><button type="submit"${ssrIncludeBooleanAttr(isLoading.value || !userInput.value.trim()) ? " disabled" : ""} class="p-2 flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-100 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-xl tracking-none cursor-pointer text-zinc-900 dark:text-zinc-900 disabled:bg-zinc-100 disabled:dark:bg-zinc-600 disabled:cursor-not-allowed font-medium disabled:*:opacity-20"${_scopeId}>`);
+            ])}"${_scopeId}><form class="w-full h-full bg-zinc-100 dark:bg-zinc-700 rounded-full p-1 z-10 overflow-hidden"${_scopeId}><div class="flex items-center gap-1.5 w-full min-w-0 overflow-hidden"${_scopeId}><div class="flex-1 min-w-0 h-full overflow-hidden"${_scopeId}><input${ssrRenderAttr("value", userInput.value)} type="text"${ssrIncludeBooleanAttr(isLoading.value) ? " disabled" : ""} placeholder="Ask me anything about dive shops..." class="w-full h-full outline-none text-zinc-900 dark:text-white font-medium text-sm tracking-none disabled:cursor-not-allowed indent-2 p-4"${_scopeId}></div><div class="h-full shrink-0"${_scopeId}><button type="submit"${ssrIncludeBooleanAttr(isLoading.value || !userInput.value.trim()) ? " disabled" : ""} class="p-2 flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-100 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-xl tracking-none cursor-pointer text-zinc-900 dark:text-zinc-900 disabled:bg-zinc-100 disabled:dark:bg-zinc-600 disabled:cursor-not-allowed font-medium disabled:*:opacity-20"${_scopeId}>`);
             if (!isLoading.value) {
               _push2(ssrRenderComponent(unref(ArrowUp), { class: "w-6 h-6" }, null, _parent2, _scopeId));
             } else {
@@ -910,7 +924,7 @@ const _sfc_main = {
                 default: withCtx(() => [
                   isPageLoading.value ? (openBlock(), createBlock("div", {
                     key: 0,
-                    class: "fixed inset-0 z-[100] bg-white dark:bg-zinc-900 flex items-center justify-center"
+                    class: "fixed inset-0 z-[200] bg-white dark:bg-zinc-900 flex items-center justify-center"
                   }, [
                     createVNode("img", {
                       src: _imports_0,
@@ -1109,19 +1123,19 @@ const _sfc_main = {
                       ])) : createCommentVNode("", true)
                     ], 512),
                     createVNode("div", { class: "flex items-stretch justify-center z-100 overflow-hidden" }, [
-                      createVNode("div", { class: "bg-transparent p-0.5 pt-0 backdrop-blur-sm 2xl:min-w-md max-w-4xl w-full rounded-full" }, [
+                      createVNode("div", { class: "bg-transparent p-0.5 pt-0 backdrop-blur-sm 2xl:min-w-md max-w-4xl w-full rounded-full overflow-hidden" }, [
                         createVNode("div", {
                           class: [
-                            "p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-x-hidden overflow-y-visible gradient-container z-0",
+                            "p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-hidden gradient-container z-0",
                             isLoading.value ? "animate-ring-gradient !bg-[#02C8FF]" : ""
                           ]
                         }, [
                           createVNode("form", {
-                            class: "w-full h-full bg-zinc-100 dark:bg-zinc-700 rounded-full p-1 z-10",
+                            class: "w-full h-full bg-zinc-100 dark:bg-zinc-700 rounded-full p-1 z-10 overflow-hidden",
                             onSubmit: withModifiers(handleSubmit, ["prevent"])
                           }, [
-                            createVNode("div", { class: "flex items-center gap-1.5 w-full min-w-0" }, [
-                              createVNode("div", { class: "flex-1 min-w-0 h-full" }, [
+                            createVNode("div", { class: "flex items-center gap-1.5 w-full min-w-0 overflow-hidden" }, [
+                              createVNode("div", { class: "flex-1 min-w-0 h-full overflow-hidden" }, [
                                 withDirectives(createVNode("input", {
                                   ref_key: "chatInputRef",
                                   ref: chatInputRef,
@@ -1227,4 +1241,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-CaLlx1E3.mjs.map
+//# sourceMappingURL=index-6fqiK53d.mjs.map

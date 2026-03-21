@@ -1,4 +1,4 @@
-import { d as defineEventHandler, r as readBody, t as tryFastPathUnitOnly, g as getNextBookingStep, u as useRuntimeConfig, a as resolveShopByName, b as getShopById, c as getDiveSitesForShop, e as getRentalEquipmentForShop, f as tryFastPath, h as buildDiveShopQuery } from '../../nitro/nitro.mjs';
+import { d as defineEventHandler, r as readBody, t as tryFastPathUnitOnly, g as getNextBookingStep, u as useRuntimeConfig, p as parseEntityClarifyMessage, h as handleForcedEntityClarify, c as clarifyResponsePayload, e as extractReferredEntityPhrase, a as probeReferentPhrase, b as routeReferentFromProbe, f as getShopById, i as getDiveSitesForShop, j as getRentalEquipmentForShop, k as tryFastPath, l as buildDiveShopQuery } from '../../nitro/nitro.mjs';
 import '@supabase/supabase-js';
 import 'node:http';
 import 'node:https';
@@ -97,16 +97,6 @@ User: "any type of diving"
 FILTERS: {"country": null, "locale": null, "region": null, "minRating": null, "languages": null, "diveTypes": null}
 MESSAGE: Got it! I'll search for all dive shops without filtering by activity type.`;
 const BOOKING_INTENT_PATTERN = /\b(book|reserve|booking|reservation|i want to book|i'd like to book|send my request|submit my request)\b/i;
-function extractShopNameFromMessage(message) {
-  const trimmed = message.trim();
-  let m = trimmed.match(/(?:book|reserve)(?:\s+(?:a\s+)?dive)?\s+with\s+([^.?!]+)/i);
-  if (m == null ? void 0 : m[1]) return m[1].trim() || null;
-  m = trimmed.match(/(?:i\s+(?:want|'d\s+like)\s+to\s+)?(?:go\s+)?dive(?:\s+dive)?\s+at\s+([^.?!]+)/i);
-  if (m == null ? void 0 : m[1]) return m[1].trim() || null;
-  m = trimmed.match(/(?:diving|dive)\s+at\s+([^.?!]+)/i);
-  if (m == null ? void 0 : m[1]) return m[1].trim() || null;
-  return null;
-}
 function buildBookingSystemPrompt(shopName, diveSiteNames, existingPayload, nextStepHint, rentalEquipmentNames = []) {
   var _a;
   const sitesList = diveSiteNames.length > 0 ? `
@@ -181,7 +171,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __, _$, _aa, _ba, _ca, _da, _ea, _fa, _ga, _ha, _ia, _ja, _ka, _la;
   try {
     const body = await readBody(event);
-    const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill } = body;
+    const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill, pendingEntityClarifyPhrase } = body;
     if (!message || typeof message !== "string") {
       throw new Error("Message is required");
     }
@@ -211,12 +201,36 @@ const aiSearch_post = defineEventHandler(async (event) => {
     }
     const wantsToBook = BOOKING_INTENT_PATTERN.test(message);
     const hasShopContext = !!selectedShopId || lastShops && lastShops.length > 0;
-    const shopNameFromMessage = extractShopNameFromMessage(message);
     let resolvedShop = null;
     let resolvedByNamedShop = false;
-    if (shopNameFromMessage) {
-      resolvedShop = await resolveShopByName(supabaseUrl, supabaseKey, shopNameFromMessage);
-      if (resolvedShop) resolvedByNamedShop = true;
+    const clarifyChoice = parseEntityClarifyMessage(message);
+    if (clarifyChoice && (pendingEntityClarifyPhrase == null ? void 0 : pendingEntityClarifyPhrase.trim())) {
+      const phraseCtx = pendingEntityClarifyPhrase.trim();
+      const forced = await handleForcedEntityClarify(clarifyChoice, phraseCtx, supabaseUrl, supabaseKey);
+      if (forced.kind === "search") {
+        return { ...forced.response, intent: "search" };
+      }
+      if (forced.kind === "clarify") {
+        return { ...clarifyResponsePayload(forced.phrase), intent: "search" };
+      }
+      if (forced.kind === "booking") {
+        resolvedShop = forced.shop;
+        resolvedByNamedShop = true;
+      }
+    } else if (!continuingBooking && !clarifyChoice) {
+      const referredPhrase = extractReferredEntityPhrase(message);
+      if (referredPhrase) {
+        const probe = await probeReferentPhrase(supabaseUrl, supabaseKey, referredPhrase);
+        const routed = await routeReferentFromProbe(supabaseUrl, supabaseKey, probe);
+        if (routed.type === "clarify") {
+          return { ...clarifyResponsePayload(routed.phrase), intent: "search" };
+        }
+        if (routed.type === "search") {
+          return { ...routed.response, intent: "search" };
+        }
+        resolvedShop = routed.shop;
+        resolvedByNamedShop = true;
+      }
     }
     if (wantsToBook && !resolvedShop) {
       if (selectedShopId) {
