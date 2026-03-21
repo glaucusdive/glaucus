@@ -2,7 +2,7 @@ import { a as useRoute, _ as __nuxt_component_0$1, k as __nuxt_component_1$1 } f
 import { computed, ref, mergeProps, unref, withCtx, createVNode, createTextVNode, watch, renderSlot, defineComponent, useSSRContext } from 'vue';
 import { ssrRenderAttrs, ssrRenderComponent, ssrRenderAttr, ssrRenderSlot, ssrInterpolate, ssrRenderList, ssrIncludeBooleanAttr, ssrLooseContain, ssrLooseEqual } from 'vue/server-renderer';
 import { u as useChatSessions, _ as _imports_0 } from './useChatSessions-DRpcVOcE.mjs';
-import { X, User, LogIn, LogOut, Sun, Moon, Star } from 'lucide-vue-next';
+import { X, CircleUser, LogIn, LogOut, Sun, Moon, Star } from 'lucide-vue-next';
 import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
 import { u as useAuth } from './useAuth-8ihLM1hW.mjs';
 import { u as useSupabase } from './useSupabase-eANk4KtY.mjs';
@@ -514,16 +514,18 @@ const _sfc_main = {
           }, {
             default: withCtx((_, _push2, _parent2, _scopeId) => {
               if (_push2) {
-                _push2(ssrRenderComponent(unref(User), {
+                _push2(ssrRenderComponent(unref(CircleUser), {
                   class: "w-4 h-4 shrink-0 opacity-80",
-                  "stroke-width": "1.75"
+                  "stroke-width": "1.75",
+                  "aria-hidden": "true"
                 }, null, _parent2, _scopeId));
                 _push2(` Profile `);
               } else {
                 return [
-                  createVNode(unref(User), {
+                  createVNode(unref(CircleUser), {
                     class: "w-4 h-4 shrink-0 opacity-80",
-                    "stroke-width": "1.75"
+                    "stroke-width": "1.75",
+                    "aria-hidden": "true"
                   }),
                   createTextVNode(" Profile ")
                 ];
@@ -566,7 +568,7 @@ const _sfc_main = {
         } else {
           _push(`<!---->`);
         }
-        _push(`</nav><div class="w-full p-2 shrink-0">`);
+        _push(`</nav><div class="w-full p-0 shrink-0">`);
         _push(ssrRenderComponent(_component_ClientOnly, null, {
           fallback: withCtx((_, _push2, _parent2, _scopeId) => {
             if (_push2) {
@@ -649,4 +651,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=default-D5fqILPz.mjs.map
+//# sourceMappingURL=default-DPDGhhP5.mjs.map
