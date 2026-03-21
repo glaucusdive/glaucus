@@ -484,12 +484,12 @@ const _routes = [
   {
     name: "index",
     path: "/",
-    component: () => import('./index-CuL3mT_p.mjs')
+    component: () => import('./index-WpUpT4x6.mjs')
   },
   {
     name: "auth",
     path: "/auth",
-    component: () => import('./index-DphltReM.mjs')
+    component: () => import('./index-_nOSLl1-.mjs')
   },
   {
     name: "auth-signup",
@@ -499,35 +499,35 @@ const _routes = [
   {
     name: "shops",
     path: "/shops",
-    component: () => import('./index-Dc-I8a4I.mjs')
+    component: () => import('./index-D6PUB5yV.mjs')
   },
   {
     name: "shops-slug",
     path: "/shops/:slug()",
-    component: () => import('./_slug_-DDcq0vEK.mjs')
+    component: () => import('./_slug_-xtV4hr9x.mjs')
   },
   {
     name: "profile",
     path: "/profile",
     meta: { "middleware": "auth" },
-    component: () => import('./index-DkRtusvb.mjs')
+    component: () => import('./index-CfNWojmE.mjs')
   },
   {
     name: "profile-drafts",
     path: "/profile/drafts",
     meta: { "middleware": "auth" },
-    component: () => import('./drafts-5VdxrXIJ.mjs')
+    component: () => import('./drafts-DF7QlRuB.mjs')
   },
   {
     name: "community",
     path: "/community",
-    component: () => import('./index-DTLAXRP9.mjs')
+    component: () => import('./index-DMvC-Llv.mjs')
   },
   {
     name: "profile-defaults",
     path: "/profile/defaults",
     meta: { "middleware": "auth" },
-    component: () => import('./defaults-2car--Yb.mjs')
+    component: () => import('./defaults-CSoo95dW.mjs')
   }
 ];
 const _wrapInTransition = (props, children) => {
@@ -1600,7 +1600,7 @@ defineComponent({
   }
 });
 const clientOnlySymbol = Symbol.for("nuxt:client-only");
-const __nuxt_component_2 = defineComponent({
+const __nuxt_component_1$1 = defineComponent({
   name: "ClientOnly",
   inheritAttrs: false,
   props: ["fallback", "placeholder", "placeholderTag", "fallbackTag"],
@@ -5124,5 +5124,5 @@ let entry;
 }
 const entry$1 = (ssrContext) => entry(ssrContext);
 
-export { LayoutMetaSymbol as L, PageRouteSymbol as P, __nuxt_component_0$1 as _, useRoute as a, useRouter as b, useSeoMeta as c, useAsyncData as d, entry$1 as default, _sfc_main$d as e, createError as f, useNuxtApp as g, appLayoutTransition as h, _wrapInTransition as i, defineNuxtRouteMiddleware as j, __nuxt_component_2 as k, useRuntimeConfig as l, navigateTo as n, useHead as u };
+export { LayoutMetaSymbol as L, PageRouteSymbol as P, __nuxt_component_0$1 as _, useRoute as a, useRouter as b, useSeoMeta as c, useAsyncData as d, entry$1 as default, _sfc_main$d as e, createError as f, useNuxtApp as g, appLayoutTransition as h, _wrapInTransition as i, defineNuxtRouteMiddleware as j, __nuxt_component_1$1 as k, useRuntimeConfig as l, navigateTo as n, useHead as u };
 //# sourceMappingURL=server.mjs.map

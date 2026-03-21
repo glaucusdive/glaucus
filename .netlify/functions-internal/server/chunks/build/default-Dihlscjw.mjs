@@ -1,8 +1,8 @@
-import { _ as __nuxt_component_0$1, k as __nuxt_component_2, a as useRoute } from './server.mjs';
-import { ref, mergeProps, unref, withCtx, createVNode, createTextVNode, watch, computed, renderSlot, defineComponent, useSSRContext } from 'vue';
+import { a as useRoute, _ as __nuxt_component_0$1, k as __nuxt_component_1$1 } from './server.mjs';
+import { computed, ref, mergeProps, unref, withCtx, createVNode, createTextVNode, watch, renderSlot, defineComponent, useSSRContext } from 'vue';
 import { ssrRenderAttrs, ssrRenderComponent, ssrRenderAttr, ssrRenderSlot, ssrInterpolate, ssrRenderList, ssrIncludeBooleanAttr, ssrLooseContain, ssrLooseEqual } from 'vue/server-renderer';
-import { _ as _imports_0 } from './virtual_public-Ch7PIFET.mjs';
-import { X, Sun, Moon, Star } from 'lucide-vue-next';
+import { u as useChatSessions, _ as _imports_0 } from './useChatSessions-DRpcVOcE.mjs';
+import { X, User, LogIn, LogOut, Sun, Moon, Star } from 'lucide-vue-next';
 import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
 import { u as useAuth } from './useAuth-8ihLM1hW.mjs';
 import { u as useSupabase } from './useSupabase-eANk4KtY.mjs';
@@ -61,7 +61,7 @@ const _sfc_main$4 = {
         _push(ssrRenderComponent(_component_NuxtLink, mergeProps({
           to: __props.to,
           class: [
-            "text-sm font-medium bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 px-4 py-2 rounded-sm transition-colors",
+            "text-sm font-medium bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 px-4 py-2 rounded-sm transition-colors inline-flex items-center gap-2 w-full",
             unref(isActive) ? "!bg-zinc-200/50 dark:!bg-zinc-800/50 !text-black dark:!text-white" : "text-zinc-600 dark:text-zinc-400"
           ],
           onClick: handleClick
@@ -79,7 +79,7 @@ const _sfc_main$4 = {
         }, _parent));
       } else {
         _push(`<span${ssrRenderAttrs(mergeProps({ class: [
-          "text-sm font-medium bg-transparent px-4 py-2 rounded-sm transition-colors opacity-50 cursor-not-allowed text-zinc-600 dark:text-zinc-400"
+          "text-sm font-medium bg-transparent px-4 py-2 rounded-sm transition-colors opacity-50 cursor-not-allowed text-zinc-600 dark:text-zinc-400 inline-flex items-center gap-2 w-full"
         ] }, _attrs))}>`);
         ssrRenderSlot(_ctx.$slots, "default", {}, null, _push, _parent);
         _push(`</span>`);
@@ -455,6 +455,9 @@ const _sfc_main = {
   __name: "default",
   __ssrInlineRender: true,
   setup(__props) {
+    const route = useRoute();
+    computed(() => route.path === "/");
+    useChatSessions();
     useTheme();
     const { isSignedIn } = useAuth();
     const { isOpen, contentType, drawerData, drawerOpenKey, isMobileMenuOpen, shouldAnimateMenu, closeMobileMenu } = useDrawer();
@@ -465,8 +468,8 @@ const _sfc_main = {
     };
     return (_ctx, _push, _parent, _attrs) => {
       const _component_NuxtLink = __nuxt_component_0$1;
+      const _component_ClientOnly = __nuxt_component_1$1;
       const _component_NavLink = _sfc_main$4;
-      const _component_ClientOnly = __nuxt_component_2;
       _push(`<div${ssrRenderAttrs(mergeProps({ class: "h-dvh w-dvw overflow-hidden" }, _attrs))}><div class="h-full w-full lg:flex lg:flex-row">`);
       if (unref(isMobileMenuOpen)) {
         _push(`<div class="fixed inset-0 bg-black/50 z-40 lg:hidden"></div>`);
@@ -474,7 +477,7 @@ const _sfc_main = {
         _push(`<!---->`);
       }
       if (unref(isMobileMenuOpen) || isDesktop.value) {
-        _push(`<div class="w-full lg:w-56 h-full shrink-0 bg-zinc-50 dark:bg-black flex flex-col justify-between p-2 absolute lg:relative z-50"><div class="h-fit flex flex-row justify-between items-center p-2 lg:p-4">`);
+        _push(`<div class="w-full lg:w-56 h-full shrink-0 bg-zinc-50 dark:bg-black flex flex-col justify-between p-2 absolute lg:relative z-50"><div><div class="h-fit flex flex-row justify-between items-center p-2 lg:p-4">`);
         _push(ssrRenderComponent(_component_NuxtLink, {
           to: "/",
           onClick: handleCloseMobileMenu,
@@ -499,22 +502,8 @@ const _sfc_main = {
         }, _parent));
         _push(`<button class="w-6 h-6 lg:hidden flex items-center justify-center cursor-pointer text-zinc-900 dark:text-white">`);
         _push(ssrRenderComponent(unref(X), { class: "w-full h-full" }, null, _parent));
-        _push(`</button></div><nav class="w-full flex flex-col gap-1">`);
-        _push(ssrRenderComponent(_component_NavLink, {
-          to: "/community",
-          disabled: ""
-        }, {
-          default: withCtx((_, _push2, _parent2, _scopeId) => {
-            if (_push2) {
-              _push2(`Community`);
-            } else {
-              return [
-                createTextVNode("Community")
-              ];
-            }
-          }),
-          _: 1
-        }, _parent));
+        _push(`</button></div></div><nav class="w-full flex flex-col gap-1">`);
+        _push(ssrRenderComponent(_component_ClientOnly, null, {}, _parent));
         if (unref(isSignedIn)) {
           _push(ssrRenderComponent(_component_NavLink, {
             to: "/profile",
@@ -522,10 +511,18 @@ const _sfc_main = {
           }, {
             default: withCtx((_, _push2, _parent2, _scopeId) => {
               if (_push2) {
-                _push2(`Profile`);
+                _push2(ssrRenderComponent(unref(User), {
+                  class: "w-4 h-4 shrink-0 opacity-80",
+                  "stroke-width": "1.75"
+                }, null, _parent2, _scopeId));
+                _push2(` Profile `);
               } else {
                 return [
-                  createTextVNode("Profile")
+                  createVNode(unref(User), {
+                    class: "w-4 h-4 shrink-0 opacity-80",
+                    "stroke-width": "1.75"
+                  }),
+                  createTextVNode(" Profile ")
                 ];
               }
             }),
@@ -538,10 +535,18 @@ const _sfc_main = {
           }, {
             default: withCtx((_, _push2, _parent2, _scopeId) => {
               if (_push2) {
-                _push2(`Sign in`);
+                _push2(ssrRenderComponent(unref(LogIn), {
+                  class: "w-4 h-4 shrink-0 opacity-80",
+                  "stroke-width": "1.75"
+                }, null, _parent2, _scopeId));
+                _push2(` Sign in `);
               } else {
                 return [
-                  createTextVNode("Sign in")
+                  createVNode(unref(LogIn), {
+                    class: "w-4 h-4 shrink-0 opacity-80",
+                    "stroke-width": "1.75"
+                  }),
+                  createTextVNode(" Sign in ")
                 ];
               }
             }),
@@ -549,11 +554,16 @@ const _sfc_main = {
           }, _parent));
         }
         if (unref(isSignedIn)) {
-          _push(`<button class="text-left w-full px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md cursor-pointer"> Sign out </button>`);
+          _push(`<button type="button" class="w-full flex items-center gap-2 text-left px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200 rounded-sm transition-colors cursor-pointer bg-transparent">`);
+          _push(ssrRenderComponent(unref(LogOut), {
+            class: "w-4 h-4 shrink-0 opacity-80",
+            "stroke-width": "1.75"
+          }, null, _parent));
+          _push(` Sign out </button>`);
         } else {
           _push(`<!---->`);
         }
-        _push(`</nav><div class="w-full p-2">`);
+        _push(`</nav><div class="w-full p-2 shrink-0">`);
         _push(ssrRenderComponent(_component_ClientOnly, null, {
           fallback: withCtx((_, _push2, _parent2, _scopeId) => {
             if (_push2) {
@@ -636,4 +646,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=default-C7HEiG-6.mjs.map
+//# sourceMappingURL=default-Dihlscjw.mjs.map

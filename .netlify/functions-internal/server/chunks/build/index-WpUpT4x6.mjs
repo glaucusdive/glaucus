@@ -1,7 +1,7 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-CjUnUZWm.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-nne1dgxn.mjs';
 import { ref, watch, computed, mergeProps, withCtx, unref, createVNode, Transition, createBlock, createCommentVNode, openBlock, Fragment, renderList, toDisplayString, withModifiers, withDirectives, vModelText, nextTick, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrRenderAttr, ssrRenderClass, ssrRenderList, ssrInterpolate, ssrIncludeBooleanAttr, ssrRenderAttrs } from 'vue/server-renderer';
-import { _ as _imports_0 } from './virtual_public-Ch7PIFET.mjs';
+import { u as useChatSessions, g as getActiveSession, _ as _imports_0, a as useSearchCache, n as notifyChatSidebarUpdated } from './useChatSessions-DRpcVOcE.mjs';
 import { Menu, ChevronRight, ArrowUp, Star, MapPin, Languages, Globe, Phone, Mail } from 'lucide-vue-next';
 import gsap from 'gsap';
 import { _ as _sfc_main$3 } from './DiveShopDetail-DhRcGwG3.mjs';
@@ -178,34 +178,6 @@ _sfc_main$1.setup = (props, ctx) => {
   (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("components/ShopDetailPanel.vue");
   return _sfc_setup$1 ? _sfc_setup$1(props, ctx) : void 0;
 };
-const readCache = () => {
-  return null;
-};
-const writeCache = (state) => {
-  return;
-};
-const useSearchCache = () => {
-  const getCache = () => readCache();
-  const setCache = (state) => {
-    writeCache({
-      messages: state.messages ?? [],
-      userInput: state.userInput ?? "",
-      lastQuery: state.lastQuery ?? null,
-      selectedShopId: state.selectedShopId ?? null,
-      mobileDetailShopId: state.mobileDetailShopId ?? null,
-      drawerOpen: state.drawerOpen ?? false,
-      drawerShopId: state.drawerShopId ?? null,
-      drawerShopName: state.drawerShopName ?? null
-    });
-  };
-  const clearCache = () => {
-  };
-  return {
-    getCache,
-    setCache,
-    clearCache
-  };
-};
 const _sfc_main = {
   __name: "index",
   __ssrInlineRender: true,
@@ -328,12 +300,19 @@ const _sfc_main = {
       "Shops in Mexico that offer advanced certification courses"
     ];
     const { setCache } = useSearchCache();
+    const {
+      applyNewChatFromPage,
+      applySwitchFromPage,
+      consumePendingNewChat,
+      consumePendingSwitch,
+      pendingNewChat,
+      pendingSwitchSessionId
+    } = useChatSessions();
     const { openMobileMenu, openDrawer, closeDrawer, isOpen, contentType, drawerData, updateBookingPayloadIfOpen } = useDrawer();
     const isBookingFormOpen = computed(() => isOpen.value && contentType.value === "booking-form");
-    const persistCache = () => {
-      if (isRestoringCache.value) return;
+    function buildPageCachePayload() {
       const drawerWasOpen = isOpen.value && contentType.value === "booking-form";
-      setCache({
+      return {
         messages: messages.value,
         userInput: userInput.value,
         lastQuery: typeof route.query.q === "string" ? route.query.q : null,
@@ -342,7 +321,71 @@ const _sfc_main = {
         drawerOpen: drawerWasOpen,
         drawerShopId: drawerWasOpen ? drawerData.shopId ?? null : null,
         drawerShopName: drawerWasOpen ? drawerData.shopName ?? null : null
+      };
+    }
+    async function hydrateFromRecord(cachedState) {
+      isRestoringCache.value = true;
+      closeDrawer();
+      messages.value = cachedState.messages || [];
+      userInput.value = cachedState.userInput || "";
+      selectedShopId.value = cachedState.selectedShopId ?? null;
+      mobileDetailShopId.value = cachedState.mobileDetailShopId ?? null;
+      pendingBookingPayload.value = null;
+      isLoading.value = false;
+      if (abortController.value) {
+        abortController.value.abort();
+        abortController.value = null;
+      }
+      isRestoringCache.value = false;
+      await nextTick();
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          if (cachedState.drawerOpen && cachedState.drawerShopId) {
+            const payload = [...cachedState.messages || []].reverse().find((m) => {
+              if (m?.role !== "assistant" || m?.intent !== "booking") return false;
+              return m.payload != null || m && "bookingPayload" in m && m.bookingPayload != null;
+            });
+            const bookingPayload = payload && (payload.payload !== void 0 ? payload.payload : payload.bookingPayload);
+            openDrawer("booking-form", {
+              shopId: cachedState.drawerShopId,
+              shopName: cachedState.drawerShopName || "Dive shop",
+              bookingPayload: bookingPayload ?? void 0
+            });
+          }
+        }, 300);
       });
+    }
+    watch(pendingNewChat, () => {
+      if (!consumePendingNewChat()) return;
+      if (abortController.value) {
+        abortController.value.abort();
+        abortController.value = null;
+        isLoading.value = false;
+      }
+      closeDrawer();
+      const root = applyNewChatFromPage(buildPageCachePayload());
+      const s = getActiveSession(root);
+      if (s) void hydrateFromRecord(s);
+    });
+    watch(pendingSwitchSessionId, (id) => {
+      if (!id) return;
+      const sid = consumePendingSwitch();
+      if (!sid) return;
+      if (abortController.value) {
+        abortController.value.abort();
+        abortController.value = null;
+        isLoading.value = false;
+      }
+      closeDrawer();
+      const root = applySwitchFromPage(sid, buildPageCachePayload());
+      if (!root) return;
+      const s = getActiveSession(root);
+      if (s) void hydrateFromRecord(s);
+    });
+    const persistCache = () => {
+      if (isRestoringCache.value) return;
+      setCache(buildPageCachePayload());
+      notifyChatSidebarUpdated();
     };
     watch([messages, userInput], persistCache, { deep: true });
     watch([selectedShopId, mobileDetailShopId, isOpen, drawerData], persistCache, { deep: true });
@@ -530,7 +573,8 @@ const _sfc_main = {
             selectableOptions: response.selectableOptions,
             rentalEquipmentOptions: response.rentalEquipmentOptions || void 0,
             hideNoneForGear: response.hideNoneForGear ?? false,
-            diveSiteOptions: response.diveSiteOptions || void 0
+            diveSiteOptions: response.diveSiteOptions || void 0,
+            ...response.filters && typeof response.filters === "object" ? { filters: response.filters } : {}
           });
           if (response.intent === "booking" && storedPayload) {
             updateBookingPayloadIfOpen(storedPayload);
@@ -594,18 +638,6 @@ const _sfc_main = {
       if (!canStepBack.value) return;
       messages.value = messages.value.slice(0, -2);
       persistCache();
-    };
-    const clearConversation = () => {
-      if (abortController.value) {
-        abortController.value.abort();
-        abortController.value = null;
-      }
-      messages.value = [];
-      userInput.value = "";
-      isLoading.value = false;
-      selectedShopId.value = null;
-      pendingBookingPayload.value = null;
-      mobileDetailShopId.value = null;
     };
     const handleShopSelected = (shop) => {
       selectedShopId.value = shop.id;
@@ -722,11 +754,6 @@ const _sfc_main = {
             _push2(`</button><h1 class="text-base sm:text-lg lg:text-2xl font-semibold text-zinc-900 dark:text-white overflow-auto truncate"${_scopeId}> Dive Shop Search</h1></div><div class="flex items-center gap-1 p-1 lg:p-4"${_scopeId}>`);
             if (canStepBack.value) {
               _push2(`<button class="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md cursor-pointer" title="Remove last message and your last reply so you can redo that step"${_scopeId}> Step back </button>`);
-            } else {
-              _push2(`<!---->`);
-            }
-            if (messages.value.length > 0) {
-              _push2(`<button class="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md cursor-pointer"${_scopeId}> New Chat </button>`);
             } else {
               _push2(`<!---->`);
             }
@@ -911,12 +938,7 @@ const _sfc_main = {
                       onClick: stepBack,
                       class: "text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md cursor-pointer",
                       title: "Remove last message and your last reply so you can redo that step"
-                    }, " Step back ")) : createCommentVNode("", true),
-                    messages.value.length > 0 ? (openBlock(), createBlock("button", {
-                      key: 1,
-                      onClick: clearConversation,
-                      class: "text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md cursor-pointer"
-                    }, " New Chat ")) : createCommentVNode("", true)
+                    }, " Step back ")) : createCommentVNode("", true)
                   ])
                 ]),
                 createVNode("div", { class: "flex-1 flex flex-row overflow-hidden relative" }, [
@@ -1205,4 +1227,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-CuL3mT_p.mjs.map
+//# sourceMappingURL=index-WpUpT4x6.mjs.map

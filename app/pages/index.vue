@@ -26,10 +26,6 @@
             title="Remove last message and your last reply so you can redo that step">
             Step back
           </button>
-          <button v-if="messages.length > 0" @click="clearConversation"
-            class="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md cursor-pointer">
-            New Chat
-          </button>
         </div>
       </div>
 
@@ -281,7 +277,8 @@ import { Menu, ArrowUp, ChevronRight } from 'lucide-vue-next'
 import gsap from 'gsap'
 import CardSearchResult from '~/components/CardSearchResult.vue'
 import ShopDetailPanel from '~/components/ShopDetailPanel.vue'
-import { useSearchCache } from '~/composables/useSearchCache'
+import { useSearchCache, ensureChatsRoot, readChatsRoot, getActiveSession } from '~/composables/useSearchCache'
+import { useChatSessions, notifyChatSidebarUpdated } from '~/composables/useChatSessions'
 import { useDrawer } from '~/composables/useDrawer'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/composables/useSupabase'
@@ -449,17 +446,23 @@ const exampleQueries = [
 
 // Cache helpers
 const { getCache, setCache, clearCache } = useSearchCache()
+const {
+  applyNewChatFromPage,
+  applySwitchFromPage,
+  consumePendingNewChat,
+  consumePendingSwitch,
+  pendingNewChat,
+  pendingSwitchSessionId
+} = useChatSessions()
 
 // Drawer (mobile menu + booking form)
 const { openMobileMenu, openDrawer, closeDrawer, isOpen, contentType, drawerData, updateBookingPayloadIfOpen } = useDrawer()
 
 const isBookingFormOpen = computed(() => isOpen.value && contentType.value === 'booking-form')
 
-const persistCache = () => {
-  if (isRestoringCache.value) return
-
+function buildPageCachePayload () {
   const drawerWasOpen = isOpen.value && contentType.value === 'booking-form'
-  setCache({
+  return {
     messages: messages.value,
     userInput: userInput.value,
     lastQuery: typeof route.query.q === 'string' ? route.query.q : null,
@@ -468,29 +471,102 @@ const persistCache = () => {
     drawerOpen: drawerWasOpen,
     drawerShopId: drawerWasOpen ? (drawerData.shopId ?? null) : null,
     drawerShopName: drawerWasOpen ? (drawerData.shopName ?? null) : null
+  }
+}
+
+async function hydrateFromRecord (cachedState) {
+  isRestoringCache.value = true
+  closeDrawer()
+  messages.value = cachedState.messages || []
+  userInput.value = cachedState.userInput || ''
+  selectedShopId.value = cachedState.selectedShopId ?? null
+  mobileDetailShopId.value = cachedState.mobileDetailShopId ?? null
+  pendingBookingPayload.value = null
+  isLoading.value = false
+  if (abortController.value) {
+    abortController.value.abort()
+    abortController.value = null
+  }
+  isRestoringCache.value = false
+  await nextTick()
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      if (cachedState.drawerOpen && cachedState.drawerShopId) {
+        const payload = [...(cachedState.messages || [])].reverse().find((m) => {
+          if (m?.role !== 'assistant' || m?.intent !== 'booking') return false
+          return m.payload != null || (m && 'bookingPayload' in m && m.bookingPayload != null)
+        })
+        const bookingPayload = payload && (payload.payload !== undefined ? payload.payload : payload.bookingPayload)
+        openDrawer('booking-form', {
+          shopId: cachedState.drawerShopId,
+          shopName: cachedState.drawerShopName || 'Dive shop',
+          bookingPayload: bookingPayload ?? undefined
+        })
+      }
+    }, 300)
   })
+}
+
+watch(pendingNewChat, () => {
+  if (!consumePendingNewChat()) return
+  if (abortController.value) {
+    abortController.value.abort()
+    abortController.value = null
+    isLoading.value = false
+  }
+  closeDrawer()
+  const root = applyNewChatFromPage(buildPageCachePayload())
+  const s = getActiveSession(root)
+  if (s) void hydrateFromRecord(s)
+})
+
+watch(pendingSwitchSessionId, (id) => {
+  if (!id) return
+  const sid = consumePendingSwitch()
+  if (!sid) return
+  if (abortController.value) {
+    abortController.value.abort()
+    abortController.value = null
+    isLoading.value = false
+  }
+  closeDrawer()
+  const root = applySwitchFromPage(sid, buildPageCachePayload())
+  if (!root) return
+  const s = getActiveSession(root)
+  if (s) void hydrateFromRecord(s)
+})
+
+const persistCache = () => {
+  if (isRestoringCache.value) return
+
+  setCache(buildPageCachePayload())
+  notifyChatSidebarUpdated()
 }
 
 // Restore cache or run initial query
 onMounted(async () => {
-  const cachedState = getCache()
+  ensureChatsRoot()
+  const root = readChatsRoot()
+  const activeRecord = root ? getActiveSession(root) : null
+  const cachedState = activeRecord && Array.isArray(activeRecord.messages) && activeRecord.messages.length > 0
+    ? activeRecord
+    : null
   const initialQuery = typeof route.query.q === 'string' ? route.query.q : null
+  const flatCache = getCache()
 
-  if (cachedState && Array.isArray(cachedState.messages) && cachedState.messages.length > 0) {
+  if (cachedState && cachedState.messages.length > 0) {
     messages.value = cachedState.messages
     userInput.value = cachedState.userInput || ''
-    // Restore layout: selected dive shop panel and/or booking form drawer
     if (cachedState.selectedShopId) selectedShopId.value = cachedState.selectedShopId
     if (cachedState.mobileDetailShopId) mobileDetailShopId.value = cachedState.mobileDetailShopId
 
     if (!initialQuery || initialQuery === cachedState.lastQuery) {
       isRestoringCache.value = false
-      // Wait for hydration to complete before hiding loading screen
+      notifyChatSidebarUpdated()
       await nextTick()
       requestAnimationFrame(() => {
         setTimeout(() => {
           isPageLoading.value = false
-          // Reopen booking form drawer if it was open when cache was saved (e.g. after sign-in)
           if (cachedState.drawerOpen && cachedState.drawerShopId) {
             const payload = [...(cachedState.messages || [])].reverse().find((m) => {
               if (m?.role !== 'assistant' || m?.intent !== 'booking') return false
@@ -509,14 +585,16 @@ onMounted(async () => {
     }
   }
 
-  if (cachedState && initialQuery && initialQuery !== cachedState.lastQuery) {
+  if (flatCache && initialQuery && initialQuery !== flatCache.lastQuery) {
     clearCache()
+    ensureChatsRoot()
     messages.value = []
     userInput.value = ''
   }
 
   if (initialQuery) {
     isRestoringCache.value = false
+    notifyChatSidebarUpdated()
     await sendMessage(initialQuery)
     // Wait for hydration to complete before hiding loading screen
     await nextTick()
@@ -529,6 +607,7 @@ onMounted(async () => {
   }
 
   isRestoringCache.value = false
+  notifyChatSidebarUpdated()
   // Wait for hydration to complete before hiding loading screen
   await nextTick()
   requestAnimationFrame(() => {
@@ -768,7 +847,8 @@ const sendMessage = async (messageText, displayText) => {
         selectableOptions: response.selectableOptions,
         rentalEquipmentOptions: response.rentalEquipmentOptions || undefined,
         hideNoneForGear: response.hideNoneForGear ?? false,
-        diveSiteOptions: response.diveSiteOptions || undefined
+        diveSiteOptions: response.diveSiteOptions || undefined,
+        ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {})
       })
       if (response.intent === 'booking' && storedPayload) {
         updateBookingPayloadIfOpen(storedPayload)
@@ -844,23 +924,6 @@ const stepBack = () => {
   if (!canStepBack.value) return
   messages.value = messages.value.slice(0, -2)
   persistCache()
-}
-
-// Clear conversation
-const clearConversation = () => {
-  // Cancel any in-progress request
-  if (abortController.value) {
-    abortController.value.abort()
-    abortController.value = null
-  }
-  
-  messages.value = []
-  userInput.value = ''
-  isLoading.value = false
-  selectedShopId.value = null
-  pendingBookingPayload.value = null
-  mobileDetailShopId.value = null
-  clearCache()
 }
 
 // Handle shop selection (card tap: select for booking; on mobile does not open drawer)
