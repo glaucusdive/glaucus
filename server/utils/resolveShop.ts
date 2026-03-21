@@ -45,3 +45,24 @@ export async function resolveShopByName (
   if (error || !data || data.length === 0) return null
   return data[0] as ResolvedShop
 }
+
+/**
+ * List dive shops whose business_name matches (ilike), best-rated first.
+ */
+export async function listShopsMatchingName (
+  supabaseUrl: string,
+  supabaseKey: string,
+  nameQuery: string,
+  limit = 5
+): Promise<ResolvedShop[]> {
+  if (!nameQuery || nameQuery.trim().length < 2) return []
+  const client = createClient(supabaseUrl, supabaseKey)
+  const { data, error } = await client
+    .from('diveshops')
+    .select('id, business_name, email')
+    .ilike('business_name', `%${nameQuery.trim()}%`)
+    .limit(limit)
+    .order('google_rating', { ascending: false, nullsFirst: false })
+  if (error || !data?.length) return []
+  return data as ResolvedShop[]
+}

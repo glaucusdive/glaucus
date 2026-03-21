@@ -42,3 +42,70 @@ When designing or implementing AI agents in this project, ensure each capability
 - [ ] Retries: policy per tool type; no blind retry on non-idempotent actions.
 - [ ] Steps: single vs multi-step and stopping condition defined.
 - [ ] State: who holds it; what the agent can read/write; confirmation before destructive updates.
+
+---
+
+## Glaucus dive chat orchestrator (search + booking)
+
+Concrete instance: `server/api/ai-search.post.ts` plus utilities under `server/utils/`. **Tool selection for top-level routing (search vs booking vs entity clarify) is done by the orchestrator** because outcomes must match Supabase data; the model is not asked to pick tools for that step. The model is still used for search filter extraction (`FILTERS:` / `MESSAGE:`) and booking-field conversation when already in the booking branch.
+
+### Tools (contract)
+
+| Tool / read | Input | Side effects | Triggered by |
+|-------------|--------|--------------|--------------|
+| `extractReferredEntityPhrase` | user message text | none | Orchestrator when not in booking continuation |
+| `probeReferentPhrase` | phrase string | read: diveshops, dive_sites, countries, country_aliases, regions, diveshops locale/city/state | Orchestrator |
+| `routeReferentFromProbe` | probe result | may call `buildDiveShopQuery` and junction reads for dive-site-linked shops (reads only, in `entityRouting.ts`) | Orchestrator |
+| `handleForcedEntityClarify` | chip kind + stored phrase | same reads as above | Orchestrator when user sends `entity_clarify:*` with `pendingEntityClarifyPhrase` |
+| `buildDiveShopQuery` | `SearchFilters` | read diveshops | Orchestrator (entity-prefilled search) or post-LLM search path |
+| `getShopById`, `listShopsMatchingName` | id / name fragment | read diveshops | Orchestrator |
+| `getDiveSitesForShop`, `getRentalEquipmentForShop` | shop id | read | Orchestrator (booking branch) |
+| `tryFastPath`, `tryFastPathUnitOnly`, booking LLM | message + payload | none (until user confirms send) | Orchestrator |
+| OpenRouter chat | conversation | external API | Orchestrator after filters / follow-ups |
+| Booking email (`/api/booking`) | final payload | sends email | User-confirmed step only (existing rules) |
+
+### Clarification (terminal state + structured replies)
+
+When the referent is **ambiguous** (multiple entity categories match) or **unknown** (no matches), the orchestrator returns **one assistant turn** with `selectableOptions` chips. Chip **values** are stable tokens: `entity_clarify:dive_shop`, `entity_clarify:dive_site`, `entity_clarify:city`, `entity_clarify:country`, `entity_clarify:browse`. Chips are **structured user input**, not model-generated suggestions.
+
+### State
+
+- **Backend:** stateless between requests.
+- **Frontend:** holds `bookingPayload`, `selectedShopId`, `pendingBookingPayload`, and echoes **`pendingEntityClarifyPhrase`** only when the outgoing message is an `entity_clarify:*` token, using **`entityClarifyPending.phrase`** from the prior assistant message (`app/pages/index.vue`).
+
+### Steps
+
+One user message → one handler response. **Stopping conditions:** `BOOKING_READY` + user confirm to send; search results returned; or clarification chips shown (next turn applies forced kind + phrase).
+
+### Retries
+
+Unchanged from global rules: idempotent reads may be retried by the client; booking send has no blind retry.
+
+### Flow (entity routing)
+
+```mermaid
+flowchart TD
+  msg[UserMessage]
+  clarifyChip{Clarify chip and pending phrase}
+  msg --> clarifyChip
+  clarifyChip -->|yes| forced[handleForcedEntityClarify]
+  forced -->|browse| browse[Normal search flow]
+  forced -->|booking| book[BookingFlow]
+  forced -->|search| searchPrefill[Prefilled search results]
+  forced -->|clarify| chips[Clarify chips]
+  clarifyChip -->|no| extract[extractReferredEntityPhrase]
+  extract -->|no phrase| browse
+  extract -->|phrase| probe[probeReferentPhrase]
+  probe --> route[routeReferentFromProbe]
+  route -->|booking| book
+  route -->|search| searchPrefill
+  route -->|clarify| chips
+```
+
+### Glaucus checklist (this agent)
+
+- [x] Tools: listed above; orchestrator vs model documented.
+- [x] Tool selection: orchestrator for entity + booking branch routing; model for filter/booking copy where noted.
+- [x] Retries: aligned with sections 3 and 5 above.
+- [x] Steps: one turn per response; stopping conditions above.
+- [x] State: frontend-held payloads and clarification phrase; no destructive writes without confirm.

@@ -694,6 +694,19 @@ function isGearChipSelected (msg, eq) {
   return getSelectedGearNamesForMessage(msg).has((eq.name ?? '').toString().trim().toLowerCase())
 }
 
+/** When user taps entity clarification chip, backend needs the original phrase from the prior assistant message. */
+function getPendingEntityClarifyPhraseForOutgoing (outgoingMessage) {
+  if (!/^entity_clarify:/i.test(String(outgoingMessage).trim())) return undefined
+  const arr = messages.value
+  for (let i = arr.length - 2; i >= 0; i--) {
+    const m = arr[i]
+    if (m?.role === 'assistant' && m.entityClarifyPending?.phrase) {
+      return m.entityClarifyPending.phrase
+    }
+  }
+  return undefined
+}
+
 // Send message to AI. Optional displayText: show this in the chat bubble while sending messageText to the API (e.g. chip label vs value).
 const sendMessage = async (messageText, displayText) => {
   const message = messageText ?? userInput.value.trim()
@@ -744,6 +757,8 @@ const sendMessage = async (messageText, displayText) => {
       .filter(m => m.role === 'assistant' && m.shops?.length)
       .reduce((sum, m) => sum + (m.shops?.length ?? 0), 0)
 
+    const pendingEntityClarifyPhrase = getPendingEntityClarifyPhraseForOutgoing(message)
+
     const response = await $fetch('/api/ai-search', {
       method: 'POST',
       signal: currentAbortController.signal,
@@ -761,7 +776,8 @@ const sendMessage = async (messageText, displayText) => {
         ...(inBookingFlow && lastBookingShopName ? { lastBookingShopName } : {}),
         ...(inBookingFlow && lastPayload ? { bookingPayload: lastPayload } : {}),
         ...(pendingBookingPayload.value ? { pendingBookingPayload: pendingBookingPayload.value } : {}),
-        ...(profilePrefillSnapshot.value ? { profilePrefill: profilePrefillSnapshot.value } : {})
+        ...(profilePrefillSnapshot.value ? { profilePrefill: profilePrefillSnapshot.value } : {}),
+        ...(pendingEntityClarifyPhrase ? { pendingEntityClarifyPhrase } : {})
       }
     })
     
@@ -848,7 +864,8 @@ const sendMessage = async (messageText, displayText) => {
         rentalEquipmentOptions: response.rentalEquipmentOptions || undefined,
         hideNoneForGear: response.hideNoneForGear ?? false,
         diveSiteOptions: response.diveSiteOptions || undefined,
-        ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {})
+        ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {}),
+        ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {})
       })
       if (response.intent === 'booking' && storedPayload) {
         updateBookingPayloadIfOpen(storedPayload)
