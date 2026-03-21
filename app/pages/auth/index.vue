@@ -6,7 +6,7 @@
           {{ isSignUp ? 'Create account' : 'Sign in' }}
         </h1>
 
-        <div v-if="message" class="p-3 rounded-md text-sm" :class="messageSuccess ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'">
+        <div v-if="message" class="p-3 rounded-md text-sm" :class="messageClass">
           {{ message }}
         </div>
 
@@ -77,11 +77,23 @@ const displayName = ref('')
 const magicLinkOnly = ref(false)
 const loading = ref(false)
 const message = ref('')
-const messageSuccess = ref(false)
+/** success = green, error = red, caution = amber (e.g. email may already exist — Supabase returns no error) */
+const messageKind = ref<'success' | 'error' | 'caution'>('success')
 
-function setMessage (text: string, success: boolean) {
+const messageClass = computed(() => {
+  switch (messageKind.value) {
+    case 'success':
+      return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+    case 'caution':
+      return 'bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100'
+    default:
+      return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
+  }
+})
+
+function setMessage (text: string, kind: 'success' | 'error' | 'caution' = 'success') {
   message.value = text
-  messageSuccess.value = success
+  messageKind.value = kind
 }
 
 async function handleGoogle () {
@@ -93,7 +105,7 @@ async function handleGoogle () {
     await router.push(redirect)
   } catch (e: unknown) {
     const err = e as Error
-    setMessage(err?.message ?? 'Sign in with Google failed', false)
+    setMessage(err?.message ?? 'Sign in with Google failed', 'error')
   } finally {
     loading.value = false
   }
@@ -105,10 +117,17 @@ async function handleEmail () {
   try {
     if (magicLinkOnly.value) {
       await signInWithMagicLink(email.value)
-      setMessage('Check your email for the sign-in link.', true)
+      setMessage('Check your email for the sign-in link.', 'success')
     } else if (isSignUp.value) {
-      await signUpWithEmail(email.value, password.value, displayName.value || undefined)
-      setMessage('Check your email to confirm your account, then sign in.', true)
+      const signupData = await signUpWithEmail(email.value, password.value, displayName.value || undefined)
+      if (signupData.obfuscatedDuplicate) {
+        setMessage(
+          'This email may already be registered (for example with Google). Use “Continue with Google” or sign in. If you are new here, check spam or try again in a few minutes.',
+          'caution'
+        )
+      } else {
+        setMessage('Check your email to confirm your account, then sign in.', 'success')
+      }
     } else {
       await signInWithEmail(email.value, password.value)
       const redirect = (route.query.redirect as string) || '/'
@@ -116,7 +135,7 @@ async function handleEmail () {
     }
   } catch (e: unknown) {
     const err = e as Error
-    setMessage(err?.message ?? 'Something went wrong', false)
+    setMessage(err?.message ?? 'Something went wrong', 'error')
   } finally {
     loading.value = false
   }
