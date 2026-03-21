@@ -413,7 +413,20 @@ const selectedShopId = ref(null)
 const pendingBookingPayload = ref(null)
 /** On mobile, drawer opens only when user taps "View details"; card tap only selects for booking. */
 const mobileDetailShopId = ref(null)
-const isPageLoading = ref(true)
+/** Pathname when this browser tab first loaded the app (set in `glaucus-session-entry` plugin). */
+const sessionEntryPath = useState('glaucus-session-entry-path', () => '')
+const chatIndexBootFinished = useState('glaucus-chat-index-boot-finished', () => false)
+function shouldShowChatBootLoader () {
+  if (import.meta.server) return true
+  const p = sessionEntryPath.value
+  const landedOnChatRoot = p === '/' || p === ''
+  return landedOnChatRoot && !chatIndexBootFinished.value
+}
+const isPageLoading = ref(shouldShowChatBootLoader())
+function finishChatIndexBoot () {
+  chatIndexBootFinished.value = true
+  isPageLoading.value = false
+}
 
 // Selected shop name for "Book for [name]" chip (from results list or booking message)
 const selectedShopName = computed(() => {
@@ -636,7 +649,7 @@ onMounted(async () => {
       await nextTick()
       requestAnimationFrame(() => {
         setTimeout(() => {
-          isPageLoading.value = false
+          finishChatIndexBoot()
           if (cachedState.drawerOpen && cachedState.drawerShopId) {
             const payload = [...(cachedState.messages || [])].reverse().find((m) => {
               if (m?.role !== 'assistant' || m?.intent !== 'booking') return false
@@ -670,7 +683,7 @@ onMounted(async () => {
     await nextTick()
     requestAnimationFrame(() => {
       setTimeout(() => {
-        isPageLoading.value = false
+        finishChatIndexBoot()
       }, 300)
     })
     return
@@ -682,7 +695,7 @@ onMounted(async () => {
   await nextTick()
   requestAnimationFrame(() => {
     setTimeout(() => {
-      isPageLoading.value = false
+      finishChatIndexBoot()
     }, 300)
   })
 })

@@ -1,9 +1,9 @@
 import { defineComponent, inject, computed, unref, defineAsyncComponent, shallowRef, h, Suspense, nextTick, mergeProps, provide, shallowReactive } from 'vue';
-import { g as useNuxtApp, P as PageRouteSymbol, a as useRoute, h as appLayoutTransition, i as _wrapInTransition, L as LayoutMetaSymbol } from './server.mjs';
+import { h as useNuxtApp, P as PageRouteSymbol, a as useRoute, i as appLayoutTransition, j as _wrapInTransition, L as LayoutMetaSymbol } from './server.mjs';
 import { useRoute as useRoute$1 } from 'vue-router';
 
 const layouts = {
-  default: defineAsyncComponent(() => import('./default-DPDGhhP5.mjs').then((m) => m.default || m))
+  default: defineAsyncComponent(() => import('./default-D-F694CG.mjs').then((m) => m.default || m))
 };
 const LayoutLoader = defineComponent({
   name: "LayoutLoader",
@@ -134,4 +134,4 @@ const LayoutProvider = defineComponent({
 });
 
 export { __nuxt_component_0 as _ };
-//# sourceMappingURL=nuxt-layout-CQ-IFpM2.mjs.map
+//# sourceMappingURL=nuxt-layout-BF9m2Lkn.mjs.map

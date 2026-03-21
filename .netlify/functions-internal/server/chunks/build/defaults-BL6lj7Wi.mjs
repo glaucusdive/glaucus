@@ -1,9 +1,9 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-CQ-IFpM2.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-BF9m2Lkn.mjs';
 import { _ as __nuxt_component_0$1 } from './server.mjs';
 import { defineComponent, ref, mergeProps, withCtx, createTextVNode, unref, createVNode, createBlock, createCommentVNode, openBlock, toDisplayString, withModifiers, withDirectives, vModelText, Fragment, renderList, vModelSelect, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrInterpolate, ssrRenderAttr, ssrRenderList, ssrIncludeBooleanAttr, ssrLooseContain, ssrLooseEqual, ssrRenderClass } from 'vue/server-renderer';
-import { u as useAuth } from './useAuth-8ihLM1hW.mjs';
-import { u as useSupabase } from './useSupabase-eANk4KtY.mjs';
+import { u as useAuth } from './useAuth-gG0jt1Ap.mjs';
+import { u as useSupabase } from './useSupabase-G2CWeDSk.mjs';
 import 'vue-router';
 import '../nitro/nitro.mjs';
 import '@supabase/supabase-js';
@@ -158,11 +158,11 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
                 } else {
                   _push2(`<!---->`);
                 }
-                _push2(`</div><div class="grid grid-cols-1 sm:grid-cols-2 gap-2"${_scopeId}><div${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Name</label><input${ssrRenderAttr("value", diver.name)} type="text" class="w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white"${_scopeId}></div><div${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Certification #</label><input${ssrRenderAttr("value", diver.certificationNumber)} type="text" class="w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white"${_scopeId}></div><div${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Number of dives</label><input${ssrRenderAttr("value", diver.numberOfDives)} type="text" class="w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white" placeholder="e.g. 21"${_scopeId}></div><div class="flex gap-2"${_scopeId}><div class="flex-1"${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Height</label><input${ssrRenderAttr("value", diver.height)} type="text" class="w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white"${_scopeId}></div><div class="w-20"${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Unit</label><select class="w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white"${_scopeId}><option value="cm"${ssrIncludeBooleanAttr(Array.isArray(diver.heightUnit) ? ssrLooseContain(diver.heightUnit, "cm") : ssrLooseEqual(diver.heightUnit, "cm")) ? " selected" : ""}${_scopeId}>cm</option><option value="ft-in"${ssrIncludeBooleanAttr(Array.isArray(diver.heightUnit) ? ssrLooseContain(diver.heightUnit, "ft-in") : ssrLooseEqual(diver.heightUnit, "ft-in")) ? " selected" : ""}${_scopeId}>ft &amp; in</option></select></div></div><div class="flex gap-2"${_scopeId}><div class="flex-1"${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Weight</label><input${ssrRenderAttr("value", diver.weight)} type="text" class="w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white"${_scopeId}></div><div class="w-20"${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Unit</label><select class="w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white"${_scopeId}><option value="kg"${ssrIncludeBooleanAttr(Array.isArray(diver.weightUnit) ? ssrLooseContain(diver.weightUnit, "kg") : ssrLooseEqual(diver.weightUnit, "kg")) ? " selected" : ""}${_scopeId}>kg</option><option value="lbs"${ssrIncludeBooleanAttr(Array.isArray(diver.weightUnit) ? ssrLooseContain(diver.weightUnit, "lbs") : ssrLooseEqual(diver.weightUnit, "lbs")) ? " selected" : ""}${_scopeId}>lbs</option></select></div></div></div><div${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-1"${_scopeId}>Past rental gear</label><div class="flex flex-wrap gap-2"${_scopeId}><!--[-->`);
+                _push2(`</div><div class="grid grid-cols-1 sm:grid-cols-2 gap-2"${_scopeId}><div${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Name</label><input${ssrRenderAttr("value", diver.name)} type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white"${_scopeId}></div><div${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Certification #</label><input${ssrRenderAttr("value", diver.certificationNumber)} type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white"${_scopeId}></div><div${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Number of dives</label><input${ssrRenderAttr("value", diver.numberOfDives)} type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white" placeholder="e.g. 21"${_scopeId}></div><div class="flex gap-2 items-end"${_scopeId}><div class="flex-1 min-w-0"${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Height</label><input${ssrRenderAttr("value", diver.height)} type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white"${_scopeId}></div><div class="w-24 shrink-0"${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Unit</label><select class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-tight text-zinc-900 dark:text-white"${_scopeId}><option value="cm"${ssrIncludeBooleanAttr(Array.isArray(diver.heightUnit) ? ssrLooseContain(diver.heightUnit, "cm") : ssrLooseEqual(diver.heightUnit, "cm")) ? " selected" : ""}${_scopeId}>cm</option><option value="ft-in"${ssrIncludeBooleanAttr(Array.isArray(diver.heightUnit) ? ssrLooseContain(diver.heightUnit, "ft-in") : ssrLooseEqual(diver.heightUnit, "ft-in")) ? " selected" : ""}${_scopeId}>ft &amp; in</option></select></div></div><div class="flex gap-2 items-end"${_scopeId}><div class="flex-1 min-w-0"${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Weight</label><input${ssrRenderAttr("value", diver.weight)} type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white"${_scopeId}></div><div class="w-24 shrink-0"${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Unit</label><select class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-tight text-zinc-900 dark:text-white"${_scopeId}><option value="kg"${ssrIncludeBooleanAttr(Array.isArray(diver.weightUnit) ? ssrLooseContain(diver.weightUnit, "kg") : ssrLooseEqual(diver.weightUnit, "kg")) ? " selected" : ""}${_scopeId}>kg</option><option value="lbs"${ssrIncludeBooleanAttr(Array.isArray(diver.weightUnit) ? ssrLooseContain(diver.weightUnit, "lbs") : ssrLooseEqual(diver.weightUnit, "lbs")) ? " selected" : ""}${_scopeId}>lbs</option></select></div></div></div><div${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-1"${_scopeId}>Past rental gear</label><div class="flex flex-wrap items-center gap-2"${_scopeId}><!--[-->`);
                 ssrRenderList(diver.gear, (g, gi) => {
-                  _push2(`<span class="inline-flex items-center gap-1 rounded bg-zinc-200 dark:bg-zinc-700 px-2 py-0.5 text-xs text-zinc-800 dark:text-zinc-200"${_scopeId}>${ssrInterpolate(g.gearType || "Gear")} <button type="button" class="hover:text-red-600 dark:hover:text-red-400 cursor-pointer" aria-label="Remove"${_scopeId}>×</button></span>`);
+                  _push2(`<span class="inline-flex h-8 items-center gap-1 rounded bg-zinc-200 dark:bg-zinc-700 px-2 text-xs text-zinc-800 dark:text-zinc-200"${_scopeId}>${ssrInterpolate(g.gearType || "Gear")} <button type="button" class="hover:text-red-600 dark:hover:text-red-400 cursor-pointer" aria-label="Remove"${_scopeId}>×</button></span>`);
                 });
-                _push2(`<!--]--><select class="rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1 text-xs text-zinc-900 dark:text-white"${_scopeId}><option value=""${ssrIncludeBooleanAttr(Array.isArray(diver.gearToAdd) ? ssrLooseContain(diver.gearToAdd, "") : ssrLooseEqual(diver.gearToAdd, "")) ? " selected" : ""}${_scopeId}>Add gear…</option><!--[-->`);
+                _push2(`<!--]--><select class="h-8 min-w-[7.5rem] rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-xs leading-tight text-zinc-900 dark:text-white"${_scopeId}><option value=""${ssrIncludeBooleanAttr(Array.isArray(diver.gearToAdd) ? ssrLooseContain(diver.gearToAdd, "") : ssrLooseEqual(diver.gearToAdd, "")) ? " selected" : ""}${_scopeId}>Add gear…</option><!--[-->`);
                 ssrRenderList(gearTypes, (t) => {
                   _push2(`<option${ssrRenderAttr("value", t)}${ssrIncludeBooleanAttr(Array.isArray(diver.gearToAdd) ? ssrLooseContain(diver.gearToAdd, t) : ssrLooseEqual(diver.gearToAdd, t)) ? " selected" : ""}${_scopeId}>${ssrInterpolate(t)}</option>`);
                 });
@@ -265,7 +265,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
                             withDirectives(createVNode("input", {
                               "onUpdate:modelValue": ($event) => diver.name = $event,
                               type: "text",
-                              class: "w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white"
+                              class: "h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white"
                             }, null, 8, ["onUpdate:modelValue"]), [
                               [vModelText, diver.name]
                             ])
@@ -275,7 +275,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
                             withDirectives(createVNode("input", {
                               "onUpdate:modelValue": ($event) => diver.certificationNumber = $event,
                               type: "text",
-                              class: "w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white"
+                              class: "h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white"
                             }, null, 8, ["onUpdate:modelValue"]), [
                               [vModelText, diver.certificationNumber]
                             ])
@@ -285,28 +285,28 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
                             withDirectives(createVNode("input", {
                               "onUpdate:modelValue": ($event) => diver.numberOfDives = $event,
                               type: "text",
-                              class: "w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white",
+                              class: "h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white",
                               placeholder: "e.g. 21"
                             }, null, 8, ["onUpdate:modelValue"]), [
                               [vModelText, diver.numberOfDives]
                             ])
                           ]),
-                          createVNode("div", { class: "flex gap-2" }, [
-                            createVNode("div", { class: "flex-1" }, [
+                          createVNode("div", { class: "flex gap-2 items-end" }, [
+                            createVNode("div", { class: "flex-1 min-w-0" }, [
                               createVNode("label", { class: "block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5" }, "Height"),
                               withDirectives(createVNode("input", {
                                 "onUpdate:modelValue": ($event) => diver.height = $event,
                                 type: "text",
-                                class: "w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white"
+                                class: "h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white"
                               }, null, 8, ["onUpdate:modelValue"]), [
                                 [vModelText, diver.height]
                               ])
                             ]),
-                            createVNode("div", { class: "w-20" }, [
+                            createVNode("div", { class: "w-24 shrink-0" }, [
                               createVNode("label", { class: "block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5" }, "Unit"),
                               withDirectives(createVNode("select", {
                                 "onUpdate:modelValue": ($event) => diver.heightUnit = $event,
-                                class: "w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white"
+                                class: "h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-tight text-zinc-900 dark:text-white"
                               }, [
                                 createVNode("option", { value: "cm" }, "cm"),
                                 createVNode("option", { value: "ft-in" }, "ft & in")
@@ -315,22 +315,22 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
                               ])
                             ])
                           ]),
-                          createVNode("div", { class: "flex gap-2" }, [
-                            createVNode("div", { class: "flex-1" }, [
+                          createVNode("div", { class: "flex gap-2 items-end" }, [
+                            createVNode("div", { class: "flex-1 min-w-0" }, [
                               createVNode("label", { class: "block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5" }, "Weight"),
                               withDirectives(createVNode("input", {
                                 "onUpdate:modelValue": ($event) => diver.weight = $event,
                                 type: "text",
-                                class: "w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white"
+                                class: "h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white"
                               }, null, 8, ["onUpdate:modelValue"]), [
                                 [vModelText, diver.weight]
                               ])
                             ]),
-                            createVNode("div", { class: "w-20" }, [
+                            createVNode("div", { class: "w-24 shrink-0" }, [
                               createVNode("label", { class: "block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5" }, "Unit"),
                               withDirectives(createVNode("select", {
                                 "onUpdate:modelValue": ($event) => diver.weightUnit = $event,
-                                class: "w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white"
+                                class: "h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-tight text-zinc-900 dark:text-white"
                               }, [
                                 createVNode("option", { value: "kg" }, "kg"),
                                 createVNode("option", { value: "lbs" }, "lbs")
@@ -342,11 +342,11 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
                         ]),
                         createVNode("div", null, [
                           createVNode("label", { class: "block text-xs text-zinc-500 dark:text-zinc-400 mb-1" }, "Past rental gear"),
-                          createVNode("div", { class: "flex flex-wrap gap-2" }, [
+                          createVNode("div", { class: "flex flex-wrap items-center gap-2" }, [
                             (openBlock(true), createBlock(Fragment, null, renderList(diver.gear, (g, gi) => {
                               return openBlock(), createBlock("span", {
                                 key: gi,
-                                class: "inline-flex items-center gap-1 rounded bg-zinc-200 dark:bg-zinc-700 px-2 py-0.5 text-xs text-zinc-800 dark:text-zinc-200"
+                                class: "inline-flex h-8 items-center gap-1 rounded bg-zinc-200 dark:bg-zinc-700 px-2 text-xs text-zinc-800 dark:text-zinc-200"
                               }, [
                                 createTextVNode(toDisplayString(g.gearType || "Gear") + " ", 1),
                                 createVNode("button", {
@@ -360,7 +360,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
                             withDirectives(createVNode("select", {
                               "onUpdate:modelValue": ($event) => diver.gearToAdd = $event,
                               onChange: ($event) => addDiverGearFromSelect(idx),
-                              class: "rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1 text-xs text-zinc-900 dark:text-white"
+                              class: "h-8 min-w-[7.5rem] rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-xs leading-tight text-zinc-900 dark:text-white"
                             }, [
                               createVNode("option", { value: "" }, "Add gear…"),
                               (openBlock(), createBlock(Fragment, null, renderList(gearTypes, (t) => {
@@ -404,4 +404,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=defaults-C6DqYLcG.mjs.map
+//# sourceMappingURL=defaults-BL6lj7Wi.mjs.map

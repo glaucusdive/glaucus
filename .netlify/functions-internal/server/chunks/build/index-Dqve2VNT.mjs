@@ -1,8 +1,8 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-CQ-IFpM2.mjs';
-import { a as useRoute, b as useRouter, _ as __nuxt_component_0$1 } from './server.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-BF9m2Lkn.mjs';
+import { a as useRoute, c as useRouter, _ as __nuxt_component_0$1 } from './server.mjs';
 import { defineComponent, computed, ref, mergeProps, withCtx, unref, createTextVNode, createVNode, createBlock, createCommentVNode, toDisplayString, openBlock, withModifiers, withDirectives, isRef, vModelText, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrInterpolate, ssrRenderClass, ssrRenderAttr, ssrIncludeBooleanAttr } from 'vue/server-renderer';
-import { u as useAuth } from './useAuth-8ihLM1hW.mjs';
+import { u as useAuth } from './useAuth-gG0jt1Ap.mjs';
 import 'vue-router';
 import '../nitro/nitro.mjs';
 import '@supabase/supabase-js';
@@ -28,7 +28,7 @@ import 'unhead/server';
 import 'devalue';
 import 'unhead/plugins';
 import 'unhead/utils';
-import './useSupabase-eANk4KtY.mjs';
+import './useSupabase-G2CWeDSk.mjs';
 
 const _sfc_main = /* @__PURE__ */ defineComponent({
   __name: "index",
@@ -311,4 +311,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-SU_NcyNK.mjs.map
+//# sourceMappingURL=index-Dqve2VNT.mjs.map

@@ -1,14 +1,14 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-CQ-IFpM2.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-BF9m2Lkn.mjs';
 import { ref, watch, computed, mergeProps, withCtx, unref, createVNode, Transition, createBlock, createCommentVNode, openBlock, Fragment, renderList, toDisplayString, withModifiers, withDirectives, vModelText, nextTick, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrRenderAttr, ssrRenderClass, ssrRenderList, ssrInterpolate, ssrIncludeBooleanAttr, ssrRenderAttrs } from 'vue/server-renderer';
 import { u as useChatSessions, g as getActiveSession, _ as _imports_0, a as useSearchCache, n as notifyChatSidebarUpdated } from './useChatSessions-DRpcVOcE.mjs';
 import { Menu, ChevronRight, ArrowUp, Star, MapPin, Languages, Globe, Phone, Mail } from 'lucide-vue-next';
 import gsap from 'gsap';
-import { _ as _sfc_main$3 } from './DiveShopDetail-DY7mTxD2.mjs';
+import { _ as _sfc_main$3 } from './DiveShopDetail-CdfHmiTF.mjs';
 import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
-import { u as useAuth } from './useAuth-8ihLM1hW.mjs';
-import { u as useSupabase } from './useSupabase-eANk4KtY.mjs';
-import { a as useRoute, u as useHead } from './server.mjs';
+import { u as useAuth } from './useAuth-gG0jt1Ap.mjs';
+import { u as useSupabase } from './useSupabase-G2CWeDSk.mjs';
+import { a as useRoute, b as useState, u as useHead } from './server.mjs';
 import 'vue-router';
 import '../nitro/nitro.mjs';
 import '@supabase/supabase-js';
@@ -421,7 +421,12 @@ const _sfc_main = {
     const selectedShopId = ref(null);
     const pendingBookingPayload = ref(null);
     const mobileDetailShopId = ref(null);
-    const isPageLoading = ref(true);
+    useState("glaucus-session-entry-path", () => "");
+    useState("glaucus-chat-index-boot-finished", () => false);
+    function shouldShowChatBootLoader() {
+      return true;
+    }
+    const isPageLoading = ref(shouldShowChatBootLoader());
     const selectedShopName = computed(() => {
       if (!selectedShopId.value) return null;
       const msgWithShops = [...messages.value].reverse().find((m) => m.shops?.length);
@@ -1431,4 +1436,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-Cc6m0MWa.mjs.map
+//# sourceMappingURL=index-CUtiANyM.mjs.map

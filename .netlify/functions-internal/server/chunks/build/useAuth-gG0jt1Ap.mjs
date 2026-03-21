@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue';
-import { u as useSupabase } from './useSupabase-eANk4KtY.mjs';
+import { u as useSupabase } from './useSupabase-G2CWeDSk.mjs';
 
 const user = ref(null);
 const session = ref(null);
@@ -88,4 +88,4 @@ const useAuth = () => {
 };
 
 export { useAuth as u };
-//# sourceMappingURL=useAuth-8ihLM1hW.mjs.map
+//# sourceMappingURL=useAuth-gG0jt1Ap.mjs.map

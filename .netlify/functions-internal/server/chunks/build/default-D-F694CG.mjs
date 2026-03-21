@@ -1,11 +1,11 @@
-import { a as useRoute, _ as __nuxt_component_0$1, k as __nuxt_component_1$1 } from './server.mjs';
+import { a as useRoute, _ as __nuxt_component_0$1, l as __nuxt_component_1$1 } from './server.mjs';
 import { computed, ref, mergeProps, unref, withCtx, createVNode, createTextVNode, watch, renderSlot, defineComponent, useSSRContext } from 'vue';
 import { ssrRenderAttrs, ssrRenderComponent, ssrRenderAttr, ssrRenderSlot, ssrInterpolate, ssrRenderList, ssrIncludeBooleanAttr, ssrLooseContain, ssrLooseEqual } from 'vue/server-renderer';
 import { u as useChatSessions, _ as _imports_0 } from './useChatSessions-DRpcVOcE.mjs';
 import { X, CircleUser, LogIn, LogOut, Sun, Moon, Star } from 'lucide-vue-next';
 import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
-import { u as useAuth } from './useAuth-8ihLM1hW.mjs';
-import { u as useSupabase } from './useSupabase-eANk4KtY.mjs';
+import { u as useAuth } from './useAuth-gG0jt1Ap.mjs';
+import { u as useSupabase } from './useSupabase-G2CWeDSk.mjs';
 import { _ as _export_sfc } from './_plugin-vue_export-helper-1tPrXgE0.mjs';
 import '../nitro/nitro.mjs';
 import '@supabase/supabase-js';
@@ -651,4 +651,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=default-DPDGhhP5.mjs.map
+//# sourceMappingURL=default-D-F694CG.mjs.map

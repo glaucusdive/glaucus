@@ -1,4 +1,4 @@
-import { j as defineNuxtRouteMiddleware } from './server.mjs';
+import { k as defineNuxtRouteMiddleware } from './server.mjs';
 import 'vue';
 import '../nitro/nitro.mjs';
 import '@supabase/supabase-js';
@@ -32,4 +32,4 @@ const auth = defineNuxtRouteMiddleware(async (to) => {
 });
 
 export { auth as default };
-//# sourceMappingURL=auth-B-qksxu3.mjs.map
+//# sourceMappingURL=auth-DQPf7TDM.mjs.map

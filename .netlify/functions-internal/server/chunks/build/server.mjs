@@ -1,4 +1,4 @@
-import { defineComponent, shallowRef, h, resolveComponent, hasInjectionContext, inject, computed, toValue, getCurrentInstance, onServerPrefetch, mergeProps, unref, provide, cloneVNode, createElementBlock, ref, toRef, nextTick, defineAsyncComponent, useSSRContext, Suspense, Fragment, createApp, mergeModels, useModel, withCtx, renderSlot, createVNode, createBlock, createCommentVNode, openBlock, createTextVNode, toDisplayString, watch, resolveDynamicComponent, renderList, useId, shallowReactive, onErrorCaptured, reactive, effectScope, isReadonly, isRef, isShallow, isReactive, toRaw, useSlots, withModifiers, getCurrentScope, markRaw } from 'vue';
+import { defineComponent, shallowRef, h, resolveComponent, hasInjectionContext, inject, toRef, isRef, computed, toValue, getCurrentInstance, onServerPrefetch, mergeProps, unref, provide, cloneVNode, createElementBlock, ref, nextTick, defineAsyncComponent, useSSRContext, Suspense, Fragment, createApp, mergeModels, useModel, withCtx, renderSlot, createVNode, createBlock, createCommentVNode, openBlock, createTextVNode, toDisplayString, watch, resolveDynamicComponent, renderList, useId, shallowReactive, onErrorCaptured, reactive, effectScope, isReadonly, isShallow, isReactive, toRaw, useSlots, withModifiers, getCurrentScope, markRaw } from 'vue';
 import { E as serialize, F as parseQuery, m as createError$1, G as hasProtocol, H as isScriptProtocol, I as joinURL, J as withQuery, K as sanitizeStatusCode, L as withTrailingSlash, M as withoutTrailingSlash, N as klona, O as defuFn, P as getContext, $ as $fetch$1, Q as baseURL, R as defu, S as createHooks, T as executeAsync, U as isEqual, V as toRouteMatcher, W as createRouter$1 } from '../nitro/nitro.mjs';
 import { RouterView, createMemoryHistory, createRouter, START_LOCATION } from 'vue-router';
 import colors from 'tailwindcss/colors';
@@ -484,12 +484,12 @@ const _routes = [
   {
     name: "index",
     path: "/",
-    component: () => import('./index-Cc6m0MWa.mjs')
+    component: () => import('./index-CUtiANyM.mjs')
   },
   {
     name: "auth",
     path: "/auth",
-    component: () => import('./index-SU_NcyNK.mjs')
+    component: () => import('./index-Dqve2VNT.mjs')
   },
   {
     name: "auth-signup",
@@ -499,35 +499,35 @@ const _routes = [
   {
     name: "shops",
     path: "/shops",
-    component: () => import('./index-BxS4kvz0.mjs')
+    component: () => import('./index-DfZZXPfb.mjs')
   },
   {
     name: "shops-slug",
     path: "/shops/:slug()",
-    component: () => import('./_slug_-Dd_uKdfD.mjs')
+    component: () => import('./_slug_-DJKMK1kj.mjs')
   },
   {
     name: "profile",
     path: "/profile",
     meta: { "middleware": "auth" },
-    component: () => import('./index-CqnthsN7.mjs')
+    component: () => import('./index-JqTdLNGd.mjs')
   },
   {
     name: "profile-drafts",
     path: "/profile/drafts",
     meta: { "middleware": "auth" },
-    component: () => import('./drafts-CyY4x39v.mjs')
+    component: () => import('./drafts-BOhzl5Iv.mjs')
   },
   {
     name: "community",
     path: "/community",
-    component: () => import('./index-Ci8MQMci.mjs')
+    component: () => import('./index-BQ1WveCN.mjs')
   },
   {
     name: "profile-defaults",
     path: "/profile/defaults",
     meta: { "middleware": "auth" },
-    component: () => import('./defaults-C6DqYLcG.mjs')
+    component: () => import('./defaults-BL6lj7Wi.mjs')
   }
 ];
 const _wrapInTransition = (props, children) => {
@@ -648,7 +648,7 @@ const globalMiddleware = [
   manifest_45route_45rule
 ];
 const namedMiddleware = {
-  auth: () => import('./auth-B-qksxu3.mjs')
+  auth: () => import('./auth-DQPf7TDM.mjs')
 };
 const plugin = /* @__PURE__ */ defineNuxtPlugin({
   name: "nuxt:router",
@@ -5124,5 +5124,5 @@ let entry;
 }
 const entry$1 = (ssrContext) => entry(ssrContext);
 
-export { LayoutMetaSymbol as L, PageRouteSymbol as P, __nuxt_component_0$1 as _, useRoute as a, useRouter as b, useSeoMeta as c, useAsyncData as d, entry$1 as default, _sfc_main$d as e, createError as f, useNuxtApp as g, appLayoutTransition as h, _wrapInTransition as i, defineNuxtRouteMiddleware as j, __nuxt_component_1$1 as k, useRuntimeConfig as l, navigateTo as n, useHead as u };
+export { LayoutMetaSymbol as L, PageRouteSymbol as P, __nuxt_component_0$1 as _, useRoute as a, useState as b, useRouter as c, useSeoMeta as d, entry$1 as default, useAsyncData as e, _sfc_main$d as f, createError as g, useNuxtApp as h, appLayoutTransition as i, _wrapInTransition as j, defineNuxtRouteMiddleware as k, __nuxt_component_1$1 as l, useRuntimeConfig as m, navigateTo as n, useHead as u };
 //# sourceMappingURL=server.mjs.map
