@@ -27,7 +27,7 @@
           <nav class="w-full flex flex-col gap-1">
             <ClientOnly>
               <div
-                v-if="isHome"
+                v-if="showChatInSidebar"
                 class="flex flex-col gap-1"
               >
                 <button
@@ -135,7 +135,7 @@
 
 <script setup>
 import gsap from 'gsap'
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { X, Sun, Moon, FilePlus, User, LogIn, LogOut } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
 import { useTheme } from '~/composables/useTheme'
@@ -147,8 +147,20 @@ import ShopReviewForm from '~/components/ShopReviewForm.vue'
 import Logo from '~/components/Logo.vue'
 
 const route = useRoute()
-const isHome = computed(() => route.path === '/')
+/** Chat chrome also on auth/profile so it doesn’t vanish while signing in or on account pages. */
+const showChatInSidebar = computed(() => {
+  const p = route.path
+  return p === '/' || p.startsWith('/auth') || p.startsWith('/profile')
+})
 const { sidebarChats, requestNewChat, requestSwitchSession } = useChatSessions()
+
+async function runChatActionFromSidebar (action) {
+  if (route.path !== '/') {
+    await navigateTo('/')
+    await nextTick()
+  }
+  action()
+}
 
 /** M/D when same calendar year as today; M/D/YY when an earlier (or other) year. */
 function formatChatUpdated (ts) {
@@ -247,12 +259,12 @@ const handleCloseMobileMenu = () => {
 
 function onSidebarNewChat () {
   handleCloseMobileMenu()
-  requestNewChat()
+  void runChatActionFromSidebar(() => requestNewChat())
 }
 
 function onSelectChat (id) {
   handleCloseMobileMenu()
-  requestSwitchSession(id)
+  void runChatActionFromSidebar(() => requestSwitchSession(id))
 }
 
 // Before enter - no longer needed since we control animation via composable
