@@ -20,6 +20,11 @@ const useDrawer = () => {
       drawerData.value = {};
     }, 400);
   };
+  const updateBookingPayloadIfOpen = (payload) => {
+    if (contentType.value === "booking-form" && payload && isOpen.value) {
+      drawerData.value = { ...drawerData.value, bookingPayload: payload };
+    }
+  };
   const openMobileMenu = () => {
     shouldAnimateMenu.value = true;
     isMobileMenuOpen.value = true;
@@ -38,6 +43,7 @@ const useDrawer = () => {
     drawerOpenKey,
     openDrawer,
     closeDrawer,
+    updateBookingPayloadIfOpen,
     isMobileMenuOpen,
     shouldAnimateMenu,
     openMobileMenu,
@@ -47,4 +53,4 @@ const useDrawer = () => {
 };
 
 export { useDrawer as u };
-//# sourceMappingURL=useDrawer-Jm8d8DDv.mjs.map
+//# sourceMappingURL=useDrawer-DEsd6Mko.mjs.map

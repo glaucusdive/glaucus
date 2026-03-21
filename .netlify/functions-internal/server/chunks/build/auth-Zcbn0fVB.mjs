@@ -31,4 +31,4 @@ const auth = defineNuxtRouteMiddleware(async (to) => {
 });
 
 export { auth as default };
-//# sourceMappingURL=auth-XP0F-GLF.mjs.map
+//# sourceMappingURL=auth-Zcbn0fVB.mjs.map

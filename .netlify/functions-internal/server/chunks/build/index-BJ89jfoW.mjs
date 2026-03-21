@@ -1,12 +1,12 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-D1Os6LCO.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-LydNulDx.mjs';
 import { ref, watch, computed, mergeProps, withCtx, unref, createVNode, Transition, createBlock, createCommentVNode, openBlock, Fragment, renderList, toDisplayString, withModifiers, withDirectives, vModelText, nextTick, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrRenderAttr, ssrRenderClass, ssrRenderList, ssrInterpolate, ssrIncludeBooleanAttr, ssrRenderAttrs } from 'vue/server-renderer';
 import { _ as _imports_0 } from './virtual_public-Ch7PIFET.mjs';
 import { Menu, ChevronRight, ArrowUp, Star, MapPin, Languages, Globe, Phone, Mail } from 'lucide-vue-next';
 import gsap from 'gsap';
-import { _ as _sfc_main$3 } from './DiveShopDetail-BWmKpC27.mjs';
-import { u as useDrawer } from './useDrawer-Jm8d8DDv.mjs';
-import { u as useAuth } from './useAuth-BUYZlfj2.mjs';
+import { _ as _sfc_main$3 } from './DiveShopDetail-f256g8uS.mjs';
+import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
+import { u as useAuth } from './useAuth-BhN4mRZa.mjs';
 import { u as useSupabase } from './useSupabase-DR_u3VFp.mjs';
 import { a as useRoute, u as useHead } from './server.mjs';
 import 'vue-router';
@@ -133,14 +133,39 @@ const _sfc_main$1 = {
     shopId: {
       type: String,
       required: true
+    },
+    isInBookingFlow: {
+      type: Boolean,
+      default: false
+    },
+    isFormOpen: {
+      type: Boolean,
+      default: false
+    },
+    onStartBooking: {
+      type: Function,
+      default: null
+    },
+    onShowForm: {
+      type: Function,
+      default: null
+    },
+    onHideForm: {
+      type: Function,
+      default: null
     }
   },
   emits: ["close"],
-  setup(__props, { emit: __emit }) {
+  setup(__props) {
     return (_ctx, _push, _parent, _attrs) => {
       _push(ssrRenderComponent(_sfc_main$3, mergeProps({
         "shop-id": __props.shopId,
         "show-close-button": true,
+        "is-in-booking-flow": __props.isInBookingFlow,
+        "is-form-open": __props.isFormOpen,
+        "on-start-booking": __props.onStartBooking,
+        "on-show-form": __props.onShowForm,
+        "on-hide-form": __props.onHideForm,
         onClose: ($event) => _ctx.$emit("close")
       }, _attrs), null, _parent));
     };
@@ -161,7 +186,16 @@ const writeCache = (state) => {
 const useSearchCache = () => {
   const getCache = () => readCache();
   const setCache = (state) => {
-    writeCache({ ...state });
+    writeCache({
+      messages: state.messages ?? [],
+      userInput: state.userInput ?? "",
+      lastQuery: state.lastQuery ?? null,
+      selectedShopId: state.selectedShopId ?? null,
+      mobileDetailShopId: state.mobileDetailShopId ?? null,
+      drawerOpen: state.drawerOpen ?? false,
+      drawerShopId: state.drawerShopId ?? null,
+      drawerShopName: state.drawerShopName ?? null
+    });
   };
   const clearCache = () => {
   };
@@ -195,7 +229,8 @@ const _sfc_main = {
             height_unit: d.height_unit,
             weight: d.weight,
             weight_unit: d.weight_unit,
-            gear: Array.isArray(d.gear) ? d.gear.map((g) => ({ gear_type: g.gear_type ?? g.gearType })) : []
+            gear: Array.isArray(d.gear) ? d.gear.map((g) => ({ gear_type: g.gear_type ?? g.gearType })) : [],
+            times_used: typeof d.times_used === "number" ? d.times_used : void 0
           })) : null;
           const dd = data.default_diver && typeof data.default_diver === "object" ? data.default_diver : null;
           profilePrefillSnapshot.value = {
@@ -252,6 +287,33 @@ const _sfc_main = {
       if (shop) return { id: shop.id, name: shop.business_name };
       return null;
     });
+    const activeChipMessageIndex = computed(() => {
+      const list = messages.value;
+      for (let i = list.length - 1; i >= 0; i--) {
+        const m = list[i];
+        if (m.role !== "assistant") continue;
+        const hasSelectable = m.selectableOptions && m.selectableOptions.length > 0;
+        const hasGear = Array.isArray(m.rentalEquipmentOptions) && m.rentalEquipmentOptions.length > 0;
+        const hasDiveSites = m.diveSiteOptions && m.diveSiteOptions.length > 0;
+        const hasBookChip = m.shops?.length && selectedShopId.value && selectedShopName.value;
+        if (hasSelectable || hasGear || hasDiveSites || hasBookChip) return i;
+      }
+      return -1;
+    });
+    function isInBookingFlowForShop(shopId) {
+      if (!shopId || bookingShopForDrawer.value?.id !== shopId) return false;
+      return messages.value.some((m) => m.role === "assistant" && m.intent === "booking");
+    }
+    function handleStartBookingFromPanel(shopId, shopName) {
+      selectedShopId.value = shopId;
+      sendMessage(shopName ? `Let's book ${shopName}` : "Let's book this");
+    }
+    function handleShowFormFromPanel() {
+      openBookingFormDrawer();
+    }
+    function handleHideFormFromPanel() {
+      closeDrawer();
+    }
     const getInitialDesktop = () => {
       {
         return true;
@@ -265,16 +327,24 @@ const _sfc_main = {
       "Shops in Mexico that offer advanced certification courses"
     ];
     const { setCache } = useSearchCache();
-    const { openMobileMenu, openDrawer } = useDrawer();
+    const { openMobileMenu, openDrawer, closeDrawer, isOpen, contentType, drawerData, updateBookingPayloadIfOpen } = useDrawer();
+    const isBookingFormOpen = computed(() => isOpen.value && contentType.value === "booking-form");
     const persistCache = () => {
       if (isRestoringCache.value) return;
+      const drawerWasOpen = isOpen.value && contentType.value === "booking-form";
       setCache({
         messages: messages.value,
         userInput: userInput.value,
-        lastQuery: typeof route.query.q === "string" ? route.query.q : null
+        lastQuery: typeof route.query.q === "string" ? route.query.q : null,
+        selectedShopId: selectedShopId.value,
+        mobileDetailShopId: mobileDetailShopId.value,
+        drawerOpen: drawerWasOpen,
+        drawerShopId: drawerWasOpen ? drawerData.shopId ?? null : null,
+        drawerShopName: drawerWasOpen ? drawerData.shopName ?? null : null
       });
     };
     watch([messages, userInput], persistCache, { deep: true });
+    watch([selectedShopId, mobileDetailShopId, isOpen, drawerData], persistCache, { deep: true });
     const scrollToBottom = async () => {
       await nextTick();
       requestAnimationFrame(() => {
@@ -317,6 +387,22 @@ const _sfc_main = {
       const { start, end, total } = getResultsRange(msgIndex);
       if (start === end) return `Showing result ${start} of ${total} dive shops found`;
       return `Showing results ${start}–${end} of ${total} dive shops found`;
+    }
+    function getSelectedGearNamesForMessage(msg) {
+      const payload = msg.payload ?? msg.bookingPayload;
+      const divers = payload?.divers ?? [];
+      const current = divers.find((d) => !d.gearAsked);
+      const gear = current?.gear ?? [];
+      return new Set(gear.map((g) => (g.gearType ?? g.gear_type ?? "").toString().trim().toLowerCase()).filter(Boolean));
+    }
+    function getGearChipClickValue(msg, eq) {
+      const selected = getSelectedGearNamesForMessage(msg);
+      const name = (eq.name ?? "").toString().trim();
+      if (selected.has(name.toLowerCase())) return `remove ${name}`;
+      return name;
+    }
+    function isGearChipSelected(msg, eq) {
+      return getSelectedGearNamesForMessage(msg).has((eq.name ?? "").toString().trim().toLowerCase());
     }
     const sendMessage = async (messageText, displayText) => {
       const message = messageText ?? userInput.value.trim();
@@ -442,8 +528,12 @@ const _sfc_main = {
             shopName: response.shopName,
             selectableOptions: response.selectableOptions,
             rentalEquipmentOptions: response.rentalEquipmentOptions || void 0,
+            hideNoneForGear: response.hideNoneForGear ?? false,
             diveSiteOptions: response.diveSiteOptions || void 0
           });
+          if (response.intent === "booking" && storedPayload) {
+            updateBookingPayloadIfOpen(storedPayload);
+          }
           if (response.pendingBookingPayload) {
             pendingBookingPayload.value = response.pendingBookingPayload;
             selectedShopId.value = null;
@@ -452,6 +542,8 @@ const _sfc_main = {
           }
           if (response.intent === "booking" && response.shopId) {
             selectedShopId.value = response.shopId;
+          } else if (response.intent === "booking" && response.shopId == null) {
+            selectedShopId.value = null;
           }
         } else {
           messages.value.push({
@@ -530,6 +622,18 @@ const _sfc_main = {
         bookingPayload: lastBookingPayload.value
       });
     };
+    function openBookingFormDrawerFromMessage(msg) {
+      const shop = bookingShopForDrawer.value || (msg.shopId && msg.shopName ? { id: msg.shopId, name: msg.shopName } : null);
+      if (!shop) return;
+      selectedShopId.value = shop.id;
+      mobileDetailShopId.value = shop.id;
+      const payload = msg.payload !== void 0 ? msg.payload : msg.bookingPayload;
+      openDrawer("booking-form", {
+        shopId: shop.id,
+        shopName: shop.name,
+        bookingPayload: payload ?? lastBookingPayload.value
+      });
+    }
     const closeShopDetail = () => {
       if (isDesktop.value) {
         selectedShopId.value = null;
@@ -645,8 +749,8 @@ const _sfc_main = {
                 _push2(`<div class="flex justify-end"${_scopeId}><div class="max-w-[80%] bg-blue-600 text-white rounded-lg p-2"${_scopeId}><p class="text-sm lg:text-base"${_scopeId}>${ssrInterpolate(msg.content)}</p></div></div>`);
               } else if (msg.role === "assistant") {
                 _push2(`<div class="flex justify-start"${_scopeId}><div class="md:max-w-[90%] flex-1 min-w-0 flex flex-col gap-2"${_scopeId}><div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 flex items-stretch gap-2"${_scopeId}><p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis"${_scopeId}>${ssrInterpolate(msg.content)}</p>`);
-                if (bookingShopForDrawer.value && !(msg.shops && msg.shops.length > 0)) {
-                  _push2(`<button type="button" class="w-10 shrink-0 self-stretch flex items-center justify-center rounded-smimage.png border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200 transition-colors cursor-pointer" aria-label="Open booking form"${_scopeId}>`);
+                if ((bookingShopForDrawer.value || msg.shopId && msg.shopName) && !(msg.shops && msg.shops.length > 0)) {
+                  _push2(`<button type="button" class="w-10 shrink-0 self-stretch flex items-center justify-center rounded-sm border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200 transition-colors cursor-pointer" aria-label="Open booking form"${_scopeId}>`);
                   _push2(ssrRenderComponent(unref(ChevronRight), { class: "w-5 h-5" }, null, _parent2, _scopeId));
                   _push2(`</button>`);
                 } else {
@@ -675,7 +779,7 @@ const _sfc_main = {
                   _push2(`<!---->`);
                 }
                 if (msg.selectableOptions && msg.selectableOptions.length > 0 || msg.shops?.length && selectedShopId.value && selectedShopName.value) {
-                  _push2(`<div class="flex flex-wrap gap-2 p-2"${_scopeId}>`);
+                  _push2(`<div class="${ssrRenderClass([index !== activeChipMessageIndex.value ? "opacity-50 pointer-events-none" : "", "flex flex-wrap gap-2 p-2 transition-opacity duration-200"])}"${_scopeId}>`);
                   if (msg.shops?.length && selectedShopId.value && selectedShopName.value) {
                     _push2(`<button type="button" class="px-3 py-1.5 text-sm rounded-full bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-100 transition-colors cursor-pointer font-medium"${_scopeId}> Let&#39;s book ${ssrInterpolate(selectedShopName.value)}</button>`);
                   } else {
@@ -683,23 +787,29 @@ const _sfc_main = {
                   }
                   _push2(`<!--[-->`);
                   ssrRenderList((msg.selectableOptions || []).filter((o) => o.label !== "Load next 20"), (opt, i) => {
-                    _push2(`<button type="button" class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"${_scopeId}>${ssrInterpolate(opt.label)}</button>`);
+                    _push2(`<button type="button" class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"${_scopeId}>${ssrInterpolate(opt.label)}</button>`);
                   });
                   _push2(`<!--]--></div>`);
                 } else {
                   _push2(`<!---->`);
                 }
                 if (Array.isArray(msg.rentalEquipmentOptions)) {
-                  _push2(`<div class="flex flex-wrap gap-2 p-2"${_scopeId}><!--[-->`);
+                  _push2(`<div class="${ssrRenderClass([index !== activeChipMessageIndex.value ? "opacity-50 pointer-events-none" : "", "flex flex-wrap gap-2 p-2 transition-opacity duration-200"])}"${_scopeId}><!--[-->`);
                   ssrRenderList(msg.rentalEquipmentOptions, (eq) => {
-                    _push2(`<button type="button" class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"${_scopeId}>${ssrInterpolate(eq.name)}</button>`);
+                    _push2(`<button type="button" class="${ssrRenderClass(isGearChipSelected(msg, eq) ? "px-3 py-1.5 text-sm rounded-full border border-black dark:border-white text-black dark:text-white transition-colors cursor-pointer font-medium" : "px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-300 hover:border-zinc-500 dark:hover:border-zinc-400 dark:hover:text-white transition-colors cursor-pointer")}"${_scopeId}>${ssrInterpolate(eq.name)}</button>`);
                   });
-                  _push2(`<!--]--><button type="button" class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"${_scopeId}> None </button><button type="button" class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"${_scopeId}> Done </button></div>`);
+                  _push2(`<!--]-->`);
+                  if (!msg.hideNoneForGear) {
+                    _push2(`<button type="button" class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"${_scopeId}> None </button>`);
+                  } else {
+                    _push2(`<!---->`);
+                  }
+                  _push2(`<button type="button" class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer font-medium"${_scopeId}> Done </button></div>`);
                 } else {
                   _push2(`<!---->`);
                 }
                 if (msg.diveSiteOptions && msg.diveSiteOptions.length > 0) {
-                  _push2(`<div class="flex flex-wrap gap-2"${_scopeId}><div class="flex gap-2 w-full"${_scopeId}><button type="button" class="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"${_scopeId}> Any </button><button type="button" class="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"${_scopeId}> Done </button></div><!--[-->`);
+                  _push2(`<div class="${ssrRenderClass([index !== activeChipMessageIndex.value ? "opacity-50 pointer-events-none" : "", "flex flex-wrap gap-2 transition-opacity duration-200"])}"${_scopeId}><div class="flex gap-2 w-full"${_scopeId}><button type="button" class="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"${_scopeId}> Any </button><button type="button" class="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"${_scopeId}> Done </button></div><!--[-->`);
                   ssrRenderList(msg.diveSiteOptions, (site) => {
                     _push2(`<button type="button" class="w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"${_scopeId}>${ssrInterpolate(site.name)}</button>`);
                   });
@@ -715,11 +825,11 @@ const _sfc_main = {
             });
             _push2(`<!--]-->`);
             if (isLoading.value) {
-              _push2(`<div class="flex justify-start"${_scopeId}><div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3"${_scopeId}><div class="flex items-center gap-2"${_scopeId}><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-zinc-600"${_scopeId}></div><span class="text-sm text-zinc-900 dark:text-zinc-200"${_scopeId}>typing...</span></div></div></div>`);
+              _push2(`<div class="flex justify-start"${_scopeId}><div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3"${_scopeId}><div class="flex items-center gap-2"${_scopeId}><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-zinc-600"${_scopeId}></div><span class="text-sm text-zinc-900 dark:text-zinc-200"${_scopeId}>thinking...</span></div></div></div>`);
             } else {
               _push2(`<!---->`);
             }
-            _push2(`</div><div class="flex items-stretch justify-center z-100 overflow-hidden"${_scopeId}><div class="bg-transparent p-0.5 pt-0 backdrop-blur-sm md:min-w-md max-w-4xl w-full rounded-full"${_scopeId}><div class="${ssrRenderClass([
+            _push2(`</div><div class="flex items-stretch justify-center z-100 overflow-hidden"${_scopeId}><div class="bg-transparent p-0.5 pt-0 backdrop-blur-sm 2xl:min-w-md max-w-4xl w-full rounded-full"${_scopeId}><div class="${ssrRenderClass([
               "p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-x-hidden overflow-y-visible gradient-container z-0",
               isLoading.value ? "animate-ring-gradient !bg-[#02C8FF]" : ""
             ])}"${_scopeId}><form class="w-full h-full bg-zinc-100 dark:bg-zinc-700 rounded-full p-1 z-10"${_scopeId}><div class="flex items-center gap-1.5 w-full min-w-0"${_scopeId}><div class="flex-1 min-w-0 h-full"${_scopeId}><input${ssrRenderAttr("value", userInput.value)} type="text"${ssrIncludeBooleanAttr(isLoading.value) ? " disabled" : ""} placeholder="Ask me anything about dive shops..." class="w-full h-full outline-none text-zinc-900 dark:text-white font-medium text-sm tracking-none disabled:cursor-not-allowed indent-2 p-4"${_scopeId}></div><div class="h-full shrink-0"${_scopeId}><button type="submit"${ssrIncludeBooleanAttr(isLoading.value || !userInput.value.trim()) ? " disabled" : ""} class="p-2 flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-100 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-xl tracking-none cursor-pointer text-zinc-900 dark:text-zinc-900 disabled:bg-zinc-100 disabled:dark:bg-zinc-600 disabled:cursor-not-allowed font-medium disabled:*:opacity-20"${_scopeId}>`);
@@ -734,6 +844,11 @@ const _sfc_main = {
               _push2(ssrRenderComponent(_sfc_main$1, {
                 key: selectedShopId.value,
                 "shop-id": selectedShopId.value,
+                "is-in-booking-flow": isInBookingFlowForShop(selectedShopId.value),
+                "is-form-open": isBookingFormOpen.value,
+                "on-start-booking": handleStartBookingFromPanel,
+                "on-show-form": handleShowFormFromPanel,
+                "on-hide-form": handleHideFormFromPanel,
                 onClose: closeShopDetail
               }, null, _parent2, _scopeId));
               _push2(`</div>`);
@@ -745,6 +860,11 @@ const _sfc_main = {
               _push2(ssrRenderComponent(_sfc_main$1, {
                 key: mobileDetailShopId.value,
                 "shop-id": mobileDetailShopId.value,
+                "is-in-booking-flow": isInBookingFlowForShop(mobileDetailShopId.value),
+                "is-form-open": isBookingFormOpen.value,
+                "on-start-booking": handleStartBookingFromPanel,
+                "on-show-form": handleShowFormFromPanel,
+                "on-hide-form": handleHideFormFromPanel,
                 onClose: closeShopDetail
               }, null, _parent2, _scopeId));
               _push2(`</div></div>`);
@@ -848,15 +968,15 @@ const _sfc_main = {
                             createVNode("div", { class: "md:max-w-[90%] flex-1 min-w-0 flex flex-col gap-2" }, [
                               createVNode("div", { class: "bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 flex items-stretch gap-2" }, [
                                 createVNode("p", { class: "text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis" }, toDisplayString(msg.content), 1),
-                                bookingShopForDrawer.value && !(msg.shops && msg.shops.length > 0) ? (openBlock(), createBlock("button", {
+                                (bookingShopForDrawer.value || msg.shopId && msg.shopName) && !(msg.shops && msg.shops.length > 0) ? (openBlock(), createBlock("button", {
                                   key: 0,
                                   type: "button",
-                                  onClick: openBookingFormDrawer,
-                                  class: "w-10 shrink-0 self-stretch flex items-center justify-center rounded-smimage.png border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200 transition-colors cursor-pointer",
+                                  onClick: ($event) => openBookingFormDrawerFromMessage(msg),
+                                  class: "w-10 shrink-0 self-stretch flex items-center justify-center rounded-sm border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200 transition-colors cursor-pointer",
                                   "aria-label": "Open booking form"
                                 }, [
                                   createVNode(unref(ChevronRight), { class: "w-5 h-5" })
-                                ])) : createCommentVNode("", true)
+                                ], 8, ["onClick"])) : createCommentVNode("", true)
                               ]),
                               msg.shops && msg.shops.length > 0 ? (openBlock(), createBlock("div", {
                                 key: 0,
@@ -883,7 +1003,7 @@ const _sfc_main = {
                               ])) : createCommentVNode("", true),
                               msg.selectableOptions && msg.selectableOptions.length > 0 || msg.shops?.length && selectedShopId.value && selectedShopName.value ? (openBlock(), createBlock("div", {
                                 key: 1,
-                                class: "flex flex-wrap gap-2 p-2"
+                                class: ["flex flex-wrap gap-2 p-2 transition-opacity duration-200", index !== activeChipMessageIndex.value ? "opacity-50 pointer-events-none" : ""]
                               }, [
                                 msg.shops?.length && selectedShopId.value && selectedShopName.value ? (openBlock(), createBlock("button", {
                                   key: 0,
@@ -896,36 +1016,37 @@ const _sfc_main = {
                                     key: i,
                                     type: "button",
                                     onClick: ($event) => sendMessage(opt.value, opt.label),
-                                    class: "px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                                    class: "px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
                                   }, toDisplayString(opt.label), 9, ["onClick"]);
                                 }), 128))
-                              ])) : createCommentVNode("", true),
+                              ], 2)) : createCommentVNode("", true),
                               Array.isArray(msg.rentalEquipmentOptions) ? (openBlock(), createBlock("div", {
                                 key: 2,
-                                class: "flex flex-wrap gap-2 p-2"
+                                class: ["flex flex-wrap gap-2 p-2 transition-opacity duration-200", index !== activeChipMessageIndex.value ? "opacity-50 pointer-events-none" : ""]
                               }, [
                                 (openBlock(true), createBlock(Fragment, null, renderList(msg.rentalEquipmentOptions, (eq) => {
                                   return openBlock(), createBlock("button", {
                                     key: eq.id,
                                     type: "button",
-                                    onClick: ($event) => sendMessage(eq.name),
-                                    class: "px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
-                                  }, toDisplayString(eq.name), 9, ["onClick"]);
+                                    onClick: ($event) => sendMessage(getGearChipClickValue(msg, eq)),
+                                    class: isGearChipSelected(msg, eq) ? "px-3 py-1.5 text-sm rounded-full border border-black dark:border-white text-black dark:text-white transition-colors cursor-pointer font-medium" : "px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-300 hover:border-zinc-500 dark:hover:border-zinc-400 dark:hover:text-white transition-colors cursor-pointer"
+                                  }, toDisplayString(eq.name), 11, ["onClick"]);
                                 }), 128)),
-                                createVNode("button", {
+                                !msg.hideNoneForGear ? (openBlock(), createBlock("button", {
+                                  key: 0,
                                   type: "button",
                                   onClick: ($event) => sendMessage("none"),
                                   class: "px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"
-                                }, " None ", 8, ["onClick"]),
+                                }, " None ", 8, ["onClick"])) : createCommentVNode("", true),
                                 createVNode("button", {
                                   type: "button",
                                   onClick: ($event) => sendMessage("done"),
-                                  class: "px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                                  class: "px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer font-medium"
                                 }, " Done ", 8, ["onClick"])
-                              ])) : createCommentVNode("", true),
+                              ], 2)) : createCommentVNode("", true),
                               msg.diveSiteOptions && msg.diveSiteOptions.length > 0 ? (openBlock(), createBlock("div", {
                                 key: 3,
-                                class: "flex flex-wrap gap-2"
+                                class: ["flex flex-wrap gap-2 transition-opacity duration-200", index !== activeChipMessageIndex.value ? "opacity-50 pointer-events-none" : ""]
                               }, [
                                 createVNode("div", { class: "flex gap-2 w-full" }, [
                                   createVNode("button", {
@@ -947,7 +1068,7 @@ const _sfc_main = {
                                     class: "w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
                                   }, toDisplayString(site.name), 9, ["onClick"]);
                                 }), 128))
-                              ])) : createCommentVNode("", true)
+                              ], 2)) : createCommentVNode("", true)
                             ])
                           ])) : createCommentVNode("", true)
                         ]);
@@ -959,13 +1080,13 @@ const _sfc_main = {
                         createVNode("div", { class: "bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3" }, [
                           createVNode("div", { class: "flex items-center gap-2" }, [
                             createVNode("div", { class: "animate-spin rounded-full h-4 w-4 border-b-2 border-zinc-600" }),
-                            createVNode("span", { class: "text-sm text-zinc-900 dark:text-zinc-200" }, "typing...")
+                            createVNode("span", { class: "text-sm text-zinc-900 dark:text-zinc-200" }, "thinking...")
                           ])
                         ])
                       ])) : createCommentVNode("", true)
                     ], 512),
                     createVNode("div", { class: "flex items-stretch justify-center z-100 overflow-hidden" }, [
-                      createVNode("div", { class: "bg-transparent p-0.5 pt-0 backdrop-blur-sm md:min-w-md max-w-4xl w-full rounded-full" }, [
+                      createVNode("div", { class: "bg-transparent p-0.5 pt-0 backdrop-blur-sm 2xl:min-w-md max-w-4xl w-full rounded-full" }, [
                         createVNode("div", {
                           class: [
                             "p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-x-hidden overflow-y-visible gradient-container z-0",
@@ -1024,8 +1145,13 @@ const _sfc_main = {
                         (openBlock(), createBlock(_sfc_main$1, {
                           key: selectedShopId.value,
                           "shop-id": selectedShopId.value,
+                          "is-in-booking-flow": isInBookingFlowForShop(selectedShopId.value),
+                          "is-form-open": isBookingFormOpen.value,
+                          "on-start-booking": handleStartBookingFromPanel,
+                          "on-show-form": handleShowFormFromPanel,
+                          "on-hide-form": handleHideFormFromPanel,
                           onClose: closeShopDetail
-                        }, null, 8, ["shop-id"]))
+                        }, null, 8, ["shop-id", "is-in-booking-flow", "is-form-open"]))
                       ])) : createCommentVNode("", true)
                     ]),
                     _: 1
@@ -1048,8 +1174,13 @@ const _sfc_main = {
                           (openBlock(), createBlock(_sfc_main$1, {
                             key: mobileDetailShopId.value,
                             "shop-id": mobileDetailShopId.value,
+                            "is-in-booking-flow": isInBookingFlowForShop(mobileDetailShopId.value),
+                            "is-form-open": isBookingFormOpen.value,
+                            "on-start-booking": handleStartBookingFromPanel,
+                            "on-show-form": handleShowFormFromPanel,
+                            "on-hide-form": handleHideFormFromPanel,
                             onClose: closeShopDetail
-                          }, null, 8, ["shop-id"]))
+                          }, null, 8, ["shop-id", "is-in-booking-flow", "is-form-open"]))
                         ])
                       ])) : createCommentVNode("", true)
                     ]),
@@ -1073,4 +1204,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-BJ9r54MD.mjs.map
+//# sourceMappingURL=index-BJ89jfoW.mjs.map

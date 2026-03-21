@@ -77,6 +77,15 @@
             <BookingForm v-if="contentType === 'booking-form'" :key="'booking-' + drawerOpenKey"
               :shop-id="drawerData.shopId" :shop-name="drawerData.shopName"
               :initial-payload="drawerData.bookingPayload" :draft-id="drawerData.draftId" />
+            <ShopReviewForm v-else-if="contentType === 'review-form'" :key="'review-' + drawerOpenKey"
+              :shop-id="drawerData.shopId"
+              :shop-name="drawerData.shopName || 'Dive shop'"
+              :initial-rating="drawerData.initialRating"
+              :initial-body="drawerData.initialBody"
+              :is-editing="drawerData.isEditing"
+              :review-id="drawerData.reviewId"
+              :on-submitted="drawerData.onSubmitted"
+              :on-deleted="drawerData.onDeleted" />
           </div>
         </Transition>
       </div>
@@ -93,6 +102,7 @@ import { useTheme } from '~/composables/useTheme'
 import { useAuth } from '~/composables/useAuth'
 import { useSaveDraftFromCache } from '~/composables/useSaveDraftFromCache'
 import BookingForm from '~/components/BookingForm.vue'
+import ShopReviewForm from '~/components/ShopReviewForm.vue'
 import Logo from '~/components/Logo.vue'
 
 const { isDark, toggleTheme } = useTheme()

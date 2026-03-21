@@ -75,11 +75,21 @@ export const useAuth = () => {
   /** Access token for API calls (Authorization: Bearer <token>) */
   const accessToken = computed(() => session.value?.access_token ?? null)
 
+  /** Matches RLS public.is_app_admin(): set app_metadata.role = "admin" or is_admin = true in Supabase Auth */
+  const isAppAdmin = computed(() => {
+    const m = user.value?.app_metadata as Record<string, unknown> | undefined
+    if (!m) return false
+    if (m.role === 'admin') return true
+    if (m.is_admin === true || m.is_admin === 'true') return true
+    return false
+  })
+
   return {
     user,
     session,
     loading,
     isSignedIn,
+    isAppAdmin,
     accessToken,
     init,
     onAuthStateChange,

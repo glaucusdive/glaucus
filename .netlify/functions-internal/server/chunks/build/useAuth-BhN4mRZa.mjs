@@ -63,11 +63,19 @@ const useAuth = () => {
     session.value = null;
   }
   const accessToken = computed(() => session.value?.access_token ?? null);
+  const isAppAdmin = computed(() => {
+    const m = user.value?.app_metadata;
+    if (!m) return false;
+    if (m.role === "admin") return true;
+    if (m.is_admin === true || m.is_admin === "true") return true;
+    return false;
+  });
   return {
     user,
     session,
     loading,
     isSignedIn,
+    isAppAdmin,
     accessToken,
     init,
     onAuthStateChange,
@@ -80,4 +88,4 @@ const useAuth = () => {
 };
 
 export { useAuth as u };
-//# sourceMappingURL=useAuth-BUYZlfj2.mjs.map
+//# sourceMappingURL=useAuth-BhN4mRZa.mjs.map

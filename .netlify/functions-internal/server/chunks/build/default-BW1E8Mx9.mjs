@@ -2,9 +2,9 @@ import { _ as __nuxt_component_0$1, j as __nuxt_component_2, a as useRoute } fro
 import { ref, mergeProps, unref, withCtx, createVNode, createTextVNode, watch, computed, renderSlot, defineComponent, useSSRContext } from 'vue';
 import { ssrRenderAttrs, ssrRenderComponent, ssrRenderAttr, ssrRenderSlot, ssrInterpolate, ssrRenderList, ssrIncludeBooleanAttr, ssrLooseContain, ssrLooseEqual } from 'vue/server-renderer';
 import { _ as _imports_0 } from './virtual_public-Ch7PIFET.mjs';
-import { X, Sun, Moon } from 'lucide-vue-next';
-import { u as useDrawer } from './useDrawer-Jm8d8DDv.mjs';
-import { u as useAuth } from './useAuth-BUYZlfj2.mjs';
+import { X, Sun, Moon, Star } from 'lucide-vue-next';
+import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
+import { u as useAuth } from './useAuth-BhN4mRZa.mjs';
 import { u as useSupabase } from './useSupabase-DR_u3VFp.mjs';
 import { _ as _export_sfc } from './_plugin-vue_export-helper-1tPrXgE0.mjs';
 import '../nitro/nitro.mjs';
@@ -32,7 +32,7 @@ import 'unhead/server';
 import 'devalue';
 import 'unhead/utils';
 
-const _sfc_main$3 = {
+const _sfc_main$4 = {
   __name: "NavLink",
   __ssrInlineRender: true,
   props: {
@@ -91,11 +91,11 @@ const _sfc_main$3 = {
     };
   }
 };
-const _sfc_setup$3 = _sfc_main$3.setup;
-_sfc_main$3.setup = (props, ctx) => {
+const _sfc_setup$4 = _sfc_main$4.setup;
+_sfc_main$4.setup = (props, ctx) => {
   const ssrContext = useSSRContext();
   (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("components/NavLink.vue");
-  return _sfc_setup$3 ? _sfc_setup$3(props, ctx) : void 0;
+  return _sfc_setup$4 ? _sfc_setup$4(props, ctx) : void 0;
 };
 const getInitialTheme = () => {
   {
@@ -123,7 +123,7 @@ const useTheme = () => {
     setLight
   };
 };
-const _sfc_main$2 = /* @__PURE__ */ defineComponent({
+const _sfc_main$3 = /* @__PURE__ */ defineComponent({
   __name: "BookingForm",
   __ssrInlineRender: true,
   props: {
@@ -319,13 +319,125 @@ const _sfc_main$2 = /* @__PURE__ */ defineComponent({
     };
   }
 });
+const _sfc_setup$3 = _sfc_main$3.setup;
+_sfc_main$3.setup = (props, ctx) => {
+  const ssrContext = useSSRContext();
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("components/BookingForm.vue");
+  return _sfc_setup$3 ? _sfc_setup$3(props, ctx) : void 0;
+};
+const BookingForm = Object.assign(_sfc_main$3, { __name: "BookingForm" });
+const _sfc_main$2 = {
+  __name: "ShopReviewForm",
+  __ssrInlineRender: true,
+  props: {
+    shopId: {
+      type: String,
+      required: true
+    },
+    shopName: {
+      type: String,
+      default: "Dive shop"
+    },
+    initialRating: {
+      type: Number,
+      default: null
+    },
+    initialBody: {
+      type: String,
+      default: ""
+    },
+    isEditing: {
+      type: Boolean,
+      default: false
+    },
+    reviewId: {
+      type: String,
+      default: null
+    },
+    /** Called after successful save */
+    onSubmitted: {
+      type: Function,
+      default: null
+    },
+    /** Called after successful delete */
+    onDeleted: {
+      type: Function,
+      default: null
+    }
+  },
+  setup(__props) {
+    const props = __props;
+    const { closeDrawer } = useDrawer();
+    const { isSignedIn } = useAuth();
+    useSupabase();
+    const rating = ref(typeof props.initialRating === "number" && props.initialRating >= 1 && props.initialRating <= 5 ? props.initialRating : 5);
+    const body = ref(props.initialBody ?? "");
+    const submitting = ref(false);
+    const deleting = ref(false);
+    const submitError = ref("");
+    watch(() => props.initialRating, (v) => {
+      if (typeof v === "number" && v >= 1 && v <= 5) rating.value = v;
+    });
+    watch(() => props.initialBody, (v) => {
+      if (typeof v === "string") body.value = v;
+    });
+    return (_ctx, _push, _parent, _attrs) => {
+      const _component_NuxtLink = __nuxt_component_0$1;
+      _push(`<div${ssrRenderAttrs(mergeProps({ class: "flex flex-col h-full min-h-0" }, _attrs))}><div class="w-full h-10 lg:h-18 p-1 border-b border-zinc-300 dark:border-zinc-700 shrink-0 flex items-center"><div class="w-full flex items-center justify-between px-2 overflow-auto"><h2 class="text-base font-medium truncate text-zinc-900 dark:text-white">${ssrInterpolate(__props.isEditing ? "Edit review" : "Review")} · ${ssrInterpolate(__props.shopName)}</h2><button type="button" class="lg:p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-sm transition-colors cursor-pointer text-zinc-900 dark:text-white">`);
+      _push(ssrRenderComponent(unref(X), { class: "w-5 h-5" }, null, _parent));
+      _push(`</button></div></div><div class="w-full flex-1 min-h-0 overflow-y-auto p-2">`);
+      if (!unref(isSignedIn)) {
+        _push(`<div class="flex flex-col gap-3 p-2"><p class="text-sm text-zinc-600 dark:text-zinc-400"> Sign in to leave a review for this dive shop. </p>`);
+        _push(ssrRenderComponent(_component_NuxtLink, {
+          to: "/auth",
+          class: "inline-flex justify-center rounded-md border border-zinc-900 dark:border-zinc-100 py-2 px-4 text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800",
+          onClick: unref(closeDrawer)
+        }, {
+          default: withCtx((_, _push2, _parent2, _scopeId) => {
+            if (_push2) {
+              _push2(` Sign in `);
+            } else {
+              return [
+                createTextVNode(" Sign in ")
+              ];
+            }
+          }),
+          _: 1
+        }, _parent));
+        _push(`</div>`);
+      } else {
+        _push(`<form class="flex flex-col gap-3"><fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-2 p-2"><legend class="text-xs uppercase font-medium px-1 text-zinc-900 dark:text-white">Rating</legend><div class="flex items-center gap-1 px-1" role="group" aria-label="Star rating"><!--[-->`);
+        ssrRenderList(5, (n) => {
+          _push(`<button type="button" class="p-1 rounded-sm hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 cursor-pointer text-zinc-900 dark:text-yellow-500"${ssrRenderAttr("aria-pressed", n <= unref(rating))}>`);
+          _push(ssrRenderComponent(unref(Star), {
+            class: ["w-6 h-6", n <= unref(rating) ? "fill-current" : "fill-none stroke-current text-zinc-400"]
+          }, null, _parent));
+          _push(`</button>`);
+        });
+        _push(`<!--]--><span class="text-sm text-zinc-600 dark:text-zinc-400 ml-1">${ssrInterpolate(unref(rating))} / 5</span></div></fieldset><fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2"><label for="review-body" class="text-xs uppercase font-medium px-1 text-zinc-900 dark:text-white">Comment</label><textarea id="review-body" rows="6" required minlength="1" placeholder="Share your experience…" class="rounded-sm w-full p-2 outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm resize-y min-h-[120px]">${ssrInterpolate(unref(body))}</textarea></fieldset>`);
+        if (unref(submitError)) {
+          _push(`<p class="text-sm text-red-600 dark:text-red-400 px-1">${ssrInterpolate(unref(submitError))}</p>`);
+        } else {
+          _push(`<!---->`);
+        }
+        _push(`<button type="submit"${ssrIncludeBooleanAttr(unref(submitting) || unref(deleting) || !unref(body).trim()) ? " disabled" : ""} class="mx-2 border border-zinc-900 dark:border-zinc-100 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">${ssrInterpolate(unref(submitting) ? "Saving…" : __props.isEditing ? "Update review" : "Submit review")}</button>`);
+        if (__props.isEditing && __props.reviewId) {
+          _push(`<button type="button"${ssrIncludeBooleanAttr(unref(submitting) || unref(deleting)) ? " disabled" : ""} class="mx-2 mb-2 border border-red-600/60 dark:border-red-500/60 text-red-700 dark:text-red-400 font-medium py-2 px-4 rounded-md transition-colors w-full cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50 disabled:cursor-not-allowed">${ssrInterpolate(unref(deleting) ? "Deleting…" : "Delete review")}</button>`);
+        } else {
+          _push(`<!---->`);
+        }
+        _push(`</form>`);
+      }
+      _push(`</div></div>`);
+    };
+  }
+};
 const _sfc_setup$2 = _sfc_main$2.setup;
 _sfc_main$2.setup = (props, ctx) => {
   const ssrContext = useSSRContext();
-  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("components/BookingForm.vue");
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("components/ShopReviewForm.vue");
   return _sfc_setup$2 ? _sfc_setup$2(props, ctx) : void 0;
 };
-const BookingForm = Object.assign(_sfc_main$2, { __name: "BookingForm" });
 const _sfc_main$1 = {};
 function _sfc_ssrRender(_ctx, _push, _parent, _attrs) {
   _push(`<svg${ssrRenderAttrs(mergeProps({
@@ -357,7 +469,7 @@ const _sfc_main = {
     };
     return (_ctx, _push, _parent, _attrs) => {
       const _component_NuxtLink = __nuxt_component_0$1;
-      const _component_NavLink = _sfc_main$3;
+      const _component_NavLink = _sfc_main$4;
       const _component_ClientOnly = __nuxt_component_2;
       _push(`<div${ssrRenderAttrs(mergeProps({ class: "h-dvh w-dvw overflow-hidden" }, _attrs))}><div class="h-full w-full lg:flex lg:flex-row">`);
       if (unref(isMobileMenuOpen)) {
@@ -499,11 +611,11 @@ const _sfc_main = {
       } else {
         _push(`<!---->`);
       }
-      _push(`<div class="p-2 lg:pl-0 grow h-dvh w-dvw min-w-0 flex flex-row gap-2 relative"><div class="bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-sm lg:rounded-xl h-full w-full relative overflow-hidden min-w-0">`);
+      _push(`<div class="p-2 lg:pl-0 grow h-dvh w-dvw min-w-0 flex flex-row gap-2 relative"><div class="bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-sm lg:rounded-xl h-full flex-1 min-w-0 relative overflow-hidden">`);
       ssrRenderSlot(_ctx.$slots, "default", {}, null, _push, _parent);
       _push(`</div>`);
       if (unref(isOpen)) {
-        _push(`<div class="w-auto lg:w-[520px] h-auto bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl absolute lg:relative bottom-2 lg:bottom-auto top-2 lg:top-auto right-2 lg:right-auto left-2 lg:left-auto flex flex-col justify-start overflow-hidden z-50">`);
+        _push(`<div class="w-auto lg:w-[20%] lg:min-w-[380px] lg:max-w-[420px] h-auto bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl absolute lg:relative bottom-2 lg:bottom-auto top-2 lg:top-auto right-2 lg:right-auto left-2 lg:left-auto flex flex-col justify-start overflow-hidden z-50">`);
         if (unref(contentType) === "booking-form") {
           _push(ssrRenderComponent(BookingForm, {
             key: "booking-" + unref(drawerOpenKey),
@@ -511,6 +623,18 @@ const _sfc_main = {
             "shop-name": unref(drawerData).shopName,
             "initial-payload": unref(drawerData).bookingPayload,
             "draft-id": unref(drawerData).draftId
+          }, null, _parent));
+        } else if (unref(contentType) === "review-form") {
+          _push(ssrRenderComponent(_sfc_main$2, {
+            key: "review-" + unref(drawerOpenKey),
+            "shop-id": unref(drawerData).shopId,
+            "shop-name": unref(drawerData).shopName || "Dive shop",
+            "initial-rating": unref(drawerData).initialRating,
+            "initial-body": unref(drawerData).initialBody,
+            "is-editing": unref(drawerData).isEditing,
+            "review-id": unref(drawerData).reviewId,
+            "on-submitted": unref(drawerData).onSubmitted,
+            "on-deleted": unref(drawerData).onDeleted
           }, null, _parent));
         } else {
           _push(`<!---->`);
@@ -531,4 +655,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=default-CLJjhkFA.mjs.map
+//# sourceMappingURL=default-BW1E8Mx9.mjs.map

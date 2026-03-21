@@ -4294,7 +4294,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "772782f8-60e4-416c-9b41-64fc13940fc9",
+    "buildId": "8cfc9267-599d-4e56-a521-17fad7ce0082",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -4873,13 +4873,38 @@ function looksLikeSingleName(s) {
   const parts = t.split(/\s+/);
   return parts.length === 1;
 }
+function profileDiverToPayload(d) {
+  var _a, _b, _c, _d, _e;
+  const hu = (d.height_unit || "cm").toLowerCase();
+  const wu = (d.weight_unit || "kg").toLowerCase();
+  return {
+    name: (_a = d.name) != null ? _a : "",
+    certificationNumber: (_b = d.certification_number) != null ? _b : "",
+    numberOfDives: (_c = d.number_of_dives) != null ? _c : "",
+    height: (_d = d.height) != null ? _d : "",
+    heightUnit: hu.includes("ft") || hu === "ft-in" ? "ft-in" : "cm",
+    weight: (_e = d.weight) != null ? _e : "",
+    weightUnit: wu.startsWith("lb") ? "lbs" : "kg",
+    gear: (d.gear || []).map((g) => {
+      var _a2;
+      return { gearType: (_a2 = g && g.gear_type) != null ? _a2 : "" };
+    })
+  };
+}
 function tryFastPath(step, userMessage, payload, _shopName, options) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
   const msg = userMessage.trim();
   if (!msg) return null;
+  const pref = options == null ? void 0 : options.profilePrefill;
+  const defaultDiversListFull = ((_a = pref == null ? void 0 : pref.defaultDivers) == null ? void 0 : _a.length) ? pref.defaultDivers : (pref == null ? void 0 : pref.defaultDiver) ? [pref.defaultDiver] : [];
+  const defaultDiversList = [...defaultDiversListFull].sort((a, b) => {
+    var _a2, _b2;
+    return ((_a2 = b.times_used) != null ? _a2 : 0) - ((_b2 = a.times_used) != null ? _b2 : 0);
+  }).slice(0, 2);
+  const defaultDiversListForMatch = defaultDiversListFull;
   const p = JSON.parse(JSON.stringify(payload));
   const divers = ensureDivers(p);
-  const i = (_a = step.diverIndex) != null ? _a : 0;
+  const i = (_b = step.diverIndex) != null ? _b : 0;
   switch (step.step) {
     case "name": {
       if (msg.length < 2 || msg.length > 100) return null;
@@ -4914,10 +4939,41 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
           gear: []
         });
       }
-      const contactName = p.name || "You";
-      return { message: `Is ${contactName} one of the divers? I'll use that name for Diver 1 if yes \u2014 otherwise tell me Diver 1's full name.`, payload: p };
+      const useProfileChips = defaultDiversList.filter((d) => (d.name || "").trim()).map((d) => ({ label: `Use ${(d.name || "").trim()}`, value: `Use ${(d.name || "").trim()}` }));
+      if (defaultDiversListFull.length > 0 && useProfileChips.length > 0) {
+        const chips = [...useProfileChips, { label: "Create new diver", value: "Create new diver" }];
+        return { message: "Use an existing diver from your profile or create a new one?", payload: p, selectableOptions: chips };
+      }
+      const contactName = (p.name || "").trim() || "you";
+      const contactDisplay = contactName.charAt(0).toUpperCase() + contactName.slice(1);
+      return {
+        message: `Is ${contactDisplay} one of the divers? I'll use that name for Diver 1 if yes \u2014 otherwise tell me Diver 1's full name.`,
+        payload: p,
+        selectableOptions: contactName !== "you" ? [{ label: `Yes, use ${contactDisplay}`, value: "yes" }, { label: "No, I'll give you the name", value: "no" }] : void 0
+      };
     }
     case "diverName": {
+      if (i === 0 && p.name && (/^no\s*$/i.test(msg) || /different|i'll give|i will give|give you the name/i.test(msg))) {
+        return { message: `What's Diver 1's full name?`, payload: p };
+      }
+      if (defaultDiversListForMatch.length) {
+        if (/^create\s+new\s+diver$/i.test(msg)) {
+          return { message: `What's Diver ${i + 1}'s full name?`, payload: p };
+        }
+        const useMatch = msg.match(/^use\s+(.+)$/i);
+        if (useMatch) {
+          const namePart = useMatch[1].trim();
+          const match = defaultDiversListForMatch.find((d) => (d.name || "").trim().toLowerCase() === namePart.toLowerCase());
+          if (match) {
+            if (!divers[i]) divers.push({ name: "", certificationNumber: "", numberOfDives: "", height: "", heightUnit: "cm", weight: "", weightUnit: "kg", gear: [] });
+            const filled = profileDiverToPayload(match);
+            divers[i] = { ...filled, gearAsked: divers[i].gearAsked };
+            p.divers = divers;
+            const name = divers[i].name || "They";
+            return { message: `Thanks \u2014 I've added ${name} from your profile. Does ${name} need any rental gear?`, payload: p };
+          }
+        }
+      }
       if (i === 0 && p.name && String(p.name).trim()) {
         const affirm = /\b(yes|yeah|yep|yup|correct|that's me|that is me|i am|i'm one|sure|please do)\b/i.test(msg) || /^\s*y\s*$/i.test(msg);
         if (affirm) {
@@ -4973,24 +5029,31 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
         divers[i].weightUnit = lower.startsWith("lb") || lower === "pounds" ? "lbs" : "kg";
         p.divers = divers;
         const n2 = divers[i].name || "They";
-        const numDivers2 = (_b = p.numberOfDivers) != null ? _b : 1;
-        if (i < numDivers2 - 1) {
-          return { message: `Got it \u2014 recorded ${n2}'s weight as ${divers[i].weight} ${divers[i].weightUnit}. What's Diver ${i + 2}'s full name?`, payload: p };
-        }
         return { message: `Got it \u2014 recorded ${n2}'s weight as ${divers[i].weight} ${divers[i].weightUnit}. Does ${n2} need any rental gear?`, payload: p };
       }
       const weightMatch = msg.match(/^([\d.]+)\s*(lbs?|kg)?$/i);
       const value = weightMatch && weightMatch[1] ? weightMatch[1].trim() : msg.replace(/\s*(lbs?|kg)\s*/gi, " ").trim();
       if (!value || Number.isNaN(parseFloat(value))) return null;
-      const unit = weightMatch && weightMatch[2] ? weightMatch[2].toLowerCase().startsWith("lb") ? "lbs" : "kg" : /\d+\s*lbs?/i.test(msg) ? "lbs" : "kg";
+      const hasUnitInMessage = weightMatch && weightMatch[2];
+      if (!hasUnitInMessage) {
+        divers[i].weight = value;
+        divers[i].weightUnit = "";
+        p.divers = divers;
+        divers[i].name || "They";
+        return {
+          message: `Is that ${value} kg or ${value} lbs?`,
+          payload: p,
+          selectableOptions: [
+            { label: "kg", value: "kg" },
+            { label: "lbs", value: "lbs" }
+          ]
+        };
+      }
+      const unit = weightMatch[2].toLowerCase().startsWith("lb") ? "lbs" : "kg";
       divers[i].weight = value;
       divers[i].weightUnit = unit;
       p.divers = divers;
       const n = divers[i].name || "They";
-      const numDivers = (_c = p.numberOfDivers) != null ? _c : 1;
-      if (i < numDivers - 1) {
-        return { message: `Thanks \u2014 recorded ${n}'s weight as ${value} ${unit}. What's Diver ${i + 2}'s full name?`, payload: p };
-      }
       return { message: `Thanks \u2014 recorded ${n}'s weight as ${value} ${unit}. Does ${n} need any rental gear?`, payload: p };
     }
     case "gear": {
@@ -4998,12 +5061,12 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
       const isDone = /\b(done|that's all|finish|that's it)\b/.test(lower);
       const isNone = /\b(none|no|nope|nothing|n\/a)\b/.test(lower) || msg.trim() === "" && !isDone;
       const isIUnderstand = /\b(i understand|understood|got it|ok|okay)\b/i.test(msg);
-      if (isIUnderstand && (!((_d = divers[i]) == null ? void 0 : _d.gear) || divers[i].gear.length === 0)) {
+      if (isIUnderstand && (!((_c = divers[i]) == null ? void 0 : _c.gear) || divers[i].gear.length === 0)) {
         if (!divers[i]) return null;
         divers[i].gear = [];
         divers[i].gearAsked = true;
         p.divers = divers;
-        const numDivers = (_e = p.numberOfDivers) != null ? _e : 1;
+        const numDivers = (_d = p.numberOfDivers) != null ? _d : 1;
         if (i < numDivers - 1) {
           return { message: `Got it \u2014 no rental gear for ${divers[i].name}. What's Diver ${i + 2}'s full name?`, payload: p };
         }
@@ -5011,8 +5074,8 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
       }
       const wantsGear = /\b(yes|yeah|yep|yup|they do|she does|he does|we do|i do|please|sure)\b/i.test(msg) || /^\s*y\s*$/i.test(msg);
       const noRentalGearAvailable = !(options == null ? void 0 : options.rentalEquipmentNames) || options.rentalEquipmentNames.length === 0;
-      if (wantsGear && (!((_f = divers[i]) == null ? void 0 : _f.gear) || divers[i].gear.length === 0)) {
-        const n = ((_g = divers[i]) == null ? void 0 : _g.name) || "They";
+      if (wantsGear && (!((_e = divers[i]) == null ? void 0 : _e.gear) || divers[i].gear.length === 0)) {
+        const n = ((_f = divers[i]) == null ? void 0 : _f.name) || "They";
         p.divers = divers;
         if (noRentalGearAvailable) {
           return {
@@ -5026,29 +5089,44 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
         }
         return { message: `Got it \u2014 ${n} will need rental gear. What would ${n} like to rent? Pick from the options below or say "none" when done.`, payload: p };
       }
-      if (isDone && ((_i = (_h = divers[i]) == null ? void 0 : _h.gear) == null ? void 0 : _i.length)) {
+      if (isDone && ((_h = (_g = divers[i]) == null ? void 0 : _g.gear) == null ? void 0 : _h.length)) {
         if (divers[i]) divers[i].gearAsked = true;
         p.divers = divers;
-        const numDivers = (_j = p.numberOfDivers) != null ? _j : 1;
+        const numDivers = (_i = p.numberOfDivers) != null ? _i : 1;
         const n = divers[i].name || "They";
         if (i < numDivers - 1) {
           return { message: `Got it \u2014 ${n}'s gear is set. What's Diver ${i + 2}'s full name?`, payload: p };
         }
         return { message: `Got it \u2014 ${n}'s gear is set. All set \u2014 ready to send your booking request.`, payload: p };
       }
-      if (isNone || isDone && !((_l = (_k = divers[i]) == null ? void 0 : _k.gear) == null ? void 0 : _l.length)) {
+      if (isNone || isDone && !((_k = (_j = divers[i]) == null ? void 0 : _j.gear) == null ? void 0 : _k.length)) {
         if (!divers[i]) return null;
         divers[i].gear = [];
         divers[i].gearAsked = true;
         p.divers = divers;
-        const numDivers = (_m = p.numberOfDivers) != null ? _m : 1;
+        const numDivers = (_l = p.numberOfDivers) != null ? _l : 1;
         if (i < numDivers - 1) {
           return { message: `Got it \u2014 no rental gear for ${divers[i].name}. What's Diver ${i + 2}'s full name?`, payload: p };
         }
         return { message: `Got it \u2014 no rental gear. All set \u2014 ready to send your booking request.`, payload: p };
       }
-      const equipmentNames = (_n = options == null ? void 0 : options.rentalEquipmentNames) != null ? _n : [];
+      const equipmentNames = (_m = options == null ? void 0 : options.rentalEquipmentNames) != null ? _m : [];
       if (equipmentNames.length > 0) {
+        const removeMatch = msg.match(/^remove\s+(.+)$/i);
+        if (removeMatch) {
+          const toRemove = removeMatch[1].trim();
+          const matchedName = equipmentNames.find((n) => n.toLowerCase() === toRemove.toLowerCase());
+          if (matchedName && divers[i].gear) {
+            const before = divers[i].gear.length;
+            divers[i].gear = divers[i].gear.filter((g) => (g.gearType || "").toLowerCase() !== matchedName.toLowerCase());
+            if (divers[i].gear.length < before) {
+              p.divers = divers;
+              const n = divers[i].name || "They";
+              const rest = divers[i].gear.length ? ' Add another or say "done" when finished.' : ' Do they need any other rental gear, or say "none" / "done"?';
+              return { message: `Removed ${matchedName} for ${n}.${rest}`, payload: p };
+            }
+          }
+        }
         const matched = equipmentNames.find((n) => n.toLowerCase() === lower);
         if (matched) {
           if (!divers[i].gear) divers[i].gear = [];
@@ -5056,7 +5134,7 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
           if (!already) divers[i].gear.push({ gearType: matched });
           p.divers = divers;
           const n = divers[i].name || "They";
-          return { message: `Added ${matched} for ${n}. Add another or say "none" when done.`, payload: p };
+          return { message: `Added ${matched} for ${n}. Add another or say "done" when finished.`, payload: p };
         }
       }
       return null;
@@ -5069,7 +5147,6 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
   }
 }
 function tryFastPathUnitOnly(userMessage, payload, _shopName) {
-  var _a;
   const msg = userMessage.trim().toLowerCase();
   if (!/^(lbs?|kg|pounds)$/.test(msg)) return null;
   const unit = msg.startsWith("lb") || msg === "pounds" ? "lbs" : "kg";
@@ -5087,10 +5164,6 @@ function tryFastPathUnitOnly(userMessage, payload, _shopName) {
   d[targetIdx].weightUnit = unit;
   p.divers = d;
   const n = d[targetIdx].name || "They";
-  const numDivers = (_a = p.numberOfDivers) != null ? _a : 1;
-  if (targetIdx < numDivers - 1) {
-    return { message: `Got it \u2014 recorded ${n}'s weight as ${d[targetIdx].weight} ${unit}. What's Diver ${targetIdx + 2}'s full name?`, payload: p };
-  }
   return { message: `Got it \u2014 recorded ${n}'s weight as ${d[targetIdx].weight} ${unit}. Does ${n} need any rental gear?`, payload: p };
 }
 

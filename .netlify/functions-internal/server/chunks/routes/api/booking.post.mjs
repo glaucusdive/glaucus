@@ -22,20 +22,30 @@ function buildDiveshopEmailBody(payload, shopName) {
     ""
   ];
   if (Array.isArray(payload.desiredDiveSites) && payload.desiredDiveSites.length > 0) {
-    lines.push("Desired dive sites: " + payload.desiredDiveSites.join(", "));
+    for (const site of payload.desiredDiveSites) {
+      lines.push(`Desired dive site: ${site}`);
+    }
     lines.push("");
   }
   lines.push("\u2014 Divers \u2014");
   for (let i = 0; i < ((_d = (_c = payload.divers) == null ? void 0 : _c.length) != null ? _d : 0); i++) {
     const d = payload.divers[i];
-    const gearList = Array.isArray(d.gear) && d.gear.length > 0 ? d.gear.map((g) => g == null ? void 0 : g.gearType).filter(Boolean).join(", ") || "None" : "None";
+    const gearItems = Array.isArray(d.gear) && d.gear.length > 0 ? d.gear.map((g) => g == null ? void 0 : g.gearType).filter(Boolean) : [];
     lines.push(
       `Diver ${i + 1}: ${(_e = d.name) != null ? _e : "\u2014"}`,
-      `  Certification: ${(_f = d.certificationNumber) != null ? _f : "\u2014"}, Dives completed: ${(_g = d.numberOfDives) != null ? _g : "\u2014"}`,
-      `  Height: ${(_h = d.height) != null ? _h : "\u2014"} ${(_i = d.heightUnit) != null ? _i : ""}, Weight: ${(_j = d.weight) != null ? _j : "\u2014"} ${(_k = d.weightUnit) != null ? _k : ""}`,
-      `  Rental gear: ${gearList}`,
-      ""
+      `  Certification: ${(_f = d.certificationNumber) != null ? _f : "\u2014"}`,
+      `  Dives completed: ${(_g = d.numberOfDives) != null ? _g : "\u2014"}`,
+      `  Height: ${(_h = d.height) != null ? _h : "\u2014"} ${((_i = d.heightUnit) != null ? _i : "").trim()}`.trim(),
+      `  Weight: ${(_j = d.weight) != null ? _j : "\u2014"} ${((_k = d.weightUnit) != null ? _k : "").trim()}`.trim()
     );
+    if (gearItems.length > 0) {
+      for (const item of gearItems) {
+        lines.push(`  Rental gear: ${item}`);
+      }
+    } else {
+      lines.push("  Rental gear: None");
+    }
+    lines.push("");
   }
   lines.push("\u2014 Guest contact \u2014", `Name: ${payload.name}`, `Email: ${payload.email}`);
   return lines.join("\n");

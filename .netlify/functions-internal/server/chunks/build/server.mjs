@@ -483,17 +483,17 @@ const _routes = [
   {
     name: "index",
     path: "/",
-    component: () => import('./index-BJ9r54MD.mjs')
+    component: () => import('./index-BJ89jfoW.mjs')
   },
   {
     name: "auth",
     path: "/auth",
-    component: () => import('./index-EdaT6HFk.mjs')
+    component: () => import('./index-Bxzakie4.mjs')
   },
   {
     name: "shops-id",
     path: "/shops/:id()",
-    component: () => import('./_id_-CrN89ZRT.mjs')
+    component: () => import('./_id_-B2C92d6H.mjs')
   },
   {
     name: "auth-signup",
@@ -503,30 +503,30 @@ const _routes = [
   {
     name: "shops",
     path: "/shops",
-    component: () => import('./index-B87j7dvl.mjs')
+    component: () => import('./index-C8hAnnuj.mjs')
   },
   {
     name: "profile",
     path: "/profile",
     meta: { "middleware": "auth" },
-    component: () => import('./index-CNRl_m6U.mjs')
+    component: () => import('./index-D9D-S3bI.mjs')
   },
   {
     name: "profile-drafts",
     path: "/profile/drafts",
     meta: { "middleware": "auth" },
-    component: () => import('./drafts-DMhmdEq9.mjs')
+    component: () => import('./drafts-DrwWqjSu.mjs')
   },
   {
     name: "community",
     path: "/community",
-    component: () => import('./index-BBeGKYQC.mjs')
+    component: () => import('./index-hzyEjW68.mjs')
   },
   {
     name: "profile-defaults",
     path: "/profile/defaults",
     meta: { "middleware": "auth" },
-    component: () => import('./defaults-BIPwOlsc.mjs')
+    component: () => import('./defaults-rDiZPPxr.mjs')
   }
 ];
 const _wrapInTransition = (props, children) => {
@@ -647,7 +647,7 @@ const globalMiddleware = [
   manifest_45route_45rule
 ];
 const namedMiddleware = {
-  auth: () => import('./auth-XP0F-GLF.mjs')
+  auth: () => import('./auth-Zcbn0fVB.mjs')
 };
 const plugin = /* @__PURE__ */ defineNuxtPlugin({
   name: "nuxt:router",

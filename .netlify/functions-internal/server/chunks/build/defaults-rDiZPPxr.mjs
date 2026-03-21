@@ -1,8 +1,8 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-D1Os6LCO.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-LydNulDx.mjs';
 import { _ as __nuxt_component_0$1 } from './server.mjs';
 import { defineComponent, ref, mergeProps, withCtx, createTextVNode, unref, createVNode, createBlock, openBlock, withModifiers, createCommentVNode, withDirectives, vModelText, Fragment, renderList, toDisplayString, vModelSelect, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrRenderAttr, ssrRenderList, ssrInterpolate, ssrIncludeBooleanAttr, ssrLooseContain, ssrLooseEqual, ssrRenderClass } from 'vue/server-renderer';
-import { u as useAuth } from './useAuth-BUYZlfj2.mjs';
+import { u as useAuth } from './useAuth-BhN4mRZa.mjs';
 import { u as useSupabase } from './useSupabase-DR_u3VFp.mjs';
 import 'vue-router';
 import '../nitro/nitro.mjs';
@@ -84,7 +84,8 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
           height_unit: d.heightUnit ?? "cm",
           weight: d.weight ?? "",
           weight_unit: d.weightUnit ?? "kg",
-          gear: (d.gear || []).map((g) => ({ gear_type: g.gearType ?? "" }))
+          gear: (d.gear || []).map((g) => ({ gear_type: g.gearType ?? "" })),
+          ...typeof d.times_used === "number" ? { times_used: d.times_used } : {}
         }));
         const { error } = await client.from("profiles").update({
           display_name: defaultsForm.value.name || null,
@@ -391,4 +392,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=defaults-BIPwOlsc.mjs.map
+//# sourceMappingURL=defaults-rDiZPPxr.mjs.map

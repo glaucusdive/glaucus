@@ -140,7 +140,9 @@ Ask for ONE piece of information at a time in this order: 1) name (the person ma
 
 When "Already collected" includes diver details from a previous booking (e.g. numberOfDives or gear already filled): (1) For number of dives \u2014 briefly confirm or ask to update, e.g. "Last time you had 21 dives \u2014 is this trip still 21 or have they done another?" or "Is this still 21 dives or 22 now?" so the count stays accurate. (2) For rental gear \u2014 mention what they had last time and that they can add or remove for this trip, e.g. "Last time you had Wetsuit and BCD. This shop offers [list from rental equipment]. Add or remove any for this trip?" Then let them pick from the chips or say "same" / "none" / etc.
 
-Dates (step 3): Accept dates in any form the user gives \u2014 e.g. "July 24 2026", "24th July", "070826", "7/24/26", "next week", "April 15 to April 18". Parse them into a start and end date. Reply by repeating the dates back in one clean, readable format (e.g. "So that's 24 July 2026 to 27 July 2026 \u2014 is that right?") and ask for confirmation. Only when the user confirms (yes, correct, that's right, yep, looks good, etc.) treat the dates as collected and move to the next question. If they correct the dates, parse the correction, repeat back in clean format again, and ask for confirmation. Store startDate and endDate in the payload in YYYY-MM-DD. Do not ask the user to type YYYY-MM-DD.
+Dates (step 3): Accept dates in any form the user gives \u2014 e.g. "July 24 2026", "24th July", "070826", "7/24/26", "next week", "April 15 to April 18". Parse them into a start and end date. After parsing, compute the trip length in days (end minus start). Most scuba trips are a few days to a week (roughly 3\u201310 days). If the trip is longer than 21 days (3 weeks), question the user before confirming: e.g. "That's [X] days \u2014 most dive trips are a few days to a week. Did you mean a shorter window, or is that correct for your plans?" If they confirm they want the long trip (yes, that's right, correct, I want that, that's what I meant, etc.), accept the dates and put them in COLLECTED. If they give different dates, parse the correction and repeat. For trips of 21 days or less, reply by repeating the dates back in one clean, readable format (e.g. "So that's 24 July 2026 to 27 July 2026 \u2014 is that right?") and ask for confirmation. Only when the user confirms treat the dates as collected and move to the next question. Store startDate and endDate in the payload in YYYY-MM-DD. Do not ask the user to type YYYY-MM-DD.
+
+Weight (step 7): If the user gives only a number for weight (e.g. "200" or "85") with no unit (kg or lbs), do NOT assume a unit. Ask for clarification: "Is that [number] kg or [number] lbs?" and only set weightUnit in COLLECTED when they specify. Never record weight as e.g. "200 kg" unless the user said "kg" or "lbs".
 
 Be warm and conversational. When you have collected all required fields (name, email, startDate, endDate, numberOfDivers, and for each diver: name, certificationNumber, numberOfDives, height, heightUnit, weight, weightUnit; gear can be empty array), output exactly:
 
@@ -176,7 +178,7 @@ COLLECTED: {"name":"...","email":"...","startDate":"...","endDate":"...","number
 Never put COLLECTED in the middle of your reply \u2014 your message to the user must come first, then COLLECTED on its own line. Include every field you have collected so far (use empty string or [] for not yet collected). Use the exact same JSON shape as BOOKING_READY. Always proceed to the next empty field question (e.g. after dates ask for dive sites; after dive sites ask for number of divers; after gear for last diver, output BOOKING_READY).`;
 }
 const aiSearch_post = defineEventHandler(async (event) => {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __;
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __, _$, _aa, _ba, _ca, _da, _ea, _fa, _ga, _ha, _ia, _ja, _ka, _la;
   try {
     const body = await readBody(event);
     const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill } = body;
@@ -242,6 +244,23 @@ const aiSearch_post = defineEventHandler(async (event) => {
       const rentalEquipmentNames = rentalEquipment.map((e) => e.name);
       const startingFreshBooking = (wantsToBook || resolvedByNamedShop) && !continuingBooking;
       const noPayloadYet = !bookingPayload || !(bookingPayload.name && String(bookingPayload.name).trim());
+      if (startingFreshBooking && noPayloadYet && rentalEquipment.length === 0) {
+        return {
+          success: true,
+          intent: "booking",
+          bookingReady: false,
+          message: `${resolvedShop.business_name} doesn't offer rental gear. You can still book with them (arrange gear elsewhere) or choose a different dive shop.`,
+          shopId: resolvedShop.id,
+          shopName: resolvedShop.business_name,
+          bookingPayload: void 0,
+          selectableOptions: [
+            { label: "Continue with this shop", value: "Continue with this shop" },
+            { label: "Pick a new diveshop", value: "Pick a new diveshop" }
+          ],
+          rentalEquipmentOptions: void 0,
+          diveSiteOptions: void 0
+        };
+      }
       if (startingFreshBooking && noPayloadYet) {
         const base = bookingPayload || {};
         let fromProfile = {};
@@ -309,14 +328,97 @@ const aiSearch_post = defineEventHandler(async (event) => {
         var _a2;
         return ((_a2 = getNextBookingStep(payload)) == null ? void 0 : _a2.step) === "diveSites" && diveSites.length > 0 ? diveSites : void 0;
       };
+      const hideNoneForGear = (payload) => {
+        var _a2, _b2;
+        if (!payload) return false;
+        const next = getNextBookingStep(payload);
+        if ((next == null ? void 0 : next.step) !== "gear" || next.diverIndex == null) return false;
+        const gear = (_b2 = (_a2 = payload.divers) == null ? void 0 : _a2[next.diverIndex]) == null ? void 0 : _b2.gear;
+        return Array.isArray(gear) && gear.length > 0;
+      };
       const messageAsksForGear = (text) => /rental gear|need any.*gear|available rental|more gear|next detail/i.test(text);
       const messageAsksForGearSelection = (text) => /what would .+ like to rent|pick from the options below/i.test(text);
       const messageAsksForDiveSites = (text) => /dive sites|which sites|sites would you like|available sites|pick one or more/i.test(text);
       const messageIsAddAnotherGear = (text) => /add another or say/i.test(text);
       const DIVE_SITES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.';
+      if (continuingBooking && !bookingPayload) {
+        const msgTrim = message.trim();
+        if (/pick a new diveshop|choose another shop|different (shop|diveshop)/i.test(msgTrim)) {
+          return {
+            success: true,
+            intent: "booking",
+            bookingReady: false,
+            message: 'No problem \u2014 search or pick from your results, then say "Book with [shop name]" to start a booking with a different shop.',
+            shopId: void 0,
+            shopName: void 0,
+            bookingPayload: void 0,
+            pendingBookingPayload: void 0,
+            selectableOptions: void 0,
+            rentalEquipmentOptions: void 0,
+            diveSiteOptions: void 0
+          };
+        }
+        if (/continue with this shop|continue booking|proceed with this shop/i.test(msgTrim)) {
+          const base = { shopId: resolvedShop.id };
+          let fromProfile = {};
+          if (profilePrefill) {
+            fromProfile = {
+              name: (_o = profilePrefill.name) != null ? _o : base.name,
+              email: (_p = profilePrefill.email) != null ? _p : base.email
+            };
+            if (Array.isArray(profilePrefill.defaultDivers) && profilePrefill.defaultDivers.length > 0) {
+              fromProfile.numberOfDivers = profilePrefill.defaultDivers.length;
+              fromProfile.divers = profilePrefill.defaultDivers.map((d, i) => {
+                var _a2, _b2, _c2, _d2, _e2, _f2, _g2, _h2, _i2, _j2, _k2;
+                return {
+                  name: (_a2 = d.name) != null ? _a2 : "",
+                  certificationNumber: (_b2 = d.certification_number) != null ? _b2 : "",
+                  numberOfDives: (_f2 = (_e2 = d.number_of_dives) != null ? _e2 : (_d2 = (_c2 = base.divers) == null ? void 0 : _c2[i]) == null ? void 0 : _d2.numberOfDives) != null ? _f2 : "",
+                  height: (_g2 = d.height) != null ? _g2 : "",
+                  heightUnit: d.height_unit === "ft-in" ? "ft-in" : "cm",
+                  weight: (_h2 = d.weight) != null ? _h2 : "",
+                  weightUnit: d.weight_unit === "lbs" ? "lbs" : "kg",
+                  gear: Array.isArray(d.gear) ? d.gear.map((g) => {
+                    var _a3;
+                    return { gearType: (_a3 = g.gear_type) != null ? _a3 : "" };
+                  }) : (_k2 = (_j2 = (_i2 = base.divers) == null ? void 0 : _i2[i]) == null ? void 0 : _j2.gear) != null ? _k2 : []
+                };
+              });
+            } else if (profilePrefill.defaultDiver) {
+              const d = profilePrefill.defaultDiver;
+              fromProfile.divers = [{
+                name: (_q = d.name) != null ? _q : "",
+                certificationNumber: (_r = d.certification_number) != null ? _r : "",
+                numberOfDives: (_v = (_u = d.number_of_dives) != null ? _u : (_t = (_s = base.divers) == null ? void 0 : _s[0]) == null ? void 0 : _t.numberOfDives) != null ? _v : "",
+                height: (_w = d.height) != null ? _w : "",
+                heightUnit: d.height_unit === "ft-in" ? "ft-in" : "cm",
+                weight: (_x = d.weight) != null ? _x : "",
+                weightUnit: d.weight_unit === "lbs" ? "lbs" : "kg",
+                gear: Array.isArray(d.gear) ? d.gear.map((g) => {
+                  var _a2;
+                  return { gearType: (_a2 = g.gear_type) != null ? _a2 : "" };
+                }) : (_A = (_z = (_y = base.divers) == null ? void 0 : _y[0]) == null ? void 0 : _z.gear) != null ? _A : []
+              }];
+            }
+          }
+          const initialPayload = { ...base, ...fromProfile };
+          return {
+            success: true,
+            intent: "booking",
+            bookingReady: false,
+            message: `Great \u2014 I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`,
+            shopId: resolvedShop.id,
+            shopName: resolvedShop.business_name,
+            bookingPayload: initialPayload,
+            selectableOptions: void 0,
+            rentalEquipmentOptions: void 0,
+            diveSiteOptions: void 0
+          };
+        }
+      }
       if (continuingBooking && bookingPayload) {
         const msgTrim = message.trim();
-        const lastAssistantContent = (_p = (_o = history == null ? void 0 : history.filter((m) => m.role === "assistant").pop()) == null ? void 0 : _o.content) != null ? _p : "";
+        const lastAssistantContent = (_C = (_B = history == null ? void 0 : history.filter((m) => m.role === "assistant").pop()) == null ? void 0 : _B.content) != null ? _C : "";
         const lastWasReadyToSend = /ready to send your booking request/i.test(lastAssistantContent);
         const confirmSend = /^(yes|yeah|yep|ok|okay|sure|send|submit|confirm|go ahead|do it|please send|ready)$/i.test(msgTrim) || /^(send|submit)\s+(booking\s+)?(request)?$/i.test(msgTrim) || lastWasReadyToSend && /^(yes|send|submit|confirm|ok)$/i.test(msgTrim);
         if (lastWasReadyToSend && confirmSend) {
@@ -355,10 +457,10 @@ const aiSearch_post = defineEventHandler(async (event) => {
         const editGearDiver2 = /(?:change|update|edit)\s+diver\s*2'?s?\s+(?:rental\s+)?gear/i.test(msgTrim) || /(?:rental\s+)?gear\s+for\s+diver\s*2/i.test(msgTrim);
         const reviewBooking = /\b(?:review|show|see|check)\s+(?:my\s+)?(?:booking|details|form|info)\b/i.test(msgTrim);
         const addGearForNameMatch = msgTrim.match(/(?:add|need to add|want to add)\s+(?:some\s+)?(?:rental\s+)?gear\s+for\s+(.+?)(?:\.|$)/i);
-        const addGearForName = (_q = addGearForNameMatch == null ? void 0 : addGearForNameMatch[1]) == null ? void 0 : _q.trim();
+        const addGearForName = (_D = addGearForNameMatch == null ? void 0 : addGearForNameMatch[1]) == null ? void 0 : _D.trim();
         if (editEmail || editName || editDates || editGearDiver1 || editGearDiver2 || reviewBooking || addGearForName) {
           const p = { ...bookingPayload, divers: [...bookingPayload.divers || []].map((d) => ({ ...d })) };
-          if (addGearForName && ((_r = p.divers) == null ? void 0 : _r.length)) {
+          if (addGearForName && ((_E = p.divers) == null ? void 0 : _E.length)) {
             const nameLower = addGearForName.toLowerCase();
             const diverIdx = p.divers.findIndex((d) => (d == null ? void 0 : d.name) && String(d.name).trim().toLowerCase().includes(nameLower));
             if (diverIdx >= 0 && p.divers[diverIdx]) {
@@ -374,6 +476,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
                 bookingPayload: p,
                 selectableOptions: void 0,
                 rentalEquipmentOptions: rentalEquipment.length > 0 ? rentalEquipment : void 0,
+                hideNoneForGear: hideNoneForGear(p),
                 diveSiteOptions: void 0
               };
             }
@@ -424,8 +527,8 @@ const aiSearch_post = defineEventHandler(async (event) => {
               diveSiteOptions: void 0
             };
           }
-          const numDivers = Math.max(1, (_s = p.numberOfDivers) != null ? _s : 1);
-          if (editGearDiver1 && ((_t = p.divers) == null ? void 0 : _t[0])) {
+          const numDivers = Math.max(1, (_F = p.numberOfDivers) != null ? _F : 1);
+          if (editGearDiver1 && ((_G = p.divers) == null ? void 0 : _G[0])) {
             p.divers[0] = { ...p.divers[0], gear: [], gearAsked: false };
             const name = p.divers[0].name || "Diver 1";
             return {
@@ -438,10 +541,11 @@ const aiSearch_post = defineEventHandler(async (event) => {
               bookingPayload: p,
               selectableOptions: void 0,
               rentalEquipmentOptions: rentalEquipment.length > 0 ? rentalEquipment : void 0,
+              hideNoneForGear: hideNoneForGear(p),
               diveSiteOptions: void 0
             };
           }
-          if (editGearDiver2 && numDivers >= 2 && ((_u = p.divers) == null ? void 0 : _u[1])) {
+          if (editGearDiver2 && numDivers >= 2 && ((_H = p.divers) == null ? void 0 : _H[1])) {
             p.divers[1] = { ...p.divers[1], gear: [], gearAsked: false };
             const name = p.divers[1].name || "Diver 2";
             return {
@@ -454,6 +558,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
               bookingPayload: p,
               selectableOptions: void 0,
               rentalEquipmentOptions: rentalEquipment.length > 0 ? rentalEquipment : void 0,
+              hideNoneForGear: hideNoneForGear(p),
               diveSiteOptions: void 0
             };
           }
@@ -463,7 +568,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
             if (p.email) parts.push(`Email: ${p.email}`);
             if (p.startDate && p.endDate) parts.push(`Dates: ${p.startDate} to ${p.endDate}`);
             if (p.numberOfDivers) parts.push(`${p.numberOfDivers} diver(s)`);
-            const diverLines = (p.divers || []).slice(0, (_v = p.numberOfDivers) != null ? _v : 0).map((d, i) => {
+            const diverLines = (p.divers || []).slice(0, (_I = p.numberOfDivers) != null ? _I : 0).map((d, i) => {
               var _a2;
               const gearList = (((_a2 = d.gear) == null ? void 0 : _a2.length) ? d.gear.map((g) => g.gearType).join(", ") : "none") || "none";
               return `Diver ${i + 1}: ${d.name || "\u2014"} \u2014 gear: ${gearList}`;
@@ -488,14 +593,14 @@ const aiSearch_post = defineEventHandler(async (event) => {
         if (rentalEquipmentNames.length > 0 && msgTrim.length > 0 && (nextStepForGearTap == null ? void 0 : nextStepForGearTap.step) === "gear" && nextStepForGearTap.diverIndex != null) {
           const matched = rentalEquipmentNames.find((n) => n.toLowerCase() === msgTrim.toLowerCase());
           if (matched) {
-            const numDivers = Math.max(1, (_w = bookingPayload.numberOfDivers) != null ? _w : 1);
+            const numDivers = Math.max(1, (_J = bookingPayload.numberOfDivers) != null ? _J : 1);
             const divers = Array.isArray(bookingPayload.divers) ? [...bookingPayload.divers] : [];
             while (divers.length < numDivers) {
               divers.push({ name: "", certificationNumber: "", numberOfDives: "", height: "", heightUnit: "cm", weight: "", weightUnit: "kg", gear: [] });
             }
             const targetIdx = nextStepForGearTap.diverIndex;
             const targetDiver = divers[targetIdx];
-            if (targetDiver && !((_x = targetDiver.gear) == null ? void 0 : _x.some((g) => (g.gearType || "").toLowerCase() === msgTrim.toLowerCase()))) {
+            if (targetDiver && !((_K = targetDiver.gear) == null ? void 0 : _K.some((g) => (g.gearType || "").toLowerCase() === msgTrim.toLowerCase()))) {
               const p = { ...bookingPayload, divers: [...divers] };
               p.divers[targetIdx] = { ...targetDiver, gear: [...targetDiver.gear || [], { gearType: matched }] };
               const name = p.divers[targetIdx].name || "They";
@@ -504,12 +609,13 @@ const aiSearch_post = defineEventHandler(async (event) => {
                 success: true,
                 intent: "booking",
                 bookingReady: false,
-                message: `Added ${matched} for ${name}. Add another or say "none" when done.`,
+                message: `Added ${matched} for ${name}. Add another or say "done" when finished.`,
                 shopId: resolvedShop.id,
                 shopName: resolvedShop.business_name,
                 bookingPayload: p,
                 selectableOptions: void 0,
-                rentalEquipmentOptions: gearChipsForFast
+                rentalEquipmentOptions: gearChipsForFast,
+                hideNoneForGear: hideNoneForGear(p)
               };
             }
           }
@@ -569,9 +675,9 @@ const aiSearch_post = defineEventHandler(async (event) => {
             };
           }
         }
-        const numDiversForDone = Math.max(1, (_y = bookingPayload.numberOfDivers) != null ? _y : 1);
-        const lastDiverForDone = (_z = bookingPayload.divers) == null ? void 0 : _z[numDiversForDone - 1];
-        if (((_A = lastDiverForDone == null ? void 0 : lastDiverForDone.gear) == null ? void 0 : _A.length) && (/^(done|that's all|finish|that's it)$/i.test(msgTrim) || msgTrim.toLowerCase() === "none")) {
+        const numDiversForDone = Math.max(1, (_L = bookingPayload.numberOfDivers) != null ? _L : 1);
+        const lastDiverForDone = (_M = bookingPayload.divers) == null ? void 0 : _M[numDiversForDone - 1];
+        if (((_N = lastDiverForDone == null ? void 0 : lastDiverForDone.gear) == null ? void 0 : _N.length) && (/^(done|that's all|finish|that's it)$/i.test(msgTrim) || msgTrim.toLowerCase() === "none")) {
           const name = lastDiverForDone.name || "They";
           const nextMsg = `Got it \u2014 ${name}'s gear is set. Do you want to add another diver? (yes/no)`;
           const payloadWithGearAsked = { ...bookingPayload, divers: [...bookingPayload.divers || []] };
@@ -593,7 +699,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
           };
         }
         if (lastAssistantContent && /add another diver/i.test(lastAssistantContent) && continuingBooking && bookingPayload) {
-          const numDivers = Math.max(1, (_B = bookingPayload.numberOfDivers) != null ? _B : 1);
+          const numDivers = Math.max(1, (_O = bookingPayload.numberOfDivers) != null ? _O : 1);
           const noMore = /^(no|nope|nah|that's all|just (these|two|them)|no other|no more|there's no|there are only|only two|just the two)$/i.test(msgTrim) || /no other diver|just (the )?two divers/i.test(msgTrim);
           if (noMore) {
             const p = { ...bookingPayload, shopId: resolvedShop.id };
@@ -617,15 +723,25 @@ const aiSearch_post = defineEventHandler(async (event) => {
               divers.push({ name: "", certificationNumber: "", numberOfDives: "", height: "", heightUnit: "cm", weight: "", weightUnit: "kg", gear: [] });
             }
             p.divers = divers;
+            const defaultDiversListFull = Array.isArray(profilePrefill == null ? void 0 : profilePrefill.defaultDivers) && profilePrefill.defaultDivers.length > 0 ? profilePrefill.defaultDivers : (profilePrefill == null ? void 0 : profilePrefill.defaultDiver) ? [profilePrefill.defaultDiver] : [];
+            const topTwo = [...defaultDiversListFull].sort((a, b) => {
+              var _a2, _b2;
+              return ((_a2 = b.times_used) != null ? _a2 : 0) - ((_b2 = a.times_used) != null ? _b2 : 0);
+            }).slice(0, 2).filter((d) => (d.name || "").trim());
+            const hasNamedProfileDivers = topTwo.length > 0;
+            const selectableOptions2 = hasNamedProfileDivers ? [
+              ...topTwo.map((d) => ({ label: `Use ${(d.name || "").trim()}`, value: `Use ${(d.name || "").trim()}` })),
+              { label: "Create new diver", value: "Create new diver" }
+            ] : void 0;
             return {
               success: true,
               intent: "booking",
               bookingReady: false,
-              message: `What's Diver ${newNum}'s full name?`,
+              message: hasNamedProfileDivers ? "Use an existing diver from your profile or create a new one?" : `What's Diver ${newNum}'s full name?`,
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               bookingPayload: p,
-              selectableOptions: void 0,
+              selectableOptions: selectableOptions2,
               rentalEquipmentOptions: void 0,
               diveSiteOptions: void 0
             };
@@ -643,7 +759,8 @@ const aiSearch_post = defineEventHandler(async (event) => {
               shopName: resolvedShop.business_name,
               bookingPayload: fastUnit.payload,
               selectableOptions: void 0,
-              rentalEquipmentOptions: addGearOptions(fastUnit.payload)
+              rentalEquipmentOptions: addGearOptions(fastUnit.payload),
+              hideNoneForGear: hideNoneForGear(fastUnit.payload)
             };
           }
         }
@@ -665,9 +782,12 @@ const aiSearch_post = defineEventHandler(async (event) => {
           }
         }
         if (nextStep) {
-          const fast = tryFastPath(nextStep, message, bookingPayload, resolvedShop.business_name, nextStep.step === "gear" ? { rentalEquipmentNames } : void 0);
+          const fastOptions = {};
+          if (nextStep.step === "gear") fastOptions.rentalEquipmentNames = rentalEquipmentNames;
+          if (profilePrefill) fastOptions.profilePrefill = profilePrefill;
+          const fast = tryFastPath(nextStep, message, bookingPayload, resolvedShop.business_name, fastOptions);
           if (fast) {
-            const nextAfterFast = (_C = getNextBookingStep(fast.payload)) == null ? void 0 : _C.step;
+            const nextAfterFast = (_P = getNextBookingStep(fast.payload)) == null ? void 0 : _P.step;
             if (nextAfterFast === "ready") {
               const p = { ...fast.payload, shopId: resolvedShop.id };
               return {
@@ -699,7 +819,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
               };
             }
             const gearChipsForFast = rentalEquipment.length > 0 ? rentalEquipment : void 0;
-            const noRentalGearOptions = ((_D = fast.selectableOptions) == null ? void 0 : _D.length) ? fast.selectableOptions : void 0;
+            const noRentalGearOptions = ((_Q = fast.selectableOptions) == null ? void 0 : _Q.length) ? fast.selectableOptions : void 0;
             const showGearChips = noRentalGearOptions ? void 0 : addGearOptions(fast.payload) && gearChipsForFast || (messageIsAddAnotherGear(fast.message) && gearChipsForFast ? gearChipsForFast : void 0) || (messageAsksForGearSelection(fast.message) && gearChipsForFast ? gearChipsForFast : void 0);
             return {
               success: true,
@@ -711,6 +831,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
               bookingPayload: fast.payload,
               selectableOptions: noRentalGearOptions != null ? noRentalGearOptions : void 0,
               rentalEquipmentOptions: showGearChips != null ? showGearChips : void 0,
+              hideNoneForGear: hideNoneForGear(fast.payload),
               diveSiteOptions: addDiveSiteOptions(fast.payload)
             };
           }
@@ -744,7 +865,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
         throw new Error("Booking flow failed");
       }
       const aiData2 = await aiResponse2.json();
-      const aiMessage2 = ((_F = (_E = aiData2.choices[0]) == null ? void 0 : _E.message) == null ? void 0 : _F.content) || "";
+      const aiMessage2 = ((_S = (_R = aiData2.choices[0]) == null ? void 0 : _R.message) == null ? void 0 : _S.content) || "";
       const bookingReadyIdx = aiMessage2.indexOf("BOOKING_READY:");
       if (bookingReadyIdx >= 0) {
         const braceStart = aiMessage2.indexOf("{", bookingReadyIdx);
@@ -901,12 +1022,12 @@ const aiSearch_post = defineEventHandler(async (event) => {
       }
       const willShowGearOptions = (collectedPayload ? addGearOptions(collectedPayload) : void 0) || (messageAsksForGear(replyMessage) && gearChips ? gearChips : void 0) || (messageIsAddAnotherGear(replyMessage) && gearChips ? gearChips : void 0) || (bookingPayload && addGearOptions(bookingPayload) && gearChips ? gearChips : void 0);
       if (willShowGearOptions && replyMessage === genericFallback) {
-        const numDivers = Math.max(1, (_H = (_G = collectedPayload != null ? collectedPayload : bookingPayload) == null ? void 0 : _G.numberOfDivers) != null ? _H : 1);
-        const divers = (_J = (_I = collectedPayload != null ? collectedPayload : bookingPayload) == null ? void 0 : _I.divers) != null ? _J : [];
-        const lastName = ((_K = divers[numDivers - 1]) == null ? void 0 : _K.name) || `Diver ${numDivers}`;
+        const numDivers = Math.max(1, (_U = (_T = collectedPayload != null ? collectedPayload : bookingPayload) == null ? void 0 : _T.numberOfDivers) != null ? _U : 1);
+        const divers = (_W = (_V = collectedPayload != null ? collectedPayload : bookingPayload) == null ? void 0 : _V.divers) != null ? _W : [];
+        const lastName = ((_X = divers[numDivers - 1]) == null ? void 0 : _X.name) || `Diver ${numDivers}`;
         replyMessage = `Does ${lastName} need any rental gear?`;
       }
-      const nextStepAfterReply = (_L = getNextBookingStep(collectedPayload != null ? collectedPayload : bookingPayload)) == null ? void 0 : _L.step;
+      const nextStepAfterReply = (_Y = getNextBookingStep(collectedPayload != null ? collectedPayload : bookingPayload)) == null ? void 0 : _Y.step;
       if (nextStepAfterReply === "gear" && rentalEquipment.length === 0) {
         return {
           success: true,
@@ -935,6 +1056,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
         bookingPayload: collectedPayload,
         selectableOptions: void 0,
         rentalEquipmentOptions: finalGearOptions && (Array.isArray(finalGearOptions) ? finalGearOptions.length > 0 : true) ? finalGearOptions : void 0,
+        hideNoneForGear: hideNoneForGear(collectedPayload != null ? collectedPayload : bookingPayload),
         diveSiteOptions: (collectedPayload ? addDiveSiteOptions(collectedPayload) : void 0) || (messageAsksForDiveSites(replyMessage) && diveSiteChips ? diveSiteChips : void 0) || (bookingPayload && addDiveSiteOptions(bookingPayload) ? diveSiteChips : void 0)
       };
     }
@@ -983,7 +1105,7 @@ Do not include a MESSAGE. Just return the FILTERS.`;
         });
         if (filterResponse.ok) {
           const filterData = await filterResponse.json();
-          const filterMessage = ((_N = (_M = filterData.choices[0]) == null ? void 0 : _M.message) == null ? void 0 : _N.content) || "";
+          const filterMessage = ((__ = (_Z = filterData.choices[0]) == null ? void 0 : _Z.message) == null ? void 0 : __.content) || "";
           const filtersMatch = filterMessage.match(/FILTERS:\s*(\{[^}]+\})/s);
           if (filtersMatch) {
             lastFilters = JSON.parse(filtersMatch[1]);
@@ -1000,10 +1122,10 @@ Do not include a MESSAGE. Just return the FILTERS.`;
               for (let i = 0; i < history.length; i++) {
                 const msg = history[i];
                 if (msg.role === "assistant") {
-                  const hasResultsPhrase = ((_O = msg.content) == null ? void 0 : _O.includes("Here are")) || ((_P = msg.content) == null ? void 0 : _P.includes("top results")) || ((_Q = msg.content) == null ? void 0 : _Q.includes("Here are the"));
-                  const isAskingQuestion = ((_R = msg.content) == null ? void 0 : _R.includes("What type")) || ((_S = msg.content) == null ? void 0 : _S.includes("Would you")) || ((_T = msg.content) == null ? void 0 : _T.trim().endsWith("?"));
+                  const hasResultsPhrase = ((_$ = msg.content) == null ? void 0 : _$.includes("Here are")) || ((_aa = msg.content) == null ? void 0 : _aa.includes("top results")) || ((_ba = msg.content) == null ? void 0 : _ba.includes("Here are the"));
+                  const isAskingQuestion = ((_ca = msg.content) == null ? void 0 : _ca.includes("What type")) || ((_da = msg.content) == null ? void 0 : _da.includes("Would you")) || ((_ea = msg.content) == null ? void 0 : _ea.trim().endsWith("?"));
                   if (hasResultsPhrase && !isAskingQuestion) {
-                    const nextN = (_V = (_U = msg.content) == null ? void 0 : _U.match(/next (\d+)\s+results?/i)) == null ? void 0 : _V[1];
+                    const nextN = (_ga = (_fa = msg.content) == null ? void 0 : _fa.match(/next (\d+)\s+results?/i)) == null ? void 0 : _ga[1];
                     const shown = nextN ? parseInt(nextN, 10) : 5;
                     alreadyShown += Number.isNaN(shown) ? 5 : shown;
                     console.log(`[AI Search] Found result message at index ${i}, shown: ${shown}, total shown: ${alreadyShown}`);
@@ -1088,7 +1210,7 @@ Do not include a MESSAGE. Just return the FILTERS.`;
       throw new Error(`OpenRouter API error: ${aiResponse.statusText}`);
     }
     const aiData = await aiResponse.json();
-    const aiMessage = ((_X = (_W = aiData.choices[0]) == null ? void 0 : _W.message) == null ? void 0 : _X.content) || "";
+    const aiMessage = ((_ia = (_ha = aiData.choices[0]) == null ? void 0 : _ha.message) == null ? void 0 : _ia.content) || "";
     console.log(`[AI Search] Raw AI response:`, aiMessage);
     let filters = {};
     let conversationalMessage = aiMessage;
@@ -1111,7 +1233,7 @@ Do not include a MESSAGE. Just return the FILTERS.`;
       filters = {};
     }
     const conversationText = [...(history || []).map((h) => h.content), message].join(" ");
-    if (!((_Y = filters.country) == null ? void 0 : _Y.trim())) {
+    if (!((_ja = filters.country) == null ? void 0 : _ja.trim())) {
       const inferred = inferCountryFromConversation(conversationText);
       if (inferred) {
         filters.country = inferred;
@@ -1221,7 +1343,7 @@ RULES:
       shouldAskFollowUp = true;
       console.log(`[AI Search] Low results (${resultCount}) or user wants more options, suggesting to broaden search...`);
       followUpMessage = broadeningResult.content ? broadeningResult.content.replace(/\b1\s+dive shop(s?)\b/gi, `${resultCount} dive shop${resultCount === 1 ? "" : "s"}`).replace(/\bonly 1\b/gi, `only ${resultCount}`) : "";
-      if ((_Z = broadeningResult.suggestions) == null ? void 0 : _Z.length) {
+      if ((_ka = broadeningResult.suggestions) == null ? void 0 : _ka.length) {
         selectableOptions = broadeningResult.suggestions.map((s) => ({ label: s, value: s }));
       }
       if (!(followUpMessage == null ? void 0 : followUpMessage.trim())) {
@@ -1229,7 +1351,7 @@ RULES:
         if (!(selectableOptions == null ? void 0 : selectableOptions.length) && filters.country) selectableOptions = [{ label: `Search all of ${filters.country}`, value: `Search all of ${filters.country}` }];
       }
     } else if (resultCount > 5) {
-      const lastAssistantMessage = ((__ = history.filter((h) => h.role === "assistant").pop()) == null ? void 0 : __.content) || "";
+      const lastAssistantMessage = ((_la = history.filter((h) => h.role === "assistant").pop()) == null ? void 0 : _la.content) || "";
       const lastWasAQuestion = lastAssistantMessage.includes("?");
       const noPreference = /\b(any|all|doesn't matter|don't care|no preference|whatever|either)\b/i.test(message);
       const looksLikeNewSearch = /\b(want to|find|search|looking for|dive in|diving in)\b/i.test(message) && message.trim().length > 25;

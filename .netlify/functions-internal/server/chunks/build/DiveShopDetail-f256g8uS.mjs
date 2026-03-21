@@ -1,10 +1,12 @@
 import { c as useAsyncData, d as createError, _ as __nuxt_component_0$1 } from './server.mjs';
 import { computed, ref, mergeProps, unref, withCtx, createBlock, openBlock, createCommentVNode, toDisplayString, Fragment, renderList, createVNode, useSSRContext } from 'vue';
 import { ssrRenderAttrs, ssrRenderComponent, ssrInterpolate, ssrRenderClass, ssrRenderList, ssrRenderAttr, ssrRenderSlot } from 'vue/server-renderer';
-import { ChevronLeft, X, MapPin, Phone, Mail, Globe } from 'lucide-vue-next';
+import { ChevronLeft, X, MapPin, Phone, Mail, Globe, Star, Trash2 } from 'lucide-vue-next';
+import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
+import { u as useAuth } from './useAuth-BhN4mRZa.mjs';
 import { u as useSupabase } from './useSupabase-DR_u3VFp.mjs';
 
-const _sfc_main$1 = {
+const _sfc_main$3 = {
   __name: "CardInfo",
   __ssrInlineRender: true,
   props: {
@@ -74,10 +76,115 @@ const _sfc_main$1 = {
     };
   }
 };
+const _sfc_setup$3 = _sfc_main$3.setup;
+_sfc_main$3.setup = (props, ctx) => {
+  const ssrContext = useSSRContext();
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("components/CardInfo.vue");
+  return _sfc_setup$3 ? _sfc_setup$3(props, ctx) : void 0;
+};
+const _sfc_main$2 = {
+  __name: "CardReview",
+  __ssrInlineRender: true,
+  props: {
+    showDelete: {
+      type: Boolean,
+      default: false
+    },
+    reviewerName: {
+      type: String,
+      required: true
+    },
+    reviewerImage: {
+      type: String,
+      default: ""
+    },
+    reviewDate: {
+      type: String,
+      required: true
+    },
+    rating: {
+      type: Number,
+      required: true,
+      validator: (value) => value >= 1 && value <= 5
+    },
+    reviewText: {
+      type: String,
+      required: true
+    }
+  },
+  emits: ["delete"],
+  setup(__props, { emit: __emit }) {
+    const props = __props;
+    const initials = computed(() => {
+      const parts = props.reviewerName.trim().split(/\s+/).filter(Boolean);
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      }
+      return props.reviewerName.slice(0, 2).toUpperCase() || "?";
+    });
+    return (_ctx, _push, _parent, _attrs) => {
+      _push(`<div${ssrRenderAttrs(mergeProps({ class: "w-full p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-4 shrink-0" }, _attrs))}><div class="flex items-start justify-between gap-2"><div class="flex items-center gap-3 min-w-0 flex-1"><div class="w-10 h-10 shrink-0 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden flex items-center justify-center">`);
+      if (__props.reviewerImage) {
+        _push(`<img${ssrRenderAttr("src", __props.reviewerImage)}${ssrRenderAttr("alt", __props.reviewerName)} class="w-full h-full object-cover">`);
+      } else {
+        _push(`<span class="text-xs font-semibold text-zinc-700 dark:text-zinc-200">${ssrInterpolate(initials.value)}</span>`);
+      }
+      _push(`</div><div class="flex flex-col min-w-0"><h4 class="text-sm font-semibold text-zinc-900 dark:text-white truncate">${ssrInterpolate(__props.reviewerName)}</h4><p class="text-xs text-zinc-600 dark:text-zinc-400">${ssrInterpolate(__props.reviewDate)}</p></div></div>`);
+      if (__props.showDelete) {
+        _push(`<button type="button" class="shrink-0 p-1.5 rounded-sm text-zinc-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80 cursor-pointer" title="Delete review" aria-label="Delete review">`);
+        _push(ssrRenderComponent(unref(Trash2), { class: "w-4 h-4" }, null, _parent));
+        _push(`</button>`);
+      } else {
+        _push(`<!---->`);
+      }
+      _push(`</div><div class="flex items-center gap-1" aria-hidden="true"><!--[-->`);
+      ssrRenderList(__props.rating, (star) => {
+        _push(ssrRenderComponent(unref(Star), {
+          key: "f-" + star,
+          class: "w-4 h-4 fill-current text-yellow-500"
+        }, null, _parent));
+      });
+      _push(`<!--]--><!--[-->`);
+      ssrRenderList(5 - __props.rating, (star) => {
+        _push(ssrRenderComponent(unref(Star), {
+          key: "e-" + star,
+          class: "w-4 h-4 fill-none stroke-current text-zinc-300 dark:text-zinc-600"
+        }, null, _parent));
+      });
+      _push(`<!--]--></div><div class="flex flex-col gap-2"><p class="text-sm leading-relaxed text-zinc-900 dark:text-white whitespace-pre-wrap">${ssrInterpolate(__props.reviewText)}</p></div></div>`);
+    };
+  }
+};
+const _sfc_setup$2 = _sfc_main$2.setup;
+_sfc_main$2.setup = (props, ctx) => {
+  const ssrContext = useSSRContext();
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("components/CardReview.vue");
+  return _sfc_setup$2 ? _sfc_setup$2(props, ctx) : void 0;
+};
+const _sfc_main$1 = {
+  __name: "CardReviewEmpty",
+  __ssrInlineRender: true,
+  emits: ["open"],
+  setup(__props) {
+    return (_ctx, _push, _parent, _attrs) => {
+      _push(`<button${ssrRenderAttrs(mergeProps({
+        type: "button",
+        class: "group w-full max-w-full p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-4 shrink-0 text-left border border-dashed border-zinc-300/80 dark:border-zinc-600/80 hover:border-zinc-400 dark:hover:border-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800/70 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-900"
+      }, _attrs))}><div class="flex items-start justify-between gap-2"><div class="flex items-center gap-3 min-w-0 flex-1"><div class="w-10 h-10 shrink-0 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center"><span class="text-xs font-medium text-zinc-500 dark:text-zinc-400">+</span></div><div class="flex flex-col gap-1.5 min-w-0 flex-1 py-0.5"><div class="h-3.5 bg-zinc-200 dark:bg-zinc-700 rounded-sm w-28 max-w-full"></div><div class="h-2.5 bg-zinc-200 dark:bg-zinc-700 rounded-sm w-20 max-w-full"></div></div></div></div><div class="flex items-center gap-1 text-zinc-400 dark:text-zinc-500" aria-hidden="true"><!--[-->`);
+      ssrRenderList(5, (n) => {
+        _push(ssrRenderComponent(unref(Star), {
+          key: n,
+          class: "w-4 h-4 fill-none stroke-current"
+        }, null, _parent));
+      });
+      _push(`<!--]--></div><div class="flex flex-col gap-2"><div class="h-2 bg-zinc-200 dark:bg-zinc-700 rounded-sm w-full"></div><div class="h-2 bg-zinc-200 dark:bg-zinc-700 rounded-sm w-[85%]"></div><p class="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400 pt-0.5 group-hover:text-blue-600 dark:group-hover:text-blue-400"> Write a review </p></div></button>`);
+    };
+  }
+};
 const _sfc_setup$1 = _sfc_main$1.setup;
 _sfc_main$1.setup = (props, ctx) => {
   const ssrContext = useSSRContext();
-  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("components/CardInfo.vue");
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("components/CardReviewEmpty.vue");
   return _sfc_setup$1 ? _sfc_setup$1(props, ctx) : void 0;
 };
 const isDemoMode = ref(false);
@@ -98,6 +205,44 @@ const useDemoMode = () => {
     disableDemoMode
   };
 };
+async function deleteShopReview(client, reviewId) {
+  const { error } = await client.from("shop_reviews").delete().eq("id", reviewId);
+  if (error) throw error;
+}
+function useShopReviews(shopId) {
+  const { client } = useSupabase();
+  const { data, pending, error, refresh } = useAsyncData(
+    `shop-reviews-${shopId}`,
+    async () => {
+      if (!shopId) return [];
+      const { data: rows, error: supabaseError } = await client.from("shop_reviews").select("*").eq("diveshop_id", shopId).order("created_at", { ascending: false });
+      if (supabaseError) throw supabaseError;
+      return rows ?? [];
+    },
+    {
+      server: false,
+      lazy: false,
+      default: () => []
+    }
+  );
+  const reviews = computed(() => data.value ?? []);
+  const topReviews = computed(() => {
+    const r = [...data.value ?? []];
+    r.sort((a, b) => {
+      if (b.rating !== a.rating) return b.rating - a.rating;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+    return r.slice(0, 3);
+  });
+  return {
+    data,
+    pending,
+    error,
+    refresh,
+    reviews,
+    topReviews
+  };
+}
 const formatTime = (time24) => {
   const [hours, minutes] = time24.split(":");
   const hour = parseInt(hours || "0", 10);
@@ -214,6 +359,26 @@ const _sfc_main = {
     showCloseButton: {
       type: Boolean,
       default: false
+    },
+    isInBookingFlow: {
+      type: Boolean,
+      default: false
+    },
+    isFormOpen: {
+      type: Boolean,
+      default: false
+    },
+    onStartBooking: {
+      type: Function,
+      default: null
+    },
+    onShowForm: {
+      type: Function,
+      default: null
+    },
+    onHideForm: {
+      type: Function,
+      default: null
     }
   },
   emits: ["close"],
@@ -226,11 +391,43 @@ const _sfc_main = {
       { id: "destinations", label: "Dive Destinations" },
       { id: "courses", label: "Courses" },
       { id: "information", label: "More Information" },
-      // TODO: wire when shop_reviews table exists
-      // { id: 'reviews', label: 'Reviews' },
+      { id: "reviews", label: "Reviews" },
       { id: "nearby", label: "Nearby Dive Shops" }
     ];
     const { shopData, nearbyShops } = useShopDetail(props.shopId);
+    const { user, isAppAdmin } = useAuth();
+    const { client } = useSupabase();
+    const { reviews, topReviews, pending: reviewsPending, refresh: refreshReviews } = useShopReviews(props.shopId);
+    const myReview = computed(() => {
+      const uid = user.value?.id;
+      if (!uid) return null;
+      return reviews.value.find((r) => r.user_id === uid) ?? null;
+    });
+    function canDeleteReview(r) {
+      if (isAppAdmin.value) return true;
+      const uid = user.value?.id;
+      if (!uid) return false;
+      return r.user_id === uid;
+    }
+    async function handleDeleteReview(r) {
+      if (!canDeleteReview(r)) return;
+      const label = r.author_display_name || "this review";
+      if (!confirm(`Delete review by ${label}? This cannot be undone.`)) return;
+      try {
+        await deleteShopReview(client, r.id);
+        await refreshReviews();
+      } catch (e) {
+        alert(e instanceof Error ? e.message : "Could not delete review.");
+      }
+    }
+    function formatReviewDate(iso) {
+      if (!iso) return "";
+      try {
+        return new Date(iso).toLocaleDateString(void 0, { year: "numeric", month: "short", day: "numeric" });
+      } catch {
+        return "";
+      }
+    }
     const paragraphs = computed(() => {
       const description = isDemoMode2.value ? demoDescription : shopData.value?.notes ?? shopData.value?.description;
       if (!description) return [];
@@ -248,6 +445,24 @@ const _sfc_main = {
       email: shopData.value?.email,
       website: shopData.value?.website_url
     }));
+    const { openDrawer } = useDrawer();
+    function openReviewDrawer() {
+      const my = myReview.value;
+      openDrawer("review-form", {
+        shopId: props.shopId,
+        shopName: shopData.value?.business_name || "Dive Shop",
+        initialRating: my?.rating ?? 5,
+        initialBody: my?.body ?? "",
+        isEditing: !!my,
+        reviewId: my?.id ?? null,
+        onSubmitted: () => {
+          refreshReviews();
+        },
+        onDeleted: () => {
+          refreshReviews();
+        }
+      });
+    }
     const { isDemoMode: isDemoMode2 } = useDemoMode();
     const displayHours = computed(() => {
       if (isDemoMode2.value) {
@@ -312,18 +527,18 @@ const _sfc_main = {
       _push(`<!--]--></div></div><div class="w-full h-0 flex-1 cq:lg:overflow-y-auto"><div class="flex flex-col cq:lg:flex-row justify-between cq:lg:justify-stretch items-start cq:lg:items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 cq:divide-zinc-700 divide-zinc-700 dark:divide-zinc-700 w-full h-full"><div class="w-full flex flex-col border-b-0 cq:lg:order-1 overflow-y-auto"><div class="flex flex-col gap-4 h-full w-full p-0">`);
       if (activeTab.value === "details") {
         _push(`<div class="flex flex-col gap-4 p-2 h-full overflow-y-auto"><div class="flex flex-col gap-4"><div class="flex flex-col gap-2"><div class="flex flex-col cq:lg:flex-row gap-2">`);
-        _push(ssrRenderComponent(_sfc_main$1, {
+        _push(ssrRenderComponent(_sfc_main$3, {
           title: "Hours",
           items: displayHours.value,
           "empty-message": "Hours not available"
         }, null, _parent));
-        _push(ssrRenderComponent(_sfc_main$1, {
+        _push(ssrRenderComponent(_sfc_main$3, {
           title: "Languages",
           items: displayLanguages.value || [],
           "display-mode": "text",
           "empty-message": "Languages not available"
         }, null, _parent));
-        _push(ssrRenderComponent(_sfc_main$1, {
+        _push(ssrRenderComponent(_sfc_main$3, {
           title: "Details",
           "empty-message": "No description available for this dive shop."
         }, {
@@ -374,7 +589,37 @@ const _sfc_main = {
           }),
           _: 1
         }, _parent));
-        _push(`</div></div></div></div>`);
+        _push(`</div></div><div class="flex flex-col gap-2 mt-1"><div class="flex flex-row items-center justify-between gap-2 flex-wrap"><h3 class="text-sm font-semibold text-zinc-900 dark:text-white">Top reviews</h3><button type="button" class="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer shrink-0">${ssrInterpolate(myReview.value ? "Edit your review" : "Write a review")}</button></div>`);
+        if (unref(reviewsPending)) {
+          _push(`<div class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-3 gap-2"><!--[-->`);
+          ssrRenderList([1, 2, 3], (n) => {
+            _push(`<div class="w-full p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-4 animate-pulse"><div class="flex gap-3"><div class="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-700"></div><div class="flex-1 space-y-2 pt-1"><div class="h-3 bg-zinc-200 dark:bg-zinc-700 rounded w-1/2"></div><div class="h-2 bg-zinc-200 dark:bg-zinc-700 rounded w-1/3"></div></div></div><div class="flex gap-1"><!--[-->`);
+            ssrRenderList(5, (n2) => {
+              _push(`<div class="w-4 h-4 rounded bg-zinc-200 dark:bg-zinc-700"></div>`);
+            });
+            _push(`<!--]--></div><div class="space-y-2"><div class="h-2 bg-zinc-200 dark:bg-zinc-700 rounded"></div><div class="h-2 bg-zinc-200 dark:bg-zinc-700 rounded w-4/5"></div></div></div>`);
+          });
+          _push(`<!--]--></div>`);
+        } else if (unref(topReviews).length === 0) {
+          _push(`<div class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-3 gap-2 w-full">`);
+          _push(ssrRenderComponent(_sfc_main$1, { onOpen: openReviewDrawer }, null, _parent));
+          _push(`</div>`);
+        } else {
+          _push(`<div class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-3 gap-2"><!--[-->`);
+          ssrRenderList(unref(topReviews), (r) => {
+            _push(ssrRenderComponent(_sfc_main$2, {
+              key: r.id,
+              "reviewer-name": r.author_display_name || "Diver",
+              "review-date": formatReviewDate(r.created_at),
+              rating: r.rating,
+              "review-text": r.body,
+              "show-delete": canDeleteReview(r),
+              onDelete: ($event) => handleDeleteReview(r)
+            }, null, _parent));
+          });
+          _push(`<!--]--></div>`);
+        }
+        _push(`</div></div></div>`);
       } else {
         _push(`<!---->`);
       }
@@ -385,7 +630,7 @@ const _sfc_main = {
         } else {
           _push(`<div class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-1 gap-2"><!--[-->`);
           ssrRenderList(groupedDestinations.value, (dest) => {
-            _push(ssrRenderComponent(_sfc_main$1, {
+            _push(ssrRenderComponent(_sfc_main$3, {
               key: dest.title,
               title: dest.title,
               items: dest.items
@@ -404,7 +649,7 @@ const _sfc_main = {
         } else {
           _push(`<div class="grid grid-cols-1 cq:grid-cols-2 gap-2"><!--[-->`);
           ssrRenderList(coursesList.value, (course, idx) => {
-            _push(ssrRenderComponent(_sfc_main$1, {
+            _push(ssrRenderComponent(_sfc_main$3, {
               key: course.title + String(idx),
               title: course.title,
               items: course.items.length ? course.items : ["Contact shop for dates"]
@@ -418,17 +663,44 @@ const _sfc_main = {
       }
       if (activeTab.value === "information") {
         _push(`<div class="flex flex-col gap-4 p-2 h-full overflow-y-auto"><div class="flex flex-col cq:lg:flex-row gap-2 rounded-md">`);
-        _push(ssrRenderComponent(_sfc_main$1, {
+        _push(ssrRenderComponent(_sfc_main$3, {
           title: "Equipment Rental",
           items: equipmentList.value,
           "empty-message": "No equipment listed."
         }, null, _parent));
-        _push(ssrRenderComponent(_sfc_main$1, {
+        _push(ssrRenderComponent(_sfc_main$3, {
           title: "Gas Mixture",
           items: gasesList.value,
           "empty-message": "No gas mixture listed."
         }, null, _parent));
         _push(`</div></div>`);
+      } else {
+        _push(`<!---->`);
+      }
+      if (activeTab.value === "reviews") {
+        _push(`<div class="flex flex-col gap-4 p-2 h-full overflow-y-auto"><div class="flex flex-row items-center justify-between gap-2 flex-wrap"><h3 class="text-sm font-semibold text-zinc-900 dark:text-white">All reviews</h3><button type="button" class="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer shrink-0">${ssrInterpolate(myReview.value ? "Edit your review" : "Write a review")}</button></div>`);
+        if (unref(reviewsPending)) {
+          _push(`<div class="text-sm text-zinc-500 dark:text-zinc-400 p-2">Loading reviews…</div>`);
+        } else if (unref(reviews).length === 0) {
+          _push(`<div class="grid grid-cols-1 cq:grid-cols-2 gap-2 w-full">`);
+          _push(ssrRenderComponent(_sfc_main$1, { onOpen: openReviewDrawer }, null, _parent));
+          _push(`</div>`);
+        } else {
+          _push(`<div class="grid grid-cols-1 cq:grid-cols-2 gap-2 w-full"><!--[-->`);
+          ssrRenderList(unref(reviews), (r) => {
+            _push(ssrRenderComponent(_sfc_main$2, {
+              key: r.id,
+              "reviewer-name": r.author_display_name || "Diver",
+              "review-date": formatReviewDate(r.created_at),
+              rating: r.rating,
+              "review-text": r.body,
+              "show-delete": canDeleteReview(r),
+              onDelete: ($event) => handleDeleteReview(r)
+            }, null, _parent));
+          });
+          _push(`<!--]--></div>`);
+        }
+        _push(`</div>`);
       } else {
         _push(`<!---->`);
       }
@@ -446,7 +718,7 @@ const _sfc_main = {
             }, {
               default: withCtx((_, _push2, _parent2, _scopeId) => {
                 if (_push2) {
-                  _push2(ssrRenderComponent(_sfc_main$1, {
+                  _push2(ssrRenderComponent(_sfc_main$3, {
                     title: shop.business_name,
                     items: [
                       [shop.locale, shop.country?.name].filter(Boolean).join(", "),
@@ -455,7 +727,7 @@ const _sfc_main = {
                   }, null, _parent2, _scopeId));
                 } else {
                   return [
-                    createVNode(_sfc_main$1, {
+                    createVNode(_sfc_main$3, {
                       title: shop.business_name,
                       items: [
                         [shop.locale, shop.country?.name].filter(Boolean).join(", "),
@@ -474,7 +746,7 @@ const _sfc_main = {
       } else {
         _push(`<!---->`);
       }
-      _push(`</div></div><div class="w-full cq:lg:min-w-1/2 cq:lg:w-1/2 cq:xl:min-w-1/3 cq:xl:w-1/3 p-2 h-auto cq:xl:h-full cq:lg:order-1 sticky bottom-0 cq:2xl:bottom-auto bg-zinc-50 dark:bg-zinc-900"><div class="h-full"><div class="flex flex-col gap-2"><div class="flex flex-col gap-2 cq:lg:p-4 bg-zinc-100 dark:bg-zinc-800 rounded-md cq:lg:order-1"><h2 class="hidden cq:lg:block cq:lg:text-2xl font-semibold text-zinc-900 dark:text-white">Book Now</h2><p class="hidden cq:lg:block text-sm text-zinc-600 dark:text-zinc-400">Ready to dive? Click below to start your booking.</p><button class="border border-zinc-900 dark:border-zinc-100 hover:border-zinc-800 dark:hover:border-zinc-200 bg-transparent text-white dark:text-white font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer"> Start Booking </button></div><div class="flex flex-col gap-2 border border-zinc-300 dark:border-zinc-700 rounded-md cq:lg:order-2"><ul class="flex flex-row cq:lg:flex-col justify-between lg:justify-start divide-x lg:divide-y divide-zinc-300 dark:divide-zinc-700">`);
+      _push(`</div></div><div class="w-full cq:lg:min-w-1/2 cq:lg:w-1/2 cq:xl:min-w-1/3 cq:xl:w-1/3 p-2 h-auto cq:xl:h-full cq:lg:order-1 sticky bottom-0 cq:2xl:bottom-auto bg-zinc-50 dark:bg-zinc-900"><div class="h-full"><div class="flex flex-col gap-2"><div class="flex flex-col gap-2 cq:lg:p-4 bg-zinc-100 dark:bg-zinc-800 rounded-md cq:lg:order-1"><h2 class="hidden cq:lg:block cq:lg:text-2xl font-semibold text-zinc-900 dark:text-white">Book Now</h2><p class="hidden cq:lg:block text-sm text-zinc-600 dark:text-zinc-400">${ssrInterpolate(__props.isInBookingFlow ? __props.isFormOpen ? "Booking form is open. Click to hide it." : "View or edit your booking details in the form." : "Ready to dive? Click below to start your booking.")}</p><button class="border border-zinc-900 dark:border-zinc-100 hover:border-zinc-800 dark:hover:border-zinc-200 bg-transparent text-white dark:text-white font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">${ssrInterpolate(__props.isInBookingFlow ? __props.isFormOpen ? "Hide form" : "Show form" : "Start Booking")}</button></div><div class="flex flex-col gap-2 border border-zinc-300 dark:border-zinc-700 rounded-md cq:lg:order-2"><ul class="flex flex-row cq:lg:flex-col justify-between lg:justify-start divide-x lg:divide-y divide-zinc-300 dark:divide-zinc-700">`);
       if (contactInfo.value?.address) {
         _push(`<li class="w-full flex justify-center cq:lg:justify-start"><a${ssrRenderAttr("href", `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contactInfo.value.address)}`)} target="_blank" class="w-full justify-center p-4 flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 overflow-hidden">`);
         _push(ssrRenderComponent(unref(MapPin), { class: "min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" }, null, _parent));
@@ -515,4 +787,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as _, useShopDetail as u };
-//# sourceMappingURL=DiveShopDetail-BWmKpC27.mjs.map
+//# sourceMappingURL=DiveShopDetail-f256g8uS.mjs.map

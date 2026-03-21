@@ -1,0 +1,192 @@
+<template>
+  <div class="flex flex-col h-full min-h-0">
+    <div class="w-full h-10 lg:h-18 p-1 border-b border-zinc-300 dark:border-zinc-700 shrink-0 flex items-center">
+      <div class="w-full flex items-center justify-between px-2 overflow-auto">
+        <h2 class="text-base font-medium truncate text-zinc-900 dark:text-white">
+          {{ isEditing ? 'Edit review' : 'Review' }} · {{ shopName }}
+        </h2>
+        <button type="button" class="lg:p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-sm transition-colors cursor-pointer text-zinc-900 dark:text-white" @click="closeDrawer">
+          <X class="w-5 h-5" />
+        </button>
+      </div>
+    </div>
+
+    <div class="w-full flex-1 min-h-0 overflow-y-auto p-2">
+      <div v-if="!isSignedIn" class="flex flex-col gap-3 p-2">
+        <p class="text-sm text-zinc-600 dark:text-zinc-400">
+          Sign in to leave a review for this dive shop.
+        </p>
+        <NuxtLink
+          to="/auth"
+          class="inline-flex justify-center rounded-md border border-zinc-900 dark:border-zinc-100 py-2 px-4 text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          @click="closeDrawer"
+        >
+          Sign in
+        </NuxtLink>
+      </div>
+
+      <form v-else class="flex flex-col gap-3" @submit.prevent="handleSubmit">
+        <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-2 p-2">
+          <legend class="text-xs uppercase font-medium px-1 text-zinc-900 dark:text-white">Rating</legend>
+          <div class="flex items-center gap-1 px-1" role="group" aria-label="Star rating">
+            <button
+              v-for="n in 5"
+              :key="n"
+              type="button"
+              class="p-1 rounded-sm hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 cursor-pointer text-zinc-900 dark:text-yellow-500"
+              :aria-pressed="n <= rating"
+              @click="rating = n"
+            >
+              <Star class="w-6 h-6" :class="n <= rating ? 'fill-current' : 'fill-none stroke-current text-zinc-400'" />
+            </button>
+            <span class="text-sm text-zinc-600 dark:text-zinc-400 ml-1">{{ rating }} / 5</span>
+          </div>
+        </fieldset>
+
+        <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2">
+          <label for="review-body" class="text-xs uppercase font-medium px-1 text-zinc-900 dark:text-white">Comment</label>
+          <textarea
+            id="review-body"
+            v-model="body"
+            rows="6"
+            required
+            minlength="1"
+            placeholder="Share your experience…"
+            class="rounded-sm w-full p-2 outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm resize-y min-h-[120px]"
+          />
+        </fieldset>
+
+        <p v-if="submitError" class="text-sm text-red-600 dark:text-red-400 px-1">{{ submitError }}</p>
+
+        <button
+          type="submit"
+          :disabled="submitting || deleting || !body.trim()"
+          class="mx-2 border border-zinc-900 dark:border-zinc-100 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {{ submitting ? 'Saving…' : (isEditing ? 'Update review' : 'Submit review') }}
+        </button>
+
+        <button
+          v-if="isEditing && reviewId"
+          type="button"
+          :disabled="submitting || deleting"
+          class="mx-2 mb-2 border border-red-600/60 dark:border-red-500/60 text-red-700 dark:text-red-400 font-medium py-2 px-4 rounded-md transition-colors w-full cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="handleDelete"
+        >
+          {{ deleting ? 'Deleting…' : 'Delete review' }}
+        </button>
+      </form>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { X, Star } from 'lucide-vue-next'
+import { useDrawer } from '~/composables/useDrawer'
+import { useAuth } from '~/composables/useAuth'
+import { useSupabase } from '~/composables/useSupabase'
+import { saveShopReview, deleteShopReview } from '~/composables/useShopReviews'
+
+const props = defineProps({
+  shopId: {
+    type: String,
+    required: true
+  },
+  shopName: {
+    type: String,
+    default: 'Dive shop'
+  },
+  initialRating: {
+    type: Number,
+    default: null
+  },
+  initialBody: {
+    type: String,
+    default: ''
+  },
+  isEditing: {
+    type: Boolean,
+    default: false
+  },
+  reviewId: {
+    type: String,
+    default: null
+  },
+  /** Called after successful save */
+  onSubmitted: {
+    type: Function,
+    default: null
+  },
+  /** Called after successful delete */
+  onDeleted: {
+    type: Function,
+    default: null
+  }
+})
+
+const { closeDrawer } = useDrawer()
+const { isSignedIn, user } = useAuth()
+const { client } = useSupabase()
+
+const rating = ref(typeof props.initialRating === 'number' && props.initialRating >= 1 && props.initialRating <= 5
+  ? props.initialRating
+  : 5)
+const body = ref(props.initialBody ?? '')
+const submitting = ref(false)
+const deleting = ref(false)
+const submitError = ref('')
+
+watch(() => props.initialRating, (v) => {
+  if (typeof v === 'number' && v >= 1 && v <= 5) rating.value = v
+})
+watch(() => props.initialBody, (v) => {
+  if (typeof v === 'string') body.value = v
+})
+
+async function handleSubmit () {
+  submitError.value = ''
+  const uid = user.value?.id
+  if (!uid) {
+    submitError.value = 'You must be signed in to submit a review.'
+    return
+  }
+  const trimmed = body.value.trim()
+  if (!trimmed) {
+    submitError.value = 'Please enter a comment.'
+    return
+  }
+  submitting.value = true
+  try {
+    await saveShopReview(client, props.shopId, uid, {
+      rating: rating.value,
+      body: trimmed
+    })
+    if (typeof props.onSubmitted === 'function') {
+      props.onSubmitted()
+    }
+    closeDrawer()
+  } catch (e) {
+    submitError.value = e instanceof Error ? e.message : 'Could not save review.'
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function handleDelete () {
+  if (!props.reviewId) return
+  if (!confirm('Delete this review permanently?')) return
+  submitError.value = ''
+  deleting.value = true
+  try {
+    await deleteShopReview(client, props.reviewId)
+    if (typeof props.onDeleted === 'function') {
+      props.onDeleted()
+    }
+    closeDrawer()
+  } catch (e) {
+    submitError.value = e instanceof Error ? e.message : 'Could not delete review.'
+  } finally {
+    deleting.value = false
+  }
+}
+</script>
