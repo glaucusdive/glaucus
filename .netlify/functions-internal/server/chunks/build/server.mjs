@@ -484,7 +484,7 @@ const _routes = [
   {
     name: "index",
     path: "/",
-    component: () => import('./index-DeceQ8uU.mjs')
+    component: () => import('./index-Cc6m0MWa.mjs')
   },
   {
     name: "auth",
@@ -527,7 +527,7 @@ const _routes = [
     name: "profile-defaults",
     path: "/profile/defaults",
     meta: { "middleware": "auth" },
-    component: () => import('./defaults-DZRDA8Zs.mjs')
+    component: () => import('./defaults-C6DqYLcG.mjs')
   }
 ];
 const _wrapInTransition = (props, children) => {

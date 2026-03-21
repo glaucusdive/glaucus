@@ -1,7 +1,7 @@
 import { _ as __nuxt_component_0 } from './nuxt-layout-CQ-IFpM2.mjs';
 import { _ as __nuxt_component_0$1 } from './server.mjs';
-import { defineComponent, ref, mergeProps, withCtx, createTextVNode, unref, createVNode, createBlock, openBlock, withModifiers, createCommentVNode, withDirectives, vModelText, Fragment, renderList, toDisplayString, vModelSelect, useSSRContext } from 'vue';
-import { ssrRenderComponent, ssrRenderAttr, ssrRenderList, ssrInterpolate, ssrIncludeBooleanAttr, ssrLooseContain, ssrLooseEqual, ssrRenderClass } from 'vue/server-renderer';
+import { defineComponent, ref, mergeProps, withCtx, createTextVNode, unref, createVNode, createBlock, createCommentVNode, openBlock, toDisplayString, withModifiers, withDirectives, vModelText, Fragment, renderList, vModelSelect, useSSRContext } from 'vue';
+import { ssrRenderComponent, ssrInterpolate, ssrRenderAttr, ssrRenderList, ssrIncludeBooleanAttr, ssrLooseContain, ssrLooseEqual, ssrRenderClass } from 'vue/server-renderer';
 import { u as useAuth } from './useAuth-8ihLM1hW.mjs';
 import { u as useSupabase } from './useSupabase-eANk4KtY.mjs';
 import 'vue-router';
@@ -46,6 +46,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
     const defaultsSaving = ref(false);
     const defaultsSaveMessage = ref("");
     const defaultsSaveSuccess = ref(false);
+    const defaultsImportHint = ref("");
     function addDefaultDiver() {
       defaultsForm.value.divers.push({
         name: "",
@@ -76,6 +77,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
       if (!user.value?.id) return;
       defaultsSaving.value = true;
       defaultsSaveMessage.value = "";
+      defaultsImportHint.value = "";
       try {
         const default_divers = defaultsForm.value.divers.map((d) => ({
           name: d.name ?? "",
@@ -140,6 +142,11 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
               _: 1
             }, _parent2, _scopeId));
             _push2(`<h1 class="text-xl font-bold text-zinc-900 dark:text-white mb-2"${_scopeId}>Booking defaults</h1><p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6"${_scopeId}>This info is used to prefill bookings. You can set it here or it’ll be saved from your first completed booking.</p>`);
+            if (unref(defaultsImportHint)) {
+              _push2(`<p class="text-sm text-blue-600 dark:text-blue-400 mb-4"${_scopeId}>${ssrInterpolate(unref(defaultsImportHint))}</p>`);
+            } else {
+              _push2(`<!---->`);
+            }
             if (unref(defaultsLoading)) {
               _push2(`<div class="text-sm text-zinc-500 dark:text-zinc-400"${_scopeId}>Loading…</div>`);
             } else {
@@ -184,11 +191,15 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
                 }),
                 createVNode("h1", { class: "text-xl font-bold text-zinc-900 dark:text-white mb-2" }, "Booking defaults"),
                 createVNode("p", { class: "text-sm text-zinc-500 dark:text-zinc-400 mb-6" }, "This info is used to prefill bookings. You can set it here or it’ll be saved from your first completed booking."),
-                unref(defaultsLoading) ? (openBlock(), createBlock("div", {
+                unref(defaultsImportHint) ? (openBlock(), createBlock("p", {
                   key: 0,
+                  class: "text-sm text-blue-600 dark:text-blue-400 mb-4"
+                }, toDisplayString(unref(defaultsImportHint)), 1)) : createCommentVNode("", true),
+                unref(defaultsLoading) ? (openBlock(), createBlock("div", {
+                  key: 1,
                   class: "text-sm text-zinc-500 dark:text-zinc-400"
                 }, "Loading…")) : (openBlock(), createBlock("form", {
-                  key: 1,
+                  key: 2,
                   onSubmit: withModifiers(saveDefaults, ["prevent"]),
                   class: "space-y-4 max-w-xl"
                 }, [
@@ -393,4 +404,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=defaults-DZRDA8Zs.mjs.map
+//# sourceMappingURL=defaults-C6DqYLcG.mjs.map

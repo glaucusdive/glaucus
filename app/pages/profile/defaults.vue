@@ -6,6 +6,7 @@
       </NuxtLink>
       <h1 class="text-xl font-bold text-zinc-900 dark:text-white mb-2">Booking defaults</h1>
       <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">This info is used to prefill bookings. You can set it here or it’ll be saved from your first completed booking.</p>
+      <p v-if="defaultsImportHint" class="text-sm text-blue-600 dark:text-blue-400 mb-4">{{ defaultsImportHint }}</p>
 
       <div v-if="defaultsLoading" class="text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
       <form v-else @submit.prevent="saveDefaults" class="space-y-4 max-w-xl">
@@ -37,37 +38,37 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">Name</label>
-                <input v-model="diver.name" type="text" class="w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white" />
+                <input v-model="diver.name" type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white" />
               </div>
               <div>
                 <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">Certification #</label>
-                <input v-model="diver.certificationNumber" type="text" class="w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white" />
+                <input v-model="diver.certificationNumber" type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white" />
               </div>
               <div>
                 <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">Number of dives</label>
-                <input v-model="diver.numberOfDives" type="text" class="w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white" placeholder="e.g. 21" />
+                <input v-model="diver.numberOfDives" type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white" placeholder="e.g. 21" />
               </div>
-              <div class="flex gap-2">
-                <div class="flex-1">
+              <div class="flex gap-2 items-end">
+                <div class="flex-1 min-w-0">
                   <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">Height</label>
-                  <input v-model="diver.height" type="text" class="w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white" />
+                  <input v-model="diver.height" type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white" />
                 </div>
-                <div class="w-20">
+                <div class="w-24 shrink-0">
                   <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">Unit</label>
-                  <select v-model="diver.heightUnit" class="w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white">
+                  <select v-model="diver.heightUnit" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-tight text-zinc-900 dark:text-white">
                     <option value="cm">cm</option>
                     <option value="ft-in">ft & in</option>
                   </select>
                 </div>
               </div>
-              <div class="flex gap-2">
-                <div class="flex-1">
+              <div class="flex gap-2 items-end">
+                <div class="flex-1 min-w-0">
                   <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">Weight</label>
-                  <input v-model="diver.weight" type="text" class="w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white" />
+                  <input v-model="diver.weight" type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white" />
                 </div>
-                <div class="w-20">
+                <div class="w-24 shrink-0">
                   <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">Unit</label>
-                  <select v-model="diver.weightUnit" class="w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-white">
+                  <select v-model="diver.weightUnit" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-tight text-zinc-900 dark:text-white">
                     <option value="kg">kg</option>
                     <option value="lbs">lbs</option>
                   </select>
@@ -76,12 +77,12 @@
             </div>
             <div>
               <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Past rental gear</label>
-              <div class="flex flex-wrap gap-2">
-                <span v-for="(g, gi) in diver.gear" :key="gi" class="inline-flex items-center gap-1 rounded bg-zinc-200 dark:bg-zinc-700 px-2 py-0.5 text-xs text-zinc-800 dark:text-zinc-200">
+              <div class="flex flex-wrap items-center gap-2">
+                <span v-for="(g, gi) in diver.gear" :key="gi" class="inline-flex h-8 items-center gap-1 rounded bg-zinc-200 dark:bg-zinc-700 px-2 text-xs text-zinc-800 dark:text-zinc-200">
                   {{ g.gearType || 'Gear' }}
                   <button type="button" @click="removeDiverGear(idx, gi)" class="hover:text-red-600 dark:hover:text-red-400 cursor-pointer" aria-label="Remove">×</button>
                 </span>
-                <select v-model="diver.gearToAdd" @change="addDiverGearFromSelect(idx)" class="rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1 text-xs text-zinc-900 dark:text-white">
+                <select v-model="diver.gearToAdd" @change="addDiverGearFromSelect(idx)" class="h-8 min-w-[7.5rem] rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-xs leading-tight text-zinc-900 dark:text-white">
                   <option value="">Add gear…</option>
                   <option v-for="t in gearTypes" :key="t" :value="t">{{ t }}</option>
                 </select>
@@ -102,6 +103,10 @@
 </template>
 
 <script setup lang="ts">
+import { readChatsRoot, getActiveSession } from '~/composables/useSearchCache'
+import { getLatestBookingPayloadFromMessages, bookingPayloadHasNamedDiver } from '~/utils/chatBookingPayload'
+import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst, type BookingDiverLike } from '~/utils/mergeProfileDefaultDivers'
+
 definePageMeta({ middleware: 'auth' })
 
 const { user } = useAuth()
@@ -129,6 +134,58 @@ const defaultsLoading = ref(true)
 const defaultsSaving = ref(false)
 const defaultsSaveMessage = ref('')
 const defaultsSaveSuccess = ref(false)
+const defaultsImportHint = ref('')
+
+function mapProfileDiverRowsToForm (rows: Array<Record<string, unknown>>) {
+  defaultsForm.value.divers = rows.map((d) => ({
+    name: (d.name ?? '') as string,
+    certificationNumber: (d.certification_number ?? '') as string,
+    numberOfDives: (d.number_of_dives ?? '') as string,
+    height: (d.height ?? '') as string,
+    heightUnit: (d.height_unit === 'ft-in' ? 'ft-in' : 'cm') as string,
+    weight: (d.weight ?? '') as string,
+    weightUnit: (d.weight_unit === 'lbs' ? 'lbs' : 'kg') as string,
+    gear: Array.isArray(d.gear)
+      ? (d.gear as Array<{ gear_type?: string; gearType?: string }>).map(g => ({ gearType: (g.gear_type ?? g.gearType ?? '') as string }))
+      : [],
+    times_used: typeof d.times_used === 'number' ? d.times_used : undefined
+  }))
+}
+
+/** If profile has no named default diver, merge from the active chat session in sessionStorage (same-tab chat). */
+async function importDiversFromActiveChatIfNeeded (): Promise<boolean> {
+  if (!import.meta.client || !user.value?.id) return false
+  const hasNamed = defaultsForm.value.divers.some(d => String(d.name || '').trim())
+  if (hasNamed) return false
+
+  const root = readChatsRoot()
+  const active = root ? getActiveSession(root) : null
+  const msgs = active?.messages ?? []
+  const payload = getLatestBookingPayloadFromMessages(msgs)
+  if (!payload || !bookingPayloadHasNamedDiver(payload)) return false
+
+  const payloadDivers = payload.divers as BookingDiverLike[]
+  try {
+    const { data: profile, error: selErr } = await client.from('profiles').select('default_divers').eq('id', user.value.id).single()
+    if (selErr) return false
+    const default_divers = mergeDefaultDiversFromBookingPayload(profile?.default_divers, payloadDivers, { bumpTimesUsed: false })
+    const patch: Record<string, unknown> = {
+      default_divers,
+      default_diver: defaultDiverJsonFromFirst(default_divers[0]) ?? null
+    }
+    if (payload.name && String(payload.name).trim()) patch.display_name = String(payload.name).trim()
+    if (payload.email && String(payload.email).trim()) patch.email = String(payload.email).trim()
+    const { error: upErr } = await client.from('profiles').update(patch).eq('id', user.value.id)
+    if (upErr) return false
+
+    mapProfileDiverRowsToForm(default_divers as Array<Record<string, unknown>>)
+    if (payload.name && String(payload.name).trim()) defaultsForm.value.name = String(payload.name).trim()
+    if (payload.email && String(payload.email).trim()) defaultsForm.value.email = String(payload.email).trim()
+    return true
+  } catch {
+    return false
+  }
+}
 
 function addDefaultDiver () {
   defaultsForm.value.divers.push({
@@ -173,21 +230,17 @@ async function loadDefaults () {
     defaultsForm.value.email = (data.email ?? '') as string
     const dd = data.default_divers
     if (Array.isArray(dd) && dd.length > 0) {
-      defaultsForm.value.divers = dd.map((d: Record<string, unknown>) => ({
-        name: (d.name ?? '') as string,
-        certificationNumber: (d.certification_number ?? '') as string,
-        numberOfDives: (d.number_of_dives ?? '') as string,
-        height: (d.height ?? '') as string,
-        heightUnit: (d.height_unit === 'ft-in' ? 'ft-in' : 'cm') as string,
-        weight: (d.weight ?? '') as string,
-        weightUnit: (d.weight_unit === 'lbs' ? 'lbs' : 'kg') as string,
-        gear: Array.isArray(d.gear) ? (d.gear as Array<{ gear_type?: string; gearType?: string }>).map(g => ({ gearType: (g.gear_type ?? g.gearType ?? '') as string })) : [],
-        times_used: typeof d.times_used === 'number' ? d.times_used : undefined
-      }))
+      mapProfileDiverRowsToForm(dd as Array<Record<string, unknown>>)
     } else if (defaultsForm.value.divers.length === 0) {
       defaultsForm.value.divers = [{ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: [] }]
     }
   } finally {
+    if (import.meta.client && user.value?.id) {
+      const imported = await importDiversFromActiveChatIfNeeded()
+      if (imported) {
+        defaultsImportHint.value = 'Imported diver details from your open chat session (same browser tab).'
+      }
+    }
     defaultsLoading.value = false
   }
 }
@@ -196,6 +249,7 @@ async function saveDefaults () {
   if (!user.value?.id) return
   defaultsSaving.value = true
   defaultsSaveMessage.value = ''
+  defaultsImportHint.value = ''
   try {
     const default_divers = defaultsForm.value.divers.map(d => ({
       name: d.name ?? '',

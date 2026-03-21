@@ -282,15 +282,18 @@ import { useChatSessions, notifyChatSidebarUpdated } from '~/composables/useChat
 import { useDrawer } from '~/composables/useDrawer'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/composables/useSupabase'
+import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst } from '~/utils/mergeProfileDefaultDivers'
+import { getLatestBookingPayloadFromMessages, bookingPayloadHasNamedDiver } from '~/utils/chatBookingPayload'
 
 // Get route to check for initial query
 const route = useRoute()
-const { isSignedIn } = useAuth()
+const { isSignedIn, user } = useAuth()
 const { client } = useSupabase()
 /** Profile snapshot for agent prefill (name, email, defaultDiver); set when signed in. */
 const profilePrefillSnapshot = ref(null)
-watch(isSignedIn, async (signedIn) => {
-  if (!signedIn) {
+
+async function loadProfilePrefill () {
+  if (!isSignedIn.value) {
     profilePrefillSnapshot.value = null
     return
   }
@@ -329,7 +332,56 @@ watch(isSignedIn, async (signedIn) => {
   } catch {
     profilePrefillSnapshot.value = null
   }
+}
+
+watch(isSignedIn, async (signedIn) => {
+  if (!signedIn) {
+    profilePrefillSnapshot.value = null
+    return
+  }
+  await loadProfilePrefill()
 }, { immediate: true })
+
+/** Incremental: merge chat bookingPayload into profiles.default_divers (no times_used bump). */
+async function syncProfileFromChatPayload (payload) {
+  if (!user.value?.id || !payload) return
+  const divers = payload.divers
+  if (!Array.isArray(divers) || divers.length === 0) return
+  const hasNamed = divers.some(d => d?.name && String(d.name).trim())
+  if (!hasNamed) return
+  try {
+    const { data: profile } = await client.from('profiles').select('default_divers').eq('id', user.value.id).single()
+    const default_divers = mergeDefaultDiversFromBookingPayload(profile?.default_divers, divers, { bumpTimesUsed: false })
+    const patch = {
+      default_divers,
+      default_diver: defaultDiverJsonFromFirst(default_divers[0]) ?? undefined
+    }
+    if (payload.name && String(payload.name).trim()) patch.display_name = String(payload.name).trim()
+    if (payload.email && String(payload.email).trim()) patch.email = String(payload.email).trim()
+    await client.from('profiles').update(patch).eq('id', user.value.id)
+    await loadProfilePrefill()
+  } catch (e) {
+    console.warn('[profile sync from chat]', e)
+  }
+}
+
+/** After chat-initiated /api/booking succeeds: same default_divers merge as BookingForm (bump times_used). */
+async function syncProfileAfterChatBookingSent (body) {
+  if (!user.value?.id || !Array.isArray(body.divers) || body.divers.length === 0) return
+  try {
+    const { data: profile } = await client.from('profiles').select('default_divers').eq('id', user.value.id).single()
+    const default_divers = mergeDefaultDiversFromBookingPayload(profile?.default_divers, body.divers, { bumpTimesUsed: true })
+    await client.from('profiles').update({
+      display_name: body.name ?? undefined,
+      email: body.email ?? undefined,
+      default_divers,
+      default_diver: defaultDiverJsonFromFirst(default_divers[0]) ?? undefined
+    }).eq('id', user.value.id)
+    await loadProfilePrefill()
+  } catch (e) {
+    console.warn('[profile sync after chat booking]', e)
+  }
+}
 
 // State
 const userInput = ref('')
@@ -338,6 +390,23 @@ const isLoading = ref(false)
 const messages = ref([])
 const messagesContainer = ref(null)
 const isRestoringCache = ref(true)
+/** After cache restore or session switch, sync profile from the latest booking payload in memory (same merge as each new assistant turn). */
+let debounceProfileFromChatTimer = null
+watch(
+  [isRestoringCache, isSignedIn, messages],
+  () => {
+    if (import.meta.server) return
+    clearTimeout(debounceProfileFromChatTimer)
+    debounceProfileFromChatTimer = setTimeout(() => {
+      debounceProfileFromChatTimer = null
+      if (isRestoringCache.value || !isSignedIn.value) return
+      const p = getLatestBookingPayloadFromMessages(messages.value)
+      if (!p || !bookingPayloadHasNamedDiver(p)) return
+      void syncProfileFromChatPayload(p)
+    }, 350)
+  },
+  { deep: true }
+)
 const abortController = ref(null)
 const selectedShopId = ref(null)
 /** Carried-over booking form data when user chose "Pick a new diveshop"; sent with next "Book with X" so details transfer. */
@@ -434,6 +503,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateIsDesktop)
+  clearTimeout(debounceProfileFromChatTimer)
 })
 
 // Example queries for initial state
@@ -827,6 +897,7 @@ const sendMessage = async (messageText, displayText) => {
               shopId: response.shopId,
               shopName: response.shopName
             })
+            void syncProfileAfterChatBookingSent(body)
             return
           }
         } catch (bookErr) {
@@ -869,6 +940,9 @@ const sendMessage = async (messageText, displayText) => {
       })
       if (response.intent === 'booking' && storedPayload) {
         updateBookingPayloadIfOpen(storedPayload)
+        if (isSignedIn.value) {
+          void syncProfileFromChatPayload(storedPayload)
+        }
       }
       // Carry-over payload when user chose "Pick a new diveshop" — clear current shop and store payload for next booking
       if (response.pendingBookingPayload) {

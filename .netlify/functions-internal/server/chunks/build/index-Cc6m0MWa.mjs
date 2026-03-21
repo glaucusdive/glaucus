@@ -178,16 +178,151 @@ _sfc_main$1.setup = (props, ctx) => {
   (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("components/ShopDetailPanel.vue");
   return _sfc_setup$1 ? _sfc_setup$1(props, ctx) : void 0;
 };
+function normalizeExisting(existingRaw) {
+  if (!Array.isArray(existingRaw)) return [];
+  return existingRaw.map((e) => {
+    const r = e;
+    const gearRaw = r.gear;
+    const gear = Array.isArray(gearRaw) ? gearRaw.map((g) => ({
+      gear_type: String(g.gear_type ?? g.gearType ?? "")
+    })) : [];
+    return {
+      name: String(r.name ?? ""),
+      certification_number: String(r.certification_number ?? ""),
+      number_of_dives: String(r.number_of_dives ?? ""),
+      height: String(r.height ?? ""),
+      height_unit: String(r.height_unit ?? "cm"),
+      weight: String(r.weight ?? ""),
+      weight_unit: String(r.weight_unit ?? "kg"),
+      gear,
+      times_used: typeof r.times_used === "number" ? r.times_used : void 0
+    };
+  });
+}
+function diverRowFromBookingLike(d) {
+  return {
+    name: d.name ?? "",
+    certification_number: d.certificationNumber ?? "",
+    number_of_dives: d.numberOfDives ?? "",
+    height: d.height ?? "",
+    height_unit: d.heightUnit ?? "cm",
+    weight: d.weight ?? "",
+    weight_unit: d.weightUnit ?? "kg",
+    gear: (d.gear || []).map((g) => ({ gear_type: g?.gearType ?? "" }))
+  };
+}
+function pickField(prev, next) {
+  const nt = String(next ?? "").trim();
+  if (nt !== "") return String(next);
+  return String(prev ?? "").trim();
+}
+function mergeGear(prev, next) {
+  const nextHas = next.some((g) => String(g.gear_type ?? "").trim() !== "");
+  if (nextHas) return next;
+  return prev ?? [];
+}
+function mergeDiverIncremental(prev, next) {
+  const name = (next.name || "").trim() || (prev?.name ?? "");
+  return {
+    name,
+    certification_number: pickField(prev?.certification_number, next.certification_number),
+    number_of_dives: pickField(prev?.number_of_dives, next.number_of_dives),
+    height: pickField(prev?.height, next.height),
+    height_unit: pickField(prev?.height_unit, next.height_unit) || "cm",
+    weight: pickField(prev?.weight, next.weight),
+    weight_unit: pickField(prev?.weight_unit, next.weight_unit) || "kg",
+    gear: mergeGear(prev?.gear, next.gear),
+    times_used: prev?.times_used ?? 0
+  };
+}
+function mergeCompletedBooking(existingRaw, payloadDivers) {
+  const existing = existingRaw;
+  const byName = /* @__PURE__ */ new Map();
+  for (const e of existing) {
+    const k = String(e.name ?? "").trim().toLowerCase();
+    if (k) byName.set(k, e);
+  }
+  const merged = [];
+  for (const d of payloadDivers) {
+    const base = diverRowFromBookingLike(d);
+    const row = {
+      name: base.name,
+      certification_number: base.certification_number,
+      number_of_dives: base.number_of_dives,
+      height: base.height,
+      height_unit: base.height_unit,
+      weight: base.weight,
+      weight_unit: base.weight_unit,
+      gear: base.gear
+    };
+    const k = row.name.trim().toLowerCase();
+    const prev = k ? byName.get(k) : void 0;
+    const times_used = prev ? (prev.times_used ?? 0) + 1 : 1;
+    merged.push({ ...row, times_used });
+    if (k) byName.set(k, { ...row, times_used });
+  }
+  for (const e of existing) {
+    const k = String(e.name ?? "").trim().toLowerCase();
+    if (k && !byName.has(k)) {
+      const [one] = normalizeExisting([e]);
+      if (one) merged.push(one);
+    }
+  }
+  return merged.sort((a, b) => (b.times_used ?? 0) - (a.times_used ?? 0));
+}
+function mergeIncremental(existingRaw, payloadDivers) {
+  const existing = normalizeExisting(existingRaw);
+  const byNameInit = /* @__PURE__ */ new Map();
+  for (const e of existing) {
+    const k = e.name.trim().toLowerCase();
+    if (k) byNameInit.set(k, { ...e });
+  }
+  const byKey = /* @__PURE__ */ new Map();
+  for (const d of payloadDivers) {
+    const next = diverRowFromBookingLike(d);
+    const k = next.name.trim().toLowerCase();
+    if (!k) continue;
+    const prevRow = byKey.get(k) ?? byNameInit.get(k);
+    byKey.set(k, mergeDiverIncremental(prevRow, next));
+  }
+  const merged = [...byKey.values()];
+  for (const e of existing) {
+    const k = e.name.trim().toLowerCase();
+    if (k && !byKey.has(k)) merged.push(e);
+  }
+  return merged.sort((a, b) => (b.times_used ?? 0) - (a.times_used ?? 0));
+}
+function mergeDefaultDiversFromBookingPayload(existingDefaultDivers, payloadDivers, options) {
+  const existing = Array.isArray(existingDefaultDivers) ? existingDefaultDivers : [];
+  const divers = Array.isArray(payloadDivers) ? payloadDivers : [];
+  if (options.bumpTimesUsed) {
+    return mergeCompletedBooking(existing, divers);
+  }
+  return mergeIncremental(existing, divers);
+}
+function defaultDiverJsonFromFirst(first) {
+  if (!first?.name?.trim()) return null;
+  return {
+    name: first.name,
+    certification_number: first.certification_number,
+    number_of_dives: first.number_of_dives,
+    height: first.height,
+    height_unit: first.height_unit,
+    weight: first.weight,
+    weight_unit: first.weight_unit,
+    gear: first.gear
+  };
+}
 const _sfc_main = {
   __name: "index",
   __ssrInlineRender: true,
   setup(__props) {
     const route = useRoute();
-    const { isSignedIn } = useAuth();
+    const { isSignedIn, user } = useAuth();
     const { client } = useSupabase();
     const profilePrefillSnapshot = ref(null);
-    watch(isSignedIn, async (signedIn) => {
-      if (!signedIn) {
+    async function loadProfilePrefill() {
+      if (!isSignedIn.value) {
         profilePrefillSnapshot.value = null;
         return;
       }
@@ -224,13 +359,64 @@ const _sfc_main = {
       } catch {
         profilePrefillSnapshot.value = null;
       }
+    }
+    watch(isSignedIn, async (signedIn) => {
+      if (!signedIn) {
+        profilePrefillSnapshot.value = null;
+        return;
+      }
+      await loadProfilePrefill();
     }, { immediate: true });
+    async function syncProfileFromChatPayload(payload) {
+      if (!user.value?.id || !payload) return;
+      const divers = payload.divers;
+      if (!Array.isArray(divers) || divers.length === 0) return;
+      const hasNamed = divers.some((d) => d?.name && String(d.name).trim());
+      if (!hasNamed) return;
+      try {
+        const { data: profile } = await client.from("profiles").select("default_divers").eq("id", user.value.id).single();
+        const default_divers = mergeDefaultDiversFromBookingPayload(profile?.default_divers, divers, { bumpTimesUsed: false });
+        const patch = {
+          default_divers,
+          default_diver: defaultDiverJsonFromFirst(default_divers[0]) ?? void 0
+        };
+        if (payload.name && String(payload.name).trim()) patch.display_name = String(payload.name).trim();
+        if (payload.email && String(payload.email).trim()) patch.email = String(payload.email).trim();
+        await client.from("profiles").update(patch).eq("id", user.value.id);
+        await loadProfilePrefill();
+      } catch (e) {
+        console.warn("[profile sync from chat]", e);
+      }
+    }
+    async function syncProfileAfterChatBookingSent(body) {
+      if (!user.value?.id || !Array.isArray(body.divers) || body.divers.length === 0) return;
+      try {
+        const { data: profile } = await client.from("profiles").select("default_divers").eq("id", user.value.id).single();
+        const default_divers = mergeDefaultDiversFromBookingPayload(profile?.default_divers, body.divers, { bumpTimesUsed: true });
+        await client.from("profiles").update({
+          display_name: body.name ?? void 0,
+          email: body.email ?? void 0,
+          default_divers,
+          default_diver: defaultDiverJsonFromFirst(default_divers[0]) ?? void 0
+        }).eq("id", user.value.id);
+        await loadProfilePrefill();
+      } catch (e) {
+        console.warn("[profile sync after chat booking]", e);
+      }
+    }
     const userInput = ref("");
     const chatInputRef = ref(null);
     const isLoading = ref(false);
     const messages = ref([]);
     const messagesContainer = ref(null);
     const isRestoringCache = ref(true);
+    watch(
+      [isRestoringCache, isSignedIn, messages],
+      () => {
+        return;
+      },
+      { deep: true }
+    );
     const abortController = ref(null);
     const selectedShopId = ref(null);
     const pendingBookingPayload = ref(null);
@@ -550,6 +736,7 @@ const _sfc_main = {
                   shopId: response.shopId,
                   shopName: response.shopName
                 });
+                void syncProfileAfterChatBookingSent(body);
                 return;
               }
             } catch (bookErr) {
@@ -592,6 +779,9 @@ const _sfc_main = {
           });
           if (response.intent === "booking" && storedPayload) {
             updateBookingPayloadIfOpen(storedPayload);
+            if (isSignedIn.value) {
+              void syncProfileFromChatPayload(storedPayload);
+            }
           }
           if (response.pendingBookingPayload) {
             pendingBookingPayload.value = response.pendingBookingPayload;
@@ -1241,4 +1431,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-DeceQ8uU.mjs.map
+//# sourceMappingURL=index-Cc6m0MWa.mjs.map
