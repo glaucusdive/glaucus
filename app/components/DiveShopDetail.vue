@@ -78,6 +78,56 @@
                     </CardInfo>
                   </div>
                 </div>
+                <!-- Top reviews (Details tab) -->
+                <div class="flex flex-col gap-2 mt-1">
+                  <div class="flex flex-row items-center justify-between gap-2 flex-wrap">
+                    <h3 class="text-sm font-semibold text-zinc-900 dark:text-white">Top reviews</h3>
+                    <button
+                      type="button"
+                      class="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer shrink-0"
+                      @click="openReviewDrawer"
+                    >
+                      {{ myReview ? 'Edit your review' : 'Write a review' }}
+                    </button>
+                  </div>
+                  <div v-if="reviewsPending" class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-3 gap-2">
+                    <div
+                      v-for="n in [1, 2, 3]"
+                      :key="'sk-' + n"
+                      class="w-full p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-4 animate-pulse"
+                    >
+                      <div class="flex gap-3">
+                        <div class="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-700" />
+                        <div class="flex-1 space-y-2 pt-1">
+                          <div class="h-3 bg-zinc-200 dark:bg-zinc-700 rounded w-1/2" />
+                          <div class="h-2 bg-zinc-200 dark:bg-zinc-700 rounded w-1/3" />
+                        </div>
+                      </div>
+                      <div class="flex gap-1">
+                        <div v-for="n in 5" :key="n" class="w-4 h-4 rounded bg-zinc-200 dark:bg-zinc-700" />
+                      </div>
+                      <div class="space-y-2">
+                        <div class="h-2 bg-zinc-200 dark:bg-zinc-700 rounded" />
+                        <div class="h-2 bg-zinc-200 dark:bg-zinc-700 rounded w-4/5" />
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else-if="topReviews.length === 0" class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-3 gap-2 w-full">
+                    <CardReviewEmpty @open="openReviewDrawer" />
+                  </div>
+                  <div v-else class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-3 gap-2">
+                    <CardReview
+                      v-for="r in topReviews"
+                      :key="r.id"
+                      :reviewer-name="r.author_display_name || 'Diver'"
+                      :review-date="formatReviewDate(r.created_at)"
+                      :rating="r.rating"
+                      :review-text="r.body"
+                      :show-delete="canDeleteReview(r)"
+                      @delete="handleDeleteReview(r)"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
             <!-- Dive Destinations Tab -->
@@ -127,18 +177,34 @@
                 -->
               </div>
             </div>
-            <!-- TODO: wire when shop_reviews table exists -->
-            <!--
             <div v-if="activeTab === 'reviews'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
-              <section class="flex flex-col gap-0">
-                <div class="relative">
-                  <div class="grid grid-cols-1 cq:grid-cols-2 gap-2 w-full relative">
-                    <CardReview ... />
-                  </div>
-                </div>
-              </section>
+              <div class="flex flex-row items-center justify-between gap-2 flex-wrap">
+                <h3 class="text-sm font-semibold text-zinc-900 dark:text-white">All reviews</h3>
+                <button
+                  type="button"
+                  class="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer shrink-0"
+                  @click="openReviewDrawer"
+                >
+                  {{ myReview ? 'Edit your review' : 'Write a review' }}
+                </button>
+              </div>
+              <div v-if="reviewsPending" class="text-sm text-zinc-500 dark:text-zinc-400 p-2">Loading reviews…</div>
+              <div v-else-if="reviews.length === 0" class="grid grid-cols-1 cq:grid-cols-2 gap-2 w-full">
+                <CardReviewEmpty @open="openReviewDrawer" />
+              </div>
+              <div v-else class="grid grid-cols-1 cq:grid-cols-2 gap-2 w-full">
+                <CardReview
+                  v-for="r in reviews"
+                  :key="r.id"
+                  :reviewer-name="r.author_display_name || 'Diver'"
+                  :review-date="formatReviewDate(r.created_at)"
+                  :rating="r.rating"
+                  :review-text="r.body"
+                  :show-delete="canDeleteReview(r)"
+                  @delete="handleDeleteReview(r)"
+                />
+              </div>
             </div>
-            -->
             <!-- Nearby Dive Shops Tab -->
             <div v-if="activeTab === 'nearby'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
               <section class="flex flex-col gap-4">
@@ -227,9 +293,13 @@
 import { MapPin, Phone, Mail, Globe, ChevronLeft, X } from 'lucide-vue-next'
 import CardInfo from '~/components/CardInfo.vue'
 import CardReview from '~/components/CardReview.vue'
+import CardReviewEmpty from '~/components/CardReviewEmpty.vue'
 import { ref, computed } from 'vue'
 import { useDrawer } from '~/composables/useDrawer'
+import { useAuth } from '~/composables/useAuth'
+import { useSupabase } from '~/composables/useSupabase'
 import { useDemoMode } from '~/composables/useDemoMode'
+import { deleteShopReview } from '~/composables/useShopReviews'
 import { formatOperatingHours, demoHours, demoLanguages, demoDescription } from '~/utils/formatHours'
 
 // Props
@@ -278,13 +348,50 @@ const tabs = [
   { id: 'destinations', label: 'Dive Destinations' },
   { id: 'courses', label: 'Courses' },
   { id: 'information', label: 'More Information' },
-  // TODO: wire when shop_reviews table exists
-  // { id: 'reviews', label: 'Reviews' },
+  { id: 'reviews', label: 'Reviews' },
   { id: 'nearby', label: 'Nearby Dive Shops' }
 ]
 
 // Fetch dive shop data (shared with shops/[id] page via useShopDetail)
 const { shopData, nearbyShops, pending, error } = useShopDetail(props.shopId)
+
+const { user, isAppAdmin } = useAuth()
+const { client } = useSupabase()
+const { reviews, topReviews, pending: reviewsPending, refresh: refreshReviews } = useShopReviews(props.shopId)
+
+const myReview = computed(() => {
+  const uid = user.value?.id
+  if (!uid) return null
+  return reviews.value.find(r => r.user_id === uid) ?? null
+})
+
+function canDeleteReview (r) {
+  if (isAppAdmin.value) return true
+  const uid = user.value?.id
+  if (!uid) return false
+  return r.user_id === uid
+}
+
+async function handleDeleteReview (r) {
+  if (!canDeleteReview(r)) return
+  const label = r.author_display_name || 'this review'
+  if (!confirm(`Delete review by ${label}? This cannot be undone.`)) return
+  try {
+    await deleteShopReview(client, r.id)
+    await refreshReviews()
+  } catch (e) {
+    alert(e instanceof Error ? e.message : 'Could not delete review.')
+  }
+}
+
+function formatReviewDate (iso) {
+  if (!iso) return ''
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  } catch {
+    return ''
+  }
+}
 
 // Computed properties for dynamic truncation (description from notes)
 const paragraphs = computed(() => {
@@ -316,6 +423,24 @@ const handleClose = () => {
 
 // Drawer functionality
 const { openDrawer } = useDrawer()
+
+function openReviewDrawer () {
+  const my = myReview.value
+  openDrawer('review-form', {
+    shopId: props.shopId,
+    shopName: shopData.value?.business_name || 'Dive Shop',
+    initialRating: my?.rating ?? 5,
+    initialBody: my?.body ?? '',
+    isEditing: !!my,
+    reviewId: my?.id ?? null,
+    onSubmitted: () => {
+      refreshReviews()
+    },
+    onDeleted: () => {
+      refreshReviews()
+    }
+  })
+}
 
 function handleBookingButtonClick () {
   if (props.isInBookingFlow) {

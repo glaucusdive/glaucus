@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 
 // Types for drawer content
-export type DrawerContentType = 'booking-form' | null
+export type DrawerContentType = 'booking-form' | 'review-form' | null
 
 interface DrawerData {
   shopId?: string
