@@ -55,7 +55,7 @@
             </ClientOnly>
             <!-- <NavLink to="/community" disabled>Community</NavLink> -->
             <NavLink v-if="isSignedIn" to="/profile" @click="handleCloseMobileMenu">
-              <User class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" />
+              <CircleUser class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
               Profile
             </NavLink>
             <NavLink v-else to="/auth" @click="handleCloseMobileMenu">
@@ -74,10 +74,10 @@
           </nav>
 
           <!-- Theme Toggle Button -->
-          <div class="w-full p-2 shrink-0">
+          <div class="w-full p-0 shrink-0">
             <ClientOnly>
               <button @click="toggleTheme"
-                class="w-full h-18 flex items-center justify-center rounded-full gap-0 p-1 border border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-white cursor-pointer relative before:content-[''] before:absolute before:inset-1 before:rounded-full before:bg-zinc-200 dark:before:bg-zinc-700 before:w-[calc(50%-4px)] before:z-[-1] before:transition-transform before:duration-300 before:ease-in-out before:left-1"
+                class="w-full h-17 flex items-center justify-center rounded-full gap-0 p-1 border border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-white cursor-pointer relative before:content-[''] before:absolute before:inset-1 before:rounded-full before:bg-zinc-200 dark:before:bg-zinc-700 before:w-[calc(50%-4px)] before:z-[-1] before:transition-transform before:duration-300 before:ease-in-out before:left-1"
                 :class="isDark ? 'before:translate-x-full' : 'before:translate-x-0'">
                 <div class="w-full h-full flex items-center justify-center rounded-full">
                   <Sun class="w-8 h-8" :class="isDark ? 'opacity-30' : 'opacity-100'" stroke-width="1" />
@@ -136,7 +136,7 @@
 <script setup>
 import gsap from 'gsap'
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { X, Sun, Moon, FilePlus, User, LogIn, LogOut } from 'lucide-vue-next'
+import { X, Sun, Moon, FilePlus, CircleUser, LogIn, LogOut } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
 import { useTheme } from '~/composables/useTheme'
 import { useAuth } from '~/composables/useAuth'

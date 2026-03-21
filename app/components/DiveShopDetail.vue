@@ -12,26 +12,20 @@
             <X v-else class="w-4 h-4 cq:lg:w-6 cq:lg:h-6 text-zinc-900 dark:text-white" />
           </div>
         </div>
-        <!-- Image -->
-        <div class="p-1 flex items-center">
-          <div
-            class="block bg-zinc-200 dark:bg-zinc-700 overflow-hidden rounded-sm min-w-8 w-8 cq:lg:min-w-16 cq:lg:w-16 h-auto aspect-square">
-          </div>
-        </div>
-        <div class="p-1 grow flex items-center overflow-auto">
+        <div class="p-1 lg:p-2 grow flex items-center overflow-auto">
           <h1 class="text-sm cq:lg:text-3xl font-medium p-0 leading-none cq:lg:px-2 w-full truncate text-zinc-900 dark:text-white">{{
             shopData?.business_name ||
             'Loading...' }}</h1>
         </div>
         <div class="p-1 flex items-center">
-          <button @click="toggleDemoMode" class="h-full text-xs px-3 py-1 rounded-sm transition-colors cursor-pointer"
+          <button @click="toggleDemoMode" class="h-full text-xs px-3 py-1 rounded-sm transition-colors cursor-pointer border border-zinc-800"
             :class="isDemoMode ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'">
-            {{ isDemoMode ? '📊 Demo' : 'Live' }}
+            {{ isDemoMode ? 'Demo' : 'Live' }}
           </button>
         </div>
       </header>
       <!-- Tabs -->
-      <div class="flex flex-row gap-1 items-center p-1 overflow-x-auto font-medium">
+      <div class="flex flex-row gap-1 items-center p-1 lg:p-2 overflow-x-auto font-medium">
         <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id" :class="[
           'flex flex-row gap-2 rounded-sm p-2 px-3 w-fit text-xs cq:lg:text-base cursor-pointer transition-color whitespace-nowrap',
           activeTab === tab.id
@@ -243,7 +237,7 @@
                   {{ isInBookingFlow ? (isFormOpen ? 'Booking form is open. Click to hide it.' : 'View or edit your booking details in the form.') : 'Ready to dive? Click below to start your booking.' }}
                 </p>
                 <button @click="handleBookingButtonClick"
-                  class="border border-zinc-900 dark:border-zinc-100 hover:border-zinc-800 dark:hover:border-zinc-200 bg-transparent text-white dark:text-white font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">
+                  class="border border-zinc-400 dark:border-zinc-500 hover:border-zinc-800 dark:hover:border-zinc-200 bg-transparent dark:bg-transparent text-zinc-800 dark:text-white font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">
                   {{ isInBookingFlow ? (isFormOpen ? 'Hide form' : 'Show form') : 'Start Booking' }}
                 </button>
               </div>
