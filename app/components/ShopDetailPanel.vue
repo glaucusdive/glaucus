@@ -1,6 +1,6 @@
 <template>
   <DiveShopDetail
-    :shop-id="shopId"
+    :shop-lookup="shopLookup"
     :show-close-button="true"
     :is-in-booking-flow="isInBookingFlow"
     :is-form-open="isFormOpen"
@@ -15,7 +15,7 @@
 import DiveShopDetail from '~/components/DiveShopDetail.vue'
 
 defineProps({
-  shopId: {
+  shopLookup: {
     type: String,
     required: true
   },

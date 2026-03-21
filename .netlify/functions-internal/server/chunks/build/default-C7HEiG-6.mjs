@@ -1,11 +1,11 @@
-import { _ as __nuxt_component_0$1, j as __nuxt_component_2, a as useRoute } from './server.mjs';
+import { _ as __nuxt_component_0$1, k as __nuxt_component_2, a as useRoute } from './server.mjs';
 import { ref, mergeProps, unref, withCtx, createVNode, createTextVNode, watch, computed, renderSlot, defineComponent, useSSRContext } from 'vue';
 import { ssrRenderAttrs, ssrRenderComponent, ssrRenderAttr, ssrRenderSlot, ssrInterpolate, ssrRenderList, ssrIncludeBooleanAttr, ssrLooseContain, ssrLooseEqual } from 'vue/server-renderer';
 import { _ as _imports_0 } from './virtual_public-Ch7PIFET.mjs';
 import { X, Sun, Moon, Star } from 'lucide-vue-next';
 import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
-import { u as useAuth } from './useAuth-BhN4mRZa.mjs';
-import { u as useSupabase } from './useSupabase-DR_u3VFp.mjs';
+import { u as useAuth } from './useAuth-8ihLM1hW.mjs';
+import { u as useSupabase } from './useSupabase-eANk4KtY.mjs';
 import { _ as _export_sfc } from './_plugin-vue_export-helper-1tPrXgE0.mjs';
 import '../nitro/nitro.mjs';
 import '@supabase/supabase-js';
@@ -30,6 +30,7 @@ import '../routes/renderer.mjs';
 import 'vue-bundle-renderer/runtime';
 import 'unhead/server';
 import 'devalue';
+import 'unhead/plugins';
 import 'unhead/utils';
 
 const _sfc_main$4 = {
@@ -50,12 +51,7 @@ const _sfc_main$4 = {
     const props = __props;
     const emit = __emit;
     const route = useRoute();
-    const isActive = computed(() => {
-      if (props.to === "/shops") {
-        return route.path === "/shops" || route.path.startsWith("/shops/");
-      }
-      return route.path === props.to;
-    });
+    const isActive = computed(() => route.path === props.to);
     const handleClick = (event) => {
       emit("click", event);
     };
@@ -505,21 +501,6 @@ const _sfc_main = {
         _push(ssrRenderComponent(unref(X), { class: "w-full h-full" }, null, _parent));
         _push(`</button></div><nav class="w-full flex flex-col gap-1">`);
         _push(ssrRenderComponent(_component_NavLink, {
-          to: "/shops",
-          onClick: handleCloseMobileMenu
-        }, {
-          default: withCtx((_, _push2, _parent2, _scopeId) => {
-            if (_push2) {
-              _push2(`Shops`);
-            } else {
-              return [
-                createTextVNode("Shops")
-              ];
-            }
-          }),
-          _: 1
-        }, _parent));
-        _push(ssrRenderComponent(_component_NavLink, {
           to: "/community",
           disabled: ""
         }, {
@@ -655,4 +636,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=default-BW1E8Mx9.mjs.map
+//# sourceMappingURL=default-C7HEiG-6.mjs.map

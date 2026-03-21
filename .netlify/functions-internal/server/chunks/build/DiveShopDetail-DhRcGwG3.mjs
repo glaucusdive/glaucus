@@ -1,10 +1,10 @@
-import { c as useAsyncData, d as createError, _ as __nuxt_component_0$1 } from './server.mjs';
-import { computed, ref, mergeProps, unref, withCtx, createBlock, openBlock, createCommentVNode, toDisplayString, Fragment, renderList, createVNode, useSSRContext } from 'vue';
+import { d as useAsyncData, f as createError, _ as __nuxt_component_0$1 } from './server.mjs';
+import { computed, ref, mergeProps, unref, withCtx, createBlock, openBlock, createCommentVNode, toDisplayString, Fragment, renderList, createVNode, toValue, useSSRContext } from 'vue';
 import { ssrRenderAttrs, ssrRenderComponent, ssrInterpolate, ssrRenderClass, ssrRenderList, ssrRenderAttr, ssrRenderSlot } from 'vue/server-renderer';
 import { ChevronLeft, X, MapPin, Phone, Mail, Globe, Star, Trash2 } from 'lucide-vue-next';
 import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
-import { u as useAuth } from './useAuth-BhN4mRZa.mjs';
-import { u as useSupabase } from './useSupabase-DR_u3VFp.mjs';
+import { u as useAuth } from './useAuth-8ihLM1hW.mjs';
+import { u as useSupabase } from './useSupabase-eANk4KtY.mjs';
 
 const _sfc_main$3 = {
   __name: "CardInfo",
@@ -211,17 +211,23 @@ async function deleteShopReview(client, reviewId) {
 }
 function useShopReviews(shopId) {
   const { client } = useSupabase();
+  const resolvedId = computed(() => {
+    const v = toValue(shopId);
+    return typeof v === "string" ? v : "";
+  });
   const { data, pending, error, refresh } = useAsyncData(
-    `shop-reviews-${shopId}`,
+    () => `shop-reviews-${resolvedId.value || "none"}`,
     async () => {
-      if (!shopId) return [];
-      const { data: rows, error: supabaseError } = await client.from("shop_reviews").select("*").eq("diveshop_id", shopId).order("created_at", { ascending: false });
+      const id = resolvedId.value;
+      if (!id) return [];
+      const { data: rows, error: supabaseError } = await client.from("shop_reviews").select("*").eq("diveshop_id", id).order("created_at", { ascending: false });
       if (supabaseError) throw supabaseError;
       return rows ?? [];
     },
     {
       server: false,
       lazy: false,
+      watch: [resolvedId],
       default: () => []
     }
   );
@@ -285,13 +291,16 @@ Our facility features spacious air-conditioned classrooms, a comprehensive libra
 The equipment we employ includes internationally-reputed brands such as Mares, Scubapro, Aqua Lung, Dive Rite and Suunto.
 
 Please contact the dive center upon your arrival to book your diving program.`;
-function useShopDetail(shopId) {
+function isDiveshopUuid(s) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(s).trim());
+}
+function useShopDetail(shopLookup) {
   const { client } = useSupabase();
   const { data, pending, error } = useAsyncData(
-    `diveshop-${shopId}`,
+    `diveshop-${shopLookup}`,
     async () => {
-      if (!shopId) return { shop: null, nearbyShops: [] };
-      const { data: shopRow, error: supabaseError } = await client.from("diveshops").select(`
+      if (!shopLookup) return { shop: null, nearbyShops: [] };
+      let shopQuery = client.from("diveshops").select(`
           *,
           country:countries(name),
           region:regions(name),
@@ -299,7 +308,9 @@ function useShopDetail(shopId) {
           diveshop_rental_equipment(rental_equipment(name)),
           diveshop_gases(gases(name)),
           diveshop_dive_sites(dive_sites(name, dive_site_type:dive_site_types(name)))
-        `).eq("id", shopId).single();
+        `);
+      shopQuery = isDiveshopUuid(shopLookup) ? shopQuery.eq("id", shopLookup) : shopQuery.eq("slug", shopLookup);
+      const { data: shopRow, error: supabaseError } = await shopQuery.single();
       if (supabaseError || !shopRow) {
         throw createError({
           statusCode: 404,
@@ -315,6 +326,7 @@ function useShopDetail(shopId) {
       if (byDistance && Array.isArray(byDistance) && byDistance.length > 0) {
         nearbyShops = byDistance.map((row) => ({
           id: row.id,
+          slug: row.slug,
           business_name: row.business_name,
           locale: row.locale ?? null,
           country: { name: row.country_name },
@@ -323,9 +335,10 @@ function useShopDetail(shopId) {
       } else {
         const regionId = shopRow.region_id;
         if (regionId) {
-          const { data: nearby } = await client.from("diveshops").select("id, business_name, locale, country:countries(name)").eq("region_id", regionId).neq("id", shopRow.id).limit(8);
+          const { data: nearby } = await client.from("diveshops").select("id, slug, business_name, locale, country:countries(name)").eq("region_id", regionId).neq("id", shopRow.id).limit(8);
           nearbyShops = (nearby ?? []).map((s) => ({
             id: s.id,
+            slug: s.slug,
             business_name: s.business_name,
             locale: s.locale ?? null,
             country: s.country ?? { name: "" }
@@ -352,7 +365,8 @@ const _sfc_main = {
   __name: "DiveShopDetail",
   __ssrInlineRender: true,
   props: {
-    shopId: {
+    /** Route slug (e.g. dive-porter) or legacy UUID — used only to load the shop row */
+    shopLookup: {
       type: String,
       required: true
     },
@@ -394,10 +408,11 @@ const _sfc_main = {
       { id: "reviews", label: "Reviews" },
       { id: "nearby", label: "Nearby Dive Shops" }
     ];
-    const { shopData, nearbyShops } = useShopDetail(props.shopId);
+    const { shopData, nearbyShops } = useShopDetail(props.shopLookup);
+    const shopRowId = computed(() => shopData.value?.id ?? "");
     const { user, isAppAdmin } = useAuth();
     const { client } = useSupabase();
-    const { reviews, topReviews, pending: reviewsPending, refresh: refreshReviews } = useShopReviews(props.shopId);
+    const { reviews, topReviews, pending: reviewsPending, refresh: refreshReviews } = useShopReviews(shopRowId);
     const myReview = computed(() => {
       const uid = user.value?.id;
       if (!uid) return null;
@@ -449,7 +464,7 @@ const _sfc_main = {
     function openReviewDrawer() {
       const my = myReview.value;
       openDrawer("review-form", {
-        shopId: props.shopId,
+        shopId: shopRowId.value,
         shopName: shopData.value?.business_name || "Dive Shop",
         initialRating: my?.rating ?? 5,
         initialBody: my?.body ?? "",
@@ -713,7 +728,7 @@ const _sfc_main = {
           ssrRenderList(unref(nearbyShops), (shop) => {
             _push(ssrRenderComponent(_component_NuxtLink, {
               key: shop.id,
-              to: `/shops/${shop.id}`,
+              to: `/shops/${shop.slug || shop.id}`,
               class: "block"
             }, {
               default: withCtx((_, _push2, _parent2, _scopeId) => {
@@ -787,4 +802,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as _, useShopDetail as u };
-//# sourceMappingURL=DiveShopDetail-f256g8uS.mjs.map
+//# sourceMappingURL=DiveShopDetail-DhRcGwG3.mjs.map

@@ -9,7 +9,7 @@ import { reactivePick, reactiveOmit, createSharedComposable } from '@vueuse/core
 import { createTV } from 'tailwind-variants';
 import { getIconCSS } from '@iconify/utils/lib/css/icon';
 import { debounce } from 'perfect-debounce';
-import { u as useHead$1, h as headSymbol } from '../routes/renderer.mjs';
+import { u as useSeoMeta$1, a as useHead$1, h as headSymbol } from '../routes/renderer.mjs';
 import '@supabase/supabase-js';
 import 'node:http';
 import 'node:https';
@@ -23,6 +23,7 @@ import 'consola';
 import 'vue-bundle-renderer/runtime';
 import 'unhead/server';
 import 'devalue';
+import 'unhead/plugins';
 import 'unhead/utils';
 
 function diff(obj1, obj2) {
@@ -483,17 +484,12 @@ const _routes = [
   {
     name: "index",
     path: "/",
-    component: () => import('./index-BJ89jfoW.mjs')
+    component: () => import('./index-CuL3mT_p.mjs')
   },
   {
     name: "auth",
     path: "/auth",
-    component: () => import('./index-Bxzakie4.mjs')
-  },
-  {
-    name: "shops-id",
-    path: "/shops/:id()",
-    component: () => import('./_id_-B2C92d6H.mjs')
+    component: () => import('./index-DphltReM.mjs')
   },
   {
     name: "auth-signup",
@@ -503,30 +499,35 @@ const _routes = [
   {
     name: "shops",
     path: "/shops",
-    component: () => import('./index-C8hAnnuj.mjs')
+    component: () => import('./index-Dc-I8a4I.mjs')
+  },
+  {
+    name: "shops-slug",
+    path: "/shops/:slug()",
+    component: () => import('./_slug_-DDcq0vEK.mjs')
   },
   {
     name: "profile",
     path: "/profile",
     meta: { "middleware": "auth" },
-    component: () => import('./index-D9D-S3bI.mjs')
+    component: () => import('./index-DkRtusvb.mjs')
   },
   {
     name: "profile-drafts",
     path: "/profile/drafts",
     meta: { "middleware": "auth" },
-    component: () => import('./drafts-DrwWqjSu.mjs')
+    component: () => import('./drafts-5VdxrXIJ.mjs')
   },
   {
     name: "community",
     path: "/community",
-    component: () => import('./index-hzyEjW68.mjs')
+    component: () => import('./index-DTLAXRP9.mjs')
   },
   {
     name: "profile-defaults",
     path: "/profile/defaults",
     meta: { "middleware": "auth" },
-    component: () => import('./defaults-rDiZPPxr.mjs')
+    component: () => import('./defaults-2car--Yb.mjs')
   }
 ];
 const _wrapInTransition = (props, children) => {
@@ -647,7 +648,7 @@ const globalMiddleware = [
   manifest_45route_45rule
 ];
 const namedMiddleware = {
-  auth: () => import('./auth-Zcbn0fVB.mjs')
+  auth: () => import('./auth-B-qksxu3.mjs')
 };
 const plugin = /* @__PURE__ */ defineNuxtPlugin({
   name: "nuxt:router",
@@ -860,6 +861,10 @@ function injectHead(nuxtApp) {
 function useHead(input, options = {}) {
   const head = injectHead(options.nuxt);
   return useHead$1(input, { head, ...options });
+}
+function useSeoMeta(input, options = {}) {
+  const head = injectHead(options.nuxt);
+  return useSeoMeta$1(input, { head, ...options });
 }
 function definePayloadReducer(name, reduce) {
   {
@@ -5119,5 +5124,5 @@ let entry;
 }
 const entry$1 = (ssrContext) => entry(ssrContext);
 
-export { LayoutMetaSymbol as L, PageRouteSymbol as P, __nuxt_component_0$1 as _, useRoute as a, useRouter as b, useAsyncData as c, createError as d, entry$1 as default, _sfc_main$d as e, useNuxtApp as f, appLayoutTransition as g, _wrapInTransition as h, defineNuxtRouteMiddleware as i, __nuxt_component_2 as j, useRuntimeConfig as k, navigateTo as n, useHead as u };
+export { LayoutMetaSymbol as L, PageRouteSymbol as P, __nuxt_component_0$1 as _, useRoute as a, useRouter as b, useSeoMeta as c, useAsyncData as d, entry$1 as default, _sfc_main$d as e, createError as f, useNuxtApp as g, appLayoutTransition as h, _wrapInTransition as i, defineNuxtRouteMiddleware as j, __nuxt_component_2 as k, useRuntimeConfig as l, navigateTo as n, useHead as u };
 //# sourceMappingURL=server.mjs.map

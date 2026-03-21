@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { k as useRuntimeConfig } from './server.mjs';
+import { l as useRuntimeConfig } from './server.mjs';
 
 const useSupabaseClient = () => {
   const config = useRuntimeConfig();
@@ -17,4 +17,4 @@ const useSupabase = () => {
 };
 
 export { useSupabase as u };
-//# sourceMappingURL=useSupabase-DR_u3VFp.mjs.map
+//# sourceMappingURL=useSupabase-eANk4KtY.mjs.map

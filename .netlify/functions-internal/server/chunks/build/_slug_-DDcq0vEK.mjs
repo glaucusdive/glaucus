@@ -1,13 +1,13 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-LydNulDx.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-CjUnUZWm.mjs';
 import { computed, unref, withCtx, createVNode, createBlock, createCommentVNode, openBlock, useSSRContext } from 'vue';
 import { ssrInterpolate, ssrRenderComponent } from 'vue/server-renderer';
-import { u as useShopDetail, _ as _sfc_main$1 } from './DiveShopDetail-f256g8uS.mjs';
+import { u as useShopDetail, _ as _sfc_main$1 } from './DiveShopDetail-DhRcGwG3.mjs';
 import { a as useRoute, b as useRouter, u as useHead, n as navigateTo } from './server.mjs';
 import 'vue-router';
 import 'lucide-vue-next';
 import './useDrawer-DEsd6Mko.mjs';
-import './useAuth-BhN4mRZa.mjs';
-import './useSupabase-DR_u3VFp.mjs';
+import './useAuth-8ihLM1hW.mjs';
+import './useSupabase-eANk4KtY.mjs';
 import '@supabase/supabase-js';
 import '../nitro/nitro.mjs';
 import 'node:http';
@@ -30,22 +30,23 @@ import '../routes/renderer.mjs';
 import 'vue-bundle-renderer/runtime';
 import 'unhead/server';
 import 'devalue';
+import 'unhead/plugins';
 import 'unhead/utils';
 
 const _sfc_main = {
-  __name: "[id]",
+  __name: "[slug]",
   __ssrInlineRender: true,
   setup(__props) {
     const route = useRoute();
     useRouter();
-    const shopId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id;
-    const { shopData, pending, error } = useShopDetail(shopId);
+    const shopLookup = Array.isArray(route.params.slug) ? route.params.slug[0] : route.params.slug;
+    const { shopData, pending, error } = useShopDetail(shopLookup);
     useHead({
       title: computed(() => shopData.value?.business_name || "Dive Shop")
     });
-    const goBackToShops = () => {
+    function goBackToShops() {
       navigateTo("/shops");
-    };
+    }
     return (_ctx, _push, _parent, _attrs) => {
       const _component_NuxtLayout = __nuxt_component_0;
       _push(`<!--[-->`);
@@ -60,9 +61,9 @@ const _sfc_main = {
         default: withCtx((_, _push2, _parent2, _scopeId) => {
           if (_push2) {
             _push2(`<div class="h-full w-full"${_scopeId}>`);
-            if (unref(shopId)) {
+            if (unref(shopLookup)) {
               _push2(ssrRenderComponent(_sfc_main$1, {
-                "shop-id": unref(shopId),
+                "shop-lookup": unref(shopLookup),
                 "show-close-button": false,
                 onClose: goBackToShops
               }, null, _parent2, _scopeId));
@@ -73,12 +74,12 @@ const _sfc_main = {
           } else {
             return [
               createVNode("div", { class: "h-full w-full" }, [
-                unref(shopId) ? (openBlock(), createBlock(_sfc_main$1, {
+                unref(shopLookup) ? (openBlock(), createBlock(_sfc_main$1, {
                   key: 0,
-                  "shop-id": unref(shopId),
+                  "shop-lookup": unref(shopLookup),
                   "show-close-button": false,
                   onClose: goBackToShops
-                }, null, 8, ["shop-id"])) : createCommentVNode("", true)
+                }, null, 8, ["shop-lookup"])) : createCommentVNode("", true)
               ])
             ];
           }
@@ -92,9 +93,9 @@ const _sfc_main = {
 const _sfc_setup = _sfc_main.setup;
 _sfc_main.setup = (props, ctx) => {
   const ssrContext = useSSRContext();
-  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("pages/shops/[id].vue");
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("pages/shops/[slug].vue");
   return _sfc_setup ? _sfc_setup(props, ctx) : void 0;
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=_id_-B2C92d6H.mjs.map
+//# sourceMappingURL=_slug_-DDcq0vEK.mjs.map

@@ -1,13 +1,13 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-LydNulDx.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-CjUnUZWm.mjs';
 import { ref, watch, computed, mergeProps, withCtx, unref, createVNode, Transition, createBlock, createCommentVNode, openBlock, Fragment, renderList, toDisplayString, withModifiers, withDirectives, vModelText, nextTick, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrRenderAttr, ssrRenderClass, ssrRenderList, ssrInterpolate, ssrIncludeBooleanAttr, ssrRenderAttrs } from 'vue/server-renderer';
 import { _ as _imports_0 } from './virtual_public-Ch7PIFET.mjs';
 import { Menu, ChevronRight, ArrowUp, Star, MapPin, Languages, Globe, Phone, Mail } from 'lucide-vue-next';
 import gsap from 'gsap';
-import { _ as _sfc_main$3 } from './DiveShopDetail-f256g8uS.mjs';
+import { _ as _sfc_main$3 } from './DiveShopDetail-DhRcGwG3.mjs';
 import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
-import { u as useAuth } from './useAuth-BhN4mRZa.mjs';
-import { u as useSupabase } from './useSupabase-DR_u3VFp.mjs';
+import { u as useAuth } from './useAuth-8ihLM1hW.mjs';
+import { u as useSupabase } from './useSupabase-eANk4KtY.mjs';
 import { a as useRoute, u as useHead } from './server.mjs';
 import 'vue-router';
 import '../nitro/nitro.mjs';
@@ -32,6 +32,7 @@ import '../routes/renderer.mjs';
 import 'vue-bundle-renderer/runtime';
 import 'unhead/server';
 import 'devalue';
+import 'unhead/plugins';
 import 'unhead/utils';
 
 const _sfc_main$2 = {
@@ -130,7 +131,7 @@ const _sfc_main$1 = {
   __name: "ShopDetailPanel",
   __ssrInlineRender: true,
   props: {
-    shopId: {
+    shopLookup: {
       type: String,
       required: true
     },
@@ -159,7 +160,7 @@ const _sfc_main$1 = {
   setup(__props) {
     return (_ctx, _push, _parent, _attrs) => {
       _push(ssrRenderComponent(_sfc_main$3, mergeProps({
-        "shop-id": __props.shopId,
+        "shop-lookup": __props.shopLookup,
         "show-close-button": true,
         "is-in-booking-flow": __props.isInBookingFlow,
         "is-form-open": __props.isFormOpen,
@@ -843,7 +844,7 @@ const _sfc_main = {
               _push2(`<div class="w-1/2 h-full border-l border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden"${_scopeId}>`);
               _push2(ssrRenderComponent(_sfc_main$1, {
                 key: selectedShopId.value,
-                "shop-id": selectedShopId.value,
+                "shop-lookup": selectedShopId.value,
                 "is-in-booking-flow": isInBookingFlowForShop(selectedShopId.value),
                 "is-form-open": isBookingFormOpen.value,
                 "on-start-booking": handleStartBookingFromPanel,
@@ -859,7 +860,7 @@ const _sfc_main = {
               _push2(`<div class="fixed inset-0 z-50 lg:hidden"${_scopeId}><div class="absolute inset-0 bg-black/50"${_scopeId}></div><div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-zinc-900 h-full overflow-hidden"${_scopeId}>`);
               _push2(ssrRenderComponent(_sfc_main$1, {
                 key: mobileDetailShopId.value,
-                "shop-id": mobileDetailShopId.value,
+                "shop-lookup": mobileDetailShopId.value,
                 "is-in-booking-flow": isInBookingFlowForShop(mobileDetailShopId.value),
                 "is-form-open": isBookingFormOpen.value,
                 "on-start-booking": handleStartBookingFromPanel,
@@ -1144,14 +1145,14 @@ const _sfc_main = {
                       }, [
                         (openBlock(), createBlock(_sfc_main$1, {
                           key: selectedShopId.value,
-                          "shop-id": selectedShopId.value,
+                          "shop-lookup": selectedShopId.value,
                           "is-in-booking-flow": isInBookingFlowForShop(selectedShopId.value),
                           "is-form-open": isBookingFormOpen.value,
                           "on-start-booking": handleStartBookingFromPanel,
                           "on-show-form": handleShowFormFromPanel,
                           "on-hide-form": handleHideFormFromPanel,
                           onClose: closeShopDetail
-                        }, null, 8, ["shop-id", "is-in-booking-flow", "is-form-open"]))
+                        }, null, 8, ["shop-lookup", "is-in-booking-flow", "is-form-open"]))
                       ])) : createCommentVNode("", true)
                     ]),
                     _: 1
@@ -1173,14 +1174,14 @@ const _sfc_main = {
                         createVNode("div", { class: "absolute right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-zinc-900 h-full overflow-hidden" }, [
                           (openBlock(), createBlock(_sfc_main$1, {
                             key: mobileDetailShopId.value,
-                            "shop-id": mobileDetailShopId.value,
+                            "shop-lookup": mobileDetailShopId.value,
                             "is-in-booking-flow": isInBookingFlowForShop(mobileDetailShopId.value),
                             "is-form-open": isBookingFormOpen.value,
                             "on-start-booking": handleStartBookingFromPanel,
                             "on-show-form": handleShowFormFromPanel,
                             "on-hide-form": handleHideFormFromPanel,
                             onClose: closeShopDetail
-                          }, null, 8, ["shop-id", "is-in-booking-flow", "is-form-open"]))
+                          }, null, 8, ["shop-lookup", "is-in-booking-flow", "is-form-open"]))
                         ])
                       ])) : createCommentVNode("", true)
                     ]),
@@ -1204,4 +1205,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-BJ89jfoW.mjs.map
+//# sourceMappingURL=index-CuL3mT_p.mjs.map

@@ -24,7 +24,6 @@
 
 
           <nav class="w-full flex flex-col gap-1">
-            <NavLink to="/shops" @click="handleCloseMobileMenu">Shops</NavLink>
             <NavLink to="/community" disabled>Community</NavLink>
             <NavLink v-if="isSignedIn" to="/profile" @click="handleCloseMobileMenu">Profile</NavLink>
             <NavLink v-else to="/auth" @click="handleCloseMobileMenu">Sign in</NavLink>

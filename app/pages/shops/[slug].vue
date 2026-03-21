@@ -15,16 +15,14 @@
     </div>
   </div>
   <NuxtLayout name="default">
-    <!-- start shop/id here-->
     <div class="h-full w-full">
-      <DiveShopDetail 
-        v-if="shopId" 
-        :shop-id="shopId" 
+      <DiveShopDetail
+        v-if="shopLookup"
+        :shop-lookup="shopLookup"
         :show-close-button="false"
-        @close="goBackToShops" 
+        @close="goBackToShops"
       />
     </div>
-    <!-- End shop/id Here-->
   </NuxtLayout>
 </template>
 
@@ -33,20 +31,17 @@ import DiveShopDetail from '~/components/DiveShopDetail.vue'
 
 const route = useRoute()
 const router = useRouter()
-const shopId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
+const shopLookup = Array.isArray(route.params.slug) ? route.params.slug[0] : route.params.slug
 
-// Shared fetch with DiveShopDetail (single request via useShopDetail)
-const { shopData, pending, error } = useShopDetail(shopId)
+const { shopData, pending, error } = useShopDetail(shopLookup)
 
 useHead({
   title: computed(() => shopData.value?.business_name || 'Dive Shop')
 })
 
-// Scroll position management
 const { saveScrollPosition } = useScrollPosition()
 
-// Function to go back to shops with scroll position preservation
-const goBackToShops = () => {
+function goBackToShops () {
   if (typeof window !== 'undefined' && window.history.length > 1) {
     router.back()
     return

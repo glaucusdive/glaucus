@@ -124,6 +124,10 @@
 import { Menu } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
 
+useSeoMeta({
+  robots: 'noindex, follow'
+})
+
 const { client } = useSupabase()
 const { restoreScrollPosition, saveScrollPosition } = useScrollPosition()
 const { toggleMobileMenu } = useDrawer()
@@ -135,13 +139,9 @@ onMounted(() => {
 
 // Function to navigate to individual dive shop page
 const navigateToShop = (shop) => {
-  // Use the shop ID for reliable routing
-  console.log('Navigating to shop:', shop.business_name, 'ID:', shop.id)
-  
-  // Save scroll position immediately before navigation
   saveScrollPosition('shops')
-  
-  navigateTo(`/shops/${shop.id}`)
+  const segment = shop.slug || shop.id
+  navigateTo(`/shops/${segment}`)
 }
 
 // Fetch diveshops data with country and region for display

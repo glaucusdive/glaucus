@@ -1,8 +1,8 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-LydNulDx.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-CjUnUZWm.mjs';
 import { _ as __nuxt_component_0$1 } from './server.mjs';
 import { defineComponent, ref, mergeProps, withCtx, createTextVNode, unref, createVNode, createBlock, openBlock, Fragment, renderList, toDisplayString, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrRenderList, ssrInterpolate, ssrIncludeBooleanAttr } from 'vue/server-renderer';
-import { u as useAuth } from './useAuth-BhN4mRZa.mjs';
+import { u as useAuth } from './useAuth-8ihLM1hW.mjs';
 import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
 import 'vue-router';
 import '../nitro/nitro.mjs';
@@ -27,8 +27,9 @@ import '../routes/renderer.mjs';
 import 'vue-bundle-renderer/runtime';
 import 'unhead/server';
 import 'devalue';
+import 'unhead/plugins';
 import 'unhead/utils';
-import './useSupabase-DR_u3VFp.mjs';
+import './useSupabase-eANk4KtY.mjs';
 
 const _sfc_main = /* @__PURE__ */ defineComponent({
   __name: "drafts",
@@ -180,4 +181,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=drafts-DrwWqjSu.mjs.map
+//# sourceMappingURL=drafts-5VdxrXIJ.mjs.map

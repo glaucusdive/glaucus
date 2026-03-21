@@ -1,4 +1,4 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-LydNulDx.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-CjUnUZWm.mjs';
 import { _ as __nuxt_component_0$1 } from './server.mjs';
 import { defineComponent, mergeProps, withCtx, createVNode, useSSRContext } from 'vue';
 import { ssrRenderComponent } from 'vue/server-renderer';
@@ -25,6 +25,7 @@ import '../routes/renderer.mjs';
 import 'vue-bundle-renderer/runtime';
 import 'unhead/server';
 import 'devalue';
+import 'unhead/plugins';
 import 'unhead/utils';
 
 const _sfc_main = /* @__PURE__ */ defineComponent({
@@ -114,4 +115,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-D9D-S3bI.mjs.map
+//# sourceMappingURL=index-DkRtusvb.mjs.map
