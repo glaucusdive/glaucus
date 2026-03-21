@@ -184,6 +184,7 @@ function formatChatUpdated (ts) {
 }
 
 const { isDark, toggleTheme } = useTheme()
+const { client } = useSupabase()
 const { isSignedIn, signOut, onAuthStateChange, accessToken } = useAuth()
 const { saveDraftFromCacheIfNeeded } = useSaveDraftFromCache()
 
@@ -227,7 +228,7 @@ onMounted(() => {
     }
     if (!session?.user?.id || (event !== 'SIGNED_IN' && event !== 'INITIAL_SESSION')) return
     if (session.access_token) saveDraftFromCacheIfNeeded(session.access_token)
-    await initSignedInChatsFromRemote(supabaseClient, session.user.id)
+    await initSignedInChatsFromRemote(client, session.user.id)
     // Mid-session sign-in (e.g. OAuth): index may already be mounted — refresh UI from merged storage.
     if (event === 'SIGNED_IN') requestChatRemoteHydrate()
   })

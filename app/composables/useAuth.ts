@@ -41,10 +41,14 @@ export const useAuth = () => {
   }
 
   async function signUpWithEmail (email: string, password: string, displayName?: string) {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
     const { data, error } = await client.auth.signUp({
       email,
       password,
-      options: displayName ? { data: { display_name: displayName } } : undefined
+      options: {
+        ...(displayName ? { data: { display_name: displayName } } : {}),
+        emailRedirectTo: origin ? `${origin}/` : undefined
+      }
     })
     if (error) throw error
     /**
