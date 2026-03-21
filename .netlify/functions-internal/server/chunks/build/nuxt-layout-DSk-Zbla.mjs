@@ -3,7 +3,7 @@ import { h as useNuxtApp, P as PageRouteSymbol, a as useRoute, i as appLayoutTra
 import { useRoute as useRoute$1 } from 'vue-router';
 
 const layouts = {
-  default: defineAsyncComponent(() => import('./default-D-F694CG.mjs').then((m) => m.default || m))
+  default: defineAsyncComponent(() => import('./default-B_4Jvd1X.mjs').then((m) => m.default || m))
 };
 const LayoutLoader = defineComponent({
   name: "LayoutLoader",
@@ -134,4 +134,4 @@ const LayoutProvider = defineComponent({
 });
 
 export { __nuxt_component_0 as _ };
-//# sourceMappingURL=nuxt-layout-BF9m2Lkn.mjs.map
+//# sourceMappingURL=nuxt-layout-DSk-Zbla.mjs.map

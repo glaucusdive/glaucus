@@ -4,7 +4,7 @@ const client_manifest = {
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "Bi1I--EM.js",
+    "file": "D06gbo02.js",
     "name": "error-404",
     "src": "../node_modules/nuxt/dist/app/components/error-404.vue",
     "isDynamicEntry": true,
@@ -25,7 +25,7 @@ const client_manifest = {
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "dNdiiDPg.js",
+    "file": "Cn3MlMGV.js",
     "name": "error-500",
     "src": "../node_modules/nuxt/dist/app/components/error-500.vue",
     "isDynamicEntry": true,
@@ -46,7 +46,7 @@ const client_manifest = {
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "C7pzOgVV.js",
+    "file": "CbBZnJKq.js",
     "name": "entry",
     "src": "../node_modules/nuxt/dist/app/entry.js",
     "isEntry": true,
@@ -57,37 +57,25 @@ const client_manifest = {
       "../node_modules/nuxt/dist/app/components/error-500.vue"
     ],
     "css": [
-      "entry.DmrLlqdd.css"
+      "entry.D5zQ7LNJ.css"
     ],
     "assets": []
   },
-  "entry.DmrLlqdd.css": {
-    "file": "entry.DmrLlqdd.css",
+  "entry.D5zQ7LNJ.css": {
+    "file": "entry.D5zQ7LNJ.css",
     "resourceType": "style",
     "prefetch": true,
     "preload": true
   },
-  "_B-lzqTDs.js": {
+  "_B25Bw-qg.js": {
     "resourceType": "script",
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "B-lzqTDs.js",
-    "name": "useChatSessions",
+    "file": "B25Bw-qg.js",
+    "name": "nuxt-layout",
     "imports": [
-      "../node_modules/nuxt/dist/app/entry.js",
-      "_Cbe_y7Sp.js"
-    ]
-  },
-  "_B4C11rt4.js": {
-    "resourceType": "script",
-    "module": true,
-    "prefetch": true,
-    "preload": true,
-    "file": "B4C11rt4.js",
-    "name": "menu",
-    "imports": [
-      "_sRwo_-IN.js"
+      "../node_modules/nuxt/dist/app/entry.js"
     ]
   },
   "_BjvzLvXl.js": {
@@ -98,49 +86,57 @@ const client_manifest = {
     "file": "BjvzLvXl.js",
     "name": "chatBookingPayload"
   },
-  "_Bz2nYKCM.js": {
+  "_BuL4Ej7h.js": {
     "resourceType": "script",
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "Bz2nYKCM.js",
+    "file": "BuL4Ej7h.js",
+    "name": "useShopReviews",
+    "imports": [
+      "_CKCylkIj.js",
+      "../node_modules/nuxt/dist/app/entry.js"
+    ]
+  },
+  "_CDUdI4BL.js": {
+    "resourceType": "script",
+    "module": true,
+    "prefetch": true,
+    "preload": true,
+    "file": "CDUdI4BL.js",
+    "name": "useChatSessions",
+    "imports": [
+      "../node_modules/nuxt/dist/app/entry.js"
+    ]
+  },
+  "_CKCylkIj.js": {
+    "resourceType": "script",
+    "module": true,
+    "prefetch": true,
+    "preload": true,
+    "file": "CKCylkIj.js",
+    "name": "createLucideIcon",
+    "imports": [
+      "../node_modules/nuxt/dist/app/entry.js"
+    ]
+  },
+  "_D7E4Sy5w.js": {
+    "resourceType": "script",
+    "module": true,
+    "prefetch": true,
+    "preload": true,
+    "file": "D7E4Sy5w.js",
+    "name": "mergeProfileDefaultDivers"
+  },
+  "_DK8-ZRgu.js": {
+    "resourceType": "script",
+    "module": true,
+    "prefetch": true,
+    "preload": true,
+    "file": "DK8-ZRgu.js",
     "name": "useDrawer",
     "imports": [
       "../node_modules/nuxt/dist/app/entry.js"
-    ]
-  },
-  "_CDHrksqE.js": {
-    "resourceType": "script",
-    "module": true,
-    "prefetch": true,
-    "preload": true,
-    "file": "CDHrksqE.js",
-    "name": "useShopReviews",
-    "imports": [
-      "_sRwo_-IN.js",
-      "../node_modules/nuxt/dist/app/entry.js"
-    ]
-  },
-  "_Cbe_y7Sp.js": {
-    "resourceType": "script",
-    "module": true,
-    "prefetch": true,
-    "preload": true,
-    "file": "Cbe_y7Sp.js",
-    "name": "mergeProfileDefaultDivers"
-  },
-  "_CpJ3MkMn.js": {
-    "resourceType": "script",
-    "module": true,
-    "prefetch": true,
-    "preload": true,
-    "file": "CpJ3MkMn.js",
-    "name": "DiveShopDetail",
-    "imports": [
-      "../node_modules/nuxt/dist/app/entry.js",
-      "_sRwo_-IN.js",
-      "_CDHrksqE.js",
-      "_Bz2nYKCM.js"
     ]
   },
   "_DlAUqK2U.js": {
@@ -151,26 +147,29 @@ const client_manifest = {
     "file": "DlAUqK2U.js",
     "name": "_plugin-vue_export-helper"
   },
-  "_DsK2vegd.js": {
+  "_NSGupddE.js": {
     "resourceType": "script",
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "DsK2vegd.js",
-    "name": "nuxt-layout",
+    "file": "NSGupddE.js",
+    "name": "menu",
     "imports": [
-      "../node_modules/nuxt/dist/app/entry.js"
+      "_CKCylkIj.js"
     ]
   },
-  "_sRwo_-IN.js": {
+  "_hiryd_Xh.js": {
     "resourceType": "script",
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "sRwo_-IN.js",
-    "name": "createLucideIcon",
+    "file": "hiryd_Xh.js",
+    "name": "DiveShopDetail",
     "imports": [
-      "../node_modules/nuxt/dist/app/entry.js"
+      "../node_modules/nuxt/dist/app/entry.js",
+      "_CKCylkIj.js",
+      "_BuL4Ej7h.js",
+      "_DK8-ZRgu.js"
     ]
   },
   "layouts/default.vue": {
@@ -178,17 +177,17 @@ const client_manifest = {
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "XoWNWxTh.js",
+    "file": "hgDu7PFv.js",
     "name": "default",
     "src": "layouts/default.vue",
     "isDynamicEntry": true,
     "imports": [
       "../node_modules/nuxt/dist/app/entry.js",
-      "_sRwo_-IN.js",
-      "_B-lzqTDs.js",
-      "_Bz2nYKCM.js",
-      "_Cbe_y7Sp.js",
-      "_CDHrksqE.js",
+      "_CKCylkIj.js",
+      "_CDUdI4BL.js",
+      "_DK8-ZRgu.js",
+      "_D7E4Sy5w.js",
+      "_BuL4Ej7h.js",
       "_DlAUqK2U.js"
     ]
   },
@@ -197,7 +196,7 @@ const client_manifest = {
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "CZ7daZ5B.js",
+    "file": "Dhud3Y3i.js",
     "name": "auth",
     "src": "middleware/auth.ts",
     "isDynamicEntry": true,
@@ -210,13 +209,13 @@ const client_manifest = {
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "Dh9j3Wvo.js",
+    "file": "fzI2AuZt.js",
     "name": "index",
     "src": "pages/auth/index.vue",
     "isDynamicEntry": true,
     "imports": [
       "../node_modules/nuxt/dist/app/entry.js",
-      "_DsK2vegd.js"
+      "_B25Bw-qg.js"
     ]
   },
   "pages/auth/signup.vue": {
@@ -224,7 +223,7 @@ const client_manifest = {
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "BYZx44iY.js",
+    "file": "HXwRWFGs.js",
     "name": "signup",
     "src": "pages/auth/signup.vue",
     "isDynamicEntry": true,
@@ -237,12 +236,12 @@ const client_manifest = {
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "B9wRQA-e.js",
+    "file": "2YiS6R1U.js",
     "name": "index",
     "src": "pages/community/index.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_DsK2vegd.js",
+      "_B25Bw-qg.js",
       "_DlAUqK2U.js",
       "../node_modules/nuxt/dist/app/entry.js"
     ]
@@ -252,21 +251,21 @@ const client_manifest = {
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "DJzLKQ76.js",
+    "file": "CZJuHM9I.js",
     "name": "index",
     "src": "pages/index.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_DsK2vegd.js",
+      "_B25Bw-qg.js",
       "../node_modules/nuxt/dist/app/entry.js",
-      "_B-lzqTDs.js",
-      "_CDHrksqE.js",
-      "_CpJ3MkMn.js",
-      "_sRwo_-IN.js",
-      "_Cbe_y7Sp.js",
-      "_Bz2nYKCM.js",
+      "_CDUdI4BL.js",
+      "_BuL4Ej7h.js",
+      "_hiryd_Xh.js",
+      "_CKCylkIj.js",
+      "_DK8-ZRgu.js",
+      "_D7E4Sy5w.js",
       "_BjvzLvXl.js",
-      "_B4C11rt4.js"
+      "_NSGupddE.js"
     ]
   },
   "pages/profile/defaults.vue": {
@@ -274,15 +273,15 @@ const client_manifest = {
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "DGBPRkN0.js",
+    "file": "BFjU-gMf.js",
     "name": "defaults",
     "src": "pages/profile/defaults.vue",
     "isDynamicEntry": true,
     "imports": [
       "../node_modules/nuxt/dist/app/entry.js",
-      "_DsK2vegd.js",
-      "_Cbe_y7Sp.js",
-      "_BjvzLvXl.js"
+      "_B25Bw-qg.js",
+      "_BjvzLvXl.js",
+      "_D7E4Sy5w.js"
     ]
   },
   "pages/profile/drafts.vue": {
@@ -290,14 +289,14 @@ const client_manifest = {
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "CTtp-FRg.js",
+    "file": "xUsTenuw.js",
     "name": "drafts",
     "src": "pages/profile/drafts.vue",
     "isDynamicEntry": true,
     "imports": [
       "../node_modules/nuxt/dist/app/entry.js",
-      "_DsK2vegd.js",
-      "_Bz2nYKCM.js"
+      "_B25Bw-qg.js",
+      "_DK8-ZRgu.js"
     ]
   },
   "pages/profile/index.vue": {
@@ -305,13 +304,13 @@ const client_manifest = {
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "BFMQWAQo.js",
+    "file": "DaJjs9Rg.js",
     "name": "index",
     "src": "pages/profile/index.vue",
     "isDynamicEntry": true,
     "imports": [
       "../node_modules/nuxt/dist/app/entry.js",
-      "_DsK2vegd.js"
+      "_B25Bw-qg.js"
     ]
   },
   "pages/shops/[slug].vue": {
@@ -319,17 +318,17 @@ const client_manifest = {
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "DbIXOOL0.js",
+    "file": "CqzW-05I.js",
     "name": "_slug_",
     "src": "pages/shops/[slug].vue",
     "isDynamicEntry": true,
     "imports": [
-      "_DsK2vegd.js",
+      "_B25Bw-qg.js",
       "../node_modules/nuxt/dist/app/entry.js",
-      "_CpJ3MkMn.js",
-      "_sRwo_-IN.js",
-      "_CDHrksqE.js",
-      "_Bz2nYKCM.js"
+      "_hiryd_Xh.js",
+      "_CKCylkIj.js",
+      "_BuL4Ej7h.js",
+      "_DK8-ZRgu.js"
     ]
   },
   "pages/shops/index.vue": {
@@ -337,16 +336,16 @@ const client_manifest = {
     "module": true,
     "prefetch": true,
     "preload": true,
-    "file": "DdvKaqyM.js",
+    "file": "BD3ijDkp.js",
     "name": "index",
     "src": "pages/shops/index.vue",
     "isDynamicEntry": true,
     "imports": [
       "../node_modules/nuxt/dist/app/entry.js",
-      "_DsK2vegd.js",
-      "_Bz2nYKCM.js",
-      "_sRwo_-IN.js",
-      "_B4C11rt4.js"
+      "_B25Bw-qg.js",
+      "_DK8-ZRgu.js",
+      "_CKCylkIj.js",
+      "_NSGupddE.js"
     ]
   }
 };

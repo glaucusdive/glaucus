@@ -433,7 +433,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
       if (continuingBooking && bookingPayload) {
         const msgTrim = message.trim();
         const lastAssistantContent = (_C = (_B = history == null ? void 0 : history.filter((m) => m.role === "assistant").pop()) == null ? void 0 : _B.content) != null ? _C : "";
-        const lastWasReadyToSend = /ready to send your booking request/i.test(lastAssistantContent);
+        const lastWasReadyToSend = /(?:ready to send your booking request|can i send the booking request)/i.test(lastAssistantContent);
         const confirmSend = /^(yes|yeah|yep|ok|okay|sure|send|submit|confirm|go ahead|do it|please send|ready)$/i.test(msgTrim) || /^(send|submit)\s+(booking\s+)?(request)?$/i.test(msgTrim) || lastWasReadyToSend && /^(yes|send|submit|confirm|ok)$/i.test(msgTrim);
         if (lastWasReadyToSend && confirmSend) {
           const p = { ...bookingPayload, shopId: resolvedShop.id };
@@ -442,7 +442,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
             intent: "booking",
             bookingReady: true,
             payload: p,
-            message: `I have everything I need. Ready to send your booking request to ${resolvedShop.business_name}.`,
+            message: "I have everything I need. Can I send the booking request?",
             shopId: resolvedShop.id,
             shopName: resolvedShop.business_name,
             selectableOptions: void 0
@@ -722,7 +722,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
               intent: "booking",
               bookingReady: true,
               payload: p,
-              message: `I have everything I need. Ready to send your booking request to ${resolvedShop.business_name}.`,
+              message: "I have everything I need. Can I send the booking request?",
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               selectableOptions: void 0
@@ -788,7 +788,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
               intent: "booking",
               bookingReady: true,
               payload: p,
-              message: `I have everything I need. Ready to send your booking request to ${resolvedShop.business_name}.`,
+              message: "I have everything I need. Can I send the booking request?",
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               selectableOptions: void 0
@@ -809,7 +809,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
                 intent: "booking",
                 bookingReady: true,
                 payload: p,
-                message: `I have everything I need. Ready to send your booking request to ${resolvedShop.business_name}.`,
+                message: "I have everything I need. Can I send the booking request?",
                 shopId: resolvedShop.id,
                 shopName: resolvedShop.business_name,
                 selectableOptions: void 0
@@ -905,7 +905,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
               intent: "booking",
               bookingReady: true,
               payload,
-              message: `I have everything I need. Ready to send your booking request to ${resolvedShop.business_name}.`,
+              message: "I have everything I need. Can I send the booking request?",
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               selectableOptions: void 0

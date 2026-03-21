@@ -484,12 +484,12 @@ const _routes = [
   {
     name: "index",
     path: "/",
-    component: () => import('./index-CUtiANyM.mjs')
+    component: () => import('./index-B6TX7gst.mjs')
   },
   {
     name: "auth",
     path: "/auth",
-    component: () => import('./index-Dqve2VNT.mjs')
+    component: () => import('./index-FDGVkuqK.mjs')
   },
   {
     name: "auth-signup",
@@ -499,35 +499,35 @@ const _routes = [
   {
     name: "shops",
     path: "/shops",
-    component: () => import('./index-DfZZXPfb.mjs')
+    component: () => import('./index-Cpjdu8wp.mjs')
   },
   {
     name: "shops-slug",
     path: "/shops/:slug()",
-    component: () => import('./_slug_-DJKMK1kj.mjs')
+    component: () => import('./_slug_-n69g5EIU.mjs')
   },
   {
     name: "profile",
     path: "/profile",
     meta: { "middleware": "auth" },
-    component: () => import('./index-JqTdLNGd.mjs')
+    component: () => import('./index-CXomKzJB.mjs')
   },
   {
     name: "profile-drafts",
     path: "/profile/drafts",
     meta: { "middleware": "auth" },
-    component: () => import('./drafts-BOhzl5Iv.mjs')
+    component: () => import('./drafts-CjuRew9i.mjs')
   },
   {
     name: "community",
     path: "/community",
-    component: () => import('./index-BQ1WveCN.mjs')
+    component: () => import('./index-BsbcSfwv.mjs')
   },
   {
     name: "profile-defaults",
     path: "/profile/defaults",
     meta: { "middleware": "auth" },
-    component: () => import('./defaults-BL6lj7Wi.mjs')
+    component: () => import('./defaults-GrJRcZ3s.mjs')
   }
 ];
 const _wrapInTransition = (props, children) => {

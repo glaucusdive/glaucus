@@ -1,4 +1,4 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-BF9m2Lkn.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-DSk-Zbla.mjs';
 import { useSSRContext, mergeProps, withCtx, createVNode } from 'vue';
 import { ssrRenderComponent } from 'vue/server-renderer';
 import { _ as _export_sfc } from './_plugin-vue_export-helper-1tPrXgE0.mjs';
@@ -54,4 +54,4 @@ _sfc_main.setup = (props, ctx) => {
 const index = /* @__PURE__ */ _export_sfc(_sfc_main, [["ssrRender", _sfc_ssrRender]]);
 
 export { index as default };
-//# sourceMappingURL=index-BQ1WveCN.mjs.map
+//# sourceMappingURL=index-BsbcSfwv.mjs.map

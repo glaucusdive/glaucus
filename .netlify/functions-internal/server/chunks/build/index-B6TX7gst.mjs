@@ -1,7 +1,7 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-BF9m2Lkn.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-DSk-Zbla.mjs';
 import { ref, watch, computed, mergeProps, withCtx, unref, createVNode, Transition, createBlock, createCommentVNode, openBlock, Fragment, renderList, toDisplayString, withModifiers, withDirectives, vModelText, nextTick, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrRenderAttr, ssrRenderClass, ssrRenderList, ssrInterpolate, ssrIncludeBooleanAttr, ssrRenderAttrs } from 'vue/server-renderer';
-import { u as useChatSessions, g as getActiveSession, _ as _imports_0, a as useSearchCache, n as notifyChatSidebarUpdated } from './useChatSessions-DRpcVOcE.mjs';
+import { u as useChatSessions, c as chatRemoteHydrateTick, g as getActiveSession, _ as _imports_0, a as useSearchCache, n as notifyChatSidebarUpdated } from './userChatsRemote-uN8gvt7T.mjs';
 import { Menu, ChevronRight, ArrowUp, Star, MapPin, Languages, Globe, Phone, Mail } from 'lucide-vue-next';
 import gsap from 'gsap';
 import { _ as _sfc_main$3 } from './DiveShopDetail-CdfHmiTF.mjs';
@@ -546,6 +546,10 @@ const _sfc_main = {
         }, 300);
       });
     }
+    watch(chatRemoteHydrateTick, () => {
+      if (route.path !== "/") return;
+      return;
+    });
     watch(pendingNewChat, () => {
       if (!consumePendingNewChat()) return;
       if (abortController.value) {
@@ -1436,4 +1440,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-CUtiANyM.mjs.map
+//# sourceMappingURL=index-B6TX7gst.mjs.map

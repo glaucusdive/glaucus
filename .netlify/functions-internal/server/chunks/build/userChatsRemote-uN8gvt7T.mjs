@@ -1,5 +1,5 @@
 import { z as publicAssetsURL } from '../nitro/nitro.mjs';
-import { computed, ref } from 'vue';
+import { ref, computed } from 'vue';
 
 const _imports_0 = publicAssetsURL("/images/glaucus-logo-emblem.svg");
 function trimStr(s) {
@@ -338,6 +338,7 @@ function useChatSessions() {
     applySwitchFromPage
   };
 }
+const chatRemoteHydrateTick = ref(0);
 
-export { _imports_0 as _, useSearchCache as a, getActiveSession as g, notifyChatSidebarUpdated as n, useChatSessions as u };
-//# sourceMappingURL=useChatSessions-DRpcVOcE.mjs.map
+export { _imports_0 as _, useSearchCache as a, chatRemoteHydrateTick as c, getActiveSession as g, notifyChatSidebarUpdated as n, useChatSessions as u };
+//# sourceMappingURL=userChatsRemote-uN8gvt7T.mjs.map

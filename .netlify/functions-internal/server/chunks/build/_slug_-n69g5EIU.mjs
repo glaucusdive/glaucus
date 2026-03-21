@@ -1,4 +1,4 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-BF9m2Lkn.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-DSk-Zbla.mjs';
 import { computed, unref, withCtx, createVNode, createBlock, createCommentVNode, openBlock, useSSRContext } from 'vue';
 import { ssrInterpolate, ssrRenderComponent } from 'vue/server-renderer';
 import { u as useShopDetail, _ as _sfc_main$1 } from './DiveShopDetail-CdfHmiTF.mjs';
@@ -98,4 +98,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=_slug_-DJKMK1kj.mjs.map
+//# sourceMappingURL=_slug_-n69g5EIU.mjs.map
