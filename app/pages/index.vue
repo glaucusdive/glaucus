@@ -284,6 +284,7 @@ import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/composables/useSupabase'
 import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst } from '~/utils/mergeProfileDefaultDivers'
 import { getLatestBookingPayloadFromMessages, bookingPayloadHasNamedDiver } from '~/utils/chatBookingPayload'
+import { initSignedInChatsFromRemote, chatRemoteHydrateTick } from '~/composables/userChatsRemote'
 
 // Get route to check for initial query
 const route = useRoute()
@@ -590,6 +591,14 @@ async function hydrateFromRecord (cachedState) {
   })
 }
 
+watch(chatRemoteHydrateTick, () => {
+  if (route.path !== '/') return
+  const root = readChatsRoot()
+  const active = root ? getActiveSession(root) : null
+  if (!active) return
+  void hydrateFromRecord(active)
+})
+
 watch(pendingNewChat, () => {
   if (!consumePendingNewChat()) return
   if (abortController.value) {
@@ -628,7 +637,11 @@ const persistCache = () => {
 
 // Restore cache or run initial query
 onMounted(async () => {
-  ensureChatsRoot()
+  if (isSignedIn.value && user.value?.id) {
+    await initSignedInChatsFromRemote(client, user.value.id)
+  } else {
+    ensureChatsRoot()
+  }
   const root = readChatsRoot()
   const activeRecord = root ? getActiveSession(root) : null
   const cachedState = activeRecord && Array.isArray(activeRecord.messages) && activeRecord.messages.length > 0

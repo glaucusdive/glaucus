@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="w-full h-10 lg:h-18 p-1 border-b border-zinc-300 dark:border-zinc-700 shrink-0 flex items-center">
+    <div class="w-full h-10 lg:h-[65px] p-1 border-b border-zinc-300 dark:border-zinc-700 shrink-0 flex items-center">
       <div class="w-full flex items-center justify-between px-2 overflow-auto">
         <h2 class="text-base font-medium truncate text-zinc-900 dark:text-white">Book with {{ shopName }}</h2>
         <button @click="closeDrawer" class="lg:p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-sm transition-colors cursor-pointer text-zinc-900 dark:text-white">
@@ -20,14 +20,14 @@
         <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2">
           <label for="name" class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Name</label>
           <input type="text" id="name" v-model="formData.name" required
-            class="rounded-sm w-full p-2 outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
+            class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
         </fieldset>
 
         <!-- Email -->
         <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2">
           <label for="email" class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Email</label>
           <input type="email" id="email" v-model="formData.email" required
-            class="rounded-sm w-full p-2 outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
+            class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
         </fieldset>
 
         <!-- Dates -->
@@ -37,13 +37,13 @@
           <div class="flex flex-col gap-1">
             <label for="startDate" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Start Date</label>
             <input type="date" id="startDate" v-model="formData.startDate" :min="today" required
-              class="rounded-sm w-full p-2 outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
+              class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
           </div>
 
           <div class="flex flex-col gap-1">
             <label for="endDate" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">End Date</label>
             <input type="date" id="endDate" v-model="formData.endDate" :min="formData.startDate || today" required
-              class="rounded-sm w-full p-2 outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
+              class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
           </div>
         </fieldset>
 
@@ -70,7 +70,7 @@
           <label for="numberOfDivers" class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Number of Divers</label>
           <input type="number" id="numberOfDivers" v-model.number="formData.numberOfDivers"
             @input="updateDiversCount(formData.numberOfDivers)" min="1" required
-            class="rounded-sm w-full p-2 outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
+            class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
         </fieldset>
 
         <!-- Divers Details -->
@@ -81,32 +81,32 @@
           <div class="flex flex-col gap-1">
             <label :for="`diver-name-${index}`" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Name</label>
             <input type="text" :id="`diver-name-${index}`" v-model="diver.name" required
-              class="rounded-sm w-full p-2 outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
+              class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
           </div>
 
           <div class="flex flex-col gap-1">
             <label :for="`diver-cert-${index}`" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Certification Number</label>
             <input type="text" :id="`diver-cert-${index}`" v-model="diver.certificationNumber" required
-              class="rounded-sm w-full p-2 outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
+              class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
           </div>
 
           <div class="flex flex-col gap-1">
             <label :for="`diver-dives-${index}`" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Number of Dives Completed</label>
             <input type="text" :id="`diver-dives-${index}`" v-model="diver.numberOfDives" required
-              class="rounded-sm w-full p-2 outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
+              class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
           </div>
 
           <!-- Height -->
-          <div class="flex gap-2">
-            <div class="flex flex-col gap-1 flex-1">
+          <div class="flex gap-2 items-end">
+            <div class="flex flex-col gap-1 flex-1 min-w-0">
               <label :for="`diver-height-${index}`" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Height</label>
               <input type="text" :id="`diver-height-${index}`" v-model="diver.height" required
-                class="rounded-sm w-full p-2 outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
+                class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
             </div>
-            <div class="flex flex-col gap-1 w-20">
+            <div class="flex flex-col gap-1 w-24 shrink-0">
               <label :for="`diver-height-unit-${index}`" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Unit</label>
               <select :id="`diver-height-unit-${index}`" v-model="diver.heightUnit"
-                class="rounded-sm w-full p-2 outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">
+                class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-tight outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">
                 <option value="ft-in">ft' in"</option>
                 <option value="cm">cm</option>
               </select>
@@ -114,16 +114,16 @@
           </div>
 
           <!-- Weight -->
-          <div class="flex gap-2">
-            <div class="flex flex-col gap-1 flex-1">
+          <div class="flex gap-2 items-end">
+            <div class="flex flex-col gap-1 flex-1 min-w-0">
               <label :for="`diver-weight-${index}`" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Weight</label>
               <input type="text" :id="`diver-weight-${index}`" v-model="diver.weight" required
-                class="rounded-sm w-full p-2 outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
+                class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
             </div>
-            <div class="flex flex-col gap-1 w-20">
+            <div class="flex flex-col gap-1 w-24 shrink-0">
               <label :for="`diver-weight-unit-${index}`" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Unit</label>
               <select :id="`diver-weight-unit-${index}`" v-model="diver.weightUnit"
-                class="rounded-sm w-full p-2 outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">
+                class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-tight outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">
                 <option value="kg">kg</option>
                 <option value="lbs">lbs</option>
               </select>
@@ -153,7 +153,7 @@
               <div class="flex flex-col gap-1">
                 <label :for="`diver-${index}-gear-type-${gearIndex}`" class="text-xs text-zinc-600 dark:text-zinc-400">Gear Type</label>
                 <select :id="`diver-${index}-gear-type-${gearIndex}`" v-model="gear.gearType" required
-                  class="rounded-sm w-full p-2 outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white">
+                  class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-tight outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white">
                   <option value="">Select gear type</option>
                   <option v-for="type in gearTypes" :key="type" :value="type">{{ type }}</option>
                 </select>

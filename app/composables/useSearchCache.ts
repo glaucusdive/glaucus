@@ -72,12 +72,23 @@ export function readChatsRoot (): ChatsRoot | null {
   }
 }
 
-export function writeChatsRoot (root: ChatsRoot) {
+/** Optional hook (registered from plugin) to sync to Supabase after local write. */
+let onChatsRootWritten: ((root: ChatsRoot) => void) | null = null
+
+export function setChatsRootWrittenHook (cb: ((root: ChatsRoot) => void) | null) {
+  onChatsRootWritten = cb
+}
+
+export function writeChatsRoot (root: ChatsRoot, options?: { skipRemote?: boolean }) {
   if (typeof window === 'undefined') return
+  const next = normalizeRoot(root)
   try {
-    window.sessionStorage.setItem(STORE_KEY, JSON.stringify(root))
+    window.sessionStorage.setItem(STORE_KEY, JSON.stringify(next))
   } catch (e) {
     console.warn('[SearchCache] Failed to write chats root', e)
+  }
+  if (!options?.skipRemote) {
+    onChatsRootWritten?.(next)
   }
 }
 
@@ -146,7 +157,7 @@ export function ensureChatsRoot (): ChatsRoot {
 }
 
 /** Ensure activeSessionId points at a session; fix corrupt roots. */
-function normalizeRoot (root: ChatsRoot): ChatsRoot {
+export function normalizeRoot (root: ChatsRoot): ChatsRoot {
   let sessions = root.sessions.filter(s => s && typeof s.id === 'string')
   if (sessions.length === 0) {
     const s = emptySession()

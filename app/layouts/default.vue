@@ -140,6 +140,8 @@ import { X, Sun, Moon, FilePlus, CircleUser, LogIn, LogOut } from 'lucide-vue-ne
 import { useDrawer } from '~/composables/useDrawer'
 import { useTheme } from '~/composables/useTheme'
 import { useAuth } from '~/composables/useAuth'
+import { useSupabase } from '~/composables/useSupabase'
+import { initSignedInChatsFromRemote, requestChatRemoteHydrate, clearLocalChatsAfterSignOut } from '~/composables/userChatsRemote'
 import { useSaveDraftFromCache } from '~/composables/useSaveDraftFromCache'
 import { useChatSessions } from '~/composables/useChatSessions'
 import BookingForm from '~/components/BookingForm.vue'
@@ -218,10 +220,16 @@ onMounted(() => {
 // When user signs in (e.g. after starting a booking as guest), save cache as draft so they don't lose it
 let unsubscribeAuth = null
 onMounted(() => {
-  unsubscribeAuth = onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' && session?.access_token) {
-      saveDraftFromCacheIfNeeded(session.access_token)
+  unsubscribeAuth = onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_OUT') {
+      clearLocalChatsAfterSignOut()
+      return
     }
+    if (!session?.user?.id || (event !== 'SIGNED_IN' && event !== 'INITIAL_SESSION')) return
+    if (session.access_token) saveDraftFromCacheIfNeeded(session.access_token)
+    await initSignedInChatsFromRemote(supabaseClient, session.user.id)
+    // Mid-session sign-in (e.g. OAuth): index may already be mounted — refresh UI from merged storage.
+    if (event === 'SIGNED_IN') requestChatRemoteHydrate()
   })
 })
 onUnmounted(() => {
