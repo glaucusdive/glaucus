@@ -97,6 +97,37 @@ User: "any type of diving"
 FILTERS: {"country": null, "locale": null, "region": null, "minRating": null, "languages": null, "diveTypes": null}
 MESSAGE: Got it! I'll search for all dive shops without filtering by activity type.`;
 const BOOKING_INTENT_PATTERN = /\b(book|reserve|booking|reservation|i want to book|i'd like to book|send my request|submit my request)\b/i;
+function wantsSearchFlowReset(trimmed) {
+  if (!trimmed) return false;
+  const t = trimmed;
+  if (/\b(?:let\s*'?s|let us)\s+start\s+over\b/i.test(t)) return true;
+  if (/\bstart\s+over\b/i.test(t)) return true;
+  if (/\bstart\s+again\b/i.test(t)) return true;
+  if (/\bbegin\s+again\b/i.test(t)) return true;
+  if (/\bfrom\s+scratch\b/i.test(t)) return true;
+  if (/\bnew\s+search\b/i.test(t)) return true;
+  if (/^\s*reset\s*$/i.test(t)) return true;
+  if (/\breset\s+(?:my\s+)?search\b/i.test(t)) return true;
+  if (/\bclear\s+(?:this|it|everything)\s+and\s+start\b/i.test(t)) return true;
+  return false;
+}
+function tripTypeFirstQuestionResponse(opts) {
+  return {
+    success: true,
+    intent: "search",
+    message: "What type of trip are you looking for?",
+    shops: [],
+    totalResults: 0,
+    hasMoreResults: false,
+    filters: {},
+    selectableOptions: [
+      { label: "Liveaboard", value: "I prefer a liveaboard" },
+      { label: "Resort", value: "I prefer a resort" },
+      { label: "Day trips", value: "Just day trips" }
+    ],
+    ...(opts == null ? void 0 : opts.searchFlowReset) ? { searchFlowReset: true } : {}
+  };
+}
 function buildBookingSystemPrompt(shopName, diveSiteNames, existingPayload, nextStepHint, rentalEquipmentNames = []) {
   var _a;
   const sitesList = diveSiteNames.length > 0 ? `
@@ -174,6 +205,9 @@ const aiSearch_post = defineEventHandler(async (event) => {
     const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill, pendingEntityClarifyPhrase } = body;
     if (!message || typeof message !== "string") {
       throw new Error("Message is required");
+    }
+    if (wantsSearchFlowReset(message.trim())) {
+      return tripTypeFirstQuestionResponse({ searchFlowReset: true });
     }
     const continuingBooking = lastIntent === "booking" && !!lastBookingShopId;
     if (continuingBooking && bodyBookingPayload && /^(lbs?|kg|pounds)$/i.test(message.trim())) {
@@ -1184,19 +1218,7 @@ Do not include a MESSAGE. Just return the FILTERS.`;
       (m) => m.role === "user" && tripTypePattern.test(String(m.content || ""))
     );
     if (!userAlreadySpecifiedTripType && !tripTypeChoiceInMessage) {
-      return {
-        success: true,
-        message: "What type of trip are you looking for?",
-        shops: [],
-        totalResults: 0,
-        hasMoreResults: false,
-        filters: {},
-        selectableOptions: [
-          { label: "Liveaboard", value: "I prefer a liveaboard" },
-          { label: "Resort", value: "I prefer a resort" },
-          { label: "Day trips", value: "Just day trips" }
-        ]
-      };
+      return tripTypeFirstQuestionResponse();
     }
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },

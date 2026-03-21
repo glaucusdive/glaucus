@@ -1,8 +1,8 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-DSk-Zbla.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-D1ZaXXk5.mjs';
 import { a as useRoute, c as useRouter, _ as __nuxt_component_0$1 } from './server.mjs';
 import { defineComponent, computed, ref, mergeProps, withCtx, unref, createTextVNode, createVNode, createBlock, createCommentVNode, toDisplayString, openBlock, withModifiers, withDirectives, isRef, vModelText, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrInterpolate, ssrRenderClass, ssrRenderAttr, ssrIncludeBooleanAttr } from 'vue/server-renderer';
-import { u as useAuth } from './useAuth-gG0jt1Ap.mjs';
+import { u as useAuth } from './useAuth-BWS1ISvo.mjs';
 import 'vue-router';
 import '../nitro/nitro.mjs';
 import '@supabase/supabase-js';
@@ -44,10 +44,20 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
     const magicLinkOnly = ref(false);
     const loading = ref(false);
     const message = ref("");
-    const messageSuccess = ref(false);
-    function setMessage(text, success) {
+    const messageKind = ref("success");
+    const messageClass = computed(() => {
+      switch (messageKind.value) {
+        case "success":
+          return "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200";
+        case "caution":
+          return "bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100";
+        default:
+          return "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200";
+      }
+    });
+    function setMessage(text, kind = "success") {
       message.value = text;
-      messageSuccess.value = success;
+      messageKind.value = kind;
     }
     async function handleGoogle() {
       loading.value = true;
@@ -58,7 +68,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
         await router.push(redirect);
       } catch (e) {
         const err = e;
-        setMessage(err?.message ?? "Sign in with Google failed", false);
+        setMessage(err?.message ?? "Sign in with Google failed", "error");
       } finally {
         loading.value = false;
       }
@@ -69,10 +79,17 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
       try {
         if (magicLinkOnly.value) {
           await signInWithMagicLink(email.value);
-          setMessage("Check your email for the sign-in link.", true);
+          setMessage("Check your email for the sign-in link.", "success");
         } else if (isSignUp.value) {
-          await signUpWithEmail(email.value, password.value, displayName.value || void 0);
-          setMessage("Check your email to confirm your account, then sign in.", true);
+          const signupData = await signUpWithEmail(email.value, password.value, displayName.value || void 0);
+          if (signupData.obfuscatedDuplicate) {
+            setMessage(
+              "This email may already be registered (for example with Google). Use “Continue with Google” or sign in. If you are new here, check spam or try again in a few minutes.",
+              "caution"
+            );
+          } else {
+            setMessage("Check your email to confirm your account, then sign in.", "success");
+          }
         } else {
           await signInWithEmail(email.value, password.value);
           const redirect = route.query.redirect || "/";
@@ -80,7 +97,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
         }
       } catch (e) {
         const err = e;
-        setMessage(err?.message ?? "Something went wrong", false);
+        setMessage(err?.message ?? "Something went wrong", "error");
       } finally {
         loading.value = false;
       }
@@ -93,7 +110,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
           if (_push2) {
             _push2(`<div class="min-h-screen bg-zinc-50 dark:bg-zinc-900 p-4 flex items-center justify-center"${_scopeId}><div class="w-full max-w-md space-y-6"${_scopeId}><h1 class="text-2xl font-bold text-zinc-900 dark:text-white text-center"${_scopeId}>${ssrInterpolate(unref(isSignUp) ? "Create account" : "Sign in")}</h1>`);
             if (unref(message)) {
-              _push2(`<div class="${ssrRenderClass([unref(messageSuccess) ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200" : "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200", "p-3 rounded-md text-sm"])}"${_scopeId}>${ssrInterpolate(unref(message))}</div>`);
+              _push2(`<div class="${ssrRenderClass([unref(messageClass), "p-3 rounded-md text-sm"])}"${_scopeId}>${ssrInterpolate(unref(message))}</div>`);
             } else {
               _push2(`<!---->`);
             }
@@ -157,7 +174,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
                   createVNode("h1", { class: "text-2xl font-bold text-zinc-900 dark:text-white text-center" }, toDisplayString(unref(isSignUp) ? "Create account" : "Sign in"), 1),
                   unref(message) ? (openBlock(), createBlock("div", {
                     key: 0,
-                    class: ["p-3 rounded-md text-sm", unref(messageSuccess) ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200" : "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200"]
+                    class: ["p-3 rounded-md text-sm", unref(messageClass)]
                   }, toDisplayString(unref(message)), 3)) : createCommentVNode("", true),
                   createVNode("button", {
                     type: "button",
@@ -311,4 +328,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-FDGVkuqK.mjs.map
+//# sourceMappingURL=index-C62Q1amN.mjs.map

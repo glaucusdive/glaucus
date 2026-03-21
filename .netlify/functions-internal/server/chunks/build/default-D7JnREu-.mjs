@@ -4,7 +4,7 @@ import { ssrRenderAttrs, ssrRenderComponent, ssrRenderAttr, ssrRenderSlot, ssrIn
 import { u as useChatSessions, _ as _imports_0 } from './userChatsRemote-uN8gvt7T.mjs';
 import { X, CircleUser, LogIn, LogOut, Sun, Moon, Star } from 'lucide-vue-next';
 import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
-import { u as useAuth } from './useAuth-gG0jt1Ap.mjs';
+import { u as useAuth } from './useAuth-BWS1ISvo.mjs';
 import { u as useSupabase } from './useSupabase-G2CWeDSk.mjs';
 import { _ as _export_sfc } from './_plugin-vue_export-helper-1tPrXgE0.mjs';
 import '../nitro/nitro.mjs';
@@ -462,6 +462,7 @@ const _sfc_main = {
     });
     useChatSessions();
     useTheme();
+    useSupabase();
     const { isSignedIn } = useAuth();
     const { isOpen, contentType, drawerData, drawerOpenKey, isMobileMenuOpen, shouldAnimateMenu, closeMobileMenu } = useDrawer();
     const isDesktop = ref(true);
@@ -651,4 +652,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=default-B_4Jvd1X.mjs.map
+//# sourceMappingURL=default-D7JnREu-.mjs.map

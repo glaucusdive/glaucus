@@ -38,10 +38,14 @@ const useAuth = () => {
     const { data, error } = await client.auth.signUp({
       email,
       password,
-      options: displayName ? { data: { display_name: displayName } } : void 0
+      options: {
+        ...displayName ? { data: { display_name: displayName } } : {},
+        emailRedirectTo: void 0
+      }
     });
     if (error) throw error;
-    return data;
+    const obfuscatedDuplicate = !data.user || !Array.isArray(data.user.identities) || data.user.identities.length === 0;
+    return { ...data, obfuscatedDuplicate };
   }
   async function signInWithEmail(email, password) {
     const { data, error } = await client.auth.signInWithPassword({ email, password });
@@ -88,4 +92,4 @@ const useAuth = () => {
 };
 
 export { useAuth as u };
-//# sourceMappingURL=useAuth-gG0jt1Ap.mjs.map
+//# sourceMappingURL=useAuth-BWS1ISvo.mjs.map

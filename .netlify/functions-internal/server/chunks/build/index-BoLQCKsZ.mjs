@@ -1,12 +1,12 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-DSk-Zbla.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-D1ZaXXk5.mjs';
 import { ref, watch, computed, mergeProps, withCtx, unref, createVNode, Transition, createBlock, createCommentVNode, openBlock, Fragment, renderList, toDisplayString, withModifiers, withDirectives, vModelText, nextTick, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrRenderAttr, ssrRenderClass, ssrRenderList, ssrInterpolate, ssrIncludeBooleanAttr, ssrRenderAttrs } from 'vue/server-renderer';
 import { u as useChatSessions, c as chatRemoteHydrateTick, g as getActiveSession, _ as _imports_0, a as useSearchCache, n as notifyChatSidebarUpdated } from './userChatsRemote-uN8gvt7T.mjs';
 import { Menu, ChevronRight, ArrowUp, Star, MapPin, Languages, Globe, Phone, Mail } from 'lucide-vue-next';
 import gsap from 'gsap';
-import { _ as _sfc_main$3 } from './DiveShopDetail-CdfHmiTF.mjs';
+import { _ as _sfc_main$3 } from './DiveShopDetail-BwJ1FOBS.mjs';
 import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
-import { u as useAuth } from './useAuth-gG0jt1Ap.mjs';
+import { u as useAuth } from './useAuth-BWS1ISvo.mjs';
 import { u as useSupabase } from './useSupabase-G2CWeDSk.mjs';
 import { a as useRoute, b as useState, u as useHead } from './server.mjs';
 import 'vue-router';
@@ -708,6 +708,38 @@ const _sfc_main = {
           return;
         }
         if (response.success) {
+          if (response.searchFlowReset) {
+            closeDrawer();
+            selectedShopId.value = null;
+            pendingBookingPayload.value = null;
+            mobileDetailShopId.value = null;
+            const resetContent = response.message && String(response.message).trim() ? response.message : "What type of trip are you looking for?";
+            messages.value = [
+              { role: "user", content: textToShow },
+              {
+                role: "assistant",
+                content: resetContent,
+                shops: response.shops || [],
+                totalResults: response.totalResults,
+                hasMoreResults: response.hasMoreResults,
+                intent: response.intent,
+                bookingReady: response.bookingReady,
+                payload: void 0,
+                shopId: void 0,
+                shopName: void 0,
+                selectableOptions: response.selectableOptions,
+                rentalEquipmentOptions: response.rentalEquipmentOptions || void 0,
+                hideNoneForGear: response.hideNoneForGear ?? false,
+                diveSiteOptions: response.diveSiteOptions || void 0,
+                ...response.filters && typeof response.filters === "object" ? { filters: response.filters } : {},
+                ...response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {}
+              }
+            ];
+            isLoading.value = false;
+            abortController.value = null;
+            await scrollToBottom();
+            return;
+          }
           const storedPayload = response.bookingPayload ?? response.payload;
           const userSaidConfirmSend = /^(yes|yeah|yep|ok|okay|sure|send|submit|confirm|go ahead|do it|please send|ready)$/i.test(String(message).trim()) || /^(send|submit)\s+(booking\s+)?(request)?$/i.test(String(message).trim());
           const hasValidDivers = Array.isArray(storedPayload?.divers) && storedPayload.divers.length >= 1 && storedPayload.divers.some((d) => d?.name && String(d.name).trim());
@@ -1440,4 +1472,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-B6TX7gst.mjs.map
+//# sourceMappingURL=index-BoLQCKsZ.mjs.map

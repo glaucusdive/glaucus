@@ -3,7 +3,7 @@ import { computed, ref, mergeProps, unref, withCtx, createBlock, openBlock, crea
 import { ssrRenderAttrs, ssrRenderComponent, ssrInterpolate, ssrRenderClass, ssrRenderList, ssrRenderAttr, ssrRenderSlot } from 'vue/server-renderer';
 import { ChevronLeft, X, MapPin, Phone, Mail, Globe, Star, Trash2 } from 'lucide-vue-next';
 import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
-import { u as useAuth } from './useAuth-gG0jt1Ap.mjs';
+import { u as useAuth } from './useAuth-BWS1ISvo.mjs';
 import { u as useSupabase } from './useSupabase-G2CWeDSk.mjs';
 
 const _sfc_main$3 = {
@@ -802,4 +802,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as _, useShopDetail as u };
-//# sourceMappingURL=DiveShopDetail-CdfHmiTF.mjs.map
+//# sourceMappingURL=DiveShopDetail-BwJ1FOBS.mjs.map

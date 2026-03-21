@@ -162,6 +162,40 @@ MESSAGE: Got it! I'll search for all dive shops without filtering by activity ty
 
 const BOOKING_INTENT_PATTERN = /\b(book|reserve|booking|reservation|i want to book|i'd like to book|send my request|submit my request)\b/i
 
+/** Orchestrator: user wants to abandon the current thread and restart at the trip-type question (not model-inferred). */
+function wantsSearchFlowReset (trimmed: string): boolean {
+  if (!trimmed) return false
+  const t = trimmed
+  if (/\b(?:let\s*'?s|let us)\s+start\s+over\b/i.test(t)) return true
+  if (/\bstart\s+over\b/i.test(t)) return true
+  if (/\bstart\s+again\b/i.test(t)) return true
+  if (/\bbegin\s+again\b/i.test(t)) return true
+  if (/\bfrom\s+scratch\b/i.test(t)) return true
+  if (/\bnew\s+search\b/i.test(t)) return true
+  if (/^\s*reset\s*$/i.test(t)) return true
+  if (/\breset\s+(?:my\s+)?search\b/i.test(t)) return true
+  if (/\bclear\s+(?:this|it|everything)\s+and\s+start\b/i.test(t)) return true
+  return false
+}
+
+function tripTypeFirstQuestionResponse (opts?: { searchFlowReset?: boolean }) {
+  return {
+    success: true as const,
+    intent: 'search' as const,
+    message: 'What type of trip are you looking for?',
+    shops: [],
+    totalResults: 0,
+    hasMoreResults: false,
+    filters: {} as SearchFilters,
+    selectableOptions: [
+      { label: 'Liveaboard', value: 'I prefer a liveaboard' },
+      { label: 'Resort', value: 'I prefer a resort' },
+      { label: 'Day trips', value: 'Just day trips' }
+    ],
+    ...(opts?.searchFlowReset ? { searchFlowReset: true as const } : {})
+  }
+}
+
 function buildBookingSystemPrompt (
   shopName: string,
   diveSiteNames: string[],
@@ -243,6 +277,10 @@ export default defineEventHandler(async (event) => {
 
     if (!message || typeof message !== 'string') {
       throw new Error('Message is required')
+    }
+
+    if (wantsSearchFlowReset(message.trim())) {
+      return tripTypeFirstQuestionResponse({ searchFlowReset: true })
     }
 
     // Unit-only "lbs"/"kg" fast path: instant reply. Skip early return when next step is gear so we can attach rentalEquipmentOptions (chips) to the first "Does X need any rental gear?" message.
@@ -1338,19 +1376,7 @@ Do not include a MESSAGE. Just return the FILTERS.`
       m => m.role === 'user' && tripTypePattern.test(String(m.content || ''))
     )
     if (!userAlreadySpecifiedTripType && !tripTypeChoiceInMessage) {
-      return {
-        success: true,
-        message: 'What type of trip are you looking for?',
-        shops: [],
-        totalResults: 0,
-        hasMoreResults: false,
-        filters: {},
-        selectableOptions: [
-          { label: 'Liveaboard', value: 'I prefer a liveaboard' },
-          { label: 'Resort', value: 'I prefer a resort' },
-          { label: 'Day trips', value: 'Just day trips' }
-        ]
-      }
+      return tripTypeFirstQuestionResponse()
     }
     
     // Build conversation history for the AI

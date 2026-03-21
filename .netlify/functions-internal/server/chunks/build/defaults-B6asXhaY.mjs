@@ -1,8 +1,8 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-DSk-Zbla.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-D1ZaXXk5.mjs';
 import { _ as __nuxt_component_0$1 } from './server.mjs';
 import { defineComponent, ref, mergeProps, withCtx, createTextVNode, unref, createVNode, createBlock, createCommentVNode, openBlock, toDisplayString, withModifiers, withDirectives, vModelText, Fragment, renderList, vModelSelect, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrInterpolate, ssrRenderAttr, ssrRenderList, ssrIncludeBooleanAttr, ssrLooseContain, ssrLooseEqual, ssrRenderClass } from 'vue/server-renderer';
-import { u as useAuth } from './useAuth-gG0jt1Ap.mjs';
+import { u as useAuth } from './useAuth-BWS1ISvo.mjs';
 import { u as useSupabase } from './useSupabase-G2CWeDSk.mjs';
 import 'vue-router';
 import '../nitro/nitro.mjs';
@@ -404,4 +404,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=defaults-GrJRcZ3s.mjs.map
+//# sourceMappingURL=defaults-B6asXhaY.mjs.map
