@@ -1,4 +1,4 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-CNcX9myu.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-OcTSyAjL.mjs';
 import { _ as __nuxt_component_0$1 } from './server.mjs';
 import { defineComponent, ref, mergeProps, withCtx, createTextVNode, unref, createVNode, createBlock, openBlock, Fragment, renderList, toDisplayString, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrRenderList, ssrInterpolate, ssrIncludeBooleanAttr } from 'vue/server-renderer';
@@ -181,4 +181,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=drafts-BfDqJyQR.mjs.map
+//# sourceMappingURL=drafts-BTmWelkb.mjs.map

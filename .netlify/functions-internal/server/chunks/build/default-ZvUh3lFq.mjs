@@ -1,7 +1,7 @@
 import { a as useRoute, _ as __nuxt_component_0$1, l as __nuxt_component_1$1 } from './server.mjs';
 import { computed, ref, mergeProps, unref, withCtx, createVNode, createTextVNode, watch, renderSlot, defineComponent, useSSRContext } from 'vue';
 import { ssrRenderAttrs, ssrRenderComponent, ssrRenderAttr, ssrRenderSlot, ssrInterpolate, ssrRenderList, ssrIncludeBooleanAttr, ssrLooseContain, ssrLooseEqual } from 'vue/server-renderer';
-import { u as useChatSessions, _ as _imports_0 } from './userChatsRemote-uN8gvt7T.mjs';
+import { u as useChatSessions, _ as _imports_0 } from './userChatsRemote-DMcayfPn.mjs';
 import { X, CircleUser, LogIn, LogOut, Sun, Moon, Star } from 'lucide-vue-next';
 import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
 import { u as useAuth } from './useAuth-BWS1ISvo.mjs';
@@ -668,4 +668,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=default-a1jOFUCz.mjs.map
+//# sourceMappingURL=default-ZvUh3lFq.mjs.map

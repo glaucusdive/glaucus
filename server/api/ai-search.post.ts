@@ -7,14 +7,16 @@ import { getRentalEquipmentForShop } from '../utils/getRentalEquipmentForShop'
 import { getNextBookingStep, tryFastPath, tryFastPathUnitOnly, type BookingPayloadLocal } from '../utils/bookingFastPath'
 import { tryParseTripDatesFromMessage } from '../utils/parseTripDates'
 import { mergeCollectedIntoBookingPayload } from '../utils/mergeBookingCollected'
-import { extractReferredEntityPhrase } from '../utils/extractReferredEntityPhrase'
+import { extractBookingTargetFallback, extractReferredEntityPhrase } from '../utils/extractReferredEntityPhrase'
 import { parseEntityClarifyMessage } from '../utils/entityClarify'
 import {
   clarifyResponsePayload,
   handleForcedEntityClarify,
   probeReferentPhrase,
-  routeReferentFromProbe
+  routeReferentFromProbe,
+  shopDisambiguationResponsePayload
 } from '../utils/entityRouting'
+import { resolveBookingTargetFromPhrase } from '../utils/resolveBookingTarget'
 import { tryShopInfoResponse } from '../utils/shopInfoForChat'
 
 interface Message {
@@ -354,24 +356,61 @@ export default defineEventHandler(async (event) => {
       if (forced.kind === 'clarify') {
         return { ...clarifyResponsePayload(forced.phrase), intent: 'search' as const }
       }
+      if (forced.kind === 'shop_disambiguation') {
+        return { ...shopDisambiguationResponsePayload(forced.phrase, forced.shops), intent: 'search' as const }
+      }
       if (forced.kind === 'booking') {
         resolvedShop = forced.shop
         resolvedByNamedShop = true
       }
       // forced.kind === 'browse': fall through to normal search flow (trip-type / LLM)
-    } else if (!continuingBooking && !clarifyChoice) {
-      const referredPhrase = extractReferredEntityPhrase(message)
+    } else if (!continuingBooking && !clarifyChoice && supabaseUrl && supabaseKey) {
+      const referredPhrase = extractReferredEntityPhrase(message) ?? extractBookingTargetFallback(message)
       if (referredPhrase) {
-        const probe = await probeReferentPhrase(supabaseUrl, supabaseKey, referredPhrase)
-        const routed = await routeReferentFromProbe(supabaseUrl, supabaseKey, probe)
-        if (routed.type === 'clarify') {
-          return { ...clarifyResponsePayload(routed.phrase), intent: 'search' as const }
+        let skipEntityProbe = false
+        if (wantsToBook) {
+          const target = await resolveBookingTargetFromPhrase(referredPhrase, lastShops, supabaseUrl, supabaseKey)
+          if (target.kind === 'single') {
+            resolvedShop = await getShopById(supabaseUrl, supabaseKey, target.shop.id)
+            resolvedByNamedShop = !!resolvedShop
+            skipEntityProbe = true
+          } else if (target.kind === 'ambiguous') {
+            return { ...shopDisambiguationResponsePayload(target.phrase, target.shops), intent: 'search' as const }
+          }
         }
-        if (routed.type === 'search') {
-          return { ...routed.response, intent: 'search' as const }
+        if (!skipEntityProbe) {
+          const probe = await probeReferentPhrase(supabaseUrl, supabaseKey, referredPhrase)
+          const routed = await routeReferentFromProbe(supabaseUrl, supabaseKey, probe)
+          if (routed.type === 'clarify') {
+            return { ...clarifyResponsePayload(routed.phrase), intent: 'search' as const }
+          }
+          if (routed.type === 'search') {
+            if (wantsToBook) {
+              const pickFromRecent = (lastShops || []).slice(0, 8).map(s => ({
+                label: s.business_name,
+                value: `Let's book ${s.business_name}`
+              }))
+              return {
+                success: true,
+                intent: 'search' as const,
+                message: pickFromRecent.length
+                  ? `I couldn't match "${referredPhrase}" to a single dive shop. Pick one from your recent results below, or say the full shop name (e.g. "Let's book at [name]").`
+                  : `I couldn't match "${referredPhrase}" to a dive shop for booking. Try the full shop name, or search for shops first.`,
+                shops: [],
+                totalResults: 0,
+                hasMoreResults: false,
+                filters: {} as SearchFilters,
+                selectableOptions: pickFromRecent.length ? pickFromRecent : undefined
+              }
+            }
+            return { ...routed.response, intent: 'search' as const }
+          }
+          if (routed.type === 'shop_disambiguation') {
+            return { ...shopDisambiguationResponsePayload(routed.phrase, routed.shops), intent: 'search' as const }
+          }
+          resolvedShop = routed.shop
+          resolvedByNamedShop = true
         }
-        resolvedShop = routed.shop
-        resolvedByNamedShop = true
       }
     }
     if (wantsToBook && !resolvedShop) {
@@ -1565,6 +1604,26 @@ Do not include a MESSAGE. Just return the FILTERS.`
       } catch (paginationError) {
         console.error('[AI Search] Error handling pagination:', paginationError)
         // Fall through to normal processing
+      }
+    }
+
+    // Booking intent but no shop resolved — do not run trip-type or generic search
+    if (wantsToBook && !continuingBooking && !resolvedShop && !clarifyChoice) {
+      const pickFromRecent = (lastShops || []).slice(0, 8).map(s => ({
+        label: s.business_name,
+        value: `Let's book ${s.business_name}`
+      }))
+      return {
+        success: true,
+        intent: 'search' as const,
+        message: pickFromRecent.length
+          ? `Which dive shop do you want to book? Pick one below or say the full name (e.g. "Let's book at [shop name]").`
+          : `Which dive shop do you want to book? Say the full shop name, or run a search first and pick from the list.`,
+        shops: [],
+        totalResults: 0,
+        hasMoreResults: false,
+        filters: {} as SearchFilters,
+        selectableOptions: pickFromRecent.length ? pickFromRecent : undefined
       }
     }
 

@@ -1,4 +1,4 @@
-import { D as publicAssetsURL } from '../nitro/nitro.mjs';
+import { G as publicAssetsURL } from '../nitro/nitro.mjs';
 import { ref, computed } from 'vue';
 
 const _imports_0 = publicAssetsURL("/images/glaucus-logo-emblem.svg");
@@ -14,7 +14,7 @@ function truncateTitle(s, max = 40) {
 function diveTypeLabel(raw) {
   if (raw === "Liveaboard") return "Liveaboard";
   if (raw === "Dive Resort") return "Resort";
-  if (raw === "Dive Shop") return "Day trips";
+  if (raw === "Dive Shop") return "Dive Shop";
   return raw.trim() || "";
 }
 function placeFromFilters(f) {
@@ -341,4 +341,4 @@ function useChatSessions() {
 const chatRemoteHydrateTick = ref(0);
 
 export { _imports_0 as _, useSearchCache as a, chatRemoteHydrateTick as c, getActiveSession as g, notifyChatSidebarUpdated as n, useChatSessions as u };
-//# sourceMappingURL=userChatsRemote-uN8gvt7T.mjs.map
+//# sourceMappingURL=userChatsRemote-DMcayfPn.mjs.map

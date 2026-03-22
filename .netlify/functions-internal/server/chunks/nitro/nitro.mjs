@@ -4294,7 +4294,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "9effa2fd-eba9-423a-8e5e-9d31539d19e5",
+    "buildId": "b713782b-50cc-44dd-8a9f-ada80e1a1a79",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -5338,7 +5338,10 @@ async function routeReferentFromProbe(supabaseUrl, supabaseKey, probe) {
   }
   const only = cats[0];
   if (only === "shop") {
-    return { type: "booking", shop: probe.shops[0] };
+    if (probe.shops.length === 1) {
+      return { type: "booking", shop: probe.shops[0] };
+    }
+    return { type: "shop_disambiguation", shops: probe.shops, phrase };
   }
   if (only === "dive_site") {
     const ids = probe.diveSites.map((s) => s.id);
@@ -5415,7 +5418,10 @@ async function handleForcedEntityClarify(kind, phraseRaw, supabaseUrl, supabaseK
     if (shops.length === 0) {
       return { kind: "clarify", phrase };
     }
-    return { kind: "booking", shop: shops[0] };
+    if (shops.length === 1) {
+      return { kind: "booking", shop: shops[0] };
+    }
+    return { kind: "shop_disambiguation", shops, phrase };
   }
   if (kind === "dive_site") {
     const client = createClient(supabaseUrl, supabaseKey);
@@ -5476,10 +5482,30 @@ function clarifyResponsePayload(phrase) {
     entityClarifyPending: { phrase }
   };
 }
+function shopDisambiguationResponsePayload(phrase, shops) {
+  return {
+    success: true,
+    message: `Multiple shops match "${phrase}". Which one do you want to book?`,
+    shops: [],
+    totalResults: 0,
+    hasMoreResults: false,
+    filters: {},
+    selectableOptions: shops.map((s) => ({
+      label: s.business_name,
+      value: `Let's book ${s.business_name}`
+    }))
+  };
+}
 
 function extractReferredEntityPhrase(message) {
   const trimmed = message.trim();
-  let m = trimmed.match(/(?:book|reserve)(?:\s+(?:a\s+)?dive)?\s+with\s+([^.?!]+)/i);
+  let m = trimmed.match(/(?:let'?s\s+)?book(?:ing)?\s+at\s+(?:the\s+)?([^.?!]+)/i);
+  if (m == null ? void 0 : m[1]) return normalizePhrase(m[1]);
+  m = trimmed.match(/(?:let'?s\s+)?reserve(?:\s+a\s+dive)?\s+at\s+(?:the\s+)?([^.?!]+)/i);
+  if (m == null ? void 0 : m[1]) return normalizePhrase(m[1]);
+  m = trimmed.match(/(?:book|reserve)(?:\s+(?:a\s+)?dive)?\s+with\s+([^.?!]+)/i);
+  if (m == null ? void 0 : m[1]) return normalizePhrase(m[1]);
+  m = trimmed.match(/^(?:let'?s\s+)?book(?:ing)?\s+(?!with\b|at\b)([^.?!]+)$/i);
   if (m == null ? void 0 : m[1]) return normalizePhrase(m[1]);
   m = trimmed.match(/(?:i\s+(?:want|'d\s+like)\s+to\s+)?(?:go\s+)?(?:dive|diving)\s+with\s+([^.?!]+)/i);
   if (m == null ? void 0 : m[1]) return normalizePhrase(m[1]);
@@ -5497,6 +5523,27 @@ function normalizePhrase(raw) {
   s = s.replace(/^the\s+/i, "").trim();
   if (s.length < 2) return null;
   return s;
+}
+function looksLikeBookingIntent(message) {
+  const t = message.trim();
+  return /\b(book|reserve|booking|reservation|i want to book|i'd like to book|send my request|submit my request)\b/i.test(t) || /\b(?:let'?s\s+)?(?:book|reserve)(?:ing)?\b/i.test(t);
+}
+function extractBookingTargetFallback(message) {
+  if (!looksLikeBookingIntent(message)) return null;
+  const trimmed = message.trim();
+  const patterns = [
+    /^(?:let'?s\s+)?book(?:ing)?\s+(?!with\b|at\b)([^.?!]+)$/i,
+    /^(?:let'?s\s+)?book(?:ing)?\s+at\s+(?:the\s+)?([^.?!]+)$/i,
+    /^(?:let'?s\s+)?reserve(?:\s+a\s+dive)?\s+at\s+(?:the\s+)?([^.?!]+)$/i,
+    /^i\s+want\s+to\s+book\s+(?:at|with)\s+(?:the\s+)?([^.?!]+)$/i,
+    /^i(?:'d|\s+would)\s+like\s+to\s+book\s+(?:at|with)\s+(?:the\s+)?([^.?!]+)$/i,
+    /^(?:book|reserve)(?:\s+(?:a\s+)?dive)?\s+with\s+([^.?!]+)$/i
+  ];
+  for (const re of patterns) {
+    const m = trimmed.match(re);
+    if (m == null ? void 0 : m[1]) return normalizePhrase(m[1]);
+  }
+  return null;
 }
 
 function getBearerToken(event) {
@@ -5678,6 +5725,53 @@ function tryParseTripDatesFromMessage(message, ref = /* @__PURE__ */ new Date())
     return null;
   }
   return null;
+}
+
+function sanitizePhrase(s) {
+  return s.trim().replace(/[%_\\]/g, "");
+}
+function shopNameMatchesFragment(businessName, phrase) {
+  const n = businessName.trim().toLowerCase();
+  const p = phrase.trim().toLowerCase();
+  if (!p || p.length < 2) return false;
+  if (n.includes(p)) return true;
+  const words = n.split(/[\s\-–—,]+/).filter(Boolean);
+  return words.some((w) => w.startsWith(p));
+}
+async function resolveBookingTargetFromPhrase(phraseRaw, lastShops, supabaseUrl, supabaseKey) {
+  const phrase = sanitizePhrase(phraseRaw);
+  if (phrase.length < 2) {
+    return { kind: "none", phrase: phraseRaw };
+  }
+  const lastList = lastShops || [];
+  const fromLast = [];
+  for (const row of lastList) {
+    if (shopNameMatchesFragment(row.business_name, phrase)) {
+      fromLast.push({ id: row.id, business_name: row.business_name, email: null });
+    }
+  }
+  if (fromLast.length === 1) {
+    return { kind: "single", shop: fromLast[0] };
+  }
+  if (fromLast.length > 1) {
+    return { kind: "ambiguous", shops: fromLast, phrase };
+  }
+  const dbShops = await listShopsMatchingName(supabaseUrl, supabaseKey, phrase, 5);
+  const lastIds = new Set(lastList.map((s) => s.id));
+  const intersect = dbShops.filter((s) => lastIds.has(s.id));
+  if (intersect.length === 1) {
+    return { kind: "single", shop: intersect[0] };
+  }
+  if (intersect.length > 1) {
+    return { kind: "ambiguous", shops: intersect, phrase };
+  }
+  if (dbShops.length === 1) {
+    return { kind: "single", shop: dbShops[0] };
+  }
+  if (dbShops.length > 1) {
+    return { kind: "ambiguous", shops: dbShops, phrase };
+  }
+  return { kind: "none", phrase };
 }
 
 const SHOP_INFO_PREFIX = "shop_info:";
@@ -6229,5 +6323,5 @@ function getCacheHeaders(url) {
   return {};
 }
 
-export { $fetch$1 as $, getResponseStatusText as A, getResponseStatus as B, defineRenderHandler as C, publicAssetsURL as D, getQuery as E, destr as F, getRouteRules as G, useNitroApp as H, serialize$1 as I, parseQuery as J, hasProtocol as K, isScriptProtocol as L, joinURL as M, withQuery as N, sanitizeStatusCode as O, withTrailingSlash as P, withoutTrailingSlash as Q, klona as R, defuFn as S, getContext as T, baseURL as U, defu as V, createHooks as W, executeAsync as X, isEqual as Y, toRouteMatcher as Z, createRouter$1 as _, tryShopInfoResponse as a, handler as a0, probeReferentPhrase as b, clarifyResponsePayload as c, defineEventHandler as d, extractReferredEntityPhrase as e, routeReferentFromProbe as f, getNextBookingStep as g, handleForcedEntityClarify as h, getShopById as i, getDiveSitesForShop as j, getRentalEquipmentForShop as k, getCoursesForShop as l, tryParseTripDatesFromMessage as m, tryFastPath as n, mergeCollectedIntoBookingPayload as o, parseEntityClarifyMessage as p, buildDiveShopQuery as q, readBody as r, createError$1 as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, getAuthUser as v, getBearerToken as w, createSupabaseClientForUser as x, getRouterParam as y, buildAssetsURL as z };
+export { $fetch$1 as $, createSupabaseClientForUser as A, getRouterParam as B, buildAssetsURL as C, getResponseStatusText as D, getResponseStatus as E, defineRenderHandler as F, publicAssetsURL as G, getQuery as H, destr as I, getRouteRules as J, useNitroApp as K, serialize$1 as L, parseQuery as M, hasProtocol as N, isScriptProtocol as O, joinURL as P, withQuery as Q, sanitizeStatusCode as R, withTrailingSlash as S, withoutTrailingSlash as T, klona as U, defuFn as V, getContext as W, baseURL as X, defu as Y, createHooks as Z, executeAsync as _, tryShopInfoResponse as a, isEqual as a0, toRouteMatcher as a1, createRouter$1 as a2, handler as a3, extractBookingTargetFallback as b, clarifyResponsePayload as c, defineEventHandler as d, extractReferredEntityPhrase as e, resolveBookingTargetFromPhrase as f, getNextBookingStep as g, handleForcedEntityClarify as h, getShopById as i, probeReferentPhrase as j, routeReferentFromProbe as k, getDiveSitesForShop as l, getRentalEquipmentForShop as m, getCoursesForShop as n, tryParseTripDatesFromMessage as o, parseEntityClarifyMessage as p, tryFastPath as q, readBody as r, shopDisambiguationResponsePayload as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, mergeCollectedIntoBookingPayload as v, buildDiveShopQuery as w, createError$1 as x, getAuthUser as y, getBearerToken as z };
 //# sourceMappingURL=nitro.mjs.map

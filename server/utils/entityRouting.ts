@@ -154,6 +154,7 @@ function formatEntitySearchResponse (
 export type EntityRouteResult =
   | { type: 'clarify', phrase: string }
   | { type: 'booking', shop: ResolvedShop }
+  | { type: 'shop_disambiguation', shops: ResolvedShop[], phrase: string }
   | { type: 'search', response: ReturnType<typeof formatEntitySearchResponse> }
 
 export async function routeReferentFromProbe (
@@ -171,7 +172,10 @@ export async function routeReferentFromProbe (
   const only = cats[0]
 
   if (only === 'shop') {
-    return { type: 'booking', shop: probe.shops[0]! }
+    if (probe.shops.length === 1) {
+      return { type: 'booking', shop: probe.shops[0]! }
+    }
+    return { type: 'shop_disambiguation', shops: probe.shops, phrase }
   }
 
   if (only === 'dive_site') {
@@ -251,6 +255,7 @@ export async function handleForcedEntityClarify (
   supabaseKey: string
 ): Promise<
   | { kind: 'booking', shop: ResolvedShop }
+  | { kind: 'shop_disambiguation', shops: ResolvedShop[], phrase: string }
   | { kind: 'search', response: ReturnType<typeof formatEntitySearchResponse> }
   | { kind: 'clarify', phrase: string }
   | { kind: 'browse' }
@@ -267,7 +272,10 @@ export async function handleForcedEntityClarify (
     if (shops.length === 0) {
       return { kind: 'clarify', phrase }
     }
-    return { kind: 'booking', shop: shops[0]! }
+    if (shops.length === 1) {
+      return { kind: 'booking', shop: shops[0]! }
+    }
+    return { kind: 'shop_disambiguation', shops, phrase }
   }
 
   if (kind === 'dive_site') {
@@ -337,5 +345,21 @@ export function clarifyResponsePayload (phrase: string) {
     filters: {} as SearchFilters,
     selectableOptions: entityClarifySelectableOptions(),
     entityClarifyPending: { phrase }
+  }
+}
+
+/** User said a short shop name; several matches — pick one chip to continue booking. */
+export function shopDisambiguationResponsePayload (phrase: string, shops: ResolvedShop[]) {
+  return {
+    success: true as const,
+    message: `Multiple shops match "${phrase}". Which one do you want to book?`,
+    shops: [] as ShopRow[],
+    totalResults: 0,
+    hasMoreResults: false,
+    filters: {} as SearchFilters,
+    selectableOptions: shops.map(s => ({
+      label: s.business_name,
+      value: `Let's book ${s.business_name}`
+    }))
   }
 }

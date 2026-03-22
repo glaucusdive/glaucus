@@ -1,4 +1,4 @@
-import { d as defineEventHandler, r as readBody, s as createError, u as useRuntimeConfig, i as getShopById } from '../../nitro/nitro.mjs';
+import { d as defineEventHandler, r as readBody, x as createError, u as useRuntimeConfig, i as getShopById } from '../../nitro/nitro.mjs';
 import { Resend } from 'resend';
 import '@supabase/supabase-js';
 import 'node:http';
