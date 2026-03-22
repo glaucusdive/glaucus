@@ -4,7 +4,7 @@ import { getShopById } from '../utils/resolveShop'
 import { getDiveSitesForShop } from '../utils/getDiveSitesForShop'
 import { getCoursesForShop } from '../utils/getCoursesForShop'
 import { getRentalEquipmentForShop } from '../utils/getRentalEquipmentForShop'
-import { getNextBookingStep, tryFastPath, tryFastPathUnitOnly, type BookingPayloadLocal } from '../utils/bookingFastPath'
+import { clampBookingPayloadToNextStep, getNextBookingStep, tryFastPath, tryFastPathUnitOnly, type BookingPayloadLocal } from '../utils/bookingFastPath'
 import { tryParseTripDatesFromMessage } from '../utils/parseTripDates'
 import { mergeCollectedIntoBookingPayload } from '../utils/mergeBookingCollected'
 import { extractBookingTargetFallback, extractReferredEntityPhrase } from '../utils/extractReferredEntityPhrase'
@@ -18,6 +18,7 @@ import {
 } from '../utils/entityRouting'
 import { resolveBookingTargetFromPhrase } from '../utils/resolveBookingTarget'
 import { tryShopInfoResponse } from '../utils/shopInfoForChat'
+import { applyInferredCoursesToPayloadIfEligible } from '../utils/inferCoursesFromConversation'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -432,7 +433,7 @@ export default defineEventHandler(async (event) => {
 
     if (resolvedShop && (wantsToBook || continuingBooking || resolvedByNamedShop)) {
       // Use carried-over payload when starting a new booking after "Pick a new diveshop"
-      const bookingPayload = continuingBooking
+      let bookingPayload = continuingBooking
         ? bodyBookingPayload
         : (wantsToBook && bodyPendingPayload ? { ...bodyPendingPayload, shopId: resolvedShop.id } : bodyBookingPayload)
 
@@ -441,6 +442,18 @@ export default defineEventHandler(async (event) => {
         getRentalEquipmentForShop(supabaseUrl, supabaseKey, resolvedShop.id),
         getCoursesForShop(supabaseUrl, supabaseKey, resolvedShop.id)
       ])
+      if (continuingBooking && bookingPayload) {
+        bookingPayload = clampBookingPayloadToNextStep(bookingPayload as BookingPayloadLocal, {
+          shopCourseCount: courses.length,
+          shopDiveSiteCount: diveSites.length
+        }) as BookingPayload
+        bookingPayload = applyInferredCoursesToPayloadIfEligible(
+          bookingPayload as BookingPayloadLocal,
+          history,
+          message,
+          courses
+        ) as BookingPayload
+      }
       const courseNames = courses.map(c => c.name)
       const diveSiteNames = diveSites.map(d => d.name)
       const rentalEquipmentNames = rentalEquipment.map(e => e.name)
@@ -477,31 +490,8 @@ export default defineEventHandler(async (event) => {
             name: profilePrefill.name ?? base.name,
             email: profilePrefill.email ?? base.email
           }
-          if (Array.isArray(profilePrefill.defaultDivers) && profilePrefill.defaultDivers.length > 0) {
-            fromProfile.numberOfDivers = profilePrefill.defaultDivers.length
-            fromProfile.divers = profilePrefill.defaultDivers.map((d, i) => ({
-              name: d.name ?? '',
-              certificationNumber: d.certification_number ?? '',
-              numberOfDives: d.number_of_dives ?? (base.divers?.[i]?.numberOfDives) ?? '',
-              height: d.height ?? '',
-              heightUnit: d.height_unit === 'ft-in' ? 'ft-in' : 'cm',
-              weight: d.weight ?? '',
-              weightUnit: d.weight_unit === 'lbs' ? 'lbs' : 'kg',
-              gear: Array.isArray(d.gear) ? d.gear.map((g: { gear_type?: string }) => ({ gearType: g.gear_type ?? '' })) : (base.divers?.[i]?.gear) ?? []
-            }))
-          } else if (profilePrefill.defaultDiver) {
-            const d = profilePrefill.defaultDiver
-            fromProfile.divers = [{
-              name: d.name ?? '',
-              certificationNumber: d.certification_number ?? '',
-              numberOfDives: d.number_of_dives ?? (base.divers?.[0]?.numberOfDives) ?? '',
-              height: d.height ?? '',
-              heightUnit: d.height_unit === 'ft-in' ? 'ft-in' : 'cm',
-              weight: d.weight ?? '',
-              weightUnit: d.weight_unit === 'lbs' ? 'lbs' : 'kg',
-              gear: Array.isArray(d.gear) ? d.gear.map((g: { gear_type?: string }) => ({ gearType: g.gear_type ?? '' })) : (base.divers?.[0]?.gear) ?? []
-            }]
-          }
+          // Do not inject numberOfDivers/divers here — profilePrefill is passed to tryFastPath for chips later.
+          // Prefilling divers skips courses/sites/diver-count in the step machine.
         }
         let initialPayload: BookingPayload = { shopId: resolvedShop.id, ...base, ...fromProfile }
         let nextHint = getNextBookingStep(initialPayload)
@@ -509,6 +499,17 @@ export default defineEventHandler(async (event) => {
           initialPayload = { ...initialPayload, desiredCourses: [] }
           nextHint = getNextBookingStep(initialPayload)
         }
+        initialPayload = clampBookingPayloadToNextStep(initialPayload as BookingPayloadLocal, {
+          shopCourseCount: courses.length,
+          shopDiveSiteCount: diveSites.length
+        }) as BookingPayload
+        initialPayload = applyInferredCoursesToPayloadIfEligible(
+          initialPayload as BookingPayloadLocal,
+          history,
+          message,
+          courses
+        ) as BookingPayload
+        nextHint = getNextBookingStep(initialPayload)
         const firstMessage = nextHint?.step === 'name'
           ? `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`
           : nextHint?.step === 'email'
@@ -518,7 +519,9 @@ export default defineEventHandler(async (event) => {
               : nextHint?.step === 'courses'
                 ? `Great — I'll help you book with ${resolvedShop.business_name}. Are you interested in any courses on this trip?`
                 : nextHint?.step === 'diveSites'
-                  ? `Great — I'll help you book with ${resolvedShop.business_name}. Which dive sites would you like to dive?`
+                  ? (initialPayload.desiredCourses?.length
+                    ? `Great — I'll help you book with ${resolvedShop.business_name}. I noted ${initialPayload.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive?`
+                    : `Great — I'll help you book with ${resolvedShop.business_name}. Which dive sites would you like to dive?`)
                   : `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`
         return {
           success: true,
@@ -587,46 +590,49 @@ export default defineEventHandler(async (event) => {
               name: profilePrefill.name ?? base.name,
               email: profilePrefill.email ?? base.email
             }
-            if (Array.isArray(profilePrefill.defaultDivers) && profilePrefill.defaultDivers.length > 0) {
-              fromProfile.numberOfDivers = profilePrefill.defaultDivers.length
-              fromProfile.divers = profilePrefill.defaultDivers.map((d, i) => ({
-                name: d.name ?? '',
-                certificationNumber: d.certification_number ?? '',
-                numberOfDives: d.number_of_dives ?? (base.divers?.[i]?.numberOfDives) ?? '',
-                height: d.height ?? '',
-                heightUnit: d.height_unit === 'ft-in' ? 'ft-in' : 'cm',
-                weight: d.weight ?? '',
-                weightUnit: d.weight_unit === 'lbs' ? 'lbs' : 'kg',
-                gear: Array.isArray(d.gear) ? d.gear.map((g: { gear_type?: string }) => ({ gearType: g.gear_type ?? '' })) : (base.divers?.[i]?.gear) ?? []
-              }))
-            } else if (profilePrefill.defaultDiver) {
-              const d = profilePrefill.defaultDiver
-              fromProfile.divers = [{
-                name: d.name ?? '',
-                certificationNumber: d.certification_number ?? '',
-                numberOfDives: d.number_of_dives ?? (base.divers?.[0]?.numberOfDives) ?? '',
-                height: d.height ?? '',
-                heightUnit: d.height_unit === 'ft-in' ? 'ft-in' : 'cm',
-                weight: d.weight ?? '',
-                weightUnit: d.weight_unit === 'lbs' ? 'lbs' : 'kg',
-                gear: Array.isArray(d.gear) ? d.gear.map((g: { gear_type?: string }) => ({ gearType: g.gear_type ?? '' })) : (base.divers?.[0]?.gear) ?? []
-              }]
-            }
           }
-          const initialPayload = { ...base, ...fromProfile } as BookingPayload
+          let initialPayload = { ...base, ...fromProfile } as BookingPayload
+          let nextHint = getNextBookingStep(initialPayload)
+          if (nextHint?.step === 'courses' && courses.length === 0) {
+            initialPayload = { ...initialPayload, desiredCourses: [] }
+            nextHint = getNextBookingStep(initialPayload)
+          }
+          initialPayload = clampBookingPayloadToNextStep(initialPayload as BookingPayloadLocal, {
+            shopCourseCount: courses.length,
+            shopDiveSiteCount: diveSites.length
+          }) as BookingPayload
+          initialPayload = applyInferredCoursesToPayloadIfEligible(
+            initialPayload as BookingPayloadLocal,
+            history,
+            message,
+            courses
+          ) as BookingPayload
+          nextHint = getNextBookingStep(initialPayload)
+          const firstMessage = nextHint?.step === 'name'
+            ? `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`
+            : nextHint?.step === 'email'
+              ? `Great — I'll help you book with ${resolvedShop.business_name}. What email should we use for the booking?`
+              : nextHint?.step === 'dates'
+                ? `Great — I'll help you book with ${resolvedShop.business_name}. What are your trip dates (start and end)?`
+                : nextHint?.step === 'courses'
+                  ? `Great — I'll help you book with ${resolvedShop.business_name}. Are you interested in any courses on this trip?`
+                  : nextHint?.step === 'diveSites'
+                    ? (initialPayload.desiredCourses?.length
+                      ? `Great — I'll help you book with ${resolvedShop.business_name}. I noted ${initialPayload.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive?`
+                      : `Great — I'll help you book with ${resolvedShop.business_name}. Which dive sites would you like to dive?`)
+                    : `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`
           return {
             success: true,
             intent: 'booking' as const,
             bookingReady: false,
-            message: `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`,
+            message: firstMessage,
             shopId: resolvedShop.id,
             shopName: resolvedShop.business_name,
             bookingPayload: initialPayload,
             selectableOptions: undefined,
             rentalEquipmentOptions: undefined,
-            courseOptions: undefined,
-
-            diveSiteOptions: undefined
+            courseOptions: getNextBookingStep(initialPayload)?.step === 'courses' && courses.length > 0 ? courses : undefined,
+            diveSiteOptions: getNextBookingStep(initialPayload)?.step === 'diveSites' && diveSites.length > 0 ? diveSites : undefined
           }
         }
       }
@@ -645,18 +651,28 @@ export default defineEventHandler(async (event) => {
             }
             if (getNextBookingStep(p)?.step === 'courses' && courses.length === 0) {
               p = { ...p, desiredCourses: [] }
+            } else if (courses.length > 0) {
+              p = applyInferredCoursesToPayloadIfEligible(p as BookingPayloadLocal, history, msgTrim, courses) as BookingPayload
             }
             if (getNextBookingStep(p)?.step === 'diveSites' && diveSites.length === 0) {
               p = { ...p, desiredDiveSites: [] }
             }
+            p = clampBookingPayloadToNextStep(p as BookingPayloadLocal, {
+              shopCourseCount: courses.length,
+              shopDiveSiteCount: diveSites.length
+            }) as BookingPayload
             const nextAfter = getNextBookingStep(p)
             let msg = `Got it — diving ${parsedDates.startDate} to ${parsedDates.endDate}.`
             if (nextAfter?.step === 'courses' && courses.length > 0) {
               msg = `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}. Are you interested in any courses on this trip? ${COURSES_LINE}`
             } else if (nextAfter?.step === 'diveSites' && diveSites.length > 0) {
-              msg = `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}. Which dive sites would you like to dive? ${DIVE_SITES_LINE}`
+              msg = p.desiredCourses?.length
+                ? `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}. I noted ${p.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive? ${DIVE_SITES_LINE}`
+                : `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}. Which dive sites would you like to dive? ${DIVE_SITES_LINE}`
             } else if (nextAfter?.step === 'numberOfDivers') {
-              msg = `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}. How many divers should we book for?`
+              msg = p.desiredCourses?.length && courses.length > 0
+                ? `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}. I noted ${p.desiredCourses.join(', ')} from your search. How many divers should we book for?`
+                : `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}. How many divers should we book for?`
             }
             return {
               success: true,
@@ -1145,9 +1161,13 @@ export default defineEventHandler(async (event) => {
           if (profilePrefill) fastOptions.profilePrefill = profilePrefill
           const fast = tryFastPath(nextStep, message, bookingPayload, resolvedShop.business_name, fastOptions)
           if (fast) {
-            const nextAfterFast = getNextBookingStep(fast.payload)?.step
+            const fp = clampBookingPayloadToNextStep(fast.payload as BookingPayloadLocal, {
+              shopCourseCount: courses.length,
+              shopDiveSiteCount: diveSites.length
+            }) as BookingPayload
+            const nextAfterFast = getNextBookingStep(fp)?.step
             if (nextAfterFast === 'ready') {
-              const p = { ...fast.payload, shopId: resolvedShop.id }
+              const p = { ...fp, shopId: resolvedShop.id }
               return {
                 success: true,
                 intent: 'booking' as const,
@@ -1168,21 +1188,21 @@ export default defineEventHandler(async (event) => {
                 message: "This dive shop doesn't offer rental gear. Please keep that in mind or arrange gear elsewhere.",
                 shopId: resolvedShop.id,
                 shopName: resolvedShop.business_name,
-                bookingPayload: fast.payload,
+                bookingPayload: fp,
                 selectableOptions: [
                   { label: 'I understand', value: 'I understand' },
                   { label: 'Pick a new diveshop', value: 'Pick a new diveshop' }
                 ],
                 rentalEquipmentOptions: undefined,
-                courseOptions: addCourseOptions(fast.payload),
-                diveSiteOptions: addDiveSiteOptions(fast.payload)
+                courseOptions: addCourseOptions(fp),
+                diveSiteOptions: addDiveSiteOptions(fp)
               }
             }
             const gearChipsForFast = rentalEquipment.length > 0 ? rentalEquipment : undefined
             // When fast path returns selectableOptions (e.g. no-rental-gear: "I understand" / "Pick a new diveshop"), use them and skip gear chips
             const noRentalGearOptions = fast.selectableOptions?.length ? fast.selectableOptions : undefined
             const showGearChips = noRentalGearOptions ? undefined : (
-              (addGearOptions(fast.payload) && gearChipsForFast) ||
+              (addGearOptions(fp) && gearChipsForFast) ||
               (messageIsAddAnotherGear(fast.message) && gearChipsForFast ? gearChipsForFast : undefined) ||
               (messageAsksForGearSelection(fast.message) && gearChipsForFast ? gearChipsForFast : undefined)
             )
@@ -1193,12 +1213,12 @@ export default defineEventHandler(async (event) => {
               message: fast.message,
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
-              bookingPayload: fast.payload,
+              bookingPayload: fp,
               selectableOptions: noRentalGearOptions ?? undefined,
               rentalEquipmentOptions: showGearChips ?? undefined,
-              hideNoneForGear: hideNoneForGear(fast.payload),
-              courseOptions: addCourseOptions(fast.payload),
-              diveSiteOptions: addDiveSiteOptions(fast.payload)
+              hideNoneForGear: hideNoneForGear(fp),
+              courseOptions: addCourseOptions(fp),
+              diveSiteOptions: addDiveSiteOptions(fp)
             }
           }
         }
@@ -1420,7 +1440,7 @@ export default defineEventHandler(async (event) => {
         replyMessage = `Does ${lastName} need any rental gear?`
       }
       // Shop has no rental gear and we're at the gear step → tell user and offer I understand / Pick a new diveshop (LLM path)
-      const nextStepAfterReply = getNextBookingStep(collectedPayload ?? bookingPayload)?.step
+      const nextStepAfterReply = getNextBookingStep((collectedPayload ?? bookingPayload) ?? {} as BookingPayloadLocal)?.step
       if (nextStepAfterReply === 'gear' && rentalEquipment.length === 0) {
         return {
           success: true,
