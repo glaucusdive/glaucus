@@ -1,5 +1,5 @@
 import { e as useAsyncData, g as createError, _ as __nuxt_component_0$1 } from './server.mjs';
-import { computed, ref, mergeProps, unref, withCtx, createBlock, openBlock, createCommentVNode, toDisplayString, Fragment, renderList, createVNode, toValue, useSSRContext } from 'vue';
+import { computed, ref, watch, mergeProps, unref, withCtx, createBlock, openBlock, createCommentVNode, toDisplayString, Fragment, renderList, createVNode, toValue, useSSRContext } from 'vue';
 import { ssrRenderAttrs, ssrRenderComponent, ssrInterpolate, ssrRenderClass, ssrRenderList, ssrRenderAttr, ssrRenderSlot } from 'vue/server-renderer';
 import { ChevronLeft, X, MapPin, Phone, Mail, Globe, Star, Trash2 } from 'lucide-vue-next';
 import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
@@ -314,25 +314,12 @@ function useShopDetail(shopLookup) {
       if (supabaseError || !shopRow) {
         throw createError({
           statusCode: 404,
-          statusMessage: "Dive shop not found"
+          statusMessage: "Dive shop not found",
+          fatal: false
         });
       }
       let nearbyShops = [];
-      const { data: byDistance, error: nearbyRpcError } = await client.rpc("get_nearby_shops_by_distance", {
-        center_shop_id: shopRow.id,
-        radius_miles: 100,
-        max_shops: 8
-      });
-      if (!nearbyRpcError && byDistance && Array.isArray(byDistance) && byDistance.length > 0) {
-        nearbyShops = byDistance.map((row) => ({
-          id: row.id,
-          slug: row.slug,
-          business_name: row.business_name,
-          locale: row.locale ?? null,
-          country: { name: row.country_name },
-          distance_miles: row.distance_miles
-        }));
-      } else {
+      {
         const regionId = shopRow.region_id;
         if (regionId) {
           const { data: nearby } = await client.from("diveshops").select("id, slug, business_name, locale, country:countries(name)").eq("region_id", regionId).neq("id", shopRow.id).limit(8);
@@ -398,6 +385,19 @@ const _sfc_main = {
   emits: ["close"],
   setup(__props, { emit: __emit }) {
     const props = __props;
+    const canEmitClose = ref(false);
+    let closeEnableTimer = null;
+    function scheduleCloseEnabled() {
+      canEmitClose.value = false;
+      if (closeEnableTimer) clearTimeout(closeEnableTimer);
+      closeEnableTimer = setTimeout(() => {
+        closeEnableTimer = null;
+        canEmitClose.value = true;
+      }, 400);
+    }
+    watch(() => props.shopLookup, () => {
+      scheduleCloseEnabled();
+    });
     const showFullDetails = ref(false);
     const activeTab = ref("details");
     const tabs = [
@@ -802,4 +802,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as _, useShopDetail as u };
-//# sourceMappingURL=DiveShopDetail-CPmlbR4P.mjs.map
+//# sourceMappingURL=DiveShopDetail-brOqozY8.mjs.map

@@ -1,5 +1,5 @@
 /** Minimal booking types to avoid circular import from ai-search.post */
-interface BookingDiverLocal {
+export interface BookingDiverLocal {
   name: string
   certificationNumber: string
   numberOfDives: string
@@ -12,13 +12,14 @@ interface BookingDiverLocal {
   gearAsked?: boolean
 }
 
-interface BookingPayloadLocal {
+export interface BookingPayloadLocal {
   name?: string
   email?: string
   startDate?: string
   endDate?: string
   numberOfDivers?: number
   divers?: BookingDiverLocal[]
+  desiredCourses?: string[]
   desiredDiveSites?: string[]
 }
 
@@ -26,6 +27,7 @@ export type BookingStep =
   | 'name'
   | 'email'
   | 'dates'
+  | 'courses'
   | 'numberOfDivers'
   | 'isContactDiver1'
   | 'diverName'
@@ -48,13 +50,13 @@ function ensureDivers (p: BookingPayloadLocal): BookingDiverLocal[] {
   return p.divers
 }
 
-/** Determine which field we're waiting for based on current payload. Order: name → email → dates → diveSites → numberOfDivers → (per-diver details + gear). */
+/** Determine which field we're waiting for based on current payload. Order: name → email → dates → courses → diveSites → numberOfDivers → (per-diver details + gear). */
 export function getNextBookingStep (payload: BookingPayloadLocal): NextStepResult | null {
   if (!payload) return null
   if (!payload.name || String(payload.name).trim() === '') return { step: 'name' }
   if (!payload.email || String(payload.email).trim() === '') return { step: 'email' }
   if (!payload.startDate || !payload.endDate) return { step: 'dates' }
-  // Dive sites right after dates (before number of divers / diver details)
+  if (payload.desiredCourses === undefined) return { step: 'courses' }
   if (payload.desiredDiveSites === undefined) return { step: 'diveSites' }
   // Number of divers
   if (payload.numberOfDivers == null || payload.numberOfDivers < 1) return { step: 'numberOfDivers' }
@@ -211,7 +213,20 @@ export function tryFastPath (
             divers[i] = { ...filled, gearAsked: divers[i].gearAsked }
             p.divers = divers
             const name = divers[i].name || 'They'
-            return { message: `Thanks — I've added ${name} from your profile. Does ${name} need any rental gear?`, payload: p }
+            const next = getNextBookingStep(p)
+            if (next?.step === 'courses') {
+              return { message: `Thanks — I've added ${name} from your profile. Are you interested in any courses on this trip?`, payload: p }
+            }
+            if (next?.step === 'diveSites') {
+              return { message: `Thanks — I've added ${name} from your profile. Which dive sites would you like to dive?`, payload: p }
+            }
+            if (next?.step === 'gear') {
+              return { message: `Thanks — I've added ${name} from your profile. Does ${name} need any rental gear?`, payload: p }
+            }
+            if (next?.step === 'certificationNumber') {
+              return { message: `Thanks — I've added ${name} from your profile. What is ${name}'s certification number?`, payload: p }
+            }
+            return { message: `Thanks — I've added ${name} from your profile.`, payload: p }
           }
         }
       }
@@ -384,6 +399,7 @@ export function tryFastPath (
       }
       return null
     }
+    case 'courses':
     case 'diveSites':
     case 'ready':
       return null

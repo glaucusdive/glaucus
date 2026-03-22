@@ -172,6 +172,7 @@ const _sfc_main$3 = /* @__PURE__ */ defineComponent({
       ],
       startDate: "",
       endDate: "",
+      desiredCourses: [],
       desiredDiveSites: []
     });
     function applyInitialPayload() {
@@ -213,6 +214,7 @@ const _sfc_main$3 = /* @__PURE__ */ defineComponent({
       } else {
         updateDiversCount(numDivers);
       }
+      if (Array.isArray(p.desiredCourses)) formData.value.desiredCourses = p.desiredCourses.filter(Boolean);
       if (Array.isArray(p.desiredDiveSites)) formData.value.desiredDiveSites = p.desiredDiveSites.filter(Boolean);
     }
     watch(() => props.initialPayload, () => applyInitialPayload(), { deep: true });
@@ -252,6 +254,8 @@ const _sfc_main$3 = /* @__PURE__ */ defineComponent({
       "Weight Belt",
       "Tank"
     ];
+    const courses = ref([]);
+    const coursesLoading = ref(true);
     const diveSites = ref([]);
     const diveSitesLoading = ref(true);
     const submitLoading = ref(false);
@@ -261,7 +265,19 @@ const _sfc_main$3 = /* @__PURE__ */ defineComponent({
       const _component_NuxtLink = __nuxt_component_0$1;
       _push(`<div${ssrRenderAttrs(mergeProps({ class: "flex flex-col h-full" }, _attrs))}><div class="w-full h-10 lg:h-[65px] p-1 border-b border-zinc-300 dark:border-zinc-700 shrink-0 flex items-center"><div class="w-full flex items-center justify-between px-2 overflow-auto"><h2 class="text-base font-medium truncate text-zinc-900 dark:text-white">Book with ${ssrInterpolate(__props.shopName)}</h2><button class="lg:p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-sm transition-colors cursor-pointer text-zinc-900 dark:text-white">`);
       _push(ssrRenderComponent(unref(X), { class: "w-5 h-5" }, null, _parent));
-      _push(`</button></div></div><div class="w-full h-full overflow-y-auto"><form class="flex flex-col gap-2 relative pt-2"><h3 class="text-base font-bold px-2 text-zinc-900 dark:text-white">Trip Information</h3><fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2"><label for="name" class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Name</label><input type="text" id="name"${ssrRenderAttr("value", formData.value.name)} required class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"></fieldset><fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2"><label for="email" class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Email</label><input type="email" id="email"${ssrRenderAttr("value", formData.value.email)} required class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"></fieldset><fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-2 p-2 mx-2"><label class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Dates for Diving</label><div class="flex flex-col gap-1"><label for="startDate" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Start Date</label><input type="date" id="startDate"${ssrRenderAttr("value", formData.value.startDate)}${ssrRenderAttr("min", today.value)} required class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"></div><div class="flex flex-col gap-1"><label for="endDate" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">End Date</label><input type="date" id="endDate"${ssrRenderAttr("value", formData.value.endDate)}${ssrRenderAttr("min", formData.value.startDate || today.value)} required class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"></div></fieldset><fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2"><label class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Desired Dive Sites (optional)</label>`);
+      _push(`</button></div></div><div class="w-full h-full overflow-y-auto"><form class="flex flex-col gap-2 relative pt-2"><h3 class="text-base font-bold px-2 text-zinc-900 dark:text-white">Trip Information</h3><fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2"><label for="name" class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Name</label><input type="text" id="name"${ssrRenderAttr("value", formData.value.name)} required class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"></fieldset><fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2"><label for="email" class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Email</label><input type="email" id="email"${ssrRenderAttr("value", formData.value.email)} required class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"></fieldset><fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-2 p-2 mx-2"><label class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Dates for Diving</label><div class="flex flex-col gap-1"><label for="startDate" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Start Date</label><input type="date" id="startDate"${ssrRenderAttr("value", formData.value.startDate)}${ssrRenderAttr("min", today.value)} required class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"></div><div class="flex flex-col gap-1"><label for="endDate" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">End Date</label><input type="date" id="endDate"${ssrRenderAttr("value", formData.value.endDate)}${ssrRenderAttr("min", formData.value.startDate || today.value)} required class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"></div></fieldset><fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2"><label class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Courses (optional)</label>`);
+      if (coursesLoading.value) {
+        _push(`<div class="px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">Loading courses…</div>`);
+      } else if (courses.value.length === 0) {
+        _push(`<div class="px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">No courses listed for this shop.</div>`);
+      } else {
+        _push(`<div class="flex flex-col gap-1 px-2"><!--[-->`);
+        ssrRenderList(courses.value, (course) => {
+          _push(`<label class="flex items-center gap-2 p-1 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 rounded-sm cursor-pointer"><input type="checkbox"${ssrRenderAttr("value", course.name)}${ssrIncludeBooleanAttr(Array.isArray(formData.value.desiredCourses) ? ssrLooseContain(formData.value.desiredCourses, course.name) : formData.value.desiredCourses) ? " checked" : ""} class="cursor-pointer"><span class="text-sm text-zinc-900 dark:text-white">${ssrInterpolate(course.name)}</span></label>`);
+        });
+        _push(`<!--]--></div>`);
+      }
+      _push(`</fieldset><fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2"><label class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Desired Dive Sites (optional)</label>`);
       if (diveSitesLoading.value) {
         _push(`<div class="px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">Loading dive sites…</div>`);
       } else if (diveSites.value.length === 0) {
@@ -652,4 +668,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=default-D7JnREu-.mjs.map
+//# sourceMappingURL=default-a1jOFUCz.mjs.map

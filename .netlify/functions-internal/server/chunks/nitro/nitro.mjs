@@ -4294,7 +4294,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "57d38a33-a307-44e8-8ea9-5b3684caa617",
+    "buildId": "9effa2fd-eba9-423a-8e5e-9d31539d19e5",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -4835,6 +4835,7 @@ function getNextBookingStep(payload) {
   if (!payload.name || String(payload.name).trim() === "") return { step: "name" };
   if (!payload.email || String(payload.email).trim() === "") return { step: "email" };
   if (!payload.startDate || !payload.endDate) return { step: "dates" };
+  if (payload.desiredCourses === void 0) return { step: "courses" };
   if (payload.desiredDiveSites === void 0) return { step: "diveSites" };
   if (payload.numberOfDivers == null || payload.numberOfDivers < 1) return { step: "numberOfDivers" };
   const numDivers = payload.numberOfDivers;
@@ -4970,7 +4971,20 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
             divers[i] = { ...filled, gearAsked: divers[i].gearAsked };
             p.divers = divers;
             const name = divers[i].name || "They";
-            return { message: `Thanks \u2014 I've added ${name} from your profile. Does ${name} need any rental gear?`, payload: p };
+            const next = getNextBookingStep(p);
+            if ((next == null ? void 0 : next.step) === "courses") {
+              return { message: `Thanks \u2014 I've added ${name} from your profile. Are you interested in any courses on this trip?`, payload: p };
+            }
+            if ((next == null ? void 0 : next.step) === "diveSites") {
+              return { message: `Thanks \u2014 I've added ${name} from your profile. Which dive sites would you like to dive?`, payload: p };
+            }
+            if ((next == null ? void 0 : next.step) === "gear") {
+              return { message: `Thanks \u2014 I've added ${name} from your profile. Does ${name} need any rental gear?`, payload: p };
+            }
+            if ((next == null ? void 0 : next.step) === "certificationNumber") {
+              return { message: `Thanks \u2014 I've added ${name} from your profile. What is ${name}'s certification number?`, payload: p };
+            }
+            return { message: `Thanks \u2014 I've added ${name} from your profile.`, payload: p };
           }
         }
       }
@@ -5139,6 +5153,7 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
       }
       return null;
     }
+    case "courses":
     case "diveSites":
     case "ready":
       return null;
@@ -5507,6 +5522,24 @@ async function getAuthUser(event) {
   return user;
 }
 
+async function getCoursesForShop(supabaseUrl, supabaseKey, shopId) {
+  const client = createClient(supabaseUrl, supabaseKey);
+  const { data, error } = await client.from("diveshop_courses").select("course_id, courses(id, certification_name)").eq("diveshop_id", shopId);
+  if (error || !data) return [];
+  const seen = /* @__PURE__ */ new Set();
+  const list = [];
+  for (const row of data) {
+    const c = row.courses;
+    if (!(c == null ? void 0 : c.id)) continue;
+    const name = (c.certification_name || "").trim();
+    if (!name || seen.has(name.toLowerCase())) continue;
+    seen.add(name.toLowerCase());
+    list.push({ id: c.id, name });
+  }
+  list.sort((a, b) => a.name.localeCompare(b.name));
+  return list;
+}
+
 async function getDiveSitesForShop(supabaseUrl, supabaseKey, shopId) {
   const client = createClient(supabaseUrl, supabaseKey);
   const { data, error } = await client.from("diveshop_dive_sites").select("dive_site_id, dive_sites(id, name)").eq("diveshop_id", shopId);
@@ -5519,6 +5552,132 @@ async function getRentalEquipmentForShop(supabaseUrl, supabaseKey, shopId) {
   const { data, error } = await client.from("diveshop_rental_equipment").select("rental_equipment_id, rental_equipment(id, name)").eq("diveshop_id", shopId);
   if (error || !data) return [];
   return data.filter((row) => row.rental_equipment != null && row.rental_equipment.name !== "None listed" && row.rental_equipment.name !== "Yes (unspecified gear)").map((row) => ({ id: row.rental_equipment.id, name: row.rental_equipment.name }));
+}
+
+function mergeCollectedIntoBookingPayload(base, parsed, options) {
+  const out = base ? JSON.parse(JSON.stringify(base)) : {};
+  const applyScalar = (key) => {
+    const pv = parsed[key];
+    const bv = out[key];
+    if (pv === void 0 || pv === null) return;
+    if (typeof pv === "string" && pv.trim() === "") {
+      if (bv !== void 0 && bv !== null && String(bv).trim() !== "") return;
+      return;
+    }
+    out[key] = pv;
+  };
+  applyScalar("name");
+  applyScalar("email");
+  applyScalar("startDate");
+  applyScalar("endDate");
+  if (parsed.numberOfDivers != null && parsed.numberOfDivers >= 1) {
+    out.numberOfDivers = parsed.numberOfDivers;
+  }
+  if (parsed.desiredCourses !== void 0) {
+    out.desiredCourses = parsed.desiredCourses;
+  }
+  if (parsed.desiredDiveSites !== void 0) {
+    out.desiredDiveSites = parsed.desiredDiveSites;
+  }
+  if (parsed.divers && Array.isArray(parsed.divers)) {
+    const baseDivers = out.divers || [];
+    const maxLen = Math.max(baseDivers.length, parsed.divers.length);
+    const mergedDivers = [];
+    for (let i = 0; i < maxLen; i++) {
+      const pd = parsed.divers[i];
+      const bd = baseDivers[i];
+      if (!pd && bd) {
+        mergedDivers.push({ ...bd });
+      } else if (pd && !bd) {
+        mergedDivers.push({ ...pd });
+      } else if (pd && bd) {
+        mergedDivers.push({
+          ...bd,
+          ...pd,
+          gear: Array.isArray(pd.gear) ? pd.gear : bd.gear || [],
+          gearAsked: pd.gearAsked !== void 0 ? pd.gearAsked : bd.gearAsked
+        });
+      }
+    }
+    out.divers = mergedDivers;
+  }
+  sanitizePrematureEmptyOptionals(out, options);
+  return out;
+}
+function sanitizePrematureEmptyOptionals(merged, options) {
+  var _a, _b;
+  const msg = options.userMessage.trim();
+  const userFinishedOptionalStep = /^(done|none|any|no|skip|nothing)$/i.test(msg);
+  if (options.shopCourseCount > 0 && Array.isArray(merged.desiredCourses) && merged.desiredCourses.length === 0) {
+    const probe = { ...merged, desiredCourses: void 0 };
+    if (((_a = getNextBookingStep(probe)) == null ? void 0 : _a.step) === "courses" && !userFinishedOptionalStep) {
+      merged.desiredCourses = void 0;
+    }
+  }
+  if (options.shopDiveSiteCount > 0 && Array.isArray(merged.desiredDiveSites) && merged.desiredDiveSites.length === 0) {
+    const probe = { ...merged, desiredDiveSites: void 0 };
+    if (((_b = getNextBookingStep(probe)) == null ? void 0 : _b.step) === "diveSites" && !userFinishedOptionalStep) {
+      merged.desiredDiveSites = void 0;
+    }
+  }
+}
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+function toYmd(y, month1, day) {
+  return `${y}-${pad2(month1)}-${pad2(day)}`;
+}
+function inferYear(month1, day, ref) {
+  const y = ref.getFullYear();
+  const candidate = new Date(y, month1 - 1, day);
+  const grace = 24 * 60 * 60 * 1e3;
+  if (candidate.getTime() < ref.getTime() - grace) {
+    return y + 1;
+  }
+  return y;
+}
+function tryParseTripDatesFromMessage(message, ref = /* @__PURE__ */ new Date()) {
+  const t = message.trim();
+  if (!t) return null;
+  const full = t.match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s*[-–—]\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/i
+  );
+  if (full) {
+    const m1 = parseInt(full[1], 10);
+    const d1 = parseInt(full[2], 10);
+    let y1 = parseInt(full[3], 10);
+    if (y1 < 100) y1 += 2e3;
+    const m2 = parseInt(full[4], 10);
+    const d2 = parseInt(full[5], 10);
+    let y2 = parseInt(full[6], 10);
+    if (y2 < 100) y2 += 2e3;
+    const startDate = toYmd(y1, m1, d1);
+    const endDate = toYmd(y2, m2, d2);
+    if (startDate <= endDate) return { startDate, endDate };
+    return null;
+  }
+  const md = t.match(/^(\d{1,2})\/(\d{1,2})\s*[-–—]\s*(\d{1,2})\/(\d{1,2})$/i);
+  if (md) {
+    const m1 = parseInt(md[1], 10);
+    const d1 = parseInt(md[2], 10);
+    const m2 = parseInt(md[3], 10);
+    const d2 = parseInt(md[4], 10);
+    if (m1 < 1 || m1 > 12 || m2 < 1 || m2 > 12 || d1 < 1 || d1 > 31 || d2 < 1 || d2 > 31) return null;
+    const y = inferYear(m1, d1, ref);
+    const startDate = toYmd(y, m1, d1);
+    let endY = y;
+    const startT = new Date(y, m1 - 1, d1).getTime();
+    let endT = new Date(y, m2 - 1, d2).getTime();
+    if (endT < startT) {
+      endY = y + 1;
+      endT = new Date(endY, m2 - 1, d2).getTime();
+    }
+    const endDate = toYmd(endY, m2, d2);
+    if (startDate <= endDate) return { startDate, endDate };
+    return null;
+  }
+  return null;
 }
 
 const SHOP_INFO_PREFIX = "shop_info:";
@@ -6070,5 +6229,5 @@ function getCacheHeaders(url) {
   return {};
 }
 
-export { $fetch$1 as $, publicAssetsURL as A, getQuery as B, destr as C, getRouteRules as D, useNitroApp as E, serialize$1 as F, parseQuery as G, hasProtocol as H, isScriptProtocol as I, joinURL as J, withQuery as K, sanitizeStatusCode as L, withTrailingSlash as M, withoutTrailingSlash as N, klona as O, defuFn as P, getContext as Q, baseURL as R, defu as S, createHooks as T, executeAsync as U, isEqual as V, toRouteMatcher as W, createRouter$1 as X, handler as Y, tryShopInfoResponse as a, probeReferentPhrase as b, clarifyResponsePayload as c, defineEventHandler as d, extractReferredEntityPhrase as e, routeReferentFromProbe as f, getNextBookingStep as g, handleForcedEntityClarify as h, getShopById as i, getDiveSitesForShop as j, getRentalEquipmentForShop as k, tryFastPath as l, buildDiveShopQuery as m, createError$1 as n, getAuthUser as o, parseEntityClarifyMessage as p, getBearerToken as q, readBody as r, createSupabaseClientForUser as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, getRouterParam as v, buildAssetsURL as w, getResponseStatusText as x, getResponseStatus as y, defineRenderHandler as z };
+export { $fetch$1 as $, getResponseStatusText as A, getResponseStatus as B, defineRenderHandler as C, publicAssetsURL as D, getQuery as E, destr as F, getRouteRules as G, useNitroApp as H, serialize$1 as I, parseQuery as J, hasProtocol as K, isScriptProtocol as L, joinURL as M, withQuery as N, sanitizeStatusCode as O, withTrailingSlash as P, withoutTrailingSlash as Q, klona as R, defuFn as S, getContext as T, baseURL as U, defu as V, createHooks as W, executeAsync as X, isEqual as Y, toRouteMatcher as Z, createRouter$1 as _, tryShopInfoResponse as a, handler as a0, probeReferentPhrase as b, clarifyResponsePayload as c, defineEventHandler as d, extractReferredEntityPhrase as e, routeReferentFromProbe as f, getNextBookingStep as g, handleForcedEntityClarify as h, getShopById as i, getDiveSitesForShop as j, getRentalEquipmentForShop as k, getCoursesForShop as l, tryParseTripDatesFromMessage as m, tryFastPath as n, mergeCollectedIntoBookingPayload as o, parseEntityClarifyMessage as p, buildDiveShopQuery as q, readBody as r, createError$1 as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, getAuthUser as v, getBearerToken as w, createSupabaseClientForUser as x, getRouterParam as y, buildAssetsURL as z };
 //# sourceMappingURL=nitro.mjs.map

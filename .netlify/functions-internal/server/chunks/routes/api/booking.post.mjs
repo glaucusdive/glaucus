@@ -1,4 +1,4 @@
-import { d as defineEventHandler, r as readBody, n as createError, u as useRuntimeConfig, i as getShopById } from '../../nitro/nitro.mjs';
+import { d as defineEventHandler, r as readBody, s as createError, u as useRuntimeConfig, i as getShopById } from '../../nitro/nitro.mjs';
 import { Resend } from 'resend';
 import '@supabase/supabase-js';
 import 'node:http';
@@ -21,6 +21,12 @@ function buildDiveshopEmailBody(payload, shopName) {
     `Number of divers: ${(_b = (_a = payload.divers) == null ? void 0 : _a.length) != null ? _b : 0}`,
     ""
   ];
+  if (Array.isArray(payload.desiredCourses) && payload.desiredCourses.length > 0) {
+    for (const c of payload.desiredCourses) {
+      lines.push(`Course interest: ${c}`);
+    }
+    lines.push("");
+  }
   if (Array.isArray(payload.desiredDiveSites) && payload.desiredDiveSites.length > 0) {
     for (const site of payload.desiredDiveSites) {
       lines.push(`Desired dive site: ${site}`);
@@ -110,6 +116,7 @@ const booking_post = defineEventHandler(async (event) => {
     email,
     startDate,
     endDate,
+    desiredCourses: Array.isArray(body.desiredCourses) ? body.desiredCourses : [],
     desiredDiveSites: Array.isArray(body.desiredDiveSites) ? body.desiredDiveSites : [],
     divers
   };

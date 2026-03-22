@@ -18,6 +18,7 @@ interface BookingBody {
   email: string
   startDate: string
   endDate: string
+  desiredCourses?: string[]
   desiredDiveSites?: string[]
   divers: DiverPayload[]
 }
@@ -31,6 +32,12 @@ function buildDiveshopEmailBody (payload: BookingBody, shopName: string): string
     `Number of divers: ${payload.divers?.length ?? 0}`,
     ''
   ]
+  if (Array.isArray(payload.desiredCourses) && payload.desiredCourses.length > 0) {
+    for (const c of payload.desiredCourses) {
+      lines.push(`Course interest: ${c}`)
+    }
+    lines.push('')
+  }
   if (Array.isArray(payload.desiredDiveSites) && payload.desiredDiveSites.length > 0) {
     for (const site of payload.desiredDiveSites) {
       lines.push(`Desired dive site: ${site}`)
@@ -131,6 +138,7 @@ export default defineEventHandler(async (event) => {
     email,
     startDate,
     endDate,
+    desiredCourses: Array.isArray(body.desiredCourses) ? body.desiredCourses : [],
     desiredDiveSites: Array.isArray(body.desiredDiveSites) ? body.desiredDiveSites : [],
     divers
   }

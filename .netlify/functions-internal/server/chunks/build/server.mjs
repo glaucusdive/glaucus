@@ -1,5 +1,5 @@
 import { defineComponent, shallowRef, h, resolveComponent, hasInjectionContext, inject, toRef, isRef, computed, toValue, getCurrentInstance, onServerPrefetch, mergeProps, unref, provide, cloneVNode, createElementBlock, ref, nextTick, defineAsyncComponent, useSSRContext, Suspense, Fragment, createApp, mergeModels, useModel, withCtx, renderSlot, createVNode, createBlock, createCommentVNode, openBlock, createTextVNode, toDisplayString, watch, resolveDynamicComponent, renderList, useId, shallowReactive, onErrorCaptured, reactive, effectScope, isReadonly, isShallow, isReactive, toRaw, useSlots, withModifiers, getCurrentScope, markRaw } from 'vue';
-import { F as serialize, G as parseQuery, n as createError$1, H as hasProtocol, I as isScriptProtocol, J as joinURL, K as withQuery, L as sanitizeStatusCode, M as withTrailingSlash, N as withoutTrailingSlash, O as klona, P as defuFn, Q as getContext, $ as $fetch$1, R as baseURL, S as defu, T as createHooks, U as executeAsync, V as isEqual, W as toRouteMatcher, X as createRouter$1 } from '../nitro/nitro.mjs';
+import { I as serialize, J as parseQuery, s as createError$1, K as hasProtocol, L as isScriptProtocol, M as joinURL, N as withQuery, O as sanitizeStatusCode, P as withTrailingSlash, Q as withoutTrailingSlash, R as klona, S as defuFn, T as getContext, $ as $fetch$1, U as baseURL, V as defu, W as createHooks, X as executeAsync, Y as isEqual, Z as toRouteMatcher, _ as createRouter$1 } from '../nitro/nitro.mjs';
 import { RouterView, createMemoryHistory, createRouter, START_LOCATION } from 'vue-router';
 import colors from 'tailwindcss/colors';
 import { Icon, getIcon, loadIcon as loadIcon$1, _api, addAPIProvider, setCustomIconsLoader } from '@iconify/vue';
@@ -484,12 +484,12 @@ const _routes = [
   {
     name: "index",
     path: "/",
-    component: () => import('./index-rnfJPOXN.mjs')
+    component: () => import('./index-CtEMtYD2.mjs')
   },
   {
     name: "auth",
     path: "/auth",
-    component: () => import('./index-C62Q1amN.mjs')
+    component: () => import('./index-BbQoYztY.mjs')
   },
   {
     name: "auth-signup",
@@ -499,35 +499,35 @@ const _routes = [
   {
     name: "shops",
     path: "/shops",
-    component: () => import('./index-CNYLw_IL.mjs')
+    component: () => import('./index-rBOaJ6Lz.mjs')
   },
   {
     name: "shops-slug",
     path: "/shops/:slug()",
-    component: () => import('./_slug_-BGApmJ7o.mjs')
+    component: () => import('./_slug_-B0jZYdb8.mjs')
   },
   {
     name: "profile",
     path: "/profile",
     meta: { "middleware": "auth" },
-    component: () => import('./index-euG-W1IM.mjs')
+    component: () => import('./index-XhiGX0rH.mjs')
   },
   {
     name: "profile-drafts",
     path: "/profile/drafts",
     meta: { "middleware": "auth" },
-    component: () => import('./drafts-Dau1pndN.mjs')
+    component: () => import('./drafts-BfDqJyQR.mjs')
   },
   {
     name: "community",
     path: "/community",
-    component: () => import('./index-D5ncMV-Z.mjs')
+    component: () => import('./index-BGRXJp1V.mjs')
   },
   {
     name: "profile-defaults",
     path: "/profile/defaults",
     meta: { "middleware": "auth" },
-    component: () => import('./defaults-B6asXhaY.mjs')
+    component: () => import('./defaults-5txMVtYx.mjs')
   }
 ];
 const _wrapInTransition = (props, children) => {

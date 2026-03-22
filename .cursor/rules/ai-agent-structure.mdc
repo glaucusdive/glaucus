@@ -59,7 +59,7 @@ Concrete instance: `server/api/ai-search.post.ts` plus utilities under `server/u
 | `handleForcedEntityClarify` | chip kind + stored phrase | same reads as above | Orchestrator when user sends `entity_clarify:*` with `pendingEntityClarifyPhrase` |
 | `buildDiveShopQuery` | `SearchFilters` | read diveshops | Orchestrator (entity-prefilled search) or post-LLM search path |
 | `getShopById`, `listShopsMatchingName` | id / name fragment | read diveshops | Orchestrator |
-| `getDiveSitesForShop`, `getRentalEquipmentForShop` | shop id | read | Orchestrator (booking branch) |
+| `getDiveSitesForShop`, `getCoursesForShop`, `getRentalEquipmentForShop` | shop id | read | Orchestrator (booking branch) |
 | `tryShopInfoResponse` / `shop_info:*` chips | message + `selectedShopId` / `lastShops` | read diveshop + related sites, courses, rental gear, gases, contact | Orchestrator when not in booking continuation; no OpenRouter |
 | `tryFastPath`, `tryFastPathUnitOnly`, booking LLM | message + payload | none (until user confirms send) | Orchestrator |
 | OpenRouter chat | conversation | external API | Orchestrator after filters / follow-ups |
@@ -72,12 +72,14 @@ When the referent is **ambiguous** (multiple entity categories match) or **unkno
 ### State
 
 - **Backend:** stateless between requests.
-- **Frontend:** holds `bookingPayload`, `selectedShopId`, `pendingBookingPayload`, and echoes **`pendingEntityClarifyPhrase`** only when the outgoing message is an `entity_clarify:*` token, using **`entityClarifyPending.phrase`** from the prior assistant message (`app/pages/index.vue`).
+- **Frontend:** holds `bookingPayload` (including optional `desiredCourses` and `desiredDiveSites` arrays), `selectedShopId`, `pendingBookingPayload`, and echoes **`pendingEntityClarifyPhrase`** only when the outgoing message is an `entity_clarify:*` token, using **`entityClarifyPending.phrase`** from the prior assistant message (`app/pages/index.vue`).
 - **Profile diver defaults (`profiles.default_divers`):** while signed in, the chat client merges each booking assistant payload into Supabase incrementally (`mergeProfileDefaultDivers.ts`, `bumpTimesUsed: false`); after a successful chat-initiated `/api/booking`, the same merge runs with `bumpTimesUsed: true` (aligned with `BookingForm.vue`). The profile defaults page and drawer form remain explicit save/submit paths.
 
 ### Steps
 
 One user message → one handler response. **Stopping conditions:** `BOOKING_READY` + user confirm to send; search results returned; or clarification chips shown (next turn applies forced kind + phrase).
+
+**Booking field order (orchestrator):** after trip dates, optional **courses** (when the shop lists courses in Supabase, chips via `courseOptions`; if none listed, the step is skipped with `desiredCourses: []`), then optional **dive sites** (same pattern with `diveSiteOptions`), then diver count and per-diver details.
 
 ### Retries
 

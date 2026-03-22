@@ -1,10 +1,10 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-D1ZaXXk5.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-CNcX9myu.mjs';
 import { ref, watch, computed, mergeProps, withCtx, unref, createVNode, Transition, createBlock, createCommentVNode, openBlock, Fragment, renderList, toDisplayString, withModifiers, withDirectives, vModelText, nextTick, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrRenderAttr, ssrRenderClass, ssrRenderList, ssrInterpolate, ssrIncludeBooleanAttr, ssrRenderAttrs } from 'vue/server-renderer';
 import { u as useChatSessions, c as chatRemoteHydrateTick, g as getActiveSession, _ as _imports_0, a as useSearchCache, n as notifyChatSidebarUpdated } from './userChatsRemote-uN8gvt7T.mjs';
 import { Menu, ChevronRight, ArrowUp, Star, MapPin, Languages, Globe, Phone, Mail } from 'lucide-vue-next';
 import gsap from 'gsap';
-import { _ as _sfc_main$3 } from './DiveShopDetail-CPmlbR4P.mjs';
+import { _ as _sfc_main$3 } from './DiveShopDetail-brOqozY8.mjs';
 import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
 import { u as useAuth } from './useAuth-BWS1ISvo.mjs';
 import { u as useSupabase } from './useSupabase-G2CWeDSk.mjs';
@@ -313,7 +313,7 @@ function defaultDiverJsonFromFirst(first) {
     gear: first.gear
   };
 }
-const SHOP_DETAIL_CLOSE_GUARD_MS = 500;
+const SHOP_DETAIL_CLOSE_GUARD_MS = 800;
 const _sfc_main = {
   __name: "index",
   __ssrInlineRender: true,
@@ -459,9 +459,10 @@ const _sfc_main = {
         if (m.role !== "assistant") continue;
         const hasSelectable = m.selectableOptions && m.selectableOptions.length > 0;
         const hasGear = Array.isArray(m.rentalEquipmentOptions) && m.rentalEquipmentOptions.length > 0;
+        const hasCourses = m.courseOptions && m.courseOptions.length > 0;
         const hasDiveSites = m.diveSiteOptions && m.diveSiteOptions.length > 0;
         const hasBookChip = m.shops?.length && selectedShopId.value && selectedShopName.value;
-        if (hasSelectable || hasGear || hasDiveSites || hasBookChip) return i;
+        if (hasSelectable || hasGear || hasCourses || hasDiveSites || hasBookChip) return i;
       }
       return -1;
     });
@@ -735,6 +736,7 @@ const _sfc_main = {
                 selectableOptions: response.selectableOptions,
                 rentalEquipmentOptions: response.rentalEquipmentOptions || void 0,
                 hideNoneForGear: response.hideNoneForGear ?? false,
+                courseOptions: response.courseOptions || void 0,
                 diveSiteOptions: response.diveSiteOptions || void 0,
                 ...response.filters && typeof response.filters === "object" ? { filters: response.filters } : {},
                 ...response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {}
@@ -756,6 +758,7 @@ const _sfc_main = {
                 email: storedPayload.email ?? "",
                 startDate: storedPayload.startDate ?? "",
                 endDate: storedPayload.endDate ?? "",
+                desiredCourses: Array.isArray(storedPayload.desiredCourses) ? storedPayload.desiredCourses : [],
                 desiredDiveSites: Array.isArray(storedPayload.desiredDiveSites) ? storedPayload.desiredDiveSites : [],
                 divers: (storedPayload.divers ?? []).map((d) => ({
                   name: d.name ?? "",
@@ -819,6 +822,7 @@ const _sfc_main = {
             selectableOptions: response.selectableOptions,
             rentalEquipmentOptions: response.rentalEquipmentOptions || void 0,
             hideNoneForGear: response.hideNoneForGear ?? false,
+            courseOptions: response.courseOptions || void 0,
             diveSiteOptions: response.diveSiteOptions || void 0,
             ...response.filters && typeof response.filters === "object" ? { filters: response.filters } : {},
             ...response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {}
@@ -882,7 +886,8 @@ const _sfc_main = {
       if (m.length < 2) return false;
       const last = m[m.length - 1];
       const prev = m[m.length - 2];
-      return last.role === "assistant" && prev.role === "user";
+      const roles = /* @__PURE__ */ new Set([last.role, prev.role]);
+      return roles.has("user") && roles.has("assistant");
     });
     const stepBack = () => {
       if (!canStepBack.value) return;
@@ -891,12 +896,16 @@ const _sfc_main = {
     };
     const handleShopSelected = (shop) => {
       armShopDetailCloseGuard();
-      selectedShopId.value = shop.id;
+      nextTick(() => {
+        selectedShopId.value = shop.id;
+      });
     };
     const handleViewDetails = (shop) => {
       armShopDetailCloseGuard();
-      selectedShopId.value = shop.id;
-      mobileDetailShopId.value = shop.id;
+      nextTick(() => {
+        selectedShopId.value = shop.id;
+        mobileDetailShopId.value = shop.id;
+      });
     };
     const openBookingFormDrawer = () => {
       const shop = bookingShopForDrawer.value;
@@ -911,13 +920,15 @@ const _sfc_main = {
       const shop = bookingShopForDrawer.value || (msg.shopId && msg.shopName ? { id: msg.shopId, name: msg.shopName } : null);
       if (!shop) return;
       armShopDetailCloseGuard();
-      selectedShopId.value = shop.id;
-      mobileDetailShopId.value = shop.id;
       const payload = msg.payload !== void 0 ? msg.payload : msg.bookingPayload;
-      openDrawer("booking-form", {
-        shopId: shop.id,
-        shopName: shop.name,
-        bookingPayload: payload ?? lastBookingPayload.value
+      nextTick(() => {
+        selectedShopId.value = shop.id;
+        mobileDetailShopId.value = shop.id;
+        openDrawer("booking-form", {
+          shopId: shop.id,
+          shopName: shop.name,
+          bookingPayload: payload ?? lastBookingPayload.value
+        });
       });
     }
     const closeShopDetail = () => {
@@ -1003,16 +1014,16 @@ const _sfc_main = {
             } else {
               _push2(`<!---->`);
             }
-            _push2(`<div class="flex flex-col h-full w-full relative"${_scopeId}><div class="min-h-10 flex flex-row justify-between items-stretch border-b border-zinc-200 dark:border-zinc-700 shrink-0"${_scopeId}><div class="flex items-center gap-2 h-full p-0 lg:p-4 divide-x divide-zinc-200 dark:divide-zinc-700"${_scopeId}><button class="flex items-center justify-center aspect-square h-full lg:hidden hover:bg-zinc-100 dark:hover:bg-zinc-800/50 p-1 cursor-pointer"${_scopeId}>`);
+            _push2(`<div class="flex flex-col h-full w-full relative"${_scopeId}><div class="min-h-10 min-w-0 flex flex-row justify-between items-stretch border-b border-zinc-200 dark:border-zinc-700 shrink-0"${_scopeId}><div class="flex min-w-0 flex-1 items-center gap-2 h-full p-0 lg:p-4 divide-x divide-zinc-200 dark:divide-zinc-700"${_scopeId}><button class="flex items-center justify-center aspect-square h-full lg:hidden hover:bg-zinc-100 dark:hover:bg-zinc-800/50 p-1 cursor-pointer shrink-0"${_scopeId}>`);
             _push2(ssrRenderComponent(unref(Menu), { class: "w-5 h-5" }, null, _parent2, _scopeId));
-            _push2(`</button><h1 class="text-base sm:text-lg lg:text-2xl font-semibold text-zinc-900 dark:text-white overflow-auto truncate"${_scopeId}> Dive Shop Search</h1></div><div class="flex items-center gap-1 p-1 lg:p-4"${_scopeId}>`);
+            _push2(`</button><h1 class="text-base sm:text-lg lg:text-2xl font-semibold text-zinc-900 dark:text-white min-w-0 truncate"${_scopeId}> Dive Shop Search</h1></div><div class="flex shrink-0 items-center gap-1 p-1 lg:p-4"${_scopeId}>`);
             if (canStepBack.value) {
               _push2(`<button class="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md cursor-pointer" title="Remove last message and your last reply so you can redo that step"${_scopeId}> Step back </button>`);
             } else {
               _push2(`<!---->`);
             }
             _push2(`</div></div><div class="flex-1 flex flex-row overflow-hidden relative"${_scopeId}><div class="${ssrRenderClass([
-              "flex flex-col h-full transition-all duration-300 ease-in-out relative",
+              "flex min-w-0 flex-col h-full transition-all duration-300 ease-in-out relative",
               selectedShopId.value ? "w-full lg:w-1/2" : "w-full"
             ])}"${_scopeId}><div class="flex-1 overflow-y-auto p-2 md:p-4 flex flex-col gap-2 *:max-w-3xl *:mx-auto *:w-full"${_scopeId}>`);
             if (messages.value.length === 0) {
@@ -1087,6 +1098,15 @@ const _sfc_main = {
                     _push2(`<!---->`);
                   }
                   _push2(`<button type="button" class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer font-medium"${_scopeId}> Done </button></div>`);
+                } else {
+                  _push2(`<!---->`);
+                }
+                if (msg.courseOptions && msg.courseOptions.length > 0) {
+                  _push2(`<div class="${ssrRenderClass([index !== activeChipMessageIndex.value ? "opacity-50 pointer-events-none" : "", "flex flex-wrap gap-2 transition-opacity duration-200"])}"${_scopeId}><div class="flex gap-2 w-full"${_scopeId}><button type="button" class="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"${_scopeId}> Any </button><button type="button" class="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"${_scopeId}> Done </button></div><!--[-->`);
+                  ssrRenderList(msg.courseOptions, (course) => {
+                    _push2(`<button type="button" class="w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"${_scopeId}>${ssrInterpolate(course.name)}</button>`);
+                  });
+                  _push2(`<!--]--></div>`);
                 } else {
                   _push2(`<!---->`);
                 }
@@ -1176,17 +1196,17 @@ const _sfc_main = {
                 _: 1
               }),
               createVNode("div", { class: "flex flex-col h-full w-full relative" }, [
-                createVNode("div", { class: "min-h-10 flex flex-row justify-between items-stretch border-b border-zinc-200 dark:border-zinc-700 shrink-0" }, [
-                  createVNode("div", { class: "flex items-center gap-2 h-full p-0 lg:p-4 divide-x divide-zinc-200 dark:divide-zinc-700" }, [
+                createVNode("div", { class: "min-h-10 min-w-0 flex flex-row justify-between items-stretch border-b border-zinc-200 dark:border-zinc-700 shrink-0" }, [
+                  createVNode("div", { class: "flex min-w-0 flex-1 items-center gap-2 h-full p-0 lg:p-4 divide-x divide-zinc-200 dark:divide-zinc-700" }, [
                     createVNode("button", {
                       onClick: unref(openMobileMenu),
-                      class: "flex items-center justify-center aspect-square h-full lg:hidden hover:bg-zinc-100 dark:hover:bg-zinc-800/50 p-1 cursor-pointer"
+                      class: "flex items-center justify-center aspect-square h-full lg:hidden hover:bg-zinc-100 dark:hover:bg-zinc-800/50 p-1 cursor-pointer shrink-0"
                     }, [
                       createVNode(unref(Menu), { class: "w-5 h-5" })
                     ], 8, ["onClick"]),
-                    createVNode("h1", { class: "text-base sm:text-lg lg:text-2xl font-semibold text-zinc-900 dark:text-white overflow-auto truncate" }, " Dive Shop Search")
+                    createVNode("h1", { class: "text-base sm:text-lg lg:text-2xl font-semibold text-zinc-900 dark:text-white min-w-0 truncate" }, " Dive Shop Search")
                   ]),
-                  createVNode("div", { class: "flex items-center gap-1 p-1 lg:p-4" }, [
+                  createVNode("div", { class: "flex shrink-0 items-center gap-1 p-1 lg:p-4" }, [
                     canStepBack.value ? (openBlock(), createBlock("button", {
                       key: 0,
                       onClick: stepBack,
@@ -1198,7 +1218,7 @@ const _sfc_main = {
                 createVNode("div", { class: "flex-1 flex flex-row overflow-hidden relative" }, [
                   createVNode("div", {
                     class: [
-                      "flex flex-col h-full transition-all duration-300 ease-in-out relative",
+                      "flex min-w-0 flex-col h-full transition-all duration-300 ease-in-out relative",
                       selectedShopId.value ? "w-full lg:w-1/2" : "w-full"
                     ]
                   }, [
@@ -1321,8 +1341,33 @@ const _sfc_main = {
                                   class: "px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer font-medium"
                                 }, " Done ", 8, ["onClick"])
                               ], 2)) : createCommentVNode("", true),
-                              msg.diveSiteOptions && msg.diveSiteOptions.length > 0 ? (openBlock(), createBlock("div", {
+                              msg.courseOptions && msg.courseOptions.length > 0 ? (openBlock(), createBlock("div", {
                                 key: 3,
+                                class: ["flex flex-wrap gap-2 transition-opacity duration-200", index !== activeChipMessageIndex.value ? "opacity-50 pointer-events-none" : ""]
+                              }, [
+                                createVNode("div", { class: "flex gap-2 w-full" }, [
+                                  createVNode("button", {
+                                    type: "button",
+                                    onClick: ($event) => sendMessage("any"),
+                                    class: "flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"
+                                  }, " Any ", 8, ["onClick"]),
+                                  createVNode("button", {
+                                    type: "button",
+                                    onClick: ($event) => sendMessage("done"),
+                                    class: "flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                                  }, " Done ", 8, ["onClick"])
+                                ]),
+                                (openBlock(true), createBlock(Fragment, null, renderList(msg.courseOptions, (course) => {
+                                  return openBlock(), createBlock("button", {
+                                    key: course.id,
+                                    type: "button",
+                                    onClick: ($event) => sendMessage(course.name),
+                                    class: "w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                                  }, toDisplayString(course.name), 9, ["onClick"]);
+                                }), 128))
+                              ], 2)) : createCommentVNode("", true),
+                              msg.diveSiteOptions && msg.diveSiteOptions.length > 0 ? (openBlock(), createBlock("div", {
+                                key: 4,
                                 class: ["flex flex-wrap gap-2 transition-opacity duration-200", index !== activeChipMessageIndex.value ? "opacity-50 pointer-events-none" : ""]
                               }, [
                                 createVNode("div", { class: "flex gap-2 w-full" }, [
@@ -1485,4 +1530,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-rnfJPOXN.mjs.map
+//# sourceMappingURL=index-CtEMtYD2.mjs.map

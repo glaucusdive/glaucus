@@ -29,7 +29,7 @@ function truncateTitle (s: string, max = 40): string {
 function diveTypeLabel (raw: string): string {
   if (raw === 'Liveaboard') return 'Liveaboard'
   if (raw === 'Dive Resort') return 'Resort'
-  if (raw === 'Dive Shop') return 'Day trips'
+  if (raw === 'Dive Shop') return 'Dive Shop'
   return raw.trim() || ''
 }
 
