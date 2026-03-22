@@ -1,4 +1,4 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-OcTSyAjL.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-BfvNfCEe.mjs';
 import { _ as __nuxt_component_0$1 } from './server.mjs';
 import { defineComponent, ref, mergeProps, withCtx, createTextVNode, unref, createVNode, createBlock, createCommentVNode, openBlock, toDisplayString, withModifiers, withDirectives, vModelText, Fragment, renderList, vModelSelect, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrInterpolate, ssrRenderAttr, ssrRenderList, ssrIncludeBooleanAttr, ssrLooseContain, ssrLooseEqual, ssrRenderClass } from 'vue/server-renderer';
@@ -53,9 +53,9 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
         certificationNumber: "",
         numberOfDives: "",
         height: "",
-        heightUnit: "cm",
+        heightUnit: "ft-in",
         weight: "",
-        weightUnit: "kg",
+        weightUnit: "lbs",
         gear: []
       });
     }
@@ -84,9 +84,9 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
           certification_number: d.certificationNumber ?? "",
           number_of_dives: d.numberOfDives ?? "",
           height: d.height ?? "",
-          height_unit: d.heightUnit ?? "cm",
+          height_unit: d.heightUnit ?? "ft-in",
           weight: d.weight ?? "",
-          weight_unit: d.weightUnit ?? "kg",
+          weight_unit: d.weightUnit ?? "lbs",
           gear: (d.gear || []).map((g) => ({ gear_type: g.gearType ?? "" })),
           ...typeof d.times_used === "number" ? { times_used: d.times_used } : {}
         }));
@@ -125,7 +125,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
       _push(ssrRenderComponent(_component_NuxtLayout, mergeProps({ name: "default" }, _attrs), {
         default: withCtx((_, _push2, _parent2, _scopeId) => {
           if (_push2) {
-            _push2(`<div class="min-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4"${_scopeId}>`);
+            _push2(`<div class="max-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4 overflow-y-auto"${_scopeId}>`);
             _push2(ssrRenderComponent(_component_NuxtLink, {
               to: "/profile",
               class: "inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white mb-4 cursor-pointer"
@@ -158,7 +158,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
                 } else {
                   _push2(`<!---->`);
                 }
-                _push2(`</div><div class="grid grid-cols-1 sm:grid-cols-2 gap-2"${_scopeId}><div${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Name</label><input${ssrRenderAttr("value", diver.name)} type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white"${_scopeId}></div><div${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Certification #</label><input${ssrRenderAttr("value", diver.certificationNumber)} type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white"${_scopeId}></div><div${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Number of dives</label><input${ssrRenderAttr("value", diver.numberOfDives)} type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white" placeholder="e.g. 21"${_scopeId}></div><div class="flex gap-2 items-end"${_scopeId}><div class="flex-1 min-w-0"${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Height</label><input${ssrRenderAttr("value", diver.height)} type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white"${_scopeId}></div><div class="w-24 shrink-0"${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Unit</label><select class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-tight text-zinc-900 dark:text-white"${_scopeId}><option value="cm"${ssrIncludeBooleanAttr(Array.isArray(diver.heightUnit) ? ssrLooseContain(diver.heightUnit, "cm") : ssrLooseEqual(diver.heightUnit, "cm")) ? " selected" : ""}${_scopeId}>cm</option><option value="ft-in"${ssrIncludeBooleanAttr(Array.isArray(diver.heightUnit) ? ssrLooseContain(diver.heightUnit, "ft-in") : ssrLooseEqual(diver.heightUnit, "ft-in")) ? " selected" : ""}${_scopeId}>ft &amp; in</option></select></div></div><div class="flex gap-2 items-end"${_scopeId}><div class="flex-1 min-w-0"${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Weight</label><input${ssrRenderAttr("value", diver.weight)} type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white"${_scopeId}></div><div class="w-24 shrink-0"${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Unit</label><select class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-tight text-zinc-900 dark:text-white"${_scopeId}><option value="kg"${ssrIncludeBooleanAttr(Array.isArray(diver.weightUnit) ? ssrLooseContain(diver.weightUnit, "kg") : ssrLooseEqual(diver.weightUnit, "kg")) ? " selected" : ""}${_scopeId}>kg</option><option value="lbs"${ssrIncludeBooleanAttr(Array.isArray(diver.weightUnit) ? ssrLooseContain(diver.weightUnit, "lbs") : ssrLooseEqual(diver.weightUnit, "lbs")) ? " selected" : ""}${_scopeId}>lbs</option></select></div></div></div><div${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-1"${_scopeId}>Past rental gear</label><div class="flex flex-wrap items-center gap-2"${_scopeId}><!--[-->`);
+                _push2(`</div><div class="grid grid-cols-1 sm:grid-cols-2 gap-2"${_scopeId}><div${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Name</label><input${ssrRenderAttr("value", diver.name)} type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white"${_scopeId}></div><div${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Certification #</label><input${ssrRenderAttr("value", diver.certificationNumber)} type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white"${_scopeId}></div><div${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Number of dives</label><input${ssrRenderAttr("value", diver.numberOfDives)} type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white" placeholder="e.g. 21"${_scopeId}></div><div class="flex gap-2 items-end"${_scopeId}><div class="flex-1 min-w-0"${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Height</label><input${ssrRenderAttr("value", diver.height)} type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white"${_scopeId}></div><div class="w-24 shrink-0"${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Unit</label><select class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-tight text-zinc-900 dark:text-white"${_scopeId}><option value="ft-in"${ssrIncludeBooleanAttr(Array.isArray(diver.heightUnit) ? ssrLooseContain(diver.heightUnit, "ft-in") : ssrLooseEqual(diver.heightUnit, "ft-in")) ? " selected" : ""}${_scopeId}>ft &amp; in</option><option value="cm"${ssrIncludeBooleanAttr(Array.isArray(diver.heightUnit) ? ssrLooseContain(diver.heightUnit, "cm") : ssrLooseEqual(diver.heightUnit, "cm")) ? " selected" : ""}${_scopeId}>cm</option></select></div></div><div class="flex gap-2 items-end"${_scopeId}><div class="flex-1 min-w-0"${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Weight</label><input${ssrRenderAttr("value", diver.weight)} type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white"${_scopeId}></div><div class="w-24 shrink-0"${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5"${_scopeId}>Unit</label><select class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-tight text-zinc-900 dark:text-white"${_scopeId}><option value="lbs"${ssrIncludeBooleanAttr(Array.isArray(diver.weightUnit) ? ssrLooseContain(diver.weightUnit, "lbs") : ssrLooseEqual(diver.weightUnit, "lbs")) ? " selected" : ""}${_scopeId}>lbs</option><option value="kg"${ssrIncludeBooleanAttr(Array.isArray(diver.weightUnit) ? ssrLooseContain(diver.weightUnit, "kg") : ssrLooseEqual(diver.weightUnit, "kg")) ? " selected" : ""}${_scopeId}>kg</option></select></div></div></div><div${_scopeId}><label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-1"${_scopeId}>Past rental gear</label><div class="flex flex-wrap items-center gap-2"${_scopeId}><!--[-->`);
                 ssrRenderList(diver.gear, (g, gi) => {
                   _push2(`<span class="inline-flex h-8 items-center gap-1 rounded bg-zinc-200 dark:bg-zinc-700 px-2 text-xs text-zinc-800 dark:text-zinc-200"${_scopeId}>${ssrInterpolate(g.gearType || "Gear")} <button type="button" class="hover:text-red-600 dark:hover:text-red-400 cursor-pointer" aria-label="Remove"${_scopeId}>×</button></span>`);
                 });
@@ -179,7 +179,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
             _push2(`</div>`);
           } else {
             return [
-              createVNode("div", { class: "min-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4" }, [
+              createVNode("div", { class: "max-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4 overflow-y-auto" }, [
                 createVNode(_component_NuxtLink, {
                   to: "/profile",
                   class: "inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white mb-4 cursor-pointer"
@@ -308,8 +308,8 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
                                 "onUpdate:modelValue": ($event) => diver.heightUnit = $event,
                                 class: "h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-tight text-zinc-900 dark:text-white"
                               }, [
-                                createVNode("option", { value: "cm" }, "cm"),
-                                createVNode("option", { value: "ft-in" }, "ft & in")
+                                createVNode("option", { value: "ft-in" }, "ft & in"),
+                                createVNode("option", { value: "cm" }, "cm")
                               ], 8, ["onUpdate:modelValue"]), [
                                 [vModelSelect, diver.heightUnit]
                               ])
@@ -332,8 +332,8 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
                                 "onUpdate:modelValue": ($event) => diver.weightUnit = $event,
                                 class: "h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-tight text-zinc-900 dark:text-white"
                               }, [
-                                createVNode("option", { value: "kg" }, "kg"),
-                                createVNode("option", { value: "lbs" }, "lbs")
+                                createVNode("option", { value: "lbs" }, "lbs"),
+                                createVNode("option", { value: "kg" }, "kg")
                               ], 8, ["onUpdate:modelValue"]), [
                                 [vModelSelect, diver.weightUnit]
                               ])
@@ -404,4 +404,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=defaults-BHmhaEZh.mjs.map
+//# sourceMappingURL=defaults-Df74-1yo.mjs.map

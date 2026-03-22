@@ -148,7 +148,7 @@ Already collected: ${JSON.stringify(existingPayload)}` : "";
     certificationNumber: "certification number",
     numberOfDives: "number of dives completed",
     height: "height (with unit)",
-    weight: "weight (with unit: kg or lbs)",
+    weight: "weight (with unit: lbs or kg)",
     gear: 'rental gear (or "none")',
     courses: "which courses they are interested in (optional)",
     diveSites: "which dive sites they want",
@@ -160,7 +160,7 @@ NEXT REQUIRED (use this \u2014 do not re-ask anything already in "Already collec
 
 Names: For the booking contact and for each diver, you need a full name (first and last). If the user gives only one name (e.g. just "Chris" or "Smith"), politely ask for their full name before moving on \u2014 e.g. "Could you give me your full name (first and last)?"
 
-Ask for ONE piece of information at a time in this order: 1) name (the person making the booking), 2) email, 3) start date and end date for diving, 4) which courses they want (optional \u2014 they can say "any" or pick from the chips; do not list course names in your message), 5) which dive sites they want (optional \u2014 they can say "any" or pick from the chips; do not list the site names in your message), 6) number of divers, 7) confirm whether the person whose name you have is Diver 1 or not: ask "Is [name] one of the divers? I'll use that name for Diver 1 if yes \u2014 otherwise tell me Diver 1's full name." If they say yes (or that they are Diver 1), set Diver 1's name to that name. If they say no, ask for Diver 1's full name. 8) For each diver: certification number, number of dives completed, height (with unit: cm or ft-in), weight (with unit: kg or lbs), and any rental gear they need.
+Ask for ONE piece of information at a time in this order: 1) name (the person making the booking), 2) email, 3) start date and end date for diving, 4) which courses they want (optional \u2014 they can say "any" or pick from the chips; do not list course names in your message), 5) which dive sites they want (optional \u2014 they can say "any" or pick from the chips; do not list the site names in your message), 6) number of divers, 7) confirm whether the person whose name you have is Diver 1 or not: ask "Is [name] one of the divers? I'll use that name for Diver 1 if yes \u2014 otherwise tell me Diver 1's full name." If they say yes (or that they are Diver 1), set Diver 1's name to that name. If they say no, ask for Diver 1's full name. 8) For each diver: certification number, number of dives completed, height (with unit: ft-in or cm), weight (with unit: lbs or kg), and any rental gear they need.
 
 When "Already collected" includes diver details from a previous booking (e.g. numberOfDives or gear already filled): (1) For number of dives \u2014 briefly confirm or ask to update, e.g. "Last time you had 21 dives \u2014 is this trip still 21 or have they done another?" or "Is this still 21 dives or 22 now?" so the count stays accurate. (2) For rental gear \u2014 mention what they had last time and that they can add or remove for this trip, e.g. "Last time you had Wetsuit and BCD. This shop offers [list from rental equipment]. Add or remove any for this trip?" Then let them pick from the chips or say "same" / "none" / etc.
 
@@ -168,7 +168,7 @@ Dates (step 3): Accept dates in any form the user gives \u2014 e.g. "July 24 202
 
 Optional steps: For desiredCourses and desiredDiveSites, omit these keys from COLLECTED until you have asked that step and the user answered (or use a non-empty array when they picked courses/sites). Do not send empty arrays [] for those fields until the user has completed that step \u2014 otherwise use omit or null in COLLECTED if your JSON schema allows.
 
-Weight (step 8): If the user gives only a number for weight (e.g. "200" or "85") with no unit (kg or lbs), do NOT assume a unit. Ask for clarification: "Is that [number] kg or [number] lbs?" and only set weightUnit in COLLECTED when they specify. Never record weight as e.g. "200 kg" unless the user said "kg" or "lbs".
+Weight (step 8): If the user gives only a number for weight (e.g. "200" or "85") with no unit (lbs or kg), do NOT assume a unit. Ask for clarification: "Is that [number] lbs or [number] kg?" and only set weightUnit in COLLECTED when they specify. Never record weight as e.g. "200 lbs" unless the user said "kg" or "lbs".
 
 Be warm and conversational. When you have collected all required fields (name, email, startDate, endDate, numberOfDivers, and for each diver: name, certificationNumber, numberOfDives, height, heightUnit, weight, weightUnit; gear can be empty array), output exactly:
 
@@ -188,9 +188,9 @@ The JSON must have this shape (use empty string "" for missing optional fields, 
       "certificationNumber": "string",
       "numberOfDives": "string",
       "height": "string",
-      "heightUnit": "cm or ft-in",
+      "heightUnit": "ft-in or cm",
       "weight": "string",
-      "weightUnit": "kg or lbs",
+      "weightUnit": "lbs or kg",
       "gear": [{"gearType": "string"}]
     }
   ],
@@ -754,7 +754,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
             const numDivers = Math.max(1, (_P = bookingPayload.numberOfDivers) != null ? _P : 1);
             const divers = Array.isArray(bookingPayload.divers) ? [...bookingPayload.divers] : [];
             while (divers.length < numDivers) {
-              divers.push({ name: "", certificationNumber: "", numberOfDives: "", height: "", heightUnit: "cm", weight: "", weightUnit: "kg", gear: [] });
+              divers.push({ name: "", certificationNumber: "", numberOfDives: "", height: "", heightUnit: "ft-in", weight: "", weightUnit: "lbs", gear: [] });
             }
             const targetIdx = nextStepForGearTap.diverIndex;
             const targetDiver = divers[targetIdx];
@@ -947,7 +947,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
             const p = { ...bookingPayload, numberOfDivers: newNum };
             const divers = Array.isArray(bookingPayload.divers) ? [...bookingPayload.divers] : [];
             while (divers.length < newNum) {
-              divers.push({ name: "", certificationNumber: "", numberOfDives: "", height: "", heightUnit: "cm", weight: "", weightUnit: "kg", gear: [] });
+              divers.push({ name: "", certificationNumber: "", numberOfDives: "", height: "", heightUnit: "ft-in", weight: "", weightUnit: "lbs", gear: [] });
             }
             p.divers = divers;
             const defaultDiversListFull = Array.isArray(profilePrefill == null ? void 0 : profilePrefill.defaultDivers) && profilePrefill.defaultDivers.length > 0 ? profilePrefill.defaultDivers : (profilePrefill == null ? void 0 : profilePrefill.defaultDiver) ? [profilePrefill.defaultDiver] : [];

@@ -4294,7 +4294,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "b713782b-50cc-44dd-8a9f-ada80e1a1a79",
+    "buildId": "2940d6a0-a778-4184-b4fa-cb0444dbbb1d",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -4846,9 +4846,9 @@ function getNextBookingStep(payload) {
       certificationNumber: "",
       numberOfDives: "",
       height: "",
-      heightUnit: "cm",
+      heightUnit: "ft-in",
       weight: "",
-      weightUnit: "kg",
+      weightUnit: "lbs",
       gear: []
     });
   }
@@ -4876,8 +4876,8 @@ function looksLikeSingleName(s) {
 }
 function profileDiverToPayload(d) {
   var _a, _b, _c, _d, _e;
-  const hu = (d.height_unit || "cm").toLowerCase();
-  const wu = (d.weight_unit || "kg").toLowerCase();
+  const hu = (d.height_unit || "ft-in").toLowerCase();
+  const wu = (d.weight_unit || "lbs").toLowerCase();
   return {
     name: (_a = d.name) != null ? _a : "",
     certificationNumber: (_b = d.certification_number) != null ? _b : "",
@@ -4934,9 +4934,9 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
           certificationNumber: "",
           numberOfDives: "",
           height: "",
-          heightUnit: "cm",
+          heightUnit: "ft-in",
           weight: "",
-          weightUnit: "kg",
+          weightUnit: "lbs",
           gear: []
         });
       }
@@ -4966,7 +4966,7 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
           const namePart = useMatch[1].trim();
           const match = defaultDiversListForMatch.find((d) => (d.name || "").trim().toLowerCase() === namePart.toLowerCase());
           if (match) {
-            if (!divers[i]) divers.push({ name: "", certificationNumber: "", numberOfDives: "", height: "", heightUnit: "cm", weight: "", weightUnit: "kg", gear: [] });
+            if (!divers[i]) divers.push({ name: "", certificationNumber: "", numberOfDives: "", height: "", heightUnit: "ft-in", weight: "", weightUnit: "lbs", gear: [] });
             const filled = profileDiverToPayload(match);
             divers[i] = { ...filled, gearAsked: divers[i].gearAsked };
             p.divers = divers;
@@ -4991,7 +4991,7 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
       if (i === 0 && p.name && String(p.name).trim()) {
         const affirm = /\b(yes|yeah|yep|yup|correct|that's me|that is me|i am|i'm one|sure|please do)\b/i.test(msg) || /^\s*y\s*$/i.test(msg);
         if (affirm) {
-          if (!divers[0]) divers.push({ name: "", certificationNumber: "", numberOfDives: "", height: "", heightUnit: "cm", weight: "", weightUnit: "kg", gear: [] });
+          if (!divers[0]) divers.push({ name: "", certificationNumber: "", numberOfDives: "", height: "", heightUnit: "ft-in", weight: "", weightUnit: "lbs", gear: [] });
           divers[0].name = String(p.name).trim();
           p.divers = divers;
           const name = divers[0].name;
@@ -5002,7 +5002,7 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
       if (looksLikeSingleName(msg)) {
         return { message: `Could you give me Diver ${i + 1}'s full name (first and last)?`, payload: p };
       }
-      if (!divers[i]) divers.push({ name: "", certificationNumber: "", numberOfDives: "", height: "", heightUnit: "cm", weight: "", weightUnit: "kg", gear: [] });
+      if (!divers[i]) divers.push({ name: "", certificationNumber: "", numberOfDives: "", height: "", heightUnit: "ft-in", weight: "", weightUnit: "lbs", gear: [] });
       divers[i].name = msg;
       p.divers = divers;
       return { message: `Thanks \u2014 ${msg}, got it. What is ${msg}'s certification number?`, payload: p };
@@ -5021,7 +5021,7 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
       divers[i].numberOfDives = num;
       p.divers = divers;
       const n = divers[i].name || "They";
-      return { message: `Thanks \u2014 got ${n}'s dive count as ${num}. What's ${n}'s height? Please include the unit (cm or ft-in).`, payload: p };
+      return { message: `Thanks \u2014 got ${n}'s dive count as ${num}. What's ${n}'s height? Please include the unit (ft-in or cm).`, payload: p };
     }
     case "height": {
       if (!divers[i]) return null;
@@ -5032,7 +5032,7 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
       divers[i].heightUnit = unit;
       p.divers = divers;
       const n = divers[i].name || "They";
-      return { message: `Thanks \u2014 I've recorded ${n}'s height as ${value} ${unit === "ft-in" ? "ft-in" : "cm"}. What's ${n}'s weight? Please include the unit (kg or lbs).`, payload: p };
+      return { message: `Thanks \u2014 I've recorded ${n}'s height as ${value} ${unit === "ft-in" ? "ft-in" : "cm"}. What's ${n}'s weight? Please include the unit (lbs or kg).`, payload: p };
     }
     case "weight": {
       if (!divers[i]) return null;
@@ -5055,11 +5055,11 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
         p.divers = divers;
         divers[i].name || "They";
         return {
-          message: `Is that ${value} kg or ${value} lbs?`,
+          message: `Is that ${value} lbs or ${value} kg?`,
           payload: p,
           selectableOptions: [
-            { label: "kg", value: "kg" },
-            { label: "lbs", value: "lbs" }
+            { label: "lbs", value: "lbs" },
+            { label: "kg", value: "kg" }
           ]
         };
       }

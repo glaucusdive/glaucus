@@ -1,4 +1,4 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-OcTSyAjL.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-BfvNfCEe.mjs';
 import { ref, watch, computed, mergeProps, withCtx, unref, createVNode, Transition, createBlock, createCommentVNode, openBlock, Fragment, renderList, toDisplayString, withModifiers, withDirectives, vModelText, nextTick, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrRenderAttr, ssrRenderClass, ssrRenderList, ssrInterpolate, ssrIncludeBooleanAttr, ssrRenderAttrs } from 'vue/server-renderer';
 import { u as useChatSessions, c as chatRemoteHydrateTick, g as getActiveSession, _ as _imports_0, a as useSearchCache, n as notifyChatSidebarUpdated } from './userChatsRemote-DMcayfPn.mjs';
@@ -191,9 +191,9 @@ function normalizeExisting(existingRaw) {
       certification_number: String(r.certification_number ?? ""),
       number_of_dives: String(r.number_of_dives ?? ""),
       height: String(r.height ?? ""),
-      height_unit: String(r.height_unit ?? "cm"),
+      height_unit: String(r.height_unit ?? "ft-in"),
       weight: String(r.weight ?? ""),
-      weight_unit: String(r.weight_unit ?? "kg"),
+      weight_unit: String(r.weight_unit ?? "lbs"),
       gear,
       times_used: typeof r.times_used === "number" ? r.times_used : void 0
     };
@@ -205,9 +205,9 @@ function diverRowFromBookingLike(d) {
     certification_number: d.certificationNumber ?? "",
     number_of_dives: d.numberOfDives ?? "",
     height: d.height ?? "",
-    height_unit: d.heightUnit ?? "cm",
+    height_unit: d.heightUnit ?? "ft-in",
     weight: d.weight ?? "",
-    weight_unit: d.weightUnit ?? "kg",
+    weight_unit: d.weightUnit ?? "lbs",
     gear: (d.gear || []).map((g) => ({ gear_type: g?.gearType ?? "" }))
   };
 }
@@ -228,9 +228,9 @@ function mergeDiverIncremental(prev, next) {
     certification_number: pickField(prev?.certification_number, next.certification_number),
     number_of_dives: pickField(prev?.number_of_dives, next.number_of_dives),
     height: pickField(prev?.height, next.height),
-    height_unit: pickField(prev?.height_unit, next.height_unit) || "cm",
+    height_unit: pickField(prev?.height_unit, next.height_unit) || "ft-in",
     weight: pickField(prev?.weight, next.weight),
-    weight_unit: pickField(prev?.weight_unit, next.weight_unit) || "kg",
+    weight_unit: pickField(prev?.weight_unit, next.weight_unit) || "lbs",
     gear: mergeGear(prev?.gear, next.gear),
     times_used: prev?.times_used ?? 0
   };
@@ -765,9 +765,9 @@ const _sfc_main = {
                   certificationNumber: d.certificationNumber ?? "",
                   numberOfDives: d.numberOfDives ?? "",
                   height: d.height ?? "",
-                  heightUnit: d.heightUnit ?? "cm",
+                  heightUnit: d.heightUnit ?? "ft-in",
                   weight: d.weight ?? "",
-                  weightUnit: d.weightUnit ?? "kg",
+                  weightUnit: d.weightUnit ?? "lbs",
                   gear: (d.gear ?? []).map((g) => ({ gearType: g?.gearType ?? "" }))
                 }))
               };
@@ -1530,4 +1530,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-DpUEB9Lu.mjs.map
+//# sourceMappingURL=index-WKJ1I_bI.mjs.map

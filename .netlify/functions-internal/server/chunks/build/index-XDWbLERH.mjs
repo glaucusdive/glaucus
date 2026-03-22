@@ -1,4 +1,4 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-OcTSyAjL.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-BfvNfCEe.mjs';
 import { d as useSeoMeta, e as useAsyncData, f as _sfc_main$d, n as navigateTo } from './server.mjs';
 import { withAsyncContext, mergeProps, withCtx, unref, createBlock, openBlock, createVNode, toDisplayString, Fragment, renderList, createCommentVNode, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrInterpolate, ssrRenderList, ssrRenderAttr } from 'vue/server-renderer';
@@ -321,4 +321,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-BmTAOIVX.mjs.map
+//# sourceMappingURL=index-XDWbLERH.mjs.map
