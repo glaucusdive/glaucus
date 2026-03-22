@@ -60,6 +60,7 @@ Concrete instance: `server/api/ai-search.post.ts` plus utilities under `server/u
 | `buildDiveShopQuery` | `SearchFilters` | read diveshops | Orchestrator (entity-prefilled search) or post-LLM search path |
 | `getShopById`, `listShopsMatchingName` | id / name fragment | read diveshops | Orchestrator |
 | `getDiveSitesForShop`, `getRentalEquipmentForShop` | shop id | read | Orchestrator (booking branch) |
+| `tryShopInfoResponse` / `shop_info:*` chips | message + `selectedShopId` / `lastShops` | read diveshop + related sites, courses, rental gear, gases, contact | Orchestrator when not in booking continuation; no OpenRouter |
 | `tryFastPath`, `tryFastPathUnitOnly`, booking LLM | message + payload | none (until user confirms send) | Orchestrator |
 | OpenRouter chat | conversation | external API | Orchestrator after filters / follow-ups |
 | Booking email (`/api/booking`) | final payload | sends email | User-confirmed step only (existing rules) |

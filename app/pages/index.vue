@@ -9,18 +9,20 @@
     </Transition>
 
     <div class="flex flex-col h-full w-full relative">
-      <!-- Header -->
-      <div class="min-h-10 flex flex-row justify-between items-stretch border-b border-zinc-200 dark:border-zinc-700 shrink-0">
-        <div class="flex items-center gap-2 h-full p-0 lg:p-4 divide-x divide-zinc-200 dark:divide-zinc-700">
+      <!-- Header: min-w-0 + shrink-0 so title truncates in narrow split view instead of clipping Step back -->
+      <div
+        class="min-h-10 min-w-0 flex flex-row justify-between items-stretch border-b border-zinc-200 dark:border-zinc-700 shrink-0">
+        <div
+          class="flex min-w-0 flex-1 items-center gap-2 h-full p-0 lg:p-4 divide-x divide-zinc-200 dark:divide-zinc-700">
           <button @click="openMobileMenu"
-            class="flex items-center justify-center aspect-square h-full lg:hidden hover:bg-zinc-100 dark:hover:bg-zinc-800/50 p-1 cursor-pointer">
+            class="flex items-center justify-center aspect-square h-full lg:hidden hover:bg-zinc-100 dark:hover:bg-zinc-800/50 p-1 cursor-pointer shrink-0">
             <Menu class="w-5 h-5" />
           </button>
           <h1
-            class="text-base sm:text-lg lg:text-2xl font-semibold text-zinc-900 dark:text-white overflow-auto truncate">
+            class="text-base sm:text-lg lg:text-2xl font-semibold text-zinc-900 dark:text-white min-w-0 truncate">
             Dive Shop Search</h1>
         </div>
-        <div class="flex items-center gap-1 p-1 lg:p-4">
+        <div class="flex shrink-0 items-center gap-1 p-1 lg:p-4">
           <button v-if="canStepBack" @click="stepBack"
             class="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md cursor-pointer"
             title="Remove last message and your last reply so you can redo that step">
@@ -33,7 +35,7 @@
       <div class="flex-1 flex flex-row overflow-hidden relative">
         <!-- Chat Section -->
         <div :class="[
-          'flex flex-col h-full transition-all duration-300 ease-in-out relative',
+          'flex min-w-0 flex-col h-full transition-all duration-300 ease-in-out relative',
           selectedShopId ? 'w-full lg:w-1/2' : 'w-full'
         ]">
           <!-- Messages Container -->
@@ -251,8 +253,8 @@
         <!-- Shop Detail Panel - Mobile Drawer (only when user taps "View details", not on card tap) -->
         <Transition @enter="onMobileDrawerEnter" @leave="onMobileDrawerLeave" :css="false">
           <div v-if="mobileDetailShopId && !isDesktop" class="fixed inset-0 z-50 lg:hidden">
-            <!-- Backdrop: ignore clicks for a beat after open so the same gesture doesn't close (mousedown on chevron, mouseup on backdrop) -->
-            <div @click="onMobileShopDetailBackdropClick" class="absolute inset-0 bg-black/50"></div>
+            <!-- Backdrop -->
+            <div @click="closeShopDetail" class="absolute inset-0 bg-black/50"></div>
             <!-- Drawer -->
             <div
               @click.stop
@@ -521,14 +523,15 @@ onUnmounted(() => {
   clearTimeout(debounceProfileFromChatTimer)
 })
 
-/** Same pointer sequence that opens the mobile overlay can finish with a click on the new backdrop; skip closing briefly. */
-const MOBILE_SHOP_DETAIL_BACKDROP_GRACE_MS = 400
-const mobileShopDetailOpenedAt = ref(0)
-watch([mobileDetailShopId, isDesktop], () => {
-  if (mobileDetailShopId.value && !isDesktop.value) {
-    mobileShopDetailOpenedAt.value = Date.now()
-  }
-})
+/**
+ * Opening from the result chevron often finishes the same pointer gesture on the detail header close control
+ * or full-screen backdrop (panel mounts under the cursor). Ignore closes briefly after arming from user open paths.
+ */
+const SHOP_DETAIL_CLOSE_GUARD_MS = 800
+let shopDetailCloseGuardUntil = 0
+function armShopDetailCloseGuard () {
+  shopDetailCloseGuardUntil = Date.now() + SHOP_DETAIL_CLOSE_GUARD_MS
+}
 
 // Example queries for initial state
 const exampleQueries = [
@@ -1074,13 +1077,14 @@ const handleSubmit = () => {
   sendMessage()
 }
 
-// Step back: remove last assistant + last user message so user can redo that step (for testing)
+// Step back: remove the last user↔assistant pair (either order) so user can redo that turn
 const canStepBack = computed(() => {
   const m = messages.value
   if (m.length < 2) return false
   const last = m[m.length - 1]
   const prev = m[m.length - 2]
-  return last.role === 'assistant' && prev.role === 'user'
+  const roles = new Set([last.role, prev.role])
+  return roles.has('user') && roles.has('assistant')
 })
 const stepBack = () => {
   if (!canStepBack.value) return
@@ -1090,13 +1094,20 @@ const stepBack = () => {
 
 // Handle shop selection (card tap: select for booking; on mobile does not open drawer)
 const handleShopSelected = (shop) => {
-  selectedShopId.value = shop.id
+  armShopDetailCloseGuard()
+  // Defer until after this click finishes so the new panel/backdrop never receives the same pointer gesture.
+  nextTick(() => {
+    selectedShopId.value = shop.id
+  })
 }
 
 // Handle "View details" button (opens drawer on mobile; on desktop panel already shows when selected)
 const handleViewDetails = (shop) => {
-  selectedShopId.value = shop.id
-  mobileDetailShopId.value = shop.id
+  armShopDetailCloseGuard()
+  nextTick(() => {
+    selectedShopId.value = shop.id
+    mobileDetailShopId.value = shop.id
+  })
 }
 
 // Open layout booking-form drawer with current shop and chat-collected payload
@@ -1114,28 +1125,26 @@ const openBookingFormDrawer = () => {
 function openBookingFormDrawerFromMessage (msg) {
   const shop = bookingShopForDrawer.value || (msg.shopId && msg.shopName ? { id: msg.shopId, name: msg.shopName } : null)
   if (!shop) return
-  // On desktop, show the dive shop detail pane; on mobile, ensure detail is available if they tap "View details"
-  selectedShopId.value = shop.id
-  mobileDetailShopId.value = shop.id
+  armShopDetailCloseGuard()
   const payload = msg.payload !== undefined ? msg.payload : msg.bookingPayload
-  openDrawer('booking-form', {
-    shopId: shop.id,
-    shopName: shop.name,
-    bookingPayload: payload ?? lastBookingPayload.value
+  nextTick(() => {
+    selectedShopId.value = shop.id
+    mobileDetailShopId.value = shop.id
+    openDrawer('booking-form', {
+      shopId: shop.id,
+      shopName: shop.name,
+      bookingPayload: payload ?? lastBookingPayload.value
+    })
   })
 }
 
 // Close shop detail (desktop: clear selection; mobile: close drawer only, keep selection for book chip)
 const closeShopDetail = () => {
+  if (Date.now() < shopDetailCloseGuardUntil) return
   if (isDesktop.value) {
     selectedShopId.value = null
   }
   mobileDetailShopId.value = null
-}
-
-function onMobileShopDetailBackdropClick () {
-  if (Date.now() - mobileShopDetailOpenedAt.value < MOBILE_SHOP_DETAIL_BACKDROP_GRACE_MS) return
-  closeShopDetail()
 }
 
 // GSAP animations for shop panel
