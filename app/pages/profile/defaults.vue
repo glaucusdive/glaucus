@@ -1,6 +1,6 @@
 <template>
   <NuxtLayout name="default">
-    <div class="min-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4">
+    <div class="max-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4 overflow-y-auto">
       <NuxtLink to="/profile" class="inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white mb-4 cursor-pointer">
         ← Profile
       </NuxtLink>
