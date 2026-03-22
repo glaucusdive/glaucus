@@ -160,6 +160,39 @@
                     </button>
                   </div>
 
+                  <!-- Courses: Any + Done first, then course name chips (same UX as dive sites) -->
+                  <div
+                    v-if="msg.courseOptions && msg.courseOptions.length > 0"
+                    class="flex flex-wrap gap-2 transition-opacity duration-200"
+                    :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
+                  >
+                    <div class="flex gap-2 w-full">
+                      <button
+                        type="button"
+                        @click="sendMessage('any')"
+                        class="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"
+                      >
+                        Any
+                      </button>
+                      <button
+                        type="button"
+                        @click="sendMessage('done')"
+                        class="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                      >
+                        Done
+                      </button>
+                    </div>
+                    <button
+                      v-for="course in msg.courseOptions"
+                      :key="course.id"
+                      type="button"
+                      @click="sendMessage(course.name)"
+                      class="w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                    >
+                      {{ course.name }}
+                    </button>
+                  </div>
+
                   <!-- Dive sites: Any + Done first (50/50), then shop-specific site chips (w-fit); past = faded -->
                   <div
                     v-if="msg.diveSiteOptions && msg.diveSiteOptions.length > 0"
@@ -470,9 +503,10 @@ const activeChipMessageIndex = computed(() => {
     if (m.role !== 'assistant') continue
     const hasSelectable = m.selectableOptions && m.selectableOptions.length > 0
     const hasGear = Array.isArray(m.rentalEquipmentOptions) && m.rentalEquipmentOptions.length > 0
+    const hasCourses = m.courseOptions && m.courseOptions.length > 0
     const hasDiveSites = m.diveSiteOptions && m.diveSiteOptions.length > 0
     const hasBookChip = m.shops?.length && selectedShopId.value && selectedShopName.value
-    if (hasSelectable || hasGear || hasDiveSites || hasBookChip) return i
+    if (hasSelectable || hasGear || hasCourses || hasDiveSites || hasBookChip) return i
   }
   return -1
 })
@@ -920,6 +954,7 @@ const sendMessage = async (messageText, displayText) => {
             selectableOptions: response.selectableOptions,
             rentalEquipmentOptions: response.rentalEquipmentOptions || undefined,
             hideNoneForGear: response.hideNoneForGear ?? false,
+            courseOptions: response.courseOptions || undefined,
             diveSiteOptions: response.diveSiteOptions || undefined,
             ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {}),
             ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {})
@@ -945,6 +980,7 @@ const sendMessage = async (messageText, displayText) => {
             email: storedPayload.email ?? '',
             startDate: storedPayload.startDate ?? '',
             endDate: storedPayload.endDate ?? '',
+            desiredCourses: Array.isArray(storedPayload.desiredCourses) ? storedPayload.desiredCourses : [],
             desiredDiveSites: Array.isArray(storedPayload.desiredDiveSites) ? storedPayload.desiredDiveSites : [],
             divers: (storedPayload.divers ?? []).map(d => ({
               name: d.name ?? '',
@@ -1008,6 +1044,7 @@ const sendMessage = async (messageText, displayText) => {
         selectableOptions: response.selectableOptions,
         rentalEquipmentOptions: response.rentalEquipmentOptions || undefined,
         hideNoneForGear: response.hideNoneForGear ?? false,
+        courseOptions: response.courseOptions || undefined,
         diveSiteOptions: response.diveSiteOptions || undefined,
         ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {}),
         ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {})

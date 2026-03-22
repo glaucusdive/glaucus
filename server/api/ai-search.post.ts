@@ -2,8 +2,11 @@ import { defineEventHandler, readBody } from 'h3'
 import { buildDiveShopQuery, type SearchFilters } from '../utils/buildDiveShopQuery'
 import { getShopById } from '../utils/resolveShop'
 import { getDiveSitesForShop } from '../utils/getDiveSitesForShop'
+import { getCoursesForShop } from '../utils/getCoursesForShop'
 import { getRentalEquipmentForShop } from '../utils/getRentalEquipmentForShop'
-import { getNextBookingStep, tryFastPath, tryFastPathUnitOnly } from '../utils/bookingFastPath'
+import { getNextBookingStep, tryFastPath, tryFastPathUnitOnly, type BookingPayloadLocal } from '../utils/bookingFastPath'
+import { tryParseTripDatesFromMessage } from '../utils/parseTripDates'
+import { mergeCollectedIntoBookingPayload } from '../utils/mergeBookingCollected'
 import { extractReferredEntityPhrase } from '../utils/extractReferredEntityPhrase'
 import { parseEntityClarifyMessage } from '../utils/entityClarify'
 import {
@@ -68,6 +71,7 @@ export interface BookingPayload {
   endDate?: string
   numberOfDivers?: number
   divers?: BookingDiver[]
+  desiredCourses?: string[]
   desiredDiveSites?: string[]
 }
 
@@ -111,7 +115,7 @@ Available dive shop data fields you can filter on:
 - region: The specific region within a country
 - google_rating: The Google rating (0-5)
 - languages: Array of languages spoken at the shop
-- diveTypes: Trip/shop type — set when user says they want a liveaboard, resort, or day trips. Use exactly: ["Liveaboard"] for liveaboard, ["Dive Resort"] for resort, ["Dive Shop"] for day trips. Only one type per search.
+- diveTypes: Trip/shop type — set when user says they want a liveaboard, resort, dive shops, or day trips. Use exactly: ["Liveaboard"] for liveaboard, ["Dive Resort"] for resort, ["Dive Shop"] for dive shops / day trips. Only one type per search.
 - operating_hours: Shop operating hours
 - website_url, phone, email: Contact information
 
@@ -131,7 +135,7 @@ MESSAGE: Your conversational response to the user
 Rules:
 - Extract location information carefully (e.g., "Bali" -> locale: "Bali", country: "Indonesia")
 - If user mentions quality/rating requirements, set minRating appropriately
-- If user says they prefer a liveaboard (or "I prefer a liveaboard"), set diveTypes to ["Liveaboard"]. If they prefer a resort, set diveTypes to ["Dive Resort"]. If they prefer day trips, set diveTypes to ["Dive Shop"]. If no trip type mentioned, leave diveTypes null.
+- If user says they prefer a liveaboard (or "I prefer a liveaboard"), set diveTypes to ["Liveaboard"]. If they prefer a resort, set diveTypes to ["Dive Resort"]. If they prefer dive shops or day trips, set diveTypes to ["Dive Shop"]. If no trip type mentioned, leave diveTypes null.
 - CRITICAL — Preserve location from the full conversation: If the user already said where they want to dive (e.g. "in Thailand", "dive shops in Thailand", "Bali", "Maldives") in ANY earlier message in this chat, you MUST include that in FILTERS (country and optionally locale). Do NOT set country or locale to null when the user has already stated a location. When they then answer a follow-up (e.g. "I prefer a liveaboard"), keep their stated country in FILTERS.
 - Be conversational and friendly in your MESSAGE
 - Keep your MESSAGE SHORT and concise (1-2 sentences max)
@@ -189,9 +193,9 @@ function tripTypeFirstQuestionResponse (opts?: { searchFlowReset?: boolean }) {
     hasMoreResults: false,
     filters: {} as SearchFilters,
     selectableOptions: [
+      { label: 'Dive Shop', value: 'I prefer dive shops' },
       { label: 'Liveaboard', value: 'I prefer a liveaboard' },
-      { label: 'Resort', value: 'I prefer a resort' },
-      { label: 'Day trips', value: 'Just day trips' }
+      { label: 'Resort', value: 'I prefer a resort' }
     ],
     ...(opts?.searchFlowReset ? { searchFlowReset: true as const } : {})
   }
@@ -199,11 +203,13 @@ function tripTypeFirstQuestionResponse (opts?: { searchFlowReset?: boolean }) {
 
 function buildBookingSystemPrompt (
   shopName: string,
+  courseNames: string[],
   diveSiteNames: string[],
   existingPayload: BookingPayload | undefined,
   nextStepHint?: { step: string; diverIndex?: number; diverName?: string } | null,
   rentalEquipmentNames: string[] = []
 ): string {
+  const coursesList = courseNames.length > 0 ? `\nCourses at this shop (for recognizing user choices only — do NOT list these in your message; the user sees them as chips): ${courseNames.join(', ')}. When asking about courses, ask only e.g. "Are you interested in any courses on this trip?" — do not repeat the course names.` : ''
   const sitesList = diveSiteNames.length > 0 ? `\nDive sites at this shop (for recognizing user choices only — do NOT list these in your message; the user sees them as chips): ${diveSiteNames.join(', ')}. When asking for dive sites, ask only e.g. "Which dive sites would you like to dive?" — do not repeat the site names.` : ''
   const equipmentList = rentalEquipmentNames.length > 0 ? `\nRental equipment at this shop (for COLLECTED payload only; do not invent others): ${rentalEquipmentNames.join(', ')}. When asking for rental gear, ask only "Does [name] need any rental gear?" — do NOT list the equipment in your message (chips are shown separately).` : ''
   const collected = existingPayload ? `\nAlready collected: ${JSON.stringify(existingPayload)}` : ''
@@ -219,23 +225,26 @@ function buildBookingSystemPrompt (
     height: 'height (with unit)',
     weight: 'weight (with unit: kg or lbs)',
     gear: 'rental gear (or "none")',
+    courses: 'which courses they are interested in (optional)',
     diveSites: 'which dive sites they want',
     ready: 'nothing — output BOOKING_READY when all fields are in COLLECTED'
   }
   const nextLine = nextStepHint
     ? `\nNEXT REQUIRED (use this — do not re-ask anything already in "Already collected"): Ask for ${stepLabel[nextStepHint.step] ?? nextStepHint.step}${nextStepHint.diverIndex != null ? ` for Diver ${nextStepHint.diverIndex + 1}${nextStepHint.diverName ? ` (${nextStepHint.diverName})` : ''}` : ''}.`
     : ''
-  return `You are a friendly dive travel agent collecting a dive trip booking. The shop the user is booking with is: ${shopName}.${sitesList}${equipmentList}${collected}${nextLine}
+  return `You are a friendly dive travel agent collecting a dive trip booking. The shop the user is booking with is: ${shopName}.${coursesList}${sitesList}${equipmentList}${collected}${nextLine}
 
 Names: For the booking contact and for each diver, you need a full name (first and last). If the user gives only one name (e.g. just "Chris" or "Smith"), politely ask for their full name before moving on — e.g. "Could you give me your full name (first and last)?"
 
-Ask for ONE piece of information at a time in this order: 1) name (the person making the booking), 2) email, 3) start date and end date for diving, 4) which dive sites they want (optional — they can say "any" or pick from the chips; do not list the site names in your message), 5) number of divers, 6) confirm whether the person whose name you have is Diver 1 or not: ask "Is [name] one of the divers? I'll use that name for Diver 1 if yes — otherwise tell me Diver 1's full name." If they say yes (or that they are Diver 1), set Diver 1's name to that name. If they say no, ask for Diver 1's full name. 7) For each diver: certification number, number of dives completed, height (with unit: cm or ft-in), weight (with unit: kg or lbs), and any rental gear they need.
+Ask for ONE piece of information at a time in this order: 1) name (the person making the booking), 2) email, 3) start date and end date for diving, 4) which courses they want (optional — they can say "any" or pick from the chips; do not list course names in your message), 5) which dive sites they want (optional — they can say "any" or pick from the chips; do not list the site names in your message), 6) number of divers, 7) confirm whether the person whose name you have is Diver 1 or not: ask "Is [name] one of the divers? I'll use that name for Diver 1 if yes — otherwise tell me Diver 1's full name." If they say yes (or that they are Diver 1), set Diver 1's name to that name. If they say no, ask for Diver 1's full name. 8) For each diver: certification number, number of dives completed, height (with unit: cm or ft-in), weight (with unit: kg or lbs), and any rental gear they need.
 
 When "Already collected" includes diver details from a previous booking (e.g. numberOfDives or gear already filled): (1) For number of dives — briefly confirm or ask to update, e.g. "Last time you had 21 dives — is this trip still 21 or have they done another?" or "Is this still 21 dives or 22 now?" so the count stays accurate. (2) For rental gear — mention what they had last time and that they can add or remove for this trip, e.g. "Last time you had Wetsuit and BCD. This shop offers [list from rental equipment]. Add or remove any for this trip?" Then let them pick from the chips or say "same" / "none" / etc.
 
-Dates (step 3): Accept dates in any form the user gives — e.g. "July 24 2026", "24th July", "070826", "7/24/26", "next week", "April 15 to April 18". Parse them into a start and end date. After parsing, compute the trip length in days (end minus start). Most scuba trips are a few days to a week (roughly 3–10 days). If the trip is longer than 21 days (3 weeks), question the user before confirming: e.g. "That's [X] days — most dive trips are a few days to a week. Did you mean a shorter window, or is that correct for your plans?" If they confirm they want the long trip (yes, that's right, correct, I want that, that's what I meant, etc.), accept the dates and put them in COLLECTED. If they give different dates, parse the correction and repeat. For trips of 21 days or less, reply by repeating the dates back in one clean, readable format (e.g. "So that's 24 July 2026 to 27 July 2026 — is that right?") and ask for confirmation. Only when the user confirms treat the dates as collected and move to the next question. Store startDate and endDate in the payload in YYYY-MM-DD. Do not ask the user to type YYYY-MM-DD.
+Dates (step 3): Accept dates in any form the user gives — e.g. "July 24 2026", "24th July", "070826", "7/24/26", "next week", "April 15 to April 18". Parse them into a start and end date and put startDate and endDate in COLLECTED as YYYY-MM-DD on the same turn (the server may also parse common ranges without you). After parsing, compute the trip length in days (end minus start). Most scuba trips are a few days to a week (roughly 3–10 days). If the trip is longer than 21 days (3 weeks), question the user before moving on: e.g. "That's [X] days — most dive trips are a few days to a week. Did you mean a shorter window, or is that correct for your plans?" If they confirm they want the long trip, keep those dates in COLLECTED. For trips of 21 days or less, you may briefly repeat the dates in your reply, then ask for the next field. Do not ask the user to type YYYY-MM-DD.
 
-Weight (step 7): If the user gives only a number for weight (e.g. "200" or "85") with no unit (kg or lbs), do NOT assume a unit. Ask for clarification: "Is that [number] kg or [number] lbs?" and only set weightUnit in COLLECTED when they specify. Never record weight as e.g. "200 kg" unless the user said "kg" or "lbs".
+Optional steps: For desiredCourses and desiredDiveSites, omit these keys from COLLECTED until you have asked that step and the user answered (or use a non-empty array when they picked courses/sites). Do not send empty arrays [] for those fields until the user has completed that step — otherwise use omit or null in COLLECTED if your JSON schema allows.
+
+Weight (step 8): If the user gives only a number for weight (e.g. "200" or "85") with no unit (kg or lbs), do NOT assume a unit. Ask for clarification: "Is that [number] kg or [number] lbs?" and only set weightUnit in COLLECTED when they specify. Never record weight as e.g. "200 kg" unless the user said "kg" or "lbs".
 
 Be warm and conversational. When you have collected all required fields (name, email, startDate, endDate, numberOfDivers, and for each diver: name, certificationNumber, numberOfDives, height, heightUnit, weight, weightUnit; gear can be empty array), output exactly:
 
@@ -261,14 +270,15 @@ The JSON must have this shape (use empty string "" for missing optional fields, 
       "gear": [{"gearType": "string"}]
     }
   ],
+  "desiredCourses": ["string"],
   "desiredDiveSites": ["string"]
 }
 
 Do not output BOOKING_READY until every required field is present. If the user corrects something, update and continue.
 
 After every reply you must output the current collected state so we can pre-fill the form. IMPORTANT: always write your full conversational reply first (ask the next question or confirm — e.g. "Thanks, got the gear. What's Diver 2's full name?"). Then on a new line, output only:
-COLLECTED: {"name":"...","email":"...","startDate":"...","endDate":"...","numberOfDivers":1,"divers":[...],"desiredDiveSites":[...]}
-Never put COLLECTED in the middle of your reply — your message to the user must come first, then COLLECTED on its own line. Include every field you have collected so far (use empty string or [] for not yet collected). Use the exact same JSON shape as BOOKING_READY. Always proceed to the next empty field question (e.g. after dates ask for dive sites; after dive sites ask for number of divers; after gear for last diver, output BOOKING_READY).`
+COLLECTED: {"name":"...","email":"...","startDate":"...","endDate":"...","numberOfDivers":1,"divers":[...],"desiredCourses":[...],"desiredDiveSites":[...]}
+Never put COLLECTED in the middle of your reply — your message to the user must come first, then COLLECTED on its own line. Include every field you have collected so far (use empty string or [] for not yet collected). Use the exact same JSON shape as BOOKING_READY. Always proceed to the next empty field question (e.g. after dates ask for courses; after courses ask for dive sites; after dive sites ask for number of divers; after gear for last diver, output BOOKING_READY).`
 }
 
 export default defineEventHandler(async (event) => {
@@ -387,10 +397,12 @@ export default defineEventHandler(async (event) => {
         ? bodyBookingPayload
         : (wantsToBook && bodyPendingPayload ? { ...bodyPendingPayload, shopId: resolvedShop.id } : bodyBookingPayload)
 
-      const [diveSites, rentalEquipment] = await Promise.all([
+      const [diveSites, rentalEquipment, courses] = await Promise.all([
         getDiveSitesForShop(supabaseUrl, supabaseKey, resolvedShop.id),
-        getRentalEquipmentForShop(supabaseUrl, supabaseKey, resolvedShop.id)
+        getRentalEquipmentForShop(supabaseUrl, supabaseKey, resolvedShop.id),
+        getCoursesForShop(supabaseUrl, supabaseKey, resolvedShop.id)
       ])
+      const courseNames = courses.map(c => c.name)
       const diveSiteNames = diveSites.map(d => d.name)
       const rentalEquipmentNames = rentalEquipment.map(e => e.name)
 
@@ -413,6 +425,7 @@ export default defineEventHandler(async (event) => {
             { label: 'Pick a new diveshop', value: 'Pick a new diveshop' }
           ],
           rentalEquipmentOptions: undefined,
+          courseOptions: undefined,
           diveSiteOptions: undefined
         }
       }
@@ -451,15 +464,23 @@ export default defineEventHandler(async (event) => {
             }]
           }
         }
-        const initialPayload = { shopId: resolvedShop.id, ...base, ...fromProfile }
-        const nextHint = getNextBookingStep(initialPayload)
+        let initialPayload: BookingPayload = { shopId: resolvedShop.id, ...base, ...fromProfile }
+        let nextHint = getNextBookingStep(initialPayload)
+        if (nextHint?.step === 'courses' && courses.length === 0) {
+          initialPayload = { ...initialPayload, desiredCourses: [] }
+          nextHint = getNextBookingStep(initialPayload)
+        }
         const firstMessage = nextHint?.step === 'name'
           ? `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`
           : nextHint?.step === 'email'
             ? `Great — I'll help you book with ${resolvedShop.business_name}. What email should we use for the booking?`
             : nextHint?.step === 'dates'
               ? `Great — I'll help you book with ${resolvedShop.business_name}. What are your trip dates (start and end)?`
-              : `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`
+              : nextHint?.step === 'courses'
+                ? `Great — I'll help you book with ${resolvedShop.business_name}. Are you interested in any courses on this trip?`
+                : nextHint?.step === 'diveSites'
+                  ? `Great — I'll help you book with ${resolvedShop.business_name}. Which dive sites would you like to dive?`
+                  : `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`
         return {
           success: true,
           intent: 'booking' as const,
@@ -470,12 +491,15 @@ export default defineEventHandler(async (event) => {
           bookingPayload: initialPayload,
           selectableOptions: undefined,
           rentalEquipmentOptions: undefined,
-          diveSiteOptions: undefined
+          courseOptions: getNextBookingStep(initialPayload)?.step === 'courses' && courses.length > 0 ? courses : undefined,
+          diveSiteOptions: getNextBookingStep(initialPayload)?.step === 'diveSites' && diveSites.length > 0 ? diveSites : undefined
         }
       }
 
       const addGearOptions = (payload: BookingPayload) =>
         getNextBookingStep(payload)?.step === 'gear' ? rentalEquipment : undefined
+      const addCourseOptions = (payload: BookingPayload) =>
+        getNextBookingStep(payload)?.step === 'courses' && courses.length > 0 ? courses : undefined
       const addDiveSiteOptions = (payload: BookingPayload) =>
         getNextBookingStep(payload)?.step === 'diveSites' && diveSites.length > 0 ? diveSites : undefined
       /** When true, frontend hides "None" for gear step (user already selected at least one item). */
@@ -489,7 +513,10 @@ export default defineEventHandler(async (event) => {
       const messageAsksForGear = (text: string) => /rental gear|need any.*gear|available rental|more gear|next detail/i.test(text)
       const messageAsksForGearSelection = (text: string) => /what would .+ like to rent|pick from the options below/i.test(text)
       const messageAsksForDiveSites = (text: string) => /dive sites|which sites|sites would you like|available sites|pick one or more/i.test(text)
+      const messageAsksForCourses = (text: string) => /courses|which course|interested in any course|certification course/i.test(text)
       const messageIsAddAnotherGear = (text: string) => /add another or say/i.test(text)
+      /** Copy for courses step (same UX as dive sites). */
+      const COURSES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.'
       /** Copy for dive-sites step: makes multi-select and "done" obvious so users don't think one tap commits. */
       const DIVE_SITES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.'
 
@@ -508,6 +535,8 @@ export default defineEventHandler(async (event) => {
             pendingBookingPayload: undefined,
             selectableOptions: undefined,
             rentalEquipmentOptions: undefined,
+            courseOptions: undefined,
+
             diveSiteOptions: undefined
           }
         }
@@ -556,6 +585,8 @@ export default defineEventHandler(async (event) => {
             bookingPayload: initialPayload,
             selectableOptions: undefined,
             rentalEquipmentOptions: undefined,
+            courseOptions: undefined,
+
             diveSiteOptions: undefined
           }
         }
@@ -564,6 +595,46 @@ export default defineEventHandler(async (event) => {
       // Fast path: simple field (name, email, certification, height, weight, "none" or single gear item) → instant template response, no LLM
       if (continuingBooking && bookingPayload) {
         const msgTrim = message.trim()
+        // Orchestrator: parse trip dates without LLM so payload + form stay aligned and steps are not skipped
+        if (getNextBookingStep(bookingPayload)?.step === 'dates') {
+          const parsedDates = tryParseTripDatesFromMessage(msgTrim)
+          if (parsedDates) {
+            let p: BookingPayload = {
+              ...bookingPayload,
+              startDate: parsedDates.startDate,
+              endDate: parsedDates.endDate
+            }
+            if (getNextBookingStep(p)?.step === 'courses' && courses.length === 0) {
+              p = { ...p, desiredCourses: [] }
+            }
+            if (getNextBookingStep(p)?.step === 'diveSites' && diveSites.length === 0) {
+              p = { ...p, desiredDiveSites: [] }
+            }
+            const nextAfter = getNextBookingStep(p)
+            let msg = `Got it — diving ${parsedDates.startDate} to ${parsedDates.endDate}.`
+            if (nextAfter?.step === 'courses' && courses.length > 0) {
+              msg = `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}. Are you interested in any courses on this trip? ${COURSES_LINE}`
+            } else if (nextAfter?.step === 'diveSites' && diveSites.length > 0) {
+              msg = `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}. Which dive sites would you like to dive? ${DIVE_SITES_LINE}`
+            } else if (nextAfter?.step === 'numberOfDivers') {
+              msg = `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}. How many divers should we book for?`
+            }
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message: msg,
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              bookingPayload: p,
+              selectableOptions: undefined,
+              rentalEquipmentOptions: addGearOptions(p),
+              hideNoneForGear: hideNoneForGear(p),
+              courseOptions: addCourseOptions(p),
+              diveSiteOptions: addDiveSiteOptions(p)
+            }
+          }
+        }
         // User already saw the booking-ready prompt and is confirming — never re-ask for gear; return ready so client can submit
         const lastAssistantContent = history?.filter(m => m.role === 'assistant').pop()?.content ?? ''
         const lastWasReadyToSend = /(?:ready to send your booking request|can i send the booking request)/i.test(lastAssistantContent)
@@ -597,6 +668,8 @@ export default defineEventHandler(async (event) => {
             pendingBookingPayload: payloadWithoutShop,
             selectableOptions: undefined,
             rentalEquipmentOptions: undefined,
+            courseOptions: undefined,
+
             diveSiteOptions: undefined
           }
         }
@@ -629,6 +702,7 @@ export default defineEventHandler(async (event) => {
                 selectableOptions: undefined,
                 rentalEquipmentOptions: rentalEquipment.length > 0 ? rentalEquipment : undefined,
                 hideNoneForGear: hideNoneForGear(p),
+                courseOptions: undefined,
                 diveSiteOptions: undefined
               }
             }
@@ -645,6 +719,8 @@ export default defineEventHandler(async (event) => {
               bookingPayload: p,
               selectableOptions: undefined,
               rentalEquipmentOptions: undefined,
+              courseOptions: undefined,
+
               diveSiteOptions: undefined
             }
           }
@@ -660,6 +736,8 @@ export default defineEventHandler(async (event) => {
               bookingPayload: p,
               selectableOptions: undefined,
               rentalEquipmentOptions: undefined,
+              courseOptions: undefined,
+
               diveSiteOptions: undefined
             }
           }
@@ -676,6 +754,8 @@ export default defineEventHandler(async (event) => {
               bookingPayload: p,
               selectableOptions: undefined,
               rentalEquipmentOptions: undefined,
+              courseOptions: undefined,
+
               diveSiteOptions: undefined
             }
           }
@@ -694,6 +774,7 @@ export default defineEventHandler(async (event) => {
               selectableOptions: undefined,
               rentalEquipmentOptions: rentalEquipment.length > 0 ? rentalEquipment : undefined,
               hideNoneForGear: hideNoneForGear(p),
+              courseOptions: undefined,
               diveSiteOptions: undefined
             }
           }
@@ -711,6 +792,7 @@ export default defineEventHandler(async (event) => {
               selectableOptions: undefined,
               rentalEquipmentOptions: rentalEquipment.length > 0 ? rentalEquipment : undefined,
               hideNoneForGear: hideNoneForGear(p),
+              courseOptions: undefined,
               diveSiteOptions: undefined
             }
           }
@@ -736,6 +818,8 @@ export default defineEventHandler(async (event) => {
               bookingPayload: p,
               selectableOptions: undefined,
               rentalEquipmentOptions: undefined,
+              courseOptions: undefined,
+
               diveSiteOptions: undefined
             }
           }
@@ -767,16 +851,82 @@ export default defineEventHandler(async (event) => {
                 bookingPayload: p,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: gearChipsForFast,
-                hideNoneForGear: hideNoneForGear(p)
+                hideNoneForGear: hideNoneForGear(p),
+                courseOptions: undefined,
+                diveSiteOptions: undefined
+              }
+            }
+          }
+        }
+        // Courses fast path before dive sites (so "done" on courses isn't conflated). No LLM.
+        let workingPayload = bookingPayload
+        if (getNextBookingStep(workingPayload)?.step === 'courses' && courses.length === 0) {
+          workingPayload = { ...workingPayload, desiredCourses: [] }
+        }
+        const nextStepForCourse = getNextBookingStep(workingPayload)
+        if (nextStepForCourse?.step === 'courses' && courses.length > 0) {
+          const matchedCourse = courses.find(c => c.name.toLowerCase() === msgTrim.toLowerCase())
+          if (matchedCourse) {
+            const list = [...(workingPayload.desiredCourses || [])]
+            if (!list.includes(matchedCourse.name)) list.push(matchedCourse.name)
+            const p = { ...workingPayload, desiredCourses: list }
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message: `Added ${matchedCourse.name}. ${COURSES_LINE}`,
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              bookingPayload: p,
+              selectableOptions: undefined,
+              rentalEquipmentOptions: undefined,
+              courseOptions: courses,
+              diveSiteOptions: undefined
+            }
+          }
+          const isDoneCourse = /^(done|that's all|finish|that's it|no more)$/i.test(msgTrim)
+          const isAnyCourse = /^any$/i.test(msgTrim)
+          if (isDoneCourse || isAnyCourse) {
+            const p = { ...workingPayload, desiredCourses: isAnyCourse ? [] : (workingPayload.desiredCourses || []) }
+            const nextAfterCourses = getNextBookingStep(p)
+            if (nextAfterCourses?.step === 'diveSites') {
+              if (diveSites.length === 0) {
+                const p2 = { ...p, desiredDiveSites: [] }
+                return {
+                  success: true,
+                  intent: 'booking' as const,
+                  bookingReady: false,
+                  message: 'No specific dive sites for this shop. How many divers will be on the trip?',
+                  shopId: resolvedShop.id,
+                  shopName: resolvedShop.business_name,
+                  bookingPayload: p2,
+                  selectableOptions: undefined,
+                  rentalEquipmentOptions: undefined,
+                  courseOptions: undefined,
+                  diveSiteOptions: undefined
+                }
+              }
+              return {
+                success: true,
+                intent: 'booking' as const,
+                bookingReady: false,
+                message: `Which dive sites would you like to dive? ${DIVE_SITES_LINE}`,
+                shopId: resolvedShop.id,
+                shopName: resolvedShop.business_name,
+                bookingPayload: p,
+                selectableOptions: undefined,
+                rentalEquipmentOptions: undefined,
+                courseOptions: undefined,
+                diveSiteOptions: diveSites
               }
             }
           }
         }
         // Dive-sites fast path first (so "done" on dive sites isn't caught by gear "done"). No LLM.
-        const nextStepForDive = getNextBookingStep(bookingPayload)
+        const nextStepForDive = getNextBookingStep(workingPayload)
         if (nextStepForDive?.step === 'diveSites') {
           if (diveSites.length === 0) {
-            const p = { ...bookingPayload, desiredDiveSites: [] }
+            const p = { ...workingPayload, desiredDiveSites: [] }
             return {
               success: true,
               intent: 'booking' as const,
@@ -787,6 +937,7 @@ export default defineEventHandler(async (event) => {
               bookingPayload: p,
               selectableOptions: undefined,
               rentalEquipmentOptions: undefined,
+              courseOptions: undefined,
               diveSiteOptions: undefined
             }
           }
@@ -794,9 +945,9 @@ export default defineEventHandler(async (event) => {
         if (nextStepForDive?.step === 'diveSites' && diveSites.length > 0) {
           const matchedSite = diveSiteNames.find(n => n.toLowerCase() === msgTrim.toLowerCase())
           if (matchedSite) {
-            const sites = [...(bookingPayload.desiredDiveSites || [])]
+            const sites = [...(workingPayload.desiredDiveSites || [])]
             if (!sites.includes(matchedSite)) sites.push(matchedSite)
-            const p = { ...bookingPayload, desiredDiveSites: sites }
+            const p = { ...workingPayload, desiredDiveSites: sites }
             return {
               success: true,
               intent: 'booking' as const,
@@ -807,13 +958,14 @@ export default defineEventHandler(async (event) => {
               bookingPayload: p,
               selectableOptions: undefined,
               rentalEquipmentOptions: undefined,
+              courseOptions: undefined,
               diveSiteOptions: diveSites
             }
           }
           const isDone = /^(done|that's all|finish|that's it|no more)$/i.test(msgTrim)
           const isAny = /^any$/i.test(msgTrim)
           if (isDone || isAny) {
-            const p = { ...bookingPayload, desiredDiveSites: isAny ? [] : (bookingPayload.desiredDiveSites || []) }
+            const p = { ...workingPayload, desiredDiveSites: isAny ? [] : (workingPayload.desiredDiveSites || []) }
             return {
               success: true,
               intent: 'booking' as const,
@@ -824,6 +976,7 @@ export default defineEventHandler(async (event) => {
               bookingPayload: p,
               selectableOptions: undefined,
               rentalEquipmentOptions: undefined,
+              courseOptions: undefined,
               diveSiteOptions: undefined
             }
           }
@@ -849,6 +1002,8 @@ export default defineEventHandler(async (event) => {
             bookingPayload: payloadWithGearAsked,
             selectableOptions: [{ label: 'No — just these divers', value: 'no' }, { label: 'Yes — add another', value: 'yes' }],
             rentalEquipmentOptions: undefined,
+            courseOptions: undefined,
+
             diveSiteOptions: undefined
           }
         }
@@ -902,6 +1057,8 @@ export default defineEventHandler(async (event) => {
               bookingPayload: p,
               selectableOptions,
               rentalEquipmentOptions: undefined,
+              courseOptions: undefined,
+
               diveSiteOptions: undefined
             }
           }
@@ -919,7 +1076,9 @@ export default defineEventHandler(async (event) => {
               bookingPayload: fastUnit.payload,
               selectableOptions: undefined,
               rentalEquipmentOptions: addGearOptions(fastUnit.payload),
-              hideNoneForGear: hideNoneForGear(fastUnit.payload)
+              hideNoneForGear: hideNoneForGear(fastUnit.payload),
+              courseOptions: addCourseOptions(fastUnit.payload),
+              diveSiteOptions: addDiveSiteOptions(fastUnit.payload)
             }
           }
         }
@@ -976,6 +1135,7 @@ export default defineEventHandler(async (event) => {
                   { label: 'Pick a new diveshop', value: 'Pick a new diveshop' }
                 ],
                 rentalEquipmentOptions: undefined,
+                courseOptions: addCourseOptions(fast.payload),
                 diveSiteOptions: addDiveSiteOptions(fast.payload)
               }
             }
@@ -998,6 +1158,7 @@ export default defineEventHandler(async (event) => {
               selectableOptions: noRentalGearOptions ?? undefined,
               rentalEquipmentOptions: showGearChips ?? undefined,
               hideNoneForGear: hideNoneForGear(fast.payload),
+              courseOptions: addCourseOptions(fast.payload),
               diveSiteOptions: addDiveSiteOptions(fast.payload)
             }
           }
@@ -1005,7 +1166,7 @@ export default defineEventHandler(async (event) => {
       }
 
       const nextStepHint = bookingPayload ? getNextBookingStep(bookingPayload) : null
-      const systemPrompt = buildBookingSystemPrompt(resolvedShop.business_name, diveSiteNames, bookingPayload, nextStepHint, rentalEquipmentNames)
+      const systemPrompt = buildBookingSystemPrompt(resolvedShop.business_name, courseNames, diveSiteNames, bookingPayload, nextStepHint, rentalEquipmentNames)
       const messages = [
         { role: 'system' as const, content: systemPrompt },
         ...(history || []),
@@ -1045,7 +1206,17 @@ export default defineEventHandler(async (event) => {
           }
           const jsonStr = aiMessage.slice(braceStart, end + 1)
           try {
-            const payload = JSON.parse(jsonStr) as BookingPayload
+            const raw = JSON.parse(jsonStr) as BookingPayload
+            raw.shopId = raw.shopId || resolvedShop.id
+            const payload = mergeCollectedIntoBookingPayload(
+              bookingPayload as BookingPayloadLocal | undefined,
+              raw as BookingPayloadLocal,
+              {
+                shopCourseCount: courses.length,
+                shopDiveSiteCount: diveSites.length,
+                userMessage: message
+              }
+            ) as BookingPayload
             payload.shopId = payload.shopId || resolvedShop.id
             return {
               success: true,
@@ -1077,13 +1248,16 @@ export default defineEventHandler(async (event) => {
           try {
             const parsed = JSON.parse(aiMessage.slice(braceStart, end + 1)) as BookingPayload
             parsed.shopId = parsed.shopId || resolvedShop.id
-            // Mark gear as "asked" for divers that have gear in COLLECTED so we don't re-ask
-            if (parsed.divers && Array.isArray(parsed.divers)) {
-              for (const d of parsed.divers) {
-                if (d && 'gear' in d) (d as BookingDiver).gearAsked = true
+            collectedPayload = mergeCollectedIntoBookingPayload(
+              bookingPayload as BookingPayloadLocal | undefined,
+              parsed as BookingPayloadLocal,
+              {
+                shopCourseCount: courses.length,
+                shopDiveSiteCount: diveSites.length,
+                userMessage: message
               }
-            }
-            collectedPayload = parsed
+            ) as BookingPayload
+            collectedPayload.shopId = collectedPayload.shopId || resolvedShop.id
           } catch (e) {
             // ignore parse error, keep previous payload
           }
@@ -1164,6 +1338,13 @@ export default defineEventHandler(async (event) => {
           .replace(/\s{2,}/g, ' ')
           .trim()
       }
+      const courseChips = courses.length > 0 ? courses : undefined
+      if (courseChips && messageAsksForCourses(replyMessage)) {
+        replyMessage = replyMessage
+          .replace(/\s*(Our )?available courses are:[^.]*\./gi, '')
+          .replace(/\s{2,}/g, ' ')
+          .trim()
+      }
       const diveSiteChips = diveSites.length > 0 ? diveSites : undefined
       // When showing dive site chips, strip redundant listing of site names from message (chips already show them)
       if (diveSiteChips && messageAsksForDiveSites(replyMessage)) {
@@ -1175,11 +1356,17 @@ export default defineEventHandler(async (event) => {
           .replace(/\s{2,}/g, ' ')
           .trim()
       }
+      const willShowCourseOptions = (collectedPayload ? addCourseOptions(collectedPayload) : undefined) ||
+        (messageAsksForCourses(replyMessage) && courseChips ? courseChips : undefined) ||
+        (bookingPayload && addCourseOptions(bookingPayload) ? courseChips : undefined)
+      if (willShowCourseOptions && replyMessage === genericFallback) {
+        replyMessage = 'Are you interested in any courses on this trip?'
+      }
       // If we're showing dive site chips but the message is still the generic fallback (e.g. AI reply was stripped to empty), show context
       const willShowDiveSiteOptions = (collectedPayload ? addDiveSiteOptions(collectedPayload) : undefined) ||
         (messageAsksForDiveSites(replyMessage) && diveSiteChips ? diveSiteChips : undefined) ||
         (bookingPayload && addDiveSiteOptions(bookingPayload) ? diveSiteChips : undefined)
-      if (willShowDiveSiteOptions && replyMessage === genericFallback) {
+      if (willShowDiveSiteOptions && replyMessage === genericFallback && !willShowCourseOptions) {
         replyMessage = 'Which dive sites would you like to dive?'
       }
       // Same for gear: if next step is gear and we're showing gear chips but message was stripped, ask for rental gear
@@ -1209,6 +1396,8 @@ export default defineEventHandler(async (event) => {
             { label: 'Pick a new diveshop', value: 'Pick a new diveshop' }
           ],
           rentalEquipmentOptions: undefined,
+          courseOptions: undefined,
+
           diveSiteOptions: undefined
         }
       }
@@ -1227,6 +1416,9 @@ export default defineEventHandler(async (event) => {
         selectableOptions: undefined,
         rentalEquipmentOptions: finalGearOptions && (Array.isArray(finalGearOptions) ? finalGearOptions.length > 0 : true) ? finalGearOptions : undefined,
         hideNoneForGear: hideNoneForGear(collectedPayload ?? bookingPayload),
+        courseOptions: (collectedPayload ? addCourseOptions(collectedPayload) : undefined) ||
+          (messageAsksForCourses(replyMessage) && courses.length > 0 ? courses : undefined) ||
+          (bookingPayload && addCourseOptions(bookingPayload) ? courses : undefined),
         diveSiteOptions: (collectedPayload ? addDiveSiteOptions(collectedPayload) : undefined) ||
           (messageAsksForDiveSites(replyMessage) && diveSiteChips ? diveSiteChips : undefined) ||
           (bookingPayload && addDiveSiteOptions(bookingPayload) ? diveSiteChips : undefined)
@@ -1377,7 +1569,7 @@ Do not include a MESSAGE. Just return the FILTERS.`
     }
 
     // Trip-type first: show chips immediately (no AI call) so user doesn't see "typing..."
-    const tripTypePattern = /\b(liveaboard|resort|day trips?|i prefer a liveaboard|i prefer a resort|just day trips?)\b/i
+    const tripTypePattern = /\b(liveaboard|resort|day trips?|dive shops?|i prefer a liveaboard|i prefer a resort|i prefer dive shops|just day trips?)\b/i
     const tripTypeChoiceInMessage = tripTypePattern.test(message)
     // Session memory: if the user already specified a trip type in any earlier message, don't ask again
     const userAlreadySpecifiedTripType = (history || []).some(
@@ -1488,7 +1680,7 @@ Conversation so far: ${conversationContext}
 
 RULES:
 - Do NOT repeat or rephrase any question that already appears in the conversation above.
-- Pick ONE topic that has NOT been asked yet: location (city/area), trip type (liveaboard/resort/day trips), minimum rating, or language.
+- Pick ONE topic that has NOT been asked yet: location (city/area), trip type (liveaboard/resort/dive shops), minimum rating, or language.
 - One short question only.`
 
     const [dbResult, broadeningResult, followUpAiMessage] = await Promise.all([
@@ -1604,11 +1796,11 @@ RULES:
           followUpMessage = followUpAiMessage || 'Would you like to narrow by location, rating, or something else?'
           selectableOptions = followUpAiMessage ? [] : []
         } else {
-          followUpMessage = followUpAiMessage || 'Would you prefer a liveaboard, a resort, or day trips?'
+          followUpMessage = followUpAiMessage || 'Would you prefer dive shops, a liveaboard, or a resort?'
           selectableOptions = followUpAiMessage ? [] : [
+            { label: 'Dive Shop', value: 'I prefer dive shops' },
             { label: 'Liveaboard', value: 'I prefer a liveaboard' },
-            { label: 'Resort', value: 'I prefer a resort' },
-            { label: 'Day trips', value: 'Just day trips' }
+            { label: 'Resort', value: 'I prefer a resort' }
           ]
         }
       }

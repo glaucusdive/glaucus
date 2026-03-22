@@ -47,6 +47,20 @@
           </div>
         </fieldset>
 
+        <!-- Courses (from Supabase for this shop) -->
+        <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2">
+          <label class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Courses (optional)</label>
+          <div v-if="coursesLoading" class="px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">Loading courses…</div>
+          <div v-else-if="courses.length === 0" class="px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">No courses listed for this shop.</div>
+          <div v-else class="flex flex-col gap-1 px-2">
+            <label v-for="course in courses" :key="course.id"
+              class="flex items-center gap-2 p-1 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 rounded-sm cursor-pointer">
+              <input type="checkbox" :value="course.name" v-model="formData.desiredCourses" class="cursor-pointer" />
+              <span class="text-sm text-zinc-900 dark:text-white">{{ course.name }}</span>
+            </label>
+          </div>
+        </fieldset>
+
         <!-- Desired Dive Sites (from Supabase for this shop) -->
         <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2">
           <label class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Desired Dive Sites (optional)</label>
@@ -256,6 +270,7 @@ const formData = ref({
   ],
   startDate: '',
   endDate: '',
+  desiredCourses: [],
   desiredDiveSites: []
 })
 
@@ -344,12 +359,14 @@ function applyInitialPayload () {
   } else {
     updateDiversCount(numDivers)
   }
+  if (Array.isArray(p.desiredCourses)) formData.value.desiredCourses = p.desiredCourses.filter(Boolean)
   if (Array.isArray(p.desiredDiveSites)) formData.value.desiredDiveSites = p.desiredDiveSites.filter(Boolean)
 }
 
 onMounted(async () => {
   await applyProfilePrefill()
   applyInitialPayload()
+  fetchCoursesForShop()
   fetchDiveSitesForShop()
 })
 watch(() => props.initialPayload, () => applyInitialPayload(), { deep: true })
@@ -410,8 +427,44 @@ const gearTypes = [
   'Tank'
 ]
 
+// Courses for this shop (diveshop_courses -> courses)
+const courses = ref<{ id: string; name: string }[]>([])
+const coursesLoading = ref(true)
+
+async function fetchCoursesForShop () {
+  if (!props.shopId) {
+    coursesLoading.value = false
+    return
+  }
+  try {
+    const { data, error } = await client
+      .from('diveshop_courses')
+      .select('course_id, courses(id, certification_name)')
+      .eq('diveshop_id', props.shopId)
+    if (error || !data) {
+      courses.value = []
+      return
+    }
+    const seen = new Set<string>()
+    const list: { id: string; name: string }[] = []
+    for (const row of data as Record<string, unknown>[]) {
+      const raw = row.courses
+      const c = (Array.isArray(raw) ? raw[0] : raw) as { id?: string; certification_name?: string | null } | null | undefined
+      if (!c?.id) continue
+      const name = (c.certification_name || '').trim()
+      if (!name || seen.has(name.toLowerCase())) continue
+      seen.add(name.toLowerCase())
+      list.push({ id: c.id, name })
+    }
+    list.sort((a, b) => a.name.localeCompare(b.name))
+    courses.value = list
+  } finally {
+    coursesLoading.value = false
+  }
+}
+
 // Dive sites for this shop (from Supabase: diveshop_dive_sites -> dive_sites)
-const diveSites = ref([])
+const diveSites = ref<{ id: string; name: string }[]>([])
 const diveSitesLoading = ref(true)
 
 async function fetchDiveSitesForShop () {
@@ -428,9 +481,14 @@ async function fetchDiveSitesForShop () {
       diveSites.value = []
       return
     }
-    diveSites.value = data
-      .filter(row => row.dive_sites != null)
-      .map(row => ({ id: row.dive_sites.id, name: row.dive_sites.name }))
+    const sites: { id: string; name: string }[] = []
+    for (const row of data as Record<string, unknown>[]) {
+      const raw = row.dive_sites
+      const ds = (Array.isArray(raw) ? raw[0] : raw) as { id?: string; name?: string | null } | null | undefined
+      if (!ds?.id || ds.name == null || String(ds.name).trim() === '') continue
+      sites.push({ id: ds.id, name: String(ds.name) })
+    }
+    diveSites.value = sites
   } finally {
     diveSitesLoading.value = false
   }
@@ -448,6 +506,7 @@ function buildPayload () {
     email: formData.value.email,
     startDate: formData.value.startDate,
     endDate: formData.value.endDate,
+    desiredCourses: formData.value.desiredCourses || [],
     desiredDiveSites: formData.value.desiredDiveSites || [],
     divers: formData.value.divers.map(d => ({
       name: d.name,
