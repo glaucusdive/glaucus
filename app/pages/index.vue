@@ -987,9 +987,9 @@ const sendMessage = async (messageText, displayText) => {
               certificationNumber: d.certificationNumber ?? '',
               numberOfDives: d.numberOfDives ?? '',
               height: d.height ?? '',
-              heightUnit: d.heightUnit ?? 'cm',
+              heightUnit: d.heightUnit ?? 'ft-in',
               weight: d.weight ?? '',
-              weightUnit: d.weightUnit ?? 'kg',
+              weightUnit: d.weightUnit ?? 'lbs',
               gear: (d.gear ?? []).map(g => ({ gearType: g?.gearType ?? '' }))
             }))
           }

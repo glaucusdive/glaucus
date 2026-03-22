@@ -138,8 +138,8 @@
               <label :for="`diver-weight-unit-${index}`" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Unit</label>
               <select :id="`diver-weight-unit-${index}`" v-model="diver.weightUnit"
                 class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-tight outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">
-                <option value="kg">kg</option>
                 <option value="lbs">lbs</option>
+                <option value="kg">kg</option>
               </select>
             </div>
           </div>
@@ -262,9 +262,9 @@ const formData = ref({
       certificationNumber: '', 
       numberOfDives: '',
       height: '',
-      heightUnit: 'cm',
+      heightUnit: 'ft-in',
       weight: '',
-      weightUnit: 'kg',
+      weightUnit: 'lbs',
       gear: []
     }
   ],
@@ -300,7 +300,7 @@ async function applyProfilePrefill () {
       }))
       while (formData.value.divers.length < formData.value.numberOfDivers) {
         formData.value.divers.push({
-          name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: []
+          name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: []
         })
       }
     } else {
@@ -353,7 +353,7 @@ function applyInitialPayload () {
     })
     while (formData.value.divers.length < numDivers) {
       formData.value.divers.push({
-        name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: []
+        name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: []
       })
     }
   } else {
@@ -390,9 +390,9 @@ const updateDiversCount = (count) => {
         certificationNumber: '',
         numberOfDives: '',
         height: '',
-        heightUnit: 'cm',
+        heightUnit: 'ft-in',
         weight: '',
-        weightUnit: 'kg',
+        weightUnit: 'lbs',
         gear: []
       })
     }

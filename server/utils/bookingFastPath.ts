@@ -64,8 +64,8 @@ export function getNextBookingStep (payload: BookingPayloadLocal): NextStepResul
   const divers = ensureDivers(payload)
   for (let j = divers.length; j < numDivers; j++) {
     divers.push({
-      name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm',
-      weight: '', weightUnit: 'kg', gear: []
+      name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in',
+      weight: '', weightUnit: 'lbs', gear: []
     })
   }
   payload.divers = divers
@@ -117,8 +117,8 @@ export interface ProfileDiverPrefill {
 }
 
 function profileDiverToPayload (d: ProfileDiverPrefill): BookingDiverLocal {
-  const hu = (d.height_unit || 'cm').toLowerCase()
-  const wu = (d.weight_unit || 'kg').toLowerCase()
+  const hu = (d.height_unit || 'ft-in').toLowerCase()
+  const wu = (d.weight_unit || 'lbs').toLowerCase()
   return {
     name: d.name ?? '',
     certificationNumber: d.certification_number ?? '',
@@ -176,8 +176,8 @@ export function tryFastPath (
       p.numberOfDivers = n
       while (ensureDivers(p).length < n) {
         (p.divers = p.divers || []).push({
-          name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm',
-          weight: '', weightUnit: 'kg', gear: []
+          name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in',
+          weight: '', weightUnit: 'lbs', gear: []
         })
       }
       const useProfileChips = defaultDiversList
@@ -208,7 +208,7 @@ export function tryFastPath (
           const namePart = useMatch[1].trim()
           const match = defaultDiversListForMatch.find((d) => (d.name || '').trim().toLowerCase() === namePart.toLowerCase())
           if (match) {
-            if (!divers[i]) divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: [] })
+            if (!divers[i]) divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
             const filled = profileDiverToPayload(match)
             divers[i] = { ...filled, gearAsked: divers[i].gearAsked }
             p.divers = divers
@@ -234,7 +234,7 @@ export function tryFastPath (
       if (i === 0 && p.name && String(p.name).trim()) {
         const affirm = /\b(yes|yeah|yep|yup|correct|that's me|that is me|i am|i'm one|sure|please do)\b/i.test(msg) || /^\s*y\s*$/i.test(msg)
         if (affirm) {
-          if (!divers[0]) divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: [] })
+          if (!divers[0]) divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
           divers[0].name = String(p.name).trim()
           p.divers = divers
           const name = divers[0].name
@@ -245,7 +245,7 @@ export function tryFastPath (
       if (looksLikeSingleName(msg)) {
         return { message: `Could you give me Diver ${i + 1}'s full name (first and last)?`, payload: p }
       }
-      if (!divers[i]) divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: [] })
+      if (!divers[i]) divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
       divers[i].name = msg
       p.divers = divers
       return { message: `Thanks — ${msg}, got it. What is ${msg}'s certification number?`, payload: p }
@@ -264,7 +264,7 @@ export function tryFastPath (
       divers[i].numberOfDives = num
       p.divers = divers
       const n = divers[i].name || 'They'
-      return { message: `Thanks — got ${n}'s dive count as ${num}. What's ${n}'s height? Please include the unit (cm or ft-in).`, payload: p }
+      return { message: `Thanks — got ${n}'s dive count as ${num}. What's ${n}'s height? Please include the unit (ft-in or cm).`, payload: p }
     }
     case 'height': {
       if (!divers[i]) return null
@@ -275,7 +275,7 @@ export function tryFastPath (
       divers[i].heightUnit = unit
       p.divers = divers
       const n = divers[i].name || 'They'
-      return { message: `Thanks — I've recorded ${n}'s height as ${value} ${unit === 'ft-in' ? 'ft-in' : 'cm'}. What's ${n}'s weight? Please include the unit (kg or lbs).`, payload: p }
+      return { message: `Thanks — I've recorded ${n}'s height as ${value} ${unit === 'ft-in' ? 'ft-in' : 'cm'}. What's ${n}'s weight? Please include the unit (lbs or kg).`, payload: p }
     }
     case 'weight': {
       if (!divers[i]) return null
@@ -299,11 +299,11 @@ export function tryFastPath (
         p.divers = divers
         const n = divers[i].name || 'They'
         return {
-          message: `Is that ${value} kg or ${value} lbs?`,
+          message: `Is that ${value} lbs or ${value} kg?`,
           payload: p,
           selectableOptions: [
-            { label: 'kg', value: 'kg' },
-            { label: 'lbs', value: 'lbs' }
+            { label: 'lbs', value: 'lbs' },
+            { label: 'kg', value: 'kg' }
           ]
         }
       }

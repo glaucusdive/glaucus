@@ -43,9 +43,9 @@ function normalizeExisting (existingRaw: unknown[]): ProfileDefaultDiverRow[] {
       certification_number: String(r.certification_number ?? ''),
       number_of_dives: String(r.number_of_dives ?? ''),
       height: String(r.height ?? ''),
-      height_unit: String(r.height_unit ?? 'cm'),
+      height_unit: String(r.height_unit ?? 'ft-in'),
       weight: String(r.weight ?? ''),
-      weight_unit: String(r.weight_unit ?? 'kg'),
+      weight_unit: String(r.weight_unit ?? 'lbs'),
       gear,
       times_used: typeof r.times_used === 'number' ? r.times_used : undefined
     }
@@ -58,9 +58,9 @@ export function diverRowFromBookingLike (d: BookingDiverLike): Omit<ProfileDefau
     certification_number: d.certificationNumber ?? '',
     number_of_dives: d.numberOfDives ?? '',
     height: d.height ?? '',
-    height_unit: d.heightUnit ?? 'cm',
+    height_unit: d.heightUnit ?? 'ft-in',
     weight: d.weight ?? '',
-    weight_unit: d.weightUnit ?? 'kg',
+    weight_unit: d.weightUnit ?? 'lbs',
     gear: (d.gear || []).map((g) => ({ gear_type: g?.gearType ?? '' }))
   }
 }
@@ -90,9 +90,9 @@ function mergeDiverIncremental (
     certification_number: pickField(prev?.certification_number, next.certification_number),
     number_of_dives: pickField(prev?.number_of_dives, next.number_of_dives),
     height: pickField(prev?.height, next.height),
-    height_unit: pickField(prev?.height_unit, next.height_unit) || 'cm',
+    height_unit: pickField(prev?.height_unit, next.height_unit) || 'ft-in',
     weight: pickField(prev?.weight, next.weight),
-    weight_unit: pickField(prev?.weight_unit, next.weight_unit) || 'kg',
+    weight_unit: pickField(prev?.weight_unit, next.weight_unit) || 'lbs',
     gear: mergeGear(prev?.gear, next.gear),
     times_used: prev?.times_used ?? 0
   }

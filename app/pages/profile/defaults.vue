@@ -56,8 +56,8 @@
                 <div class="w-24 shrink-0">
                   <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">Unit</label>
                   <select v-model="diver.heightUnit" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-tight text-zinc-900 dark:text-white">
-                    <option value="cm">cm</option>
                     <option value="ft-in">ft & in</option>
+                    <option value="cm">cm</option>
                   </select>
                 </div>
               </div>
@@ -69,8 +69,8 @@
                 <div class="w-24 shrink-0">
                   <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">Unit</label>
                   <select v-model="diver.weightUnit" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-tight text-zinc-900 dark:text-white">
-                    <option value="kg">kg</option>
                     <option value="lbs">lbs</option>
+                    <option value="kg">kg</option>
                   </select>
                 </div>
               </div>
@@ -193,9 +193,9 @@ function addDefaultDiver () {
     certificationNumber: '',
     numberOfDives: '',
     height: '',
-    heightUnit: 'cm',
+    heightUnit: 'ft-in',
     weight: '',
-    weightUnit: 'kg',
+    weightUnit: 'lbs',
     gear: []
   })
 }
@@ -223,7 +223,7 @@ async function loadDefaults () {
   try {
     const { data, error } = await client.from('profiles').select('display_name, email, default_divers').single()
     if (error || !data) {
-      if (defaultsForm.value.divers.length === 0) defaultsForm.value.divers = [{ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: [] }]
+      if (defaultsForm.value.divers.length === 0) defaultsForm.value.divers = [{ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] }]
       return
     }
     defaultsForm.value.name = (data.display_name ?? '') as string
@@ -232,7 +232,7 @@ async function loadDefaults () {
     if (Array.isArray(dd) && dd.length > 0) {
       mapProfileDiverRowsToForm(dd as Array<Record<string, unknown>>)
     } else if (defaultsForm.value.divers.length === 0) {
-      defaultsForm.value.divers = [{ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'cm', weight: '', weightUnit: 'kg', gear: [] }]
+      defaultsForm.value.divers = [{ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] }]
     }
   } finally {
     if (import.meta.client && user.value?.id) {
@@ -256,9 +256,9 @@ async function saveDefaults () {
       certification_number: d.certificationNumber ?? '',
       number_of_dives: d.numberOfDives ?? '',
       height: d.height ?? '',
-      height_unit: d.heightUnit ?? 'cm',
+      height_unit: d.heightUnit ?? 'ft-in',
       weight: d.weight ?? '',
-      weight_unit: d.weightUnit ?? 'kg',
+      weight_unit: d.weightUnit ?? 'lbs',
       gear: (d.gear || []).map(g => ({ gear_type: (g as { gearType?: string }).gearType ?? '' })),
       ...(typeof d.times_used === 'number' ? { times_used: d.times_used } : {})
     }))
