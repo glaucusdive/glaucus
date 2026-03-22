@@ -7,7 +7,7 @@
         <div class="p-1 flex items-center">
           <div
             class="hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-sm min-w-8 w-full h-full flex items-center justify-center cursor-pointer px-1"
-            @click="handleClose">
+            @click.stop="handleClose">
             <ChevronLeft v-if="!showCloseButton" class="w-4 h-4 cq:lg:w-6 cq:lg:h-6 text-zinc-900 dark:text-white" />
             <X v-else class="w-4 h-4 cq:lg:w-6 cq:lg:h-6 text-zinc-900 dark:text-white" />
           </div>
@@ -288,7 +288,7 @@ import { MapPin, Phone, Mail, Globe, ChevronLeft, X } from 'lucide-vue-next'
 import CardInfo from '~/components/CardInfo.vue'
 import CardReview from '~/components/CardReview.vue'
 import CardReviewEmpty from '~/components/CardReviewEmpty.vue'
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useDrawer } from '~/composables/useDrawer'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/composables/useSupabase'
@@ -331,6 +331,27 @@ const props = defineProps({
 
 // Emits
 const emit = defineEmits(['close'])
+
+/** Ignore close clicks until the opening pointer gesture has fully finished (see index nextTick open). */
+const canEmitClose = ref(false)
+let closeEnableTimer = null
+function scheduleCloseEnabled () {
+  canEmitClose.value = false
+  if (closeEnableTimer) clearTimeout(closeEnableTimer)
+  closeEnableTimer = setTimeout(() => {
+    closeEnableTimer = null
+    canEmitClose.value = true
+  }, 400)
+}
+onMounted(() => {
+  scheduleCloseEnabled()
+})
+watch(() => props.shopLookup, () => {
+  scheduleCloseEnabled()
+})
+onUnmounted(() => {
+  if (closeEnableTimer) clearTimeout(closeEnableTimer)
+})
 
 // Read more/read less state
 const showFullDetails = ref(false)
@@ -415,6 +436,7 @@ const contactInfo = computed(() => ({
 
 // Handle close/back action
 const handleClose = () => {
+  if (!canEmitClose.value) return
   emit('close')
 }
 

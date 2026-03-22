@@ -4294,7 +4294,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "0741fc78-00e5-4748-89d3-3738f6127562",
+    "buildId": "57d38a33-a307-44e8-8ea9-5b3684caa617",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -5521,6 +5521,292 @@ async function getRentalEquipmentForShop(supabaseUrl, supabaseKey, shopId) {
   return data.filter((row) => row.rental_equipment != null && row.rental_equipment.name !== "None listed" && row.rental_equipment.name !== "Yes (unspecified gear)").map((row) => ({ id: row.rental_equipment.id, name: row.rental_equipment.name }));
 }
 
+const SHOP_INFO_PREFIX = "shop_info:";
+const CATEGORY_VALUES = [
+  "dive_sites",
+  "courses",
+  "rental_gear",
+  "gases",
+  "contact",
+  "overview"
+];
+function parseShopInfoChip(trimmed) {
+  const t = trimmed.toLowerCase();
+  if (!t.startsWith(SHOP_INFO_PREFIX)) return null;
+  const rest = t.slice(SHOP_INFO_PREFIX.length).trim();
+  if (CATEGORY_VALUES.includes(rest)) return rest;
+  return null;
+}
+function wantsShopInfoMenu(trimmed) {
+  const t = trimmed;
+  if (t.length > 220) return false;
+  return /\b(information|info)\s+(on|about)\s+(this|that)\s+(dive\s+)?shop\b/i.test(t) || /\bshare\s+(some\s+)?(information|info)\s+on\s+(this|that)\s+(dive\s+)?shop\b/i.test(t) || /\btell\s+me\s+(more\s+)?about\s+(this|that)\s+(dive\s+)?shop\b/i.test(t) || /\btell\s+me\s+about\s+this\s+liveaboard\b/i.test(t) || /\btell\s+me\s+about\s+this\s+resort\b/i.test(t) || /\b(information|info)\s+on\s+this\s+liveaboard\b/i.test(t) || /\bwhat\s+can\s+you\s+tell\s+me\s+about\s+(this|that|it|the\s+shop)\b/i.test(t) || /\bmore\s+details?\s+(on|about)\s+(this|that|it|the\s+shop)\b/i.test(t) || /\b(anything|something)\s+about\s+(this|that)\s+(shop|liveaboard|place)\b/i.test(t);
+}
+function parseDirectCategory(trimmed) {
+  const t = trimmed;
+  if (t.length > 100) return null;
+  if (/^what\s+dive\s+sites\b/i.test(t) || /^which\s+dive\s+sites\b/i.test(t) || /^list\s+(the\s+)?dive\s+sites\b/i.test(t)) {
+    return "dive_sites";
+  }
+  if (/^what\s+courses\b/i.test(t) || /^do\s+they\s+offer\s+courses\b/i.test(t) || /^list\s+(the\s+)?courses\b/i.test(t)) {
+    return "courses";
+  }
+  if (/^rental\s+gear\b/i.test(t) || /^what\s+rental\b/i.test(t)) return "rental_gear";
+  if (/^what\s+gases\b/i.test(t) || /^nitrox\b/i.test(t)) return "gases";
+  if (/^contact\s+(info|information)?\s*$/i.test(t) || /^phone\s*(number)?\s*$/i.test(t) || /^how\s+do\s+i\s+(call|contact)\b/i.test(t)) {
+    return "contact";
+  }
+  if (/^overview\b/i.test(t) || /^summary\b/i.test(t) || /^basics?\b/i.test(t)) return "overview";
+  return null;
+}
+function resolveTargetShopIdForInfo(selectedShopId, lastShops) {
+  var _a;
+  if (selectedShopId && typeof selectedShopId === "string" && selectedShopId.trim()) {
+    return selectedShopId.trim();
+  }
+  if ((lastShops == null ? void 0 : lastShops.length) === 1 && ((_a = lastShops[0]) == null ? void 0 : _a.id)) return lastShops[0].id;
+  return null;
+}
+async function fetchShopInfoBundle(supabaseUrl, supabaseKey, shopId) {
+  const client = createClient(supabaseUrl, supabaseKey);
+  const { data, error } = await client.from("diveshops").select(`
+      id,
+      business_name,
+      email,
+      phone,
+      website_url,
+      notes,
+      locale,
+      google_rating,
+      country:countries(name),
+      region:regions(name),
+      diveshop_courses(courses(certification_name, depth_limit, description, course_level:course_levels(name), agency:agencies(name))),
+      diveshop_rental_equipment(rental_equipment(name)),
+      diveshop_gases(gases(name)),
+      diveshop_dive_sites(dive_sites(name, dive_site_type:dive_site_types(name)))
+    `).eq("id", shopId).single();
+  if (error || !data) return null;
+  return data;
+}
+function clip(s, max) {
+  const t = s.trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1).trim()}\u2026`;
+}
+function formatOverview(shop) {
+  var _a, _b, _c;
+  const lines = [];
+  const loc = [shop.locale, (_a = shop.region) == null ? void 0 : _a.name, (_b = shop.country) == null ? void 0 : _b.name].filter(Boolean).join(", ");
+  if (loc) lines.push(`- Location: ${loc}`);
+  if (shop.google_rating != null) lines.push(`- Google rating: ${shop.google_rating}`);
+  if ((_c = shop.notes) == null ? void 0 : _c.trim()) {
+    lines.push(`- Notes: ${clip(shop.notes.replace(/\s+/g, " "), 500)}`);
+  }
+  if (lines.length === 0) {
+    lines.push("- We only have the basics on file; pick **Contact** for phone/email/website if available.");
+  }
+  return lines.join("\n");
+}
+function formatContact(shop) {
+  var _a, _b, _c;
+  const lines = [];
+  if ((_a = shop.phone) == null ? void 0 : _a.trim()) lines.push(`- Phone: ${shop.phone.trim()}`);
+  if ((_b = shop.email) == null ? void 0 : _b.trim()) lines.push(`- Email: ${shop.email.trim()}`);
+  if ((_c = shop.website_url) == null ? void 0 : _c.trim()) lines.push(`- Website: ${shop.website_url.trim()}`);
+  if (lines.length === 0) {
+    return "We don't have contact details listed for this shop in our database \u2014 check their website or search results for links.";
+  }
+  return lines.join("\n");
+}
+function formatDiveSites(shop) {
+  var _a, _b, _c, _d;
+  const rows = (_a = shop.diveshop_dive_sites) != null ? _a : [];
+  const sites = [];
+  for (const row of rows) {
+    const ds = row.dive_sites;
+    if (!((_b = ds == null ? void 0 : ds.name) == null ? void 0 : _b.trim())) continue;
+    const type = (_d = (_c = ds.dive_site_type) == null ? void 0 : _c.name) == null ? void 0 : _d.trim();
+    sites.push(type ? `- ${ds.name.trim()} (${type})` : `- ${ds.name.trim()}`);
+  }
+  if (sites.length === 0) {
+    return "We don't have dive sites listed for this shop in our database \u2014 check their website or contact them.";
+  }
+  return sites.join("\n");
+}
+function formatCourses(shop) {
+  var _a, _b, _c, _d, _e, _f, _g, _h;
+  const rows = (_a = shop.diveshop_courses) != null ? _a : [];
+  const lines = [];
+  for (const row of rows) {
+    const c = row.courses;
+    if (!((_b = c == null ? void 0 : c.certification_name) == null ? void 0 : _b.trim())) continue;
+    const agency = (_d = (_c = c.agency) == null ? void 0 : _c.name) == null ? void 0 : _d.trim();
+    const level = (_f = (_e = c.course_level) == null ? void 0 : _e.name) == null ? void 0 : _f.trim();
+    const depth = (_g = c.depth_limit) == null ? void 0 : _g.trim();
+    const bits = [c.certification_name.trim()];
+    if (agency) bits.push(`(${agency})`);
+    let line = `- ${bits.join(" ")}`;
+    if (level) line += ` \u2014 ${level}`;
+    if (depth) line += ` \u2014 depth: ${depth}`;
+    if ((_h = c.description) == null ? void 0 : _h.trim()) {
+      line += ` \u2014 ${clip(c.description.replace(/\s+/g, " "), 120)}`;
+    }
+    lines.push(line);
+  }
+  if (lines.length === 0) {
+    return "We don't have courses listed for this shop in our database \u2014 check their website or contact them.";
+  }
+  return lines.join("\n");
+}
+function formatRentalGear(shop) {
+  var _a;
+  const rows = (_a = shop.diveshop_rental_equipment) != null ? _a : [];
+  const names = rows.map((r) => {
+    var _a2, _b;
+    return (_b = (_a2 = r.rental_equipment) == null ? void 0 : _a2.name) == null ? void 0 : _b.trim();
+  }).filter((n) => Boolean(n));
+  if (names.length === 0) {
+    return "We don't have rental gear listed for this shop in our database \u2014 check their website or contact them.";
+  }
+  return names.map((n) => `- ${n}`).join("\n");
+}
+function formatGases(shop) {
+  var _a;
+  const rows = (_a = shop.diveshop_gases) != null ? _a : [];
+  const names = rows.map((r) => {
+    var _a2, _b;
+    return (_b = (_a2 = r.gases) == null ? void 0 : _a2.name) == null ? void 0 : _b.trim();
+  }).filter((n) => Boolean(n));
+  if (names.length === 0) {
+    return "We don't have gases / mixes listed for this shop in our database \u2014 check their website or contact them.";
+  }
+  return names.map((n) => `- ${n}`).join("\n");
+}
+function formatCategory(shop, cat) {
+  switch (cat) {
+    case "overview":
+      return formatOverview(shop);
+    case "contact":
+      return formatContact(shop);
+    case "dive_sites":
+      return formatDiveSites(shop);
+    case "courses":
+      return formatCourses(shop);
+    case "rental_gear":
+      return formatRentalGear(shop);
+    case "gases":
+      return formatGases(shop);
+    default:
+      return formatOverview(shop);
+  }
+}
+function categoryHasData(shop, cat) {
+  var _a, _b, _c, _d, _e, _f, _g;
+  switch (cat) {
+    case "overview":
+      return true;
+    case "contact":
+      return Boolean(((_a = shop.phone) == null ? void 0 : _a.trim()) || ((_b = shop.email) == null ? void 0 : _b.trim()) || ((_c = shop.website_url) == null ? void 0 : _c.trim()));
+    case "dive_sites":
+      return ((_d = shop.diveshop_dive_sites) != null ? _d : []).some((r) => {
+        var _a2, _b2;
+        return (_b2 = (_a2 = r.dive_sites) == null ? void 0 : _a2.name) == null ? void 0 : _b2.trim();
+      });
+    case "courses":
+      return ((_e = shop.diveshop_courses) != null ? _e : []).some((r) => {
+        var _a2, _b2;
+        return (_b2 = (_a2 = r.courses) == null ? void 0 : _a2.certification_name) == null ? void 0 : _b2.trim();
+      });
+    case "rental_gear":
+      return ((_f = shop.diveshop_rental_equipment) != null ? _f : []).some((r) => {
+        var _a2, _b2;
+        return (_b2 = (_a2 = r.rental_equipment) == null ? void 0 : _a2.name) == null ? void 0 : _b2.trim();
+      });
+    case "gases":
+      return ((_g = shop.diveshop_gases) != null ? _g : []).some((r) => {
+        var _a2, _b2;
+        return (_b2 = (_a2 = r.gases) == null ? void 0 : _a2.name) == null ? void 0 : _b2.trim();
+      });
+    default:
+      return false;
+  }
+}
+const CHIP_LABELS = {
+  overview: "Overview",
+  contact: "Contact",
+  dive_sites: "Dive sites",
+  courses: "Courses",
+  rental_gear: "Rental gear",
+  gases: "Gases"
+};
+function buildMenuOptions(shop) {
+  const order = ["overview", "dive_sites", "courses", "rental_gear", "gases", "contact"];
+  return order.filter((cat) => categoryHasData(shop, cat)).map((cat) => ({ label: CHIP_LABELS[cat], value: `${SHOP_INFO_PREFIX}${cat}` }));
+}
+async function tryShopInfoResponse(message, selectedShopId, lastShops, supabaseUrl, supabaseKey) {
+  const trimmed = message.trim();
+  if (!trimmed) return null;
+  const fromChip = parseShopInfoChip(trimmed);
+  const fromDirect = !fromChip ? parseDirectCategory(trimmed) : null;
+  const fromMenu = !fromChip && !fromDirect && wantsShopInfoMenu(trimmed);
+  if (!fromChip && !fromDirect && !fromMenu) return null;
+  const shopId = resolveTargetShopIdForInfo(selectedShopId, lastShops);
+  if (!shopId) {
+    return {
+      success: true,
+      intent: "search",
+      message: "Tap a shop in the results (or select it in the list) so I know which one you mean \u2014 then I can share dive sites, courses, and more.",
+      shops: [],
+      totalResults: 0,
+      hasMoreResults: false,
+      filters: {},
+      selectableOptions: void 0
+    };
+  }
+  const shop = await fetchShopInfoBundle(supabaseUrl, supabaseKey, shopId);
+  if (!shop) {
+    return {
+      success: true,
+      intent: "search",
+      message: "I couldn't load that shop's details. Try selecting the shop again or start a new search.",
+      shops: [],
+      totalResults: 0,
+      hasMoreResults: false,
+      filters: {},
+      selectableOptions: void 0
+    };
+  }
+  const category = fromChip != null ? fromChip : fromDirect;
+  if (category) {
+    const body = formatCategory(shop, category);
+    const section = category === "overview" ? "Overview" : CHIP_LABELS[category];
+    const messageText = `**${shop.business_name}** \u2014 ${section}
+
+${body}`;
+    return {
+      success: true,
+      intent: "search",
+      message: messageText,
+      shops: [],
+      totalResults: 0,
+      hasMoreResults: false,
+      filters: {},
+      selectableOptions: void 0
+    };
+  }
+  const options = buildMenuOptions(shop);
+  return {
+    success: true,
+    intent: "search",
+    message: `Sure \u2014 what would you like to know about **${shop.business_name}**?`,
+    shops: [],
+    totalResults: 0,
+    hasMoreResults: false,
+    filters: {},
+    selectableOptions: options.length > 0 ? options : [{ label: "Overview", value: `${SHOP_INFO_PREFIX}overview` }]
+  };
+}
+
 const collections = {
 };
 
@@ -5784,5 +6070,5 @@ function getCacheHeaders(url) {
   return {};
 }
 
-export { $fetch$1 as $, getQuery as A, destr as B, getRouteRules as C, useNitroApp as D, serialize$1 as E, parseQuery as F, hasProtocol as G, isScriptProtocol as H, joinURL as I, withQuery as J, sanitizeStatusCode as K, withTrailingSlash as L, withoutTrailingSlash as M, klona as N, defuFn as O, getContext as P, baseURL as Q, defu as R, createHooks as S, executeAsync as T, isEqual as U, toRouteMatcher as V, createRouter$1 as W, handler as X, probeReferentPhrase as a, routeReferentFromProbe as b, clarifyResponsePayload as c, defineEventHandler as d, extractReferredEntityPhrase as e, getShopById as f, getNextBookingStep as g, handleForcedEntityClarify as h, getDiveSitesForShop as i, getRentalEquipmentForShop as j, tryFastPath as k, buildDiveShopQuery as l, createError$1 as m, getAuthUser as n, getBearerToken as o, parseEntityClarifyMessage as p, createSupabaseClientForUser as q, readBody as r, getRouterParam as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, buildAssetsURL as v, getResponseStatusText as w, getResponseStatus as x, defineRenderHandler as y, publicAssetsURL as z };
+export { $fetch$1 as $, publicAssetsURL as A, getQuery as B, destr as C, getRouteRules as D, useNitroApp as E, serialize$1 as F, parseQuery as G, hasProtocol as H, isScriptProtocol as I, joinURL as J, withQuery as K, sanitizeStatusCode as L, withTrailingSlash as M, withoutTrailingSlash as N, klona as O, defuFn as P, getContext as Q, baseURL as R, defu as S, createHooks as T, executeAsync as U, isEqual as V, toRouteMatcher as W, createRouter$1 as X, handler as Y, tryShopInfoResponse as a, probeReferentPhrase as b, clarifyResponsePayload as c, defineEventHandler as d, extractReferredEntityPhrase as e, routeReferentFromProbe as f, getNextBookingStep as g, handleForcedEntityClarify as h, getShopById as i, getDiveSitesForShop as j, getRentalEquipmentForShop as k, tryFastPath as l, buildDiveShopQuery as m, createError$1 as n, getAuthUser as o, parseEntityClarifyMessage as p, getBearerToken as q, readBody as r, createSupabaseClientForUser as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, getRouterParam as v, buildAssetsURL as w, getResponseStatusText as x, getResponseStatus as y, defineRenderHandler as z };
 //# sourceMappingURL=nitro.mjs.map

@@ -1,5 +1,5 @@
 import { defineComponent, shallowRef, h, resolveComponent, hasInjectionContext, inject, toRef, isRef, computed, toValue, getCurrentInstance, onServerPrefetch, mergeProps, unref, provide, cloneVNode, createElementBlock, ref, nextTick, defineAsyncComponent, useSSRContext, Suspense, Fragment, createApp, mergeModels, useModel, withCtx, renderSlot, createVNode, createBlock, createCommentVNode, openBlock, createTextVNode, toDisplayString, watch, resolveDynamicComponent, renderList, useId, shallowReactive, onErrorCaptured, reactive, effectScope, isReadonly, isShallow, isReactive, toRaw, useSlots, withModifiers, getCurrentScope, markRaw } from 'vue';
-import { E as serialize, F as parseQuery, m as createError$1, G as hasProtocol, H as isScriptProtocol, I as joinURL, J as withQuery, K as sanitizeStatusCode, L as withTrailingSlash, M as withoutTrailingSlash, N as klona, O as defuFn, P as getContext, $ as $fetch$1, Q as baseURL, R as defu, S as createHooks, T as executeAsync, U as isEqual, V as toRouteMatcher, W as createRouter$1 } from '../nitro/nitro.mjs';
+import { F as serialize, G as parseQuery, n as createError$1, H as hasProtocol, I as isScriptProtocol, J as joinURL, K as withQuery, L as sanitizeStatusCode, M as withTrailingSlash, N as withoutTrailingSlash, O as klona, P as defuFn, Q as getContext, $ as $fetch$1, R as baseURL, S as defu, T as createHooks, U as executeAsync, V as isEqual, W as toRouteMatcher, X as createRouter$1 } from '../nitro/nitro.mjs';
 import { RouterView, createMemoryHistory, createRouter, START_LOCATION } from 'vue-router';
 import colors from 'tailwindcss/colors';
 import { Icon, getIcon, loadIcon as loadIcon$1, _api, addAPIProvider, setCustomIconsLoader } from '@iconify/vue';
@@ -484,7 +484,7 @@ const _routes = [
   {
     name: "index",
     path: "/",
-    component: () => import('./index-BoLQCKsZ.mjs')
+    component: () => import('./index-rnfJPOXN.mjs')
   },
   {
     name: "auth",
@@ -504,7 +504,7 @@ const _routes = [
   {
     name: "shops-slug",
     path: "/shops/:slug()",
-    component: () => import('./_slug_-CU0JgyjN.mjs')
+    component: () => import('./_slug_-BGApmJ7o.mjs')
   },
   {
     name: "profile",

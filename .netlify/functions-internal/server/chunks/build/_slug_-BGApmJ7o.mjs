@@ -1,7 +1,7 @@
 import { _ as __nuxt_component_0 } from './nuxt-layout-D1ZaXXk5.mjs';
 import { computed, unref, withCtx, createVNode, createBlock, createCommentVNode, openBlock, useSSRContext } from 'vue';
 import { ssrInterpolate, ssrRenderComponent } from 'vue/server-renderer';
-import { u as useShopDetail, _ as _sfc_main$1 } from './DiveShopDetail-BwJ1FOBS.mjs';
+import { u as useShopDetail, _ as _sfc_main$1 } from './DiveShopDetail-CPmlbR4P.mjs';
 import { a as useRoute, c as useRouter, u as useHead, n as navigateTo } from './server.mjs';
 import 'vue-router';
 import 'lucide-vue-next';
@@ -98,4 +98,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=_slug_-CU0JgyjN.mjs.map
+//# sourceMappingURL=_slug_-BGApmJ7o.mjs.map

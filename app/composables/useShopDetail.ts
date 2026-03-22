@@ -1,6 +1,12 @@
 import { isDiveshopUuid } from '~/utils/shopLookup'
 
 /**
+ * When false, skips `get_nearby_shops_by_distance` and uses region-based neighbors only (avoids 400s if RPC
+ * is missing, not granted to anon/authenticated, or PostgREST signature mismatch). Set true after DB is aligned.
+ */
+const USE_NEARBY_DISTANCE_RPC = false
+
+/**
  * Fetches a single dive shop with relations and nearby shops.
  * `shopLookup` is either a public URL slug (e.g. dive-porter) or a legacy UUID.
  */
@@ -33,26 +39,32 @@ export function useShopDetail (shopLookup: string) {
       if (supabaseError || !shopRow) {
         throw createError({
           statusCode: 404,
-          statusMessage: 'Dive shop not found'
+          statusMessage: 'Dive shop not found',
+          fatal: false
         })
       }
 
       let nearbyShops: Array<{ id: string, slug: string, business_name: string, locale: string | null, country: { name: string }, distance_miles?: number }> = []
-      const { data: byDistance } = await client.rpc('get_nearby_shops_by_distance', {
-        center_shop_id: shopRow.id,
-        radius_miles: 100,
-        max_shops: 8
-      })
-      if (byDistance && Array.isArray(byDistance) && byDistance.length > 0) {
-        nearbyShops = byDistance.map((row: { id: string, slug: string, business_name: string, locale: string | null, country_name: string, distance_miles: number }) => ({
-          id: row.id,
-          slug: row.slug,
-          business_name: row.business_name,
-          locale: row.locale ?? null,
-          country: { name: row.country_name },
-          distance_miles: row.distance_miles
-        }))
-      } else {
+      let usedDistanceRpc = false
+      if (USE_NEARBY_DISTANCE_RPC) {
+        const { data: byDistance, error: nearbyRpcError } = await client.rpc('get_nearby_shops_by_distance', {
+          center_shop_id: shopRow.id,
+          radius_miles: 100,
+          max_shops: 8
+        })
+        if (!nearbyRpcError && byDistance && Array.isArray(byDistance) && byDistance.length > 0) {
+          nearbyShops = byDistance.map((row: { id: string, slug: string, business_name: string, locale: string | null, country_name: string, distance_miles: number }) => ({
+            id: row.id,
+            slug: row.slug,
+            business_name: row.business_name,
+            locale: row.locale ?? null,
+            country: { name: row.country_name },
+            distance_miles: row.distance_miles
+          }))
+          usedDistanceRpc = true
+        }
+      }
+      if (!usedDistanceRpc) {
         const regionId = shopRow.region_id
         if (regionId) {
           const { data: nearby } = await client

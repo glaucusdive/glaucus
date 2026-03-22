@@ -4,7 +4,7 @@ import { ssrRenderComponent, ssrRenderAttr, ssrRenderClass, ssrRenderList, ssrIn
 import { u as useChatSessions, c as chatRemoteHydrateTick, g as getActiveSession, _ as _imports_0, a as useSearchCache, n as notifyChatSidebarUpdated } from './userChatsRemote-uN8gvt7T.mjs';
 import { Menu, ChevronRight, ArrowUp, Star, MapPin, Languages, Globe, Phone, Mail } from 'lucide-vue-next';
 import gsap from 'gsap';
-import { _ as _sfc_main$3 } from './DiveShopDetail-BwJ1FOBS.mjs';
+import { _ as _sfc_main$3 } from './DiveShopDetail-CPmlbR4P.mjs';
 import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
 import { u as useAuth } from './useAuth-BWS1ISvo.mjs';
 import { u as useSupabase } from './useSupabase-G2CWeDSk.mjs';
@@ -313,6 +313,7 @@ function defaultDiverJsonFromFirst(first) {
     gear: first.gear
   };
 }
+const SHOP_DETAIL_CLOSE_GUARD_MS = 500;
 const _sfc_main = {
   __name: "index",
   __ssrInlineRender: true,
@@ -484,6 +485,10 @@ const _sfc_main = {
       }
     };
     const isDesktop = ref(getInitialDesktop());
+    let shopDetailCloseGuardUntil = 0;
+    function armShopDetailCloseGuard() {
+      shopDetailCloseGuardUntil = Date.now() + SHOP_DETAIL_CLOSE_GUARD_MS;
+    }
     const exampleQueries = [
       "I want to do wreck diving in Bali from Jan 1-7, 2026",
       "Looking for beginner-friendly dive shops in the Maldives",
@@ -885,9 +890,11 @@ const _sfc_main = {
       persistCache();
     };
     const handleShopSelected = (shop) => {
+      armShopDetailCloseGuard();
       selectedShopId.value = shop.id;
     };
     const handleViewDetails = (shop) => {
+      armShopDetailCloseGuard();
       selectedShopId.value = shop.id;
       mobileDetailShopId.value = shop.id;
     };
@@ -903,6 +910,7 @@ const _sfc_main = {
     function openBookingFormDrawerFromMessage(msg) {
       const shop = bookingShopForDrawer.value || (msg.shopId && msg.shopName ? { id: msg.shopId, name: msg.shopName } : null);
       if (!shop) return;
+      armShopDetailCloseGuard();
       selectedShopId.value = shop.id;
       mobileDetailShopId.value = shop.id;
       const payload = msg.payload !== void 0 ? msg.payload : msg.bookingPayload;
@@ -913,6 +921,7 @@ const _sfc_main = {
       });
     }
     const closeShopDetail = () => {
+      if (Date.now() < shopDetailCloseGuardUntil) return;
       if (isDesktop.value) {
         selectedShopId.value = null;
       }
@@ -1438,7 +1447,11 @@ const _sfc_main = {
                           onClick: closeShopDetail,
                           class: "absolute inset-0 bg-black/50"
                         }),
-                        createVNode("div", { class: "absolute right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-zinc-900 h-full overflow-hidden" }, [
+                        createVNode("div", {
+                          onClick: withModifiers(() => {
+                          }, ["stop"]),
+                          class: "absolute right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-zinc-900 h-full overflow-hidden"
+                        }, [
                           (openBlock(), createBlock(_sfc_main$1, {
                             key: mobileDetailShopId.value,
                             "shop-lookup": mobileDetailShopId.value,
@@ -1449,7 +1462,7 @@ const _sfc_main = {
                             "on-hide-form": handleHideFormFromPanel,
                             onClose: closeShopDetail
                           }, null, 8, ["shop-lookup", "is-in-booking-flow", "is-form-open"]))
-                        ])
+                        ], 8, ["onClick"])
                       ])) : createCommentVNode("", true)
                     ]),
                     _: 1
@@ -1472,4 +1485,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-BoLQCKsZ.mjs.map
+//# sourceMappingURL=index-rnfJPOXN.mjs.map

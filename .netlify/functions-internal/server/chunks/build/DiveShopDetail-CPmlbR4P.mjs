@@ -318,12 +318,12 @@ function useShopDetail(shopLookup) {
         });
       }
       let nearbyShops = [];
-      const { data: byDistance } = await client.rpc("get_nearby_shops_by_distance", {
+      const { data: byDistance, error: nearbyRpcError } = await client.rpc("get_nearby_shops_by_distance", {
         center_shop_id: shopRow.id,
         radius_miles: 100,
         max_shops: 8
       });
-      if (byDistance && Array.isArray(byDistance) && byDistance.length > 0) {
+      if (!nearbyRpcError && byDistance && Array.isArray(byDistance) && byDistance.length > 0) {
         nearbyShops = byDistance.map((row) => ({
           id: row.id,
           slug: row.slug,
@@ -802,4 +802,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as _, useShopDetail as u };
-//# sourceMappingURL=DiveShopDetail-BwJ1FOBS.mjs.map
+//# sourceMappingURL=DiveShopDetail-CPmlbR4P.mjs.map

@@ -1,4 +1,4 @@
-import { d as defineEventHandler, r as readBody, t as tryFastPathUnitOnly, g as getNextBookingStep, u as useRuntimeConfig, p as parseEntityClarifyMessage, h as handleForcedEntityClarify, c as clarifyResponsePayload, e as extractReferredEntityPhrase, a as probeReferentPhrase, b as routeReferentFromProbe, f as getShopById, i as getDiveSitesForShop, j as getRentalEquipmentForShop, k as tryFastPath, l as buildDiveShopQuery } from '../../nitro/nitro.mjs';
+import { d as defineEventHandler, r as readBody, t as tryFastPathUnitOnly, g as getNextBookingStep, u as useRuntimeConfig, a as tryShopInfoResponse, p as parseEntityClarifyMessage, h as handleForcedEntityClarify, c as clarifyResponsePayload, e as extractReferredEntityPhrase, b as probeReferentPhrase, f as routeReferentFromProbe, i as getShopById, j as getDiveSitesForShop, k as getRentalEquipmentForShop, l as tryFastPath, m as buildDiveShopQuery } from '../../nitro/nitro.mjs';
 import '@supabase/supabase-js';
 import 'node:http';
 import 'node:https';
@@ -230,6 +230,12 @@ const aiSearch_post = defineEventHandler(async (event) => {
     const openrouterApiKey = config.openrouterApiKey;
     const supabaseUrl = config.public.supabaseUrl;
     const supabaseKey = config.public.supabaseKey;
+    if (!continuingBooking && supabaseUrl && supabaseKey) {
+      const shopInfoTurn = await tryShopInfoResponse(message, selectedShopId, lastShops, supabaseUrl, supabaseKey);
+      if (shopInfoTurn) {
+        return shopInfoTurn;
+      }
+    }
     if (!openrouterApiKey) {
       throw new Error("OpenRouter API key not configured");
     }

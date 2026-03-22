@@ -12,6 +12,7 @@ import {
   probeReferentPhrase,
   routeReferentFromProbe
 } from '../utils/entityRouting'
+import { tryShopInfoResponse } from '../utils/shopInfoForChat'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -306,6 +307,13 @@ export default defineEventHandler(async (event) => {
     const openrouterApiKey = config.openrouterApiKey
     const supabaseUrl = config.public.supabaseUrl
     const supabaseKey = config.public.supabaseKey
+
+    if (!continuingBooking && supabaseUrl && supabaseKey) {
+      const shopInfoTurn = await tryShopInfoResponse(message, selectedShopId, lastShops, supabaseUrl, supabaseKey)
+      if (shopInfoTurn) {
+        return shopInfoTurn
+      }
+    }
 
     if (!openrouterApiKey) {
       throw new Error('OpenRouter API key not configured')
