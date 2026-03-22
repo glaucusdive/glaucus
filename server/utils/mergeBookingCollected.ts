@@ -36,6 +36,9 @@ export function mergeCollectedIntoBookingPayload (
   if (parsed.desiredCourses !== undefined) {
     out.desiredCourses = parsed.desiredCourses
   }
+  if (parsed.coursesSelectionComplete !== undefined) {
+    out.coursesSelectionComplete = parsed.coursesSelectionComplete
+  }
   if (parsed.desiredDiveSites !== undefined) {
     out.desiredDiveSites = parsed.desiredDiveSites
   }
@@ -89,6 +92,7 @@ function sanitizePrematureEmptyOptionals (
     const probe = { ...merged, desiredCourses: undefined as string[] | undefined }
     if (getNextBookingStep(probe)?.step === 'courses' && !userFinishedOptionalStep) {
       merged.desiredCourses = undefined
+      delete merged.coursesSelectionComplete
     }
   }
 

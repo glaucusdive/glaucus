@@ -20,6 +20,8 @@ export interface BookingPayloadLocal {
   numberOfDivers?: number
   divers?: BookingDiverLocal[]
   desiredCourses?: string[]
+  /** When false, user is still adding courses (multi-select); when true, advance past courses. Omit = legacy (desiredCourses alone completes the step). */
+  coursesSelectionComplete?: boolean
   desiredDiveSites?: string[]
 }
 
@@ -50,13 +52,20 @@ function ensureDivers (p: BookingPayloadLocal): BookingDiverLocal[] {
   return p.divers
 }
 
+/** Courses step is complete when user tapped Done (or legacy payload had desiredCourses set without the in-progress flag). */
+export function isCoursesStepComplete (p: BookingPayloadLocal): boolean {
+  if (p.coursesSelectionComplete === false) return false
+  if (p.coursesSelectionComplete === true) return true
+  return p.desiredCourses !== undefined
+}
+
 /** Determine which field we're waiting for based on current payload. Order: name → email → dates → courses → diveSites → numberOfDivers → (per-diver details + gear). */
 export function getNextBookingStep (payload: BookingPayloadLocal): NextStepResult | null {
   if (!payload) return null
   if (!payload.name || String(payload.name).trim() === '') return { step: 'name' }
   if (!payload.email || String(payload.email).trim() === '') return { step: 'email' }
   if (!payload.startDate || !payload.endDate) return { step: 'dates' }
-  if (payload.desiredCourses === undefined) return { step: 'courses' }
+  if (!isCoursesStepComplete(payload)) return { step: 'courses' }
   if (payload.desiredDiveSites === undefined) return { step: 'diveSites' }
   // Number of divers
   if (payload.numberOfDivers == null || payload.numberOfDivers < 1) return { step: 'numberOfDivers' }
@@ -123,6 +132,7 @@ export function clampBookingPayloadToNextStep (
       if (p.startDate !== undefined) delete p.startDate
       if (p.endDate !== undefined) delete p.endDate
       if (p.desiredCourses !== undefined) delete p.desiredCourses
+      if (p.coursesSelectionComplete !== undefined) delete p.coursesSelectionComplete
       if (p.desiredDiveSites !== undefined) delete p.desiredDiveSites
       if (p.numberOfDivers !== undefined) delete p.numberOfDivers
       if (p.divers?.length) p.divers = undefined
@@ -132,6 +142,7 @@ export function clampBookingPayloadToNextStep (
       if (p.startDate !== undefined) delete p.startDate
       if (p.endDate !== undefined) delete p.endDate
       if (p.desiredCourses !== undefined) delete p.desiredCourses
+      if (p.coursesSelectionComplete !== undefined) delete p.coursesSelectionComplete
       if (p.desiredDiveSites !== undefined) delete p.desiredDiveSites
       if (p.numberOfDivers !== undefined) delete p.numberOfDivers
       if (p.divers?.length) p.divers = undefined
@@ -139,6 +150,7 @@ export function clampBookingPayloadToNextStep (
     }
     if (next.step === 'dates') {
       if (p.desiredCourses !== undefined) delete p.desiredCourses
+      if (p.coursesSelectionComplete !== undefined) delete p.coursesSelectionComplete
       if (p.desiredDiveSites !== undefined) delete p.desiredDiveSites
       if (p.numberOfDivers !== undefined) delete p.numberOfDivers
       if (p.divers?.length) p.divers = undefined
@@ -147,6 +159,7 @@ export function clampBookingPayloadToNextStep (
     if (next.step === 'courses') {
       if (shopCourseCount === 0) {
         p.desiredCourses = []
+        p.coursesSelectionComplete = true
         continue
       }
       let changed = false
@@ -164,6 +177,7 @@ export function clampBookingPayloadToNextStep (
       }
       if (Array.isArray(p.desiredCourses) && p.desiredCourses.length === 0) {
         p.desiredCourses = undefined
+        if (p.coursesSelectionComplete !== undefined) delete p.coursesSelectionComplete
         changed = true
       }
       if (!changed) break

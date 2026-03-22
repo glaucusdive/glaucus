@@ -75,6 +75,7 @@ export interface BookingPayload {
   numberOfDivers?: number
   divers?: BookingDiver[]
   desiredCourses?: string[]
+  coursesSelectionComplete?: boolean
   desiredDiveSites?: string[]
 }
 
@@ -245,7 +246,7 @@ When "Already collected" includes diver details from a previous booking (e.g. nu
 
 Dates (step 3): Accept dates in any form the user gives — e.g. "July 24 2026", "24th July", "070826", "7/24/26", "next week", "April 15 to April 18". Parse them into a start and end date and put startDate and endDate in COLLECTED as YYYY-MM-DD on the same turn (the server may also parse common ranges without you). After parsing, compute the trip length in days (end minus start). Most scuba trips are a few days to a week (roughly 3–10 days). If the trip is longer than 21 days (3 weeks), question the user before moving on: e.g. "That's [X] days — most dive trips are a few days to a week. Did you mean a shorter window, or is that correct for your plans?" If they confirm they want the long trip, keep those dates in COLLECTED. For trips of 21 days or less, you may briefly repeat the dates in your reply, then ask for the next field. Do not ask the user to type YYYY-MM-DD.
 
-Optional steps: For desiredCourses and desiredDiveSites, omit these keys from COLLECTED until you have asked that step and the user answered (or use a non-empty array when they picked courses/sites). Do not send empty arrays [] for those fields until the user has completed that step — otherwise use omit or null in COLLECTED if your JSON schema allows.
+Optional steps: For desiredCourses and desiredDiveSites, omit these keys from COLLECTED until you have asked that step and the user answered (or use a non-empty array when they picked courses/sites). Do not send empty arrays [] for those fields until the user has completed that step — otherwise use omit or null in COLLECTED if your JSON schema allows. For courses: if the user is still adding courses, set coursesSelectionComplete to false; when they are done (including "any" or "none"), set coursesSelectionComplete to true.
 
 Weight (step 8): If the user gives only a number for weight (e.g. "200" or "85") with no unit (lbs or kg), do NOT assume a unit. Ask for clarification: "Is that [number] lbs or [number] kg?" and only set weightUnit in COLLECTED when they specify. Never record weight as e.g. "200 lbs" unless the user said "kg" or "lbs".
 
@@ -274,13 +275,14 @@ The JSON must have this shape (use empty string "" for missing optional fields, 
     }
   ],
   "desiredCourses": ["string"],
+  "coursesSelectionComplete": true,
   "desiredDiveSites": ["string"]
 }
 
 Do not output BOOKING_READY until every required field is present. If the user corrects something, update and continue.
 
 After every reply you must output the current collected state so we can pre-fill the form. IMPORTANT: always write your full conversational reply first (ask the next question or confirm — e.g. "Thanks, got the gear. What's Diver 2's full name?"). Then on a new line, output only:
-COLLECTED: {"name":"...","email":"...","startDate":"...","endDate":"...","numberOfDivers":1,"divers":[...],"desiredCourses":[...],"desiredDiveSites":[...]}
+COLLECTED: {"name":"...","email":"...","startDate":"...","endDate":"...","numberOfDivers":1,"divers":[...],"desiredCourses":[...],"coursesSelectionComplete":true,"desiredDiveSites":[...]}
 Never put COLLECTED in the middle of your reply — your message to the user must come first, then COLLECTED on its own line. Include every field you have collected so far (use empty string or [] for not yet collected). Use the exact same JSON shape as BOOKING_READY. Always proceed to the next empty field question (e.g. after dates ask for courses; after courses ask for dive sites; after dive sites ask for number of divers; after gear for last diver, output BOOKING_READY).`
 }
 
@@ -517,7 +519,7 @@ export default defineEventHandler(async (event) => {
             : nextHint?.step === 'dates'
               ? `Great — I'll help you book with ${resolvedShop.business_name}. What are your trip dates (start and end)?`
               : nextHint?.step === 'courses'
-                ? `Great — I'll help you book with ${resolvedShop.business_name}. Are you interested in any courses on this trip?`
+                ? coursesIntroMessage(resolvedShop.business_name, initialPayload)
                 : nextHint?.step === 'diveSites'
                   ? (initialPayload.desiredCourses?.length
                     ? `Great — I'll help you book with ${resolvedShop.business_name}. I noted ${initialPayload.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive?`
@@ -561,6 +563,18 @@ export default defineEventHandler(async (event) => {
       const COURSES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.'
       /** Copy for dive-sites step: makes multi-select and "done" obvious so users don't think one tap commits. */
       const DIVE_SITES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.'
+      const coursesIntroMessage = (shopName: string, p: BookingPayload) => {
+        if (p.desiredCourses?.length && p.coursesSelectionComplete === false) {
+          return `Great — I'll help you book with ${shopName}. I noted ${p.desiredCourses.join(', ')} from your search. ${COURSES_LINE}`
+        }
+        return `Great — I'll help you book with ${shopName}. Are you interested in any courses on this trip? ${COURSES_LINE}`
+      }
+      const coursesDateAckMessage = (p: BookingPayload, startDate: string, endDate: string) => {
+        if (p.desiredCourses?.length && p.coursesSelectionComplete === false) {
+          return `Got it — ${startDate} to ${endDate}. I noted ${p.desiredCourses.join(', ')} from your search. ${COURSES_LINE}`
+        }
+        return `Got it — ${startDate} to ${endDate}. Are you interested in any courses on this trip? ${COURSES_LINE}`
+      }
 
       // User replied to "shop has no gear" with no payload yet: Pick a new diveshop (clear shop) or Continue (start form)
       if (continuingBooking && !bookingPayload) {
@@ -615,7 +629,7 @@ export default defineEventHandler(async (event) => {
               : nextHint?.step === 'dates'
                 ? `Great — I'll help you book with ${resolvedShop.business_name}. What are your trip dates (start and end)?`
                 : nextHint?.step === 'courses'
-                  ? `Great — I'll help you book with ${resolvedShop.business_name}. Are you interested in any courses on this trip?`
+                  ? coursesIntroMessage(resolvedShop.business_name, initialPayload)
                   : nextHint?.step === 'diveSites'
                     ? (initialPayload.desiredCourses?.length
                       ? `Great — I'll help you book with ${resolvedShop.business_name}. I noted ${initialPayload.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive?`
@@ -664,7 +678,7 @@ export default defineEventHandler(async (event) => {
             const nextAfter = getNextBookingStep(p)
             let msg = `Got it — diving ${parsedDates.startDate} to ${parsedDates.endDate}.`
             if (nextAfter?.step === 'courses' && courses.length > 0) {
-              msg = `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}. Are you interested in any courses on this trip? ${COURSES_LINE}`
+              msg = coursesDateAckMessage(p, parsedDates.startDate, parsedDates.endDate)
             } else if (nextAfter?.step === 'diveSites' && diveSites.length > 0) {
               msg = p.desiredCourses?.length
                 ? `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}. I noted ${p.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive? ${DIVE_SITES_LINE}`
@@ -924,7 +938,7 @@ export default defineEventHandler(async (event) => {
           if (matchedCourse) {
             const list = [...(workingPayload.desiredCourses || [])]
             if (!list.includes(matchedCourse.name)) list.push(matchedCourse.name)
-            const p = { ...workingPayload, desiredCourses: list }
+            const p = { ...workingPayload, desiredCourses: list, coursesSelectionComplete: false }
             return {
               success: true,
               intent: 'booking' as const,
@@ -942,7 +956,11 @@ export default defineEventHandler(async (event) => {
           const isDoneCourse = /^(done|that's all|finish|that's it|no more)$/i.test(msgTrim)
           const isAnyCourse = /^any$/i.test(msgTrim)
           if (isDoneCourse || isAnyCourse) {
-            const p = { ...workingPayload, desiredCourses: isAnyCourse ? [] : (workingPayload.desiredCourses || []) }
+            const p = {
+              ...workingPayload,
+              desiredCourses: isAnyCourse ? [] : (workingPayload.desiredCourses || []),
+              coursesSelectionComplete: true
+            }
             const nextAfterCourses = getNextBookingStep(p)
             if (nextAfterCourses?.step === 'diveSites') {
               if (diveSites.length === 0) {
@@ -1419,7 +1437,10 @@ export default defineEventHandler(async (event) => {
         (messageAsksForCourses(replyMessage) && courseChips ? courseChips : undefined) ||
         (bookingPayload && addCourseOptions(bookingPayload) ? courseChips : undefined)
       if (willShowCourseOptions && replyMessage === genericFallback) {
-        replyMessage = 'Are you interested in any courses on this trip?'
+        const cp = collectedPayload ?? bookingPayload
+        replyMessage = cp?.desiredCourses?.length && cp.coursesSelectionComplete === false
+          ? `I noted ${cp.desiredCourses!.join(', ')} from your search. ${COURSES_LINE}`
+          : `Are you interested in any courses on this trip? ${COURSES_LINE}`
       }
       // If we're showing dive site chips but the message is still the generic fallback (e.g. AI reply was stripped to empty), show context
       const willShowDiveSiteOptions = (collectedPayload ? addDiveSiteOptions(collectedPayload) : undefined) ||

@@ -29,8 +29,8 @@ export function collectUserConversationTextForInference (
 }
 
 /**
- * Map earlier chat (e.g. search: "advanced certification courses") to shop course names so booking
- * does not re-ask the courses step when intent was already clear.
+ * Map earlier chat (e.g. search: "advanced certification courses") to shop course names so the
+ * courses step opens with selections pre-filled; the user still confirms with chips (Done / Any).
  */
 export function inferDesiredCourseNamesFromConversation (
   conversationText: string,
@@ -112,5 +112,5 @@ export function applyInferredCoursesToPayloadIfEligible (
   const text = collectUserConversationTextForInference(history, currentMessage)
   const inferred = inferDesiredCourseNamesFromConversation(text, courseOptions)
   if (inferred.length === 0) return payload
-  return { ...payload, desiredCourses: inferred }
+  return { ...payload, desiredCourses: inferred, coursesSelectionComplete: false }
 }
