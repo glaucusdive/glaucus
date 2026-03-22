@@ -166,7 +166,7 @@ When "Already collected" includes diver details from a previous booking (e.g. nu
 
 Dates (step 3): Accept dates in any form the user gives \u2014 e.g. "July 24 2026", "24th July", "070826", "7/24/26", "next week", "April 15 to April 18". Parse them into a start and end date and put startDate and endDate in COLLECTED as YYYY-MM-DD on the same turn (the server may also parse common ranges without you). After parsing, compute the trip length in days (end minus start). Most scuba trips are a few days to a week (roughly 3\u201310 days). If the trip is longer than 21 days (3 weeks), question the user before moving on: e.g. "That's [X] days \u2014 most dive trips are a few days to a week. Did you mean a shorter window, or is that correct for your plans?" If they confirm they want the long trip, keep those dates in COLLECTED. For trips of 21 days or less, you may briefly repeat the dates in your reply, then ask for the next field. Do not ask the user to type YYYY-MM-DD.
 
-Optional steps: For desiredCourses and desiredDiveSites, omit these keys from COLLECTED until you have asked that step and the user answered (or use a non-empty array when they picked courses/sites). Do not send empty arrays [] for those fields until the user has completed that step \u2014 otherwise use omit or null in COLLECTED if your JSON schema allows.
+Optional steps: For desiredCourses and desiredDiveSites, omit these keys from COLLECTED until you have asked that step and the user answered (or use a non-empty array when they picked courses/sites). Do not send empty arrays [] for those fields until the user has completed that step \u2014 otherwise use omit or null in COLLECTED if your JSON schema allows. For courses: if the user is still adding courses, set coursesSelectionComplete to false; when they are done (including "any" or "none"), set coursesSelectionComplete to true.
 
 Weight (step 8): If the user gives only a number for weight (e.g. "200" or "85") with no unit (lbs or kg), do NOT assume a unit. Ask for clarification: "Is that [number] lbs or [number] kg?" and only set weightUnit in COLLECTED when they specify. Never record weight as e.g. "200 lbs" unless the user said "kg" or "lbs".
 
@@ -195,17 +195,18 @@ The JSON must have this shape (use empty string "" for missing optional fields, 
     }
   ],
   "desiredCourses": ["string"],
+  "coursesSelectionComplete": true,
   "desiredDiveSites": ["string"]
 }
 
 Do not output BOOKING_READY until every required field is present. If the user corrects something, update and continue.
 
 After every reply you must output the current collected state so we can pre-fill the form. IMPORTANT: always write your full conversational reply first (ask the next question or confirm \u2014 e.g. "Thanks, got the gear. What's Diver 2's full name?"). Then on a new line, output only:
-COLLECTED: {"name":"...","email":"...","startDate":"...","endDate":"...","numberOfDivers":1,"divers":[...],"desiredCourses":[...],"desiredDiveSites":[...]}
+COLLECTED: {"name":"...","email":"...","startDate":"...","endDate":"...","numberOfDivers":1,"divers":[...],"desiredCourses":[...],"coursesSelectionComplete":true,"desiredDiveSites":[...]}
 Never put COLLECTED in the middle of your reply \u2014 your message to the user must come first, then COLLECTED on its own line. Include every field you have collected so far (use empty string or [] for not yet collected). Use the exact same JSON shape as BOOKING_READY. Always proceed to the next empty field question (e.g. after dates ask for courses; after courses ask for dive sites; after dive sites ask for number of divers; after gear for last diver, output BOOKING_READY).`;
 }
 const aiSearch_post = defineEventHandler(async (event) => {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __, _$, _aa, _ba, _ca, _da;
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __, _$, _aa, _ba, _ca, _da, _ea;
   try {
     const body = await readBody(event);
     const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill, pendingEntityClarifyPhrase } = body;
@@ -397,7 +398,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
           courses
         );
         nextHint = getNextBookingStep(initialPayload);
-        const firstMessage = (nextHint == null ? void 0 : nextHint.step) === "name" ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?` : (nextHint == null ? void 0 : nextHint.step) === "email" ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. What email should we use for the booking?` : (nextHint == null ? void 0 : nextHint.step) === "dates" ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. What are your trip dates (start and end)?` : (nextHint == null ? void 0 : nextHint.step) === "courses" ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. Are you interested in any courses on this trip?` : (nextHint == null ? void 0 : nextHint.step) === "diveSites" ? ((_e = initialPayload.desiredCourses) == null ? void 0 : _e.length) ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. I noted ${initialPayload.desiredCourses.join(", ")} from your search. Which dive sites would you like to dive?` : `Great \u2014 I'll help you book with ${resolvedShop.business_name}. Which dive sites would you like to dive?` : `Great \u2014 I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`;
+        const firstMessage = (nextHint == null ? void 0 : nextHint.step) === "name" ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?` : (nextHint == null ? void 0 : nextHint.step) === "email" ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. What email should we use for the booking?` : (nextHint == null ? void 0 : nextHint.step) === "dates" ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. What are your trip dates (start and end)?` : (nextHint == null ? void 0 : nextHint.step) === "courses" ? coursesIntroMessage(resolvedShop.business_name, initialPayload) : (nextHint == null ? void 0 : nextHint.step) === "diveSites" ? ((_e = initialPayload.desiredCourses) == null ? void 0 : _e.length) ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. I noted ${initialPayload.desiredCourses.join(", ")} from your search. Which dive sites would you like to dive?` : `Great \u2014 I'll help you book with ${resolvedShop.business_name}. Which dive sites would you like to dive?` : `Great \u2014 I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`;
         return {
           success: true,
           intent: "booking",
@@ -439,6 +440,20 @@ const aiSearch_post = defineEventHandler(async (event) => {
       const messageIsAddAnotherGear = (text) => /add another or say/i.test(text);
       const COURSES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.';
       const DIVE_SITES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.';
+      const coursesIntroMessage = (shopName, p) => {
+        var _a2;
+        if (((_a2 = p.desiredCourses) == null ? void 0 : _a2.length) && p.coursesSelectionComplete === false) {
+          return `Great \u2014 I'll help you book with ${shopName}. I noted ${p.desiredCourses.join(", ")} from your search. ${COURSES_LINE}`;
+        }
+        return `Great \u2014 I'll help you book with ${shopName}. Are you interested in any courses on this trip? ${COURSES_LINE}`;
+      };
+      const coursesDateAckMessage = (p, startDate, endDate) => {
+        var _a2;
+        if (((_a2 = p.desiredCourses) == null ? void 0 : _a2.length) && p.coursesSelectionComplete === false) {
+          return `Got it \u2014 ${startDate} to ${endDate}. I noted ${p.desiredCourses.join(", ")} from your search. ${COURSES_LINE}`;
+        }
+        return `Got it \u2014 ${startDate} to ${endDate}. Are you interested in any courses on this trip? ${COURSES_LINE}`;
+      };
       if (continuingBooking && !bookingPayload) {
         const msgTrim = message.trim();
         if (/pick a new diveshop|choose another shop|different (shop|diveshop)/i.test(msgTrim)) {
@@ -483,7 +498,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
             courses
           );
           nextHint = getNextBookingStep(initialPayload);
-          const firstMessage = (nextHint == null ? void 0 : nextHint.step) === "name" ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?` : (nextHint == null ? void 0 : nextHint.step) === "email" ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. What email should we use for the booking?` : (nextHint == null ? void 0 : nextHint.step) === "dates" ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. What are your trip dates (start and end)?` : (nextHint == null ? void 0 : nextHint.step) === "courses" ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. Are you interested in any courses on this trip?` : (nextHint == null ? void 0 : nextHint.step) === "diveSites" ? ((_j = initialPayload.desiredCourses) == null ? void 0 : _j.length) ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. I noted ${initialPayload.desiredCourses.join(", ")} from your search. Which dive sites would you like to dive?` : `Great \u2014 I'll help you book with ${resolvedShop.business_name}. Which dive sites would you like to dive?` : `Great \u2014 I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`;
+          const firstMessage = (nextHint == null ? void 0 : nextHint.step) === "name" ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?` : (nextHint == null ? void 0 : nextHint.step) === "email" ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. What email should we use for the booking?` : (nextHint == null ? void 0 : nextHint.step) === "dates" ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. What are your trip dates (start and end)?` : (nextHint == null ? void 0 : nextHint.step) === "courses" ? coursesIntroMessage(resolvedShop.business_name, initialPayload) : (nextHint == null ? void 0 : nextHint.step) === "diveSites" ? ((_j = initialPayload.desiredCourses) == null ? void 0 : _j.length) ? `Great \u2014 I'll help you book with ${resolvedShop.business_name}. I noted ${initialPayload.desiredCourses.join(", ")} from your search. Which dive sites would you like to dive?` : `Great \u2014 I'll help you book with ${resolvedShop.business_name}. Which dive sites would you like to dive?` : `Great \u2014 I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`;
           return {
             success: true,
             intent: "booking",
@@ -524,7 +539,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
             const nextAfter = getNextBookingStep(p);
             let msg = `Got it \u2014 diving ${parsedDates.startDate} to ${parsedDates.endDate}.`;
             if ((nextAfter == null ? void 0 : nextAfter.step) === "courses" && courses.length > 0) {
-              msg = `Got it \u2014 ${parsedDates.startDate} to ${parsedDates.endDate}. Are you interested in any courses on this trip? ${COURSES_LINE}`;
+              msg = coursesDateAckMessage(p, parsedDates.startDate, parsedDates.endDate);
             } else if ((nextAfter == null ? void 0 : nextAfter.step) === "diveSites" && diveSites.length > 0) {
               msg = ((_p = p.desiredCourses) == null ? void 0 : _p.length) ? `Got it \u2014 ${parsedDates.startDate} to ${parsedDates.endDate}. I noted ${p.desiredCourses.join(", ")} from your search. Which dive sites would you like to dive? ${DIVE_SITES_LINE}` : `Got it \u2014 ${parsedDates.startDate} to ${parsedDates.endDate}. Which dive sites would you like to dive? ${DIVE_SITES_LINE}`;
             } else if ((nextAfter == null ? void 0 : nextAfter.step) === "numberOfDivers") {
@@ -768,7 +783,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
           if (matchedCourse) {
             const list = [...workingPayload.desiredCourses || []];
             if (!list.includes(matchedCourse.name)) list.push(matchedCourse.name);
-            const p = { ...workingPayload, desiredCourses: list };
+            const p = { ...workingPayload, desiredCourses: list, coursesSelectionComplete: false };
             return {
               success: true,
               intent: "booking",
@@ -786,7 +801,11 @@ const aiSearch_post = defineEventHandler(async (event) => {
           const isDoneCourse = /^(done|that's all|finish|that's it|no more)$/i.test(msgTrim);
           const isAnyCourse = /^any$/i.test(msgTrim);
           if (isDoneCourse || isAnyCourse) {
-            const p = { ...workingPayload, desiredCourses: isAnyCourse ? [] : workingPayload.desiredCourses || [] };
+            const p = {
+              ...workingPayload,
+              desiredCourses: isAnyCourse ? [] : workingPayload.desiredCourses || [],
+              coursesSelectionComplete: true
+            };
             const nextAfterCourses = getNextBookingStep(p);
             if ((nextAfterCourses == null ? void 0 : nextAfterCourses.step) === "diveSites") {
               if (diveSites.length === 0) {
@@ -1250,7 +1269,8 @@ const aiSearch_post = defineEventHandler(async (event) => {
       }
       const willShowCourseOptions = (collectedPayload ? addCourseOptions(collectedPayload) : void 0) || (messageAsksForCourses(replyMessage) && courseChips ? courseChips : void 0) || (bookingPayload && addCourseOptions(bookingPayload) ? courseChips : void 0);
       if (willShowCourseOptions && replyMessage === genericFallback) {
-        replyMessage = "Are you interested in any courses on this trip?";
+        const cp = collectedPayload != null ? collectedPayload : bookingPayload;
+        replyMessage = ((_K = cp == null ? void 0 : cp.desiredCourses) == null ? void 0 : _K.length) && cp.coursesSelectionComplete === false ? `I noted ${cp.desiredCourses.join(", ")} from your search. ${COURSES_LINE}` : `Are you interested in any courses on this trip? ${COURSES_LINE}`;
       }
       const willShowDiveSiteOptions = (collectedPayload ? addDiveSiteOptions(collectedPayload) : void 0) || (messageAsksForDiveSites(replyMessage) && diveSiteChips ? diveSiteChips : void 0) || (bookingPayload && addDiveSiteOptions(bookingPayload) ? diveSiteChips : void 0);
       if (willShowDiveSiteOptions && replyMessage === genericFallback && !willShowCourseOptions) {
@@ -1258,12 +1278,12 @@ const aiSearch_post = defineEventHandler(async (event) => {
       }
       const willShowGearOptions = (collectedPayload ? addGearOptions(collectedPayload) : void 0) || (messageAsksForGear(replyMessage) && gearChips ? gearChips : void 0) || (messageIsAddAnotherGear(replyMessage) && gearChips ? gearChips : void 0) || (bookingPayload && addGearOptions(bookingPayload) && gearChips ? gearChips : void 0);
       if (willShowGearOptions && replyMessage === genericFallback) {
-        const numDivers = Math.max(1, (_L = (_K = collectedPayload != null ? collectedPayload : bookingPayload) == null ? void 0 : _K.numberOfDivers) != null ? _L : 1);
-        const divers = (_N = (_M = collectedPayload != null ? collectedPayload : bookingPayload) == null ? void 0 : _M.divers) != null ? _N : [];
-        const lastName = ((_O = divers[numDivers - 1]) == null ? void 0 : _O.name) || `Diver ${numDivers}`;
+        const numDivers = Math.max(1, (_M = (_L = collectedPayload != null ? collectedPayload : bookingPayload) == null ? void 0 : _L.numberOfDivers) != null ? _M : 1);
+        const divers = (_O = (_N = collectedPayload != null ? collectedPayload : bookingPayload) == null ? void 0 : _N.divers) != null ? _O : [];
+        const lastName = ((_P = divers[numDivers - 1]) == null ? void 0 : _P.name) || `Diver ${numDivers}`;
         replyMessage = `Does ${lastName} need any rental gear?`;
       }
-      const nextStepAfterReply = (_Q = getNextBookingStep((_P = collectedPayload != null ? collectedPayload : bookingPayload) != null ? _P : {})) == null ? void 0 : _Q.step;
+      const nextStepAfterReply = (_R = getNextBookingStep((_Q = collectedPayload != null ? collectedPayload : bookingPayload) != null ? _Q : {})) == null ? void 0 : _R.step;
       if (nextStepAfterReply === "gear" && rentalEquipment.length === 0) {
         return {
           success: true,
@@ -1343,7 +1363,7 @@ Do not include a MESSAGE. Just return the FILTERS.`;
         });
         if (filterResponse.ok) {
           const filterData = await filterResponse.json();
-          const filterMessage = ((_S = (_R = filterData.choices[0]) == null ? void 0 : _R.message) == null ? void 0 : _S.content) || "";
+          const filterMessage = ((_T = (_S = filterData.choices[0]) == null ? void 0 : _S.message) == null ? void 0 : _T.content) || "";
           const filtersMatch = filterMessage.match(/FILTERS:\s*(\{[^}]+\})/s);
           if (filtersMatch) {
             lastFilters = JSON.parse(filtersMatch[1]);
@@ -1360,10 +1380,10 @@ Do not include a MESSAGE. Just return the FILTERS.`;
               for (let i = 0; i < history.length; i++) {
                 const msg = history[i];
                 if (msg.role === "assistant") {
-                  const hasResultsPhrase = ((_T = msg.content) == null ? void 0 : _T.includes("Here are")) || ((_U = msg.content) == null ? void 0 : _U.includes("top results")) || ((_V = msg.content) == null ? void 0 : _V.includes("Here are the"));
-                  const isAskingQuestion = ((_W = msg.content) == null ? void 0 : _W.includes("What type")) || ((_X = msg.content) == null ? void 0 : _X.includes("Would you")) || ((_Y = msg.content) == null ? void 0 : _Y.trim().endsWith("?"));
+                  const hasResultsPhrase = ((_U = msg.content) == null ? void 0 : _U.includes("Here are")) || ((_V = msg.content) == null ? void 0 : _V.includes("top results")) || ((_W = msg.content) == null ? void 0 : _W.includes("Here are the"));
+                  const isAskingQuestion = ((_X = msg.content) == null ? void 0 : _X.includes("What type")) || ((_Y = msg.content) == null ? void 0 : _Y.includes("Would you")) || ((_Z = msg.content) == null ? void 0 : _Z.trim().endsWith("?"));
                   if (hasResultsPhrase && !isAskingQuestion) {
-                    const nextN = (__ = (_Z = msg.content) == null ? void 0 : _Z.match(/next (\d+)\s+results?/i)) == null ? void 0 : __[1];
+                    const nextN = (_$ = (__ = msg.content) == null ? void 0 : __.match(/next (\d+)\s+results?/i)) == null ? void 0 : _$[1];
                     const shown = nextN ? parseInt(nextN, 10) : 5;
                     alreadyShown += Number.isNaN(shown) ? 5 : shown;
                     console.log(`[AI Search] Found result message at index ${i}, shown: ${shown}, total shown: ${alreadyShown}`);
@@ -1452,7 +1472,7 @@ Do not include a MESSAGE. Just return the FILTERS.`;
       throw new Error(`OpenRouter API error: ${aiResponse.statusText}`);
     }
     const aiData = await aiResponse.json();
-    const aiMessage = ((_aa = (_$ = aiData.choices[0]) == null ? void 0 : _$.message) == null ? void 0 : _aa.content) || "";
+    const aiMessage = ((_ba = (_aa = aiData.choices[0]) == null ? void 0 : _aa.message) == null ? void 0 : _ba.content) || "";
     console.log(`[AI Search] Raw AI response:`, aiMessage);
     let filters = {};
     let conversationalMessage = aiMessage;
@@ -1475,7 +1495,7 @@ Do not include a MESSAGE. Just return the FILTERS.`;
       filters = {};
     }
     const conversationText = [...(history || []).map((h) => h.content), message].join(" ");
-    if (!((_ba = filters.country) == null ? void 0 : _ba.trim())) {
+    if (!((_ca = filters.country) == null ? void 0 : _ca.trim())) {
       const inferred = inferCountryFromConversation(conversationText);
       if (inferred) {
         filters.country = inferred;
@@ -1585,7 +1605,7 @@ RULES:
       shouldAskFollowUp = true;
       console.log(`[AI Search] Low results (${resultCount}) or user wants more options, suggesting to broaden search...`);
       followUpMessage = broadeningResult.content ? broadeningResult.content.replace(/\b1\s+dive shop(s?)\b/gi, `${resultCount} dive shop${resultCount === 1 ? "" : "s"}`).replace(/\bonly 1\b/gi, `only ${resultCount}`) : "";
-      if ((_ca = broadeningResult.suggestions) == null ? void 0 : _ca.length) {
+      if ((_da = broadeningResult.suggestions) == null ? void 0 : _da.length) {
         selectableOptions = broadeningResult.suggestions.map((s) => ({ label: s, value: s }));
       }
       if (!(followUpMessage == null ? void 0 : followUpMessage.trim())) {
@@ -1593,7 +1613,7 @@ RULES:
         if (!(selectableOptions == null ? void 0 : selectableOptions.length) && filters.country) selectableOptions = [{ label: `Search all of ${filters.country}`, value: `Search all of ${filters.country}` }];
       }
     } else if (resultCount > 5) {
-      const lastAssistantMessage = ((_da = history.filter((h) => h.role === "assistant").pop()) == null ? void 0 : _da.content) || "";
+      const lastAssistantMessage = ((_ea = history.filter((h) => h.role === "assistant").pop()) == null ? void 0 : _ea.content) || "";
       const lastWasAQuestion = lastAssistantMessage.includes("?");
       const noPreference = /\b(any|all|doesn't matter|don't care|no preference|whatever|either)\b/i.test(message);
       const looksLikeNewSearch = /\b(want to|find|search|looking for|dive in|diving in)\b/i.test(message) && message.trim().length > 25;

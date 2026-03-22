@@ -4294,7 +4294,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "cfae6b7c-57e9-48a3-b288-51bfb947021e",
+    "buildId": "2c0b8354-f583-4253-a6ab-112c2db64207",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -4830,12 +4830,17 @@ function ensureDivers(p) {
   if (!p.divers || !Array.isArray(p.divers)) return [];
   return p.divers;
 }
+function isCoursesStepComplete(p) {
+  if (p.coursesSelectionComplete === false) return false;
+  if (p.coursesSelectionComplete === true) return true;
+  return p.desiredCourses !== void 0;
+}
 function getNextBookingStep(payload) {
   if (!payload) return null;
   if (!payload.name || String(payload.name).trim() === "") return { step: "name" };
   if (!payload.email || String(payload.email).trim() === "") return { step: "email" };
   if (!payload.startDate || !payload.endDate) return { step: "dates" };
-  if (payload.desiredCourses === void 0) return { step: "courses" };
+  if (!isCoursesStepComplete(payload)) return { step: "courses" };
   if (payload.desiredDiveSites === void 0) return { step: "diveSites" };
   if (payload.numberOfDivers == null || payload.numberOfDivers < 1) return { step: "numberOfDivers" };
   const numDivers = payload.numberOfDivers;
@@ -4887,6 +4892,7 @@ function clampBookingPayloadToNextStep(payload, options) {
       if (p.startDate !== void 0) delete p.startDate;
       if (p.endDate !== void 0) delete p.endDate;
       if (p.desiredCourses !== void 0) delete p.desiredCourses;
+      if (p.coursesSelectionComplete !== void 0) delete p.coursesSelectionComplete;
       if (p.desiredDiveSites !== void 0) delete p.desiredDiveSites;
       if (p.numberOfDivers !== void 0) delete p.numberOfDivers;
       if ((_a = p.divers) == null ? void 0 : _a.length) p.divers = void 0;
@@ -4896,6 +4902,7 @@ function clampBookingPayloadToNextStep(payload, options) {
       if (p.startDate !== void 0) delete p.startDate;
       if (p.endDate !== void 0) delete p.endDate;
       if (p.desiredCourses !== void 0) delete p.desiredCourses;
+      if (p.coursesSelectionComplete !== void 0) delete p.coursesSelectionComplete;
       if (p.desiredDiveSites !== void 0) delete p.desiredDiveSites;
       if (p.numberOfDivers !== void 0) delete p.numberOfDivers;
       if ((_b = p.divers) == null ? void 0 : _b.length) p.divers = void 0;
@@ -4903,6 +4910,7 @@ function clampBookingPayloadToNextStep(payload, options) {
     }
     if (next.step === "dates") {
       if (p.desiredCourses !== void 0) delete p.desiredCourses;
+      if (p.coursesSelectionComplete !== void 0) delete p.coursesSelectionComplete;
       if (p.desiredDiveSites !== void 0) delete p.desiredDiveSites;
       if (p.numberOfDivers !== void 0) delete p.numberOfDivers;
       if ((_c = p.divers) == null ? void 0 : _c.length) p.divers = void 0;
@@ -4911,6 +4919,7 @@ function clampBookingPayloadToNextStep(payload, options) {
     if (next.step === "courses") {
       if (shopCourseCount === 0) {
         p.desiredCourses = [];
+        p.coursesSelectionComplete = true;
         continue;
       }
       let changed = false;
@@ -4928,6 +4937,7 @@ function clampBookingPayloadToNextStep(payload, options) {
       }
       if (Array.isArray(p.desiredCourses) && p.desiredCourses.length === 0) {
         p.desiredCourses = void 0;
+        if (p.coursesSelectionComplete !== void 0) delete p.coursesSelectionComplete;
         changed = true;
       }
       if (!changed) break;
@@ -5842,7 +5852,7 @@ function applyInferredCoursesToPayloadIfEligible(payload, history, currentMessag
   const text = collectUserConversationTextForInference(history, currentMessage);
   const inferred = inferDesiredCourseNamesFromConversation(text, courseOptions);
   if (inferred.length === 0) return payload;
-  return { ...payload, desiredCourses: inferred };
+  return { ...payload, desiredCourses: inferred, coursesSelectionComplete: false };
 }
 
 function mergeCollectedIntoBookingPayload(base, parsed, options) {
@@ -5866,6 +5876,9 @@ function mergeCollectedIntoBookingPayload(base, parsed, options) {
   }
   if (parsed.desiredCourses !== void 0) {
     out.desiredCourses = parsed.desiredCourses;
+  }
+  if (parsed.coursesSelectionComplete !== void 0) {
+    out.coursesSelectionComplete = parsed.coursesSelectionComplete;
   }
   if (parsed.desiredDiveSites !== void 0) {
     out.desiredDiveSites = parsed.desiredDiveSites;
@@ -5906,6 +5919,7 @@ function sanitizePrematureEmptyOptionals(merged, options) {
     const probe = { ...merged, desiredCourses: void 0 };
     if (((_a = getNextBookingStep(probe)) == null ? void 0 : _a.step) === "courses" && !userFinishedOptionalStep) {
       merged.desiredCourses = void 0;
+      delete merged.coursesSelectionComplete;
     }
   }
   if (options.shopDiveSiteCount > 0 && Array.isArray(merged.desiredDiveSites) && merged.desiredDiveSites.length === 0) {

@@ -187,7 +187,9 @@
                       :key="course.id"
                       type="button"
                       @click="sendMessage(course.name)"
-                      class="w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                      :class="isCourseChipSelected(msg, course)
+                        ? 'w-fit px-3 py-1.5 text-sm rounded-full border border-black dark:border-white bg-white dark:bg-zinc-900 text-black dark:text-white font-medium transition-colors cursor-pointer'
+                        : 'w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer'"
                     >
                       {{ course.name }}
                     </button>
@@ -835,6 +837,17 @@ function getGearChipClickValue (msg, eq) {
 }
 function isGearChipSelected (msg, eq) {
   return getSelectedGearNamesForMessage(msg).has((eq.name ?? '').toString().trim().toLowerCase())
+}
+
+/** Course chips reflect bookingPayload.desiredCourses (e.g. search-inferred prefill). */
+function getSelectedCourseNamesForMessage (msg) {
+  const payload = msg.payload ?? msg.bookingPayload
+  const list = payload?.desiredCourses
+  if (!Array.isArray(list)) return new Set()
+  return new Set(list.map(c => String(c).trim().toLowerCase()).filter(Boolean))
+}
+function isCourseChipSelected (msg, course) {
+  return getSelectedCourseNamesForMessage(msg).has((course.name ?? '').toString().trim().toLowerCase())
 }
 
 /** When user taps entity clarification chip, backend needs the original phrase from the prior assistant message. */
