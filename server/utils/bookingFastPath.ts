@@ -88,6 +88,121 @@ export function getNextBookingStep (payload: BookingPayloadLocal): NextStepResul
   return { step: 'ready' }
 }
 
+function diverHasAnyData (d: BookingDiverLocal | undefined): boolean {
+  if (!d) return false
+  return Boolean(
+    (d.name && String(d.name).trim()) ||
+    (d.certificationNumber && String(d.certificationNumber).trim()) ||
+    (d.numberOfDives !== undefined && d.numberOfDives !== null && String(d.numberOfDives).trim() !== '') ||
+    (d.height && String(d.height).trim()) ||
+    (d.weight && String(d.weight).trim()) ||
+    (d.gear && d.gear.length > 0) ||
+    d.gearAsked
+  )
+}
+
+/**
+ * Enforce canonical booking order: strip fields that cannot exist yet (e.g. profile-prefilled divers
+ * before courses/sites/numberOfDivers). Auto-fill desiredCourses/desiredDiveSites as [] when the shop
+ * has none so the step machine can advance. Safe to call on every orchestrator response.
+ */
+export function clampBookingPayloadToNextStep (
+  payload: BookingPayloadLocal | undefined | null,
+  options: { shopCourseCount: number; shopDiveSiteCount: number }
+): BookingPayloadLocal {
+  const shopCourseCount = Math.max(0, options.shopCourseCount)
+  const shopDiveSiteCount = Math.max(0, options.shopDiveSiteCount)
+  if (!payload || typeof payload !== 'object') return {}
+  const p = JSON.parse(JSON.stringify(payload)) as BookingPayloadLocal
+
+  for (let guard = 0; guard < 32; guard++) {
+    const next = getNextBookingStep(p)
+    if (!next || next.step === 'ready') break
+
+    if (next.step === 'name') {
+      if (p.startDate !== undefined) delete p.startDate
+      if (p.endDate !== undefined) delete p.endDate
+      if (p.desiredCourses !== undefined) delete p.desiredCourses
+      if (p.desiredDiveSites !== undefined) delete p.desiredDiveSites
+      if (p.numberOfDivers !== undefined) delete p.numberOfDivers
+      if (p.divers?.length) p.divers = undefined
+      continue
+    }
+    if (next.step === 'email') {
+      if (p.startDate !== undefined) delete p.startDate
+      if (p.endDate !== undefined) delete p.endDate
+      if (p.desiredCourses !== undefined) delete p.desiredCourses
+      if (p.desiredDiveSites !== undefined) delete p.desiredDiveSites
+      if (p.numberOfDivers !== undefined) delete p.numberOfDivers
+      if (p.divers?.length) p.divers = undefined
+      continue
+    }
+    if (next.step === 'dates') {
+      if (p.desiredCourses !== undefined) delete p.desiredCourses
+      if (p.desiredDiveSites !== undefined) delete p.desiredDiveSites
+      if (p.numberOfDivers !== undefined) delete p.numberOfDivers
+      if (p.divers?.length) p.divers = undefined
+      continue
+    }
+    if (next.step === 'courses') {
+      if (shopCourseCount === 0) {
+        p.desiredCourses = []
+        continue
+      }
+      let changed = false
+      if (p.desiredDiveSites !== undefined) {
+        delete p.desiredDiveSites
+        changed = true
+      }
+      if (p.numberOfDivers !== undefined) {
+        delete p.numberOfDivers
+        changed = true
+      }
+      if (p.divers?.length) {
+        p.divers = undefined
+        changed = true
+      }
+      if (Array.isArray(p.desiredCourses) && p.desiredCourses.length === 0) {
+        p.desiredCourses = undefined
+        changed = true
+      }
+      if (!changed) break
+      continue
+    }
+    if (next.step === 'diveSites') {
+      if (shopDiveSiteCount === 0) {
+        p.desiredDiveSites = []
+        continue
+      }
+      let changed = false
+      if (p.numberOfDivers !== undefined) {
+        delete p.numberOfDivers
+        changed = true
+      }
+      if (p.divers?.length) {
+        p.divers = undefined
+        changed = true
+      }
+      if (Array.isArray(p.desiredDiveSites) && p.desiredDiveSites.length === 0) {
+        p.desiredDiveSites = undefined
+        changed = true
+      }
+      if (!changed) break
+      continue
+    }
+    if (next.step === 'numberOfDivers') {
+      if (p.divers?.some((d) => diverHasAnyData(d))) {
+        p.divers = []
+        continue
+      }
+      break
+    }
+    break
+  }
+
+  return p
+}
+
 /** True if the string looks like a single name (one word) rather than a full name. */
 function looksLikeSingleName (s: string): boolean {
   const t = s.trim()

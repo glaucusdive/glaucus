@@ -4294,7 +4294,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "2940d6a0-a778-4184-b4fa-cb0444dbbb1d",
+    "buildId": "cfae6b7c-57e9-48a3-b288-51bfb947021e",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -4867,6 +4867,103 @@ function getNextBookingStep(payload) {
     }
   }
   return { step: "ready" };
+}
+function diverHasAnyData(d) {
+  if (!d) return false;
+  return Boolean(
+    d.name && String(d.name).trim() || d.certificationNumber && String(d.certificationNumber).trim() || d.numberOfDives !== void 0 && d.numberOfDives !== null && String(d.numberOfDives).trim() !== "" || d.height && String(d.height).trim() || d.weight && String(d.weight).trim() || d.gear && d.gear.length > 0 || d.gearAsked
+  );
+}
+function clampBookingPayloadToNextStep(payload, options) {
+  var _a, _b, _c, _d, _e, _f;
+  const shopCourseCount = Math.max(0, options.shopCourseCount);
+  const shopDiveSiteCount = Math.max(0, options.shopDiveSiteCount);
+  if (!payload || typeof payload !== "object") return {};
+  const p = JSON.parse(JSON.stringify(payload));
+  for (let guard = 0; guard < 32; guard++) {
+    const next = getNextBookingStep(p);
+    if (!next || next.step === "ready") break;
+    if (next.step === "name") {
+      if (p.startDate !== void 0) delete p.startDate;
+      if (p.endDate !== void 0) delete p.endDate;
+      if (p.desiredCourses !== void 0) delete p.desiredCourses;
+      if (p.desiredDiveSites !== void 0) delete p.desiredDiveSites;
+      if (p.numberOfDivers !== void 0) delete p.numberOfDivers;
+      if ((_a = p.divers) == null ? void 0 : _a.length) p.divers = void 0;
+      continue;
+    }
+    if (next.step === "email") {
+      if (p.startDate !== void 0) delete p.startDate;
+      if (p.endDate !== void 0) delete p.endDate;
+      if (p.desiredCourses !== void 0) delete p.desiredCourses;
+      if (p.desiredDiveSites !== void 0) delete p.desiredDiveSites;
+      if (p.numberOfDivers !== void 0) delete p.numberOfDivers;
+      if ((_b = p.divers) == null ? void 0 : _b.length) p.divers = void 0;
+      continue;
+    }
+    if (next.step === "dates") {
+      if (p.desiredCourses !== void 0) delete p.desiredCourses;
+      if (p.desiredDiveSites !== void 0) delete p.desiredDiveSites;
+      if (p.numberOfDivers !== void 0) delete p.numberOfDivers;
+      if ((_c = p.divers) == null ? void 0 : _c.length) p.divers = void 0;
+      continue;
+    }
+    if (next.step === "courses") {
+      if (shopCourseCount === 0) {
+        p.desiredCourses = [];
+        continue;
+      }
+      let changed = false;
+      if (p.desiredDiveSites !== void 0) {
+        delete p.desiredDiveSites;
+        changed = true;
+      }
+      if (p.numberOfDivers !== void 0) {
+        delete p.numberOfDivers;
+        changed = true;
+      }
+      if ((_d = p.divers) == null ? void 0 : _d.length) {
+        p.divers = void 0;
+        changed = true;
+      }
+      if (Array.isArray(p.desiredCourses) && p.desiredCourses.length === 0) {
+        p.desiredCourses = void 0;
+        changed = true;
+      }
+      if (!changed) break;
+      continue;
+    }
+    if (next.step === "diveSites") {
+      if (shopDiveSiteCount === 0) {
+        p.desiredDiveSites = [];
+        continue;
+      }
+      let changed = false;
+      if (p.numberOfDivers !== void 0) {
+        delete p.numberOfDivers;
+        changed = true;
+      }
+      if ((_e = p.divers) == null ? void 0 : _e.length) {
+        p.divers = void 0;
+        changed = true;
+      }
+      if (Array.isArray(p.desiredDiveSites) && p.desiredDiveSites.length === 0) {
+        p.desiredDiveSites = void 0;
+        changed = true;
+      }
+      if (!changed) break;
+      continue;
+    }
+    if (next.step === "numberOfDivers") {
+      if ((_f = p.divers) == null ? void 0 : _f.some((d) => diverHasAnyData(d))) {
+        p.divers = [];
+        continue;
+      }
+      break;
+    }
+    break;
+  }
+  return p;
 }
 function looksLikeSingleName(s) {
   const t = s.trim();
@@ -5601,6 +5698,153 @@ async function getRentalEquipmentForShop(supabaseUrl, supabaseKey, shopId) {
   return data.filter((row) => row.rental_equipment != null && row.rental_equipment.name !== "None listed" && row.rental_equipment.name !== "Yes (unspecified gear)").map((row) => ({ id: row.rental_equipment.id, name: row.rental_equipment.name }));
 }
 
+const STOP = /* @__PURE__ */ new Set([
+  "the",
+  "a",
+  "an",
+  "and",
+  "or",
+  "for",
+  "with",
+  "from",
+  "that",
+  "this",
+  "are",
+  "you",
+  "your",
+  "me",
+  "my",
+  "in",
+  "on",
+  "at",
+  "to",
+  "of",
+  "dive",
+  "diving",
+  "diveshop",
+  "shop",
+  "shops",
+  "trip",
+  "looking",
+  "want",
+  "find",
+  "show",
+  "some",
+  "any",
+  "best",
+  "good",
+  "near",
+  "nearby",
+  "offer",
+  "offers",
+  "has",
+  "have",
+  "get",
+  "need",
+  "like",
+  "would",
+  "could",
+  "can",
+  "please",
+  "help",
+  "about",
+  "top",
+  "results",
+  "mexico",
+  "liveaboard",
+  "resort",
+  "prefer",
+  "type",
+  "what",
+  "which",
+  "where",
+  "when",
+  "how",
+  "there",
+  "here",
+  "they",
+  "them"
+]);
+function tokenize(s) {
+  return s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w));
+}
+function collectUserConversationTextForInference(history, currentMessage) {
+  const parts = [];
+  for (const m of history || []) {
+    if (m.role === "user" && m.content) parts.push(String(m.content));
+  }
+  if (currentMessage == null ? void 0 : currentMessage.trim()) parts.push(currentMessage.trim());
+  return parts.join(" \n ");
+}
+function inferDesiredCourseNamesFromConversation(conversationText, courseOptions) {
+  const t = conversationText.toLowerCase();
+  const names = courseOptions.map((c) => c.name).filter(Boolean);
+  if (!t.trim() || names.length === 0) return [];
+  const matched = /* @__PURE__ */ new Set();
+  for (const n of names) {
+    const nl = n.toLowerCase();
+    if (t.includes(nl)) matched.add(n);
+  }
+  if (matched.size) return [...matched];
+  if (/\badvanced\b/.test(t) && /\b(cert|certification|course|courses|class|classes)\b/.test(t)) {
+    const adv = names.filter((n) => /\badvanced\b/i.test(n));
+    if (adv.length === 1) return adv;
+    if (adv.length > 1) {
+      const aow = adv.find((n) => /open\s*water/i.test(n));
+      return aow ? [aow] : [adv[0]];
+    }
+  }
+  const keywordRules = [
+    { pattern: /\b(nitrox|enriched\s*air|eanx)\b/i, pick: (n) => /nitrox|enriched/i.test(n) },
+    { pattern: /\badvanced\s+open\s*water\b|\baow\b/i, pick: (n) => /\badvanced\b/i.test(n) && /open\s*water/i.test(n) },
+    { pattern: /\bopen\s*water\b/i, pick: (n) => /open\s*water/i.test(n) && !/\badvanced\b/i.test(n) },
+    { pattern: /\brescue\b/i, pick: (n) => /rescue/i.test(n) },
+    { pattern: /\bwreck\b/i, pick: (n) => /wreck/i.test(n) },
+    { pattern: /\b(?:discover|try\s*scuba|intro\s*scuba)\b/i, pick: (n) => /discover|try\s*scuba|intro/i.test(n) },
+    { pattern: /\bdivemaster\b/i, pick: (n) => /divemaster/i.test(n) },
+    { pattern: /\b(?:owsi|open\s*water\s*scuba\s*instructor|scuba\s*instructor)\b/i, pick: (n) => /instructor/i.test(n) },
+    { pattern: /\bcourse\s*director\b/i, pick: (n) => /course\s*director/i.test(n) },
+    { pattern: /\bnight\s*diver\b/i, pick: (n) => /night/i.test(n) },
+    { pattern: /\bdeep\s*diver\b/i, pick: (n) => /deep/i.test(n) },
+    { pattern: /\b(?:navigation|navigator)\b/i, pick: (n) => /navigator/i.test(n) },
+    { pattern: /\bmaster\s*scuba\b/i, pick: (n) => /master\s*scuba/i.test(n) },
+    { pattern: /\bjunior\b/i, pick: (n) => /junior/i.test(n) }
+  ];
+  for (const { pattern, pick } of keywordRules) {
+    if (pattern.test(t)) {
+      const hit = names.filter(pick);
+      if (hit.length === 1) return hit;
+      if (hit.length > 1) return [hit[0]];
+    }
+  }
+  const userTokens = new Set(tokenize(t));
+  const scored = [];
+  for (const n of names) {
+    const words = tokenize(n).filter((w) => !["diver", "scuba", "course"].includes(w));
+    let score = 0;
+    for (const w of words) {
+      if (userTokens.has(w)) score++;
+    }
+    if (score >= 2) scored.push({ name: n, score });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  if (scored.length === 1) return [scored[0].name];
+  if (scored.length > 1 && scored[0].score > scored[1].score) return [scored[0].name];
+  return [];
+}
+function applyInferredCoursesToPayloadIfEligible(payload, history, currentMessage, courseOptions) {
+  var _a;
+  if (!courseOptions.length) return payload;
+  if (payload.desiredCourses !== void 0) return payload;
+  if (((_a = getNextBookingStep(payload)) == null ? void 0 : _a.step) !== "courses") return payload;
+  const msg = currentMessage.trim();
+  if (/^(any|none|done|skip|no|n\/a)\s*$/i.test(msg)) return payload;
+  const text = collectUserConversationTextForInference(history, currentMessage);
+  const inferred = inferDesiredCourseNamesFromConversation(text, courseOptions);
+  if (inferred.length === 0) return payload;
+  return { ...payload, desiredCourses: inferred };
+}
+
 function mergeCollectedIntoBookingPayload(base, parsed, options) {
   const out = base ? JSON.parse(JSON.stringify(base)) : {};
   const applyScalar = (key) => {
@@ -5649,7 +5893,10 @@ function mergeCollectedIntoBookingPayload(base, parsed, options) {
     out.divers = mergedDivers;
   }
   sanitizePrematureEmptyOptionals(out, options);
-  return out;
+  return clampBookingPayloadToNextStep(out, {
+    shopCourseCount: options.shopCourseCount,
+    shopDiveSiteCount: options.shopDiveSiteCount
+  });
 }
 function sanitizePrematureEmptyOptionals(merged, options) {
   var _a, _b;
@@ -6323,5 +6570,5 @@ function getCacheHeaders(url) {
   return {};
 }
 
-export { $fetch$1 as $, createSupabaseClientForUser as A, getRouterParam as B, buildAssetsURL as C, getResponseStatusText as D, getResponseStatus as E, defineRenderHandler as F, publicAssetsURL as G, getQuery as H, destr as I, getRouteRules as J, useNitroApp as K, serialize$1 as L, parseQuery as M, hasProtocol as N, isScriptProtocol as O, joinURL as P, withQuery as Q, sanitizeStatusCode as R, withTrailingSlash as S, withoutTrailingSlash as T, klona as U, defuFn as V, getContext as W, baseURL as X, defu as Y, createHooks as Z, executeAsync as _, tryShopInfoResponse as a, isEqual as a0, toRouteMatcher as a1, createRouter$1 as a2, handler as a3, extractBookingTargetFallback as b, clarifyResponsePayload as c, defineEventHandler as d, extractReferredEntityPhrase as e, resolveBookingTargetFromPhrase as f, getNextBookingStep as g, handleForcedEntityClarify as h, getShopById as i, probeReferentPhrase as j, routeReferentFromProbe as k, getDiveSitesForShop as l, getRentalEquipmentForShop as m, getCoursesForShop as n, tryParseTripDatesFromMessage as o, parseEntityClarifyMessage as p, tryFastPath as q, readBody as r, shopDisambiguationResponsePayload as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, mergeCollectedIntoBookingPayload as v, buildDiveShopQuery as w, createError$1 as x, getAuthUser as y, getBearerToken as z };
+export { $fetch$1 as $, getAuthUser as A, getBearerToken as B, createSupabaseClientForUser as C, getRouterParam as D, buildAssetsURL as E, getResponseStatusText as F, getResponseStatus as G, defineRenderHandler as H, publicAssetsURL as I, getQuery as J, destr as K, getRouteRules as L, useNitroApp as M, serialize$1 as N, parseQuery as O, hasProtocol as P, isScriptProtocol as Q, joinURL as R, withQuery as S, sanitizeStatusCode as T, withTrailingSlash as U, withoutTrailingSlash as V, klona as W, defuFn as X, getContext as Y, baseURL as Z, defu as _, tryShopInfoResponse as a, createHooks as a0, executeAsync as a1, isEqual as a2, toRouteMatcher as a3, createRouter$1 as a4, handler as a5, extractBookingTargetFallback as b, clarifyResponsePayload as c, defineEventHandler as d, extractReferredEntityPhrase as e, resolveBookingTargetFromPhrase as f, getNextBookingStep as g, handleForcedEntityClarify as h, getShopById as i, probeReferentPhrase as j, routeReferentFromProbe as k, getDiveSitesForShop as l, getRentalEquipmentForShop as m, getCoursesForShop as n, clampBookingPayloadToNextStep as o, parseEntityClarifyMessage as p, applyInferredCoursesToPayloadIfEligible as q, readBody as r, shopDisambiguationResponsePayload as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, tryParseTripDatesFromMessage as v, tryFastPath as w, mergeCollectedIntoBookingPayload as x, buildDiveShopQuery as y, createError$1 as z };
 //# sourceMappingURL=nitro.mjs.map

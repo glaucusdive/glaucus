@@ -1,4 +1,4 @@
-import { getNextBookingStep, type BookingDiverLocal, type BookingPayloadLocal } from './bookingFastPath'
+import { clampBookingPayloadToNextStep, getNextBookingStep, type BookingDiverLocal, type BookingPayloadLocal } from './bookingFastPath'
 
 /** Merge LLM COLLECTED JSON into the existing booking payload (never replace wholesale). */
 export function mergeCollectedIntoBookingPayload (
@@ -64,7 +64,10 @@ export function mergeCollectedIntoBookingPayload (
   }
 
   sanitizePrematureEmptyOptionals(out, options)
-  return out
+  return clampBookingPayloadToNextStep(out, {
+    shopCourseCount: options.shopCourseCount,
+    shopDiveSiteCount: options.shopDiveSiteCount
+  })
 }
 
 /**
