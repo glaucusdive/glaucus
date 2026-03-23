@@ -38,21 +38,36 @@ export default defineEventHandler(async (event) => {
       .update({ shop_id: shopId, payload, updated_at: new Date().toISOString() })
       .eq('id', draftId)
       .eq('user_id', user.id)
-      .select('id, updated_at')
-      .single()
+      .select('id')
+      .maybeSingle()
     if (error) {
       throw createError({ statusCode: 500, statusMessage: error.message })
+    }
+    if (!data?.id) {
+      throw createError({ statusCode: 404, statusMessage: 'Draft not found' })
     }
     return { draftId: data.id, updated: true }
   }
 
+  // One row per (user, shop): insert or replace existing draft for this shop
   const { data, error } = await client
     .from('booking_drafts')
-    .insert({ user_id: user.id, shop_id: shopId, payload })
+    .upsert(
+      {
+        user_id: user.id,
+        shop_id: shopId,
+        payload,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: 'user_id,shop_id' }
+    )
     .select('id')
-    .single()
+    .maybeSingle()
   if (error) {
     throw createError({ statusCode: 500, statusMessage: error.message })
+  }
+  if (!data?.id) {
+    throw createError({ statusCode: 500, statusMessage: 'Draft save returned no row' })
   }
   return { draftId: data.id, updated: false }
 })

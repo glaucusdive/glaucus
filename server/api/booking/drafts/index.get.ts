@@ -14,30 +14,33 @@ export default defineEventHandler(async (event) => {
     token
   )
 
-  const { data, error } = await client
+  const { data: rows, error } = await client
     .from('booking_drafts')
-    .select(`
-      id,
-      shop_id,
-      payload,
-      created_at,
-      updated_at,
-      diveshops ( id, business_name )
-    `)
+    .select('id, shop_id, payload, created_at, updated_at')
     .order('updated_at', { ascending: false })
 
   if (error) {
     throw createError({ statusCode: 500, statusMessage: error.message })
   }
 
-  const drafts = (data || []).map((row: Record<string, unknown>) => {
-    const shop = row.diveshops as { id: string; business_name: string } | null
-    const { diveshops: _, ...rest } = row
-    return {
-      ...rest,
-      shopName: shop?.business_name ?? null
+  const list = rows || []
+  const shopIds = [...new Set(list.map((r: { shop_id: string }) => r.shop_id).filter(Boolean))]
+  let shopNames = new Map<string, string>()
+  if (shopIds.length > 0) {
+    const { data: shops } = await client
+      .from('diveshops')
+      .select('id, business_name')
+      .in('id', shopIds)
+    for (const s of shops || []) {
+      const row = s as { id: string; business_name: string | null }
+      if (row.id) shopNames.set(row.id, row.business_name ?? '')
     }
-  })
+  }
+
+  const drafts = list.map((row: Record<string, unknown>) => ({
+    ...row,
+    shopName: shopNames.get(String(row.shop_id)) ?? null
+  }))
 
   return { drafts }
 })

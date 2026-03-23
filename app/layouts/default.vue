@@ -227,7 +227,10 @@ onMounted(() => {
       return
     }
     if (!session?.user?.id || (event !== 'SIGNED_IN' && event !== 'INITIAL_SESSION')) return
-    if (session.access_token) saveDraftFromCacheIfNeeded(session.access_token)
+    // Only promote in-flight guest booking → draft on actual sign-in, not on every INITIAL_SESSION (page load).
+    if (event === 'SIGNED_IN' && session.access_token) {
+      await saveDraftFromCacheIfNeeded(session.access_token)
+    }
     await initSignedInChatsFromRemote(client, session.user.id)
     // Mid-session sign-in (e.g. OAuth): index may already be mounted — refresh UI from merged storage.
     if (event === 'SIGNED_IN') requestChatRemoteHydrate()

@@ -1,9 +1,16 @@
 /**
  * When the user signs in after starting a booking as a guest, save the current
  * conversation's booking state from cache as a draft so they don't lose it.
+ *
+ * Dedup is per **chat session id**, not per cache timestamp: `persistActiveChatsRoot`
+ * updates `timestamp` on every message/field sync, so timestamp-based dedup caused a
+ * new DB row on every auth callback / page load. We store the server `draftId` per
+ * session and pass it back for updates.
  */
 
-const CACHE_SAVED_AS_DRAFT_KEY = 'glaucus-cache-saved-as-draft'
+import { readChatsRoot } from '~/composables/useSearchCache'
+
+const draftStorageKey = (sessionId: string) => `glaucus-cache-saved-as-draft:${sessionId}`
 
 /** Extract latest booking shopId + payload from cached messages (same shape as index.vue lastBookingPayload). */
 function extractBookingFromCache (cache: { messages?: unknown[] } | null): { shopId: string; payload: Record<string, unknown> } | null {
@@ -22,26 +29,33 @@ function extractBookingFromCache (cache: { messages?: unknown[] } | null): { sho
   return { shopId, payload }
 }
 
-/** If cache has draft-worthy booking state, save it as a draft and mark cache so we don't double-save. */
+/** If cache has draft-worthy booking state, save or update one draft for this chat session. */
 export function useSaveDraftFromCache () {
   const { getCache } = useSearchCache()
 
   async function saveDraftFromCacheIfNeeded (accessToken: string | null): Promise<boolean> {
     if (!accessToken) return false
+    const root = readChatsRoot()
+    const sessionId = root?.activeSessionId
+    if (!sessionId) return false
     const cache = getCache()
-    if (!cache?.timestamp) return false
-    const alreadySaved = typeof window !== 'undefined' && window.sessionStorage.getItem(CACHE_SAVED_AS_DRAFT_KEY) === String(cache.timestamp)
-    if (alreadySaved) return false
+    if (!cache) return false
     const booking = extractBookingFromCache(cache)
     if (!booking) return false
+    const key = draftStorageKey(sessionId)
+    const existingDraftId = typeof window !== 'undefined' ? window.sessionStorage.getItem(key) : null
     try {
-      await $fetch('/api/booking/draft', {
+      const res = await $fetch<{ draftId: string }>('/api/booking/draft', {
         method: 'POST',
-        body: { shopId: booking.shopId, payload: booking.payload },
+        body: {
+          shopId: booking.shopId,
+          payload: booking.payload,
+          ...(existingDraftId ? { draftId: existingDraftId } : {})
+        },
         headers: { Authorization: `Bearer ${accessToken}` }
       })
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem(CACHE_SAVED_AS_DRAFT_KEY, String(cache.timestamp))
+      if (typeof window !== 'undefined' && res?.draftId) {
+        window.sessionStorage.setItem(key, res.draftId)
       }
       return true
     } catch {
