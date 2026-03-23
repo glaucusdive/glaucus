@@ -4294,7 +4294,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "86888ab8-c9e9-43ad-af76-f896007d64a9",
+    "buildId": "f73aedcf-5976-4172-91a7-a85faaf28244",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -4826,6 +4826,160 @@ function publicAssetsURL(...path) {
   return path.length ? joinRelativeURL(publicBase, ...path) : publicBase;
 }
 
+function parseEditField(msg) {
+  if (/\bnumber\s+of\s+dives\b|\bdive\s+count\b/i.test(msg)) return "numberOfDives";
+  if (/\b(?:certification|cert(?:\s+number)?)\b/i.test(msg)) return "certificationNumber";
+  if (/\bweight\b/i.test(msg)) return "weight";
+  if (/\bheight\b/i.test(msg)) return "height";
+  if (/\bdives?\b/i.test(msg)) return "numberOfDives";
+  if (/\bname\b/i.test(msg) && /\bdiver\s*\d/i.test(msg)) return "name";
+  return null;
+}
+function wantsEditDiverField(msg) {
+  return /(?:^|\b)(?:could\s+you\s+)?(?:can\s+you\s+)?(?:please\s+)?(?:change|update|edit|fix|correct|need\s+to\s+change|want\s+to\s+change|i\s+need\s+to\s+change)\b/i.test(msg);
+}
+function stripTrailingFieldWord(s, field) {
+  let t = s.trim();
+  switch (field) {
+    case "numberOfDives":
+      t = t.replace(/\s+number\s+of\s+dives\s*$/i, "");
+      t = t.replace(/\s+dive\s+count\s*$/i, "");
+      t = t.replace(/\s+dives?\s*$/i, "");
+      break;
+    case "certificationNumber":
+      t = t.replace(/\s+certification\s*$/i, "");
+      t = t.replace(/\s+cert(?:\s+number)?\s*$/i, "");
+      break;
+    case "weight":
+      t = t.replace(/\s*weight\s*$/i, "");
+      break;
+    case "height":
+      t = t.replace(/\s*height\s*$/i, "");
+      break;
+    case "name":
+      t = t.replace(/\s+name\s*$/i, "");
+      break;
+  }
+  return t.trim();
+}
+function extractNameHintFromMessage(msg, field) {
+  const m = msg.match(/\b(?:for|for\s+diver|of)\s+([^.\n?!]+?)(?:\s*[.?!]|$)/i);
+  if (m == null ? void 0 : m[1]) {
+    return m[1].trim().replace(/\s*(?:please|thanks)\s*$/i, "").trim() || null;
+  }
+  const poss = msg.match(/^(.+?)'s\s+(?:weight|height|cert|certification|dives?)\b/i);
+  if (poss == null ? void 0 : poss[1]) return poss[1].trim();
+  let s = msg.trim();
+  s = s.replace(/^(?:could\s+you\s+)?(?:can\s+you\s+)?(?:please\s+)?(?:i\s+need\s+to\s+)?(?:want\s+to\s+)?(?:change|update|edit|fix|correct)\s+/i, "");
+  const afterStrip = stripTrailingFieldWord(s, field);
+  if (afterStrip !== s.trim()) {
+    return afterStrip.trim() || null;
+  }
+  return null;
+}
+function findDiverIndexByNameHint(payload, hint) {
+  var _a;
+  const h = hint.trim().toLowerCase().replace(/\s+/g, " ");
+  if (!h) return null;
+  const divers = payload.divers || [];
+  const n = Math.max(0, (_a = payload.numberOfDivers) != null ? _a : 0, divers.length);
+  for (let i = 0; i < n && i < divers.length; i++) {
+    const full = (divers[i].name || "").trim().toLowerCase();
+    if (!full) continue;
+    if (full === h || full.includes(h) || h.includes(full)) return i;
+    const hWords = h.split(/\s+/).filter((w) => w.length >= 2);
+    const fWords = full.split(/\s+/).filter((w) => w.length >= 2);
+    for (const hw of hWords) {
+      if (fWords.some((fw) => fw === hw || fw.startsWith(hw) || hw.startsWith(fw))) return i;
+    }
+  }
+  const numMatch = hint.match(/\b(?:diver\s*)?(\d+)\b/i);
+  if (numMatch) {
+    const idx = parseInt(numMatch[1], 10) - 1;
+    if (idx >= 0 && idx < n) return idx;
+  }
+  return null;
+}
+function snapshotDiverField(d, field) {
+  var _a;
+  if (!d) return "";
+  switch (field) {
+    case "weight":
+      return [d.weight, d.weightUnit].filter((x) => x && String(x).trim()).map(String).join(" ").trim();
+    case "height":
+      return [d.height, d.heightUnit].filter((x) => x && String(x).trim()).map(String).join(" ").trim();
+    case "certificationNumber":
+      return (d.certificationNumber || "").trim();
+    case "numberOfDives":
+      return String((_a = d.numberOfDives) != null ? _a : "").trim();
+    case "name":
+      return (d.name || "").trim();
+    default:
+      return "";
+  }
+}
+function clearDiverFieldOnCopy(d, field) {
+  const out = { ...d };
+  switch (field) {
+    case "weight":
+      out.weight = "";
+      out.weightUnit = "";
+      break;
+    case "height":
+      out.height = "";
+      out.heightUnit = "ft-in";
+      break;
+    case "certificationNumber":
+      out.certificationNumber = "";
+      break;
+    case "numberOfDives":
+      out.numberOfDives = "";
+      break;
+    case "name":
+      out.name = "";
+      break;
+  }
+  return out;
+}
+function buildDiverFieldEditPrompt(field, displayName, previousValue) {
+  const who = displayName || "This diver";
+  switch (field) {
+    case "weight":
+      return previousValue ? `${who}'s weight is currently ${previousValue}. What would you like to change it to? Please include the unit (lbs or kg).` : `What is ${who}'s weight? Please include the unit (lbs or kg).`;
+    case "height":
+      return previousValue ? `${who}'s height is currently ${previousValue}. What would you like to change it to? (e.g. 5'4", 5-3, or 170 cm.)` : `What is ${who}'s height? (e.g. 5'4", 5-3, or 170 cm.)`;
+    case "certificationNumber":
+      return previousValue ? `${who}'s certification number is currently ${previousValue}. What would you like to change it to?` : `What is ${who}'s certification number?`;
+    case "numberOfDives":
+      return previousValue ? `${who} has ${previousValue} dives logged. What number would you like to use instead?` : `How many dives has ${who} completed?`;
+    case "name":
+      return previousValue ? `The name on file for this diver is ${previousValue}. What should it be instead? Please give the full name (first and last).` : `What is this diver's full name?`;
+    default:
+      return `What would you like to change for ${who}?`;
+  }
+}
+function tryParseDiverFieldEditIntent(message, payload, options) {
+  var _a, _b, _c, _d;
+  const msg = message.trim();
+  if (!wantsEditDiverField(msg)) return null;
+  const field = parseEditField(msg);
+  if (!field) return null;
+  let nameHint = extractNameHintFromMessage(msg, field);
+  if (!nameHint && (options == null ? void 0 : options.currentGearDiverIndex) != null && options.currentGearDiverIndex >= 0) {
+    const onlyField = /\b(?:change|update|edit|fix)\s+(?:my\s+)?(?:the\s+)?(?:weight|height|certification|cert(?:\s+number)?|number\s+of\s+dives|dives?)\b/i.test(msg) && !/\bfor\b/i.test(msg);
+    if (onlyField || /\b(?:change|update)\s+(?:my\s+)?(?:weight|height|certification|dives?)\s*$/i.test(msg)) {
+      const idx2 = options.currentGearDiverIndex;
+      const displayName2 = (((_b = (_a = payload.divers) == null ? void 0 : _a[idx2]) == null ? void 0 : _b.name) || "").trim() || `Diver ${idx2 + 1}`;
+      return { diverIndex: idx2, field, displayName: displayName2 };
+    }
+  }
+  if (!nameHint) return null;
+  const idx = findDiverIndexByNameHint(payload, nameHint);
+  if (idx == null) return null;
+  const displayName = (((_d = (_c = payload.divers) == null ? void 0 : _c[idx]) == null ? void 0 : _d.name) || "").trim() || `Diver ${idx + 1}`;
+  return { diverIndex: idx, field, displayName };
+}
+
 function ensureDivers(p) {
   if (!p.divers || !Array.isArray(p.divers)) return [];
   return p.divers;
@@ -5033,6 +5187,81 @@ function profileDiverToPayload(d) {
     })
   };
 }
+function parseHeightInputForFastPath(raw) {
+  const msg = raw.trim();
+  if (!msg) return null;
+  const cmSuffix = msg.match(/^(\d+(?:\.\d+)?)\s*(cm|centimeters?)\s*$/i);
+  if (cmSuffix) return { value: cmSuffix[1].trim(), heightUnit: "cm" };
+  const ftInWords = msg.match(/^(\d)\s*(?:ft|feet|foot)\s*(\d{1,2})\s*(?:in|inches|")?\s*$/i);
+  if (ftInWords) {
+    const ft = parseInt(ftInWords[1], 10);
+    const inch = parseInt(ftInWords[2], 10);
+    if (ft >= 4 && ft <= 7 && inch >= 0 && inch <= 11) {
+      return { value: `${ft}'${inch}"`, heightUnit: "ft-in" };
+    }
+  }
+  const ftPrime = msg.match(/^(\d)\s*['′`´]\s*(\d{1,2})\s*(?:"|″|"|"|''|′′)?\s*$/i);
+  if (ftPrime) {
+    const ft = parseInt(ftPrime[1], 10);
+    const inch = parseInt(ftPrime[2], 10);
+    if (ft >= 4 && ft <= 7 && inch >= 0 && inch <= 11) {
+      return { value: `${ft}'${inch}"`, heightUnit: "ft-in" };
+    }
+  }
+  const hyphen = msg.match(/^(\d)\s*[-–]\s*(\d{1,2})\s*$/);
+  if (hyphen) {
+    const ft = parseInt(hyphen[1], 10);
+    const inch = parseInt(hyphen[2], 10);
+    if (ft >= 4 && ft <= 7 && inch >= 0 && inch <= 11) {
+      return { value: `${ft}'${inch}"`, heightUnit: "ft-in" };
+    }
+  }
+  const plain = msg.match(/^(\d{2,3})$/);
+  if (plain) {
+    const n = parseInt(plain[1], 10);
+    if (n >= 100 && n <= 230) return { value: String(n), heightUnit: "cm" };
+  }
+  const spaced = msg.match(/^(\d)\s+(\d{1,2})\s*$/);
+  if (spaced) {
+    const ft = parseInt(spaced[1], 10);
+    const inch = parseInt(spaced[2], 10);
+    if (ft >= 4 && ft <= 7 && inch >= 0 && inch <= 11) {
+      return { value: `${ft}'${inch}"`, heightUnit: "ft-in" };
+    }
+  }
+  return null;
+}
+function looksLikeFeetInchesHeightInput(raw) {
+  const p = parseHeightInputForFastPath(raw);
+  return p != null && p.heightUnit === "ft-in";
+}
+function followUpAfterDiverMeasurementAck(p, diverIndex, ackLine, options) {
+  var _a, _b, _c, _d;
+  const next = getNextBookingStep(p);
+  const divers = ensureDivers(p);
+  const n = (((_a = divers[diverIndex]) == null ? void 0 : _a.name) || "").trim() || `Diver ${diverIndex + 1}`;
+  if ((next == null ? void 0 : next.step) === "weight" && ((_b = next.diverIndex) != null ? _b : 0) === diverIndex) {
+    return { message: `${ackLine} What's ${n}'s weight? Please include the unit (lbs or kg).`, payload: p };
+  }
+  if ((next == null ? void 0 : next.step) === "gear" && ((_c = next.diverIndex) != null ? _c : 0) === diverIndex) {
+    const noGear = !((_d = options == null ? void 0 : options.rentalEquipmentNames) == null ? void 0 : _d.length);
+    if (noGear) {
+      return {
+        message: "This dive shop doesn't offer rental gear. Please keep that in mind or arrange gear elsewhere.",
+        payload: p,
+        selectableOptions: [
+          { label: "I understand", value: "I understand" },
+          { label: "Pick a new diveshop", value: "Pick a new diveshop" }
+        ]
+      };
+    }
+    return { message: `${ackLine} Does ${n} need any rental gear?`, payload: p };
+  }
+  if ((next == null ? void 0 : next.step) === "ready") {
+    return { message: `${ackLine} All set \u2014 ready to send your booking request.`, payload: p };
+  }
+  return { message: ackLine, payload: p };
+}
 function tryFastPath(step, userMessage, payload, _shopName, options) {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o;
   const msg = userMessage.trim();
@@ -5189,18 +5418,27 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
       divers[i].numberOfDives = num;
       p.divers = divers;
       const n = divers[i].name || "They";
-      return { message: `Thanks \u2014 got ${n}'s dive count as ${num}. What's ${n}'s height? Please include the unit (ft-in or cm).`, payload: p };
+      return { message: `Thanks \u2014 got ${n}'s dive count as ${num}. What's ${n}'s height? (e.g. 5'4", 5-3, or 170 cm \u2014 say or type the unit if it's not obvious.)`, payload: p };
     }
     case "height": {
       if (!divers[i]) return null;
-      const heightMatch = msg.match(/^([\d.'\s]+)\s*(ft[- ]?in|cm|in)?$/i);
-      const value = heightMatch && heightMatch[1] ? heightMatch[1].trim() : msg;
-      const unit = heightMatch && heightMatch[2] ? heightMatch[2].toLowerCase().includes("cm") ? "cm" : "ft-in" : /\d+\s*cm/i.test(msg) ? "cm" : "ft-in";
+      const n = divers[i].name || "They";
+      const parsed = parseHeightInputForFastPath(msg);
+      let value;
+      let unit;
+      if (parsed) {
+        value = parsed.value;
+        unit = parsed.heightUnit;
+      } else {
+        const heightMatch = msg.match(/^([\d.'\-\s]+)\s*(ft[- ]?in|cm|in)?$/i);
+        value = heightMatch && heightMatch[1] ? heightMatch[1].trim() : msg;
+        unit = heightMatch && heightMatch[2] ? heightMatch[2].toLowerCase().includes("cm") ? "cm" : "ft-in" : /\d+\s*cm/i.test(msg) ? "cm" : "ft-in";
+      }
       divers[i].height = value;
       divers[i].heightUnit = unit;
       p.divers = divers;
-      const n = divers[i].name || "They";
-      return { message: `Thanks \u2014 I've recorded ${n}'s height as ${value} ${unit === "ft-in" ? "ft-in" : "cm"}. What's ${n}'s weight? Please include the unit (lbs or kg).`, payload: p };
+      const ack = `Thanks \u2014 I've recorded ${n}'s height as ${value} ${unit === "ft-in" ? "ft-in" : "cm"}.`;
+      return followUpAfterDiverMeasurementAck(p, i, ack, options);
     }
     case "weight": {
       if (!divers[i]) return null;
@@ -5211,7 +5449,15 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
         divers[i].weightUnit = lower.startsWith("lb") || lower === "pounds" ? "lbs" : "kg";
         p.divers = divers;
         const n2 = divers[i].name || "They";
-        return { message: `Got it \u2014 recorded ${n2}'s weight as ${divers[i].weight} ${divers[i].weightUnit}. Does ${n2} need any rental gear?`, payload: p };
+        const ack2 = `Got it \u2014 recorded ${n2}'s weight as ${divers[i].weight} ${divers[i].weightUnit}.`;
+        return followUpAfterDiverMeasurementAck(p, i, ack2, options);
+      }
+      if (looksLikeFeetInchesHeightInput(msg)) {
+        const n2 = divers[i].name || "They";
+        return {
+          message: `That looks like a height in feet and inches. What's ${n2}'s weight? Please include the unit (lbs or kg).`,
+          payload: p
+        };
       }
       const weightMatch = msg.match(/^([\d.]+)\s*(lbs?|kg)?$/i);
       const value = weightMatch && weightMatch[1] ? weightMatch[1].trim() : msg.replace(/\s*(lbs?|kg)\s*/gi, " ").trim();
@@ -5236,7 +5482,8 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
       divers[i].weightUnit = unit;
       p.divers = divers;
       const n = divers[i].name || "They";
-      return { message: `Thanks \u2014 recorded ${n}'s weight as ${value} ${unit}. Does ${n} need any rental gear?`, payload: p };
+      const ack = `Thanks \u2014 recorded ${n}'s weight as ${value} ${unit}.`;
+      return followUpAfterDiverMeasurementAck(p, i, ack, options);
     }
     case "gear": {
       const lower = msg.toLowerCase();
@@ -6671,5 +6918,5 @@ function getCacheHeaders(url) {
   return {};
 }
 
-export { $fetch$1 as $, createError$1 as A, getAuthUser as B, getBearerToken as C, createSupabaseClientForUser as D, getRouterParam as E, buildAssetsURL as F, getResponseStatusText as G, getResponseStatus as H, defineRenderHandler as I, publicAssetsURL as J, getQuery as K, destr as L, getRouteRules as M, useNitroApp as N, serialize$1 as O, parseQuery as P, hasProtocol as Q, isScriptProtocol as R, joinURL as S, withQuery as T, sanitizeStatusCode as U, withTrailingSlash as V, withoutTrailingSlash as W, klona as X, defuFn as Y, getContext as Z, baseURL as _, tryShopInfoResponse as a, defu as a0, createHooks as a1, executeAsync as a2, isEqual as a3, toRouteMatcher as a4, createRouter$1 as a5, handler as a6, extractBookingTargetFallback as b, clarifyResponsePayload as c, defineEventHandler as d, extractReferredEntityPhrase as e, resolveBookingTargetFromPhrase as f, getNextBookingStep as g, handleForcedEntityClarify as h, getShopById as i, probeReferentPhrase as j, routeReferentFromProbe as k, getDiveSitesForShop as l, getRentalEquipmentForShop as m, getCoursesForShop as n, clampBookingPayloadToNextStep as o, parseEntityClarifyMessage as p, applyInferredCoursesToPayloadIfEligible as q, readBody as r, shopDisambiguationResponsePayload as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, tryParseTripDatesFromMessage as v, profileDiverSelectableChipsFromPrefill as w, tryFastPath as x, mergeCollectedIntoBookingPayload as y, buildDiveShopQuery as z };
+export { klona as $, profileDiverSelectableChipsFromPrefill as A, tryFastPath as B, mergeCollectedIntoBookingPayload as C, buildDiveShopQuery as D, createError$1 as E, getAuthUser as F, getBearerToken as G, createSupabaseClientForUser as H, getRouterParam as I, buildAssetsURL as J, getResponseStatusText as K, getResponseStatus as L, defineRenderHandler as M, publicAssetsURL as N, getQuery as O, destr as P, getRouteRules as Q, useNitroApp as R, serialize$1 as S, parseQuery as T, hasProtocol as U, isScriptProtocol as V, joinURL as W, withQuery as X, sanitizeStatusCode as Y, withTrailingSlash as Z, withoutTrailingSlash as _, tryShopInfoResponse as a, defuFn as a0, getContext as a1, $fetch$1 as a2, baseURL as a3, defu as a4, createHooks as a5, executeAsync as a6, isEqual as a7, toRouteMatcher as a8, createRouter$1 as a9, handler as aa, extractBookingTargetFallback as b, clarifyResponsePayload as c, defineEventHandler as d, extractReferredEntityPhrase as e, resolveBookingTargetFromPhrase as f, getNextBookingStep as g, handleForcedEntityClarify as h, getShopById as i, probeReferentPhrase as j, routeReferentFromProbe as k, getDiveSitesForShop as l, getRentalEquipmentForShop as m, getCoursesForShop as n, clampBookingPayloadToNextStep as o, parseEntityClarifyMessage as p, applyInferredCoursesToPayloadIfEligible as q, readBody as r, shopDisambiguationResponsePayload as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, tryParseTripDatesFromMessage as v, tryParseDiverFieldEditIntent as w, snapshotDiverField as x, clearDiverFieldOnCopy as y, buildDiverFieldEditPrompt as z };
 //# sourceMappingURL=nitro.mjs.map

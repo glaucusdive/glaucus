@@ -298,6 +298,111 @@ function profileDiverToPayload (d: ProfileDiverPrefill): BookingDiverLocal {
   }
 }
 
+/**
+ * Recognize common height inputs without spelling "ft-in" or "cm":
+ * - Feet/inches: 5'3", 5'3, 5′3″, 5-3, 5 ft 3 in
+ * - Centimeters: 170, 170 cm
+ */
+export function parseHeightInputForFastPath (raw: string): { value: string; heightUnit: 'ft-in' | 'cm' } | null {
+  const msg = raw.trim()
+  if (!msg) return null
+
+  const cmSuffix = msg.match(/^(\d+(?:\.\d+)?)\s*(cm|centimeters?)\s*$/i)
+  if (cmSuffix) return { value: cmSuffix[1].trim(), heightUnit: 'cm' }
+
+  const ftInWords = msg.match(/^(\d)\s*(?:ft|feet|foot)\s*(\d{1,2})\s*(?:in|inches|")?\s*$/i)
+  if (ftInWords) {
+    const ft = parseInt(ftInWords[1], 10)
+    const inch = parseInt(ftInWords[2], 10)
+    if (ft >= 4 && ft <= 7 && inch >= 0 && inch <= 11) {
+      return { value: `${ft}'${inch}"`, heightUnit: 'ft-in' }
+    }
+  }
+
+  // 5'3, 5'3", 5′3″ — allow straight/curly quotes and inch marks
+  const ftPrime = msg.match(/^(\d)\s*['′`´]\s*(\d{1,2})\s*(?:"|″|"|"|''|′′)?\s*$/i)
+  if (ftPrime) {
+    const ft = parseInt(ftPrime[1], 10)
+    const inch = parseInt(ftPrime[2], 10)
+    if (ft >= 4 && ft <= 7 && inch >= 0 && inch <= 11) {
+      return { value: `${ft}'${inch}"`, heightUnit: 'ft-in' }
+    }
+  }
+
+  // Shorthand 5-3 or 5 - 11 (feet-inches; feet 4–7, inches 0–11)
+  const hyphen = msg.match(/^(\d)\s*[-–]\s*(\d{1,2})\s*$/)
+  if (hyphen) {
+    const ft = parseInt(hyphen[1], 10)
+    const inch = parseInt(hyphen[2], 10)
+    if (ft >= 4 && ft <= 7 && inch >= 0 && inch <= 11) {
+      return { value: `${ft}'${inch}"`, heightUnit: 'ft-in' }
+    }
+  }
+
+  // Plain integer without unit: treat 100–230 as cm (typical adult height)
+  const plain = msg.match(/^(\d{2,3})$/)
+  if (plain) {
+    const n = parseInt(plain[1], 10)
+    if (n >= 100 && n <= 230) return { value: String(n), heightUnit: 'cm' }
+  }
+
+  // e.g. "5 10" with space between feet and inches
+  const spaced = msg.match(/^(\d)\s+(\d{1,2})\s*$/)
+  if (spaced) {
+    const ft = parseInt(spaced[1], 10)
+    const inch = parseInt(spaced[2], 10)
+    if (ft >= 4 && ft <= 7 && inch >= 0 && inch <= 11) {
+      return { value: `${ft}'${inch}"`, heightUnit: 'ft-in' }
+    }
+  }
+
+  return null
+}
+
+/** Feet/inches-style height (not a weight); avoids parseFloat("5'4…") → 5 on the weight step. */
+export function looksLikeFeetInchesHeightInput (raw: string): boolean {
+  const p = parseHeightInputForFastPath(raw)
+  return p != null && p.heightUnit === 'ft-in'
+}
+
+/**
+ * After recording height or weight for a diver, ask for the next missing field (weight, gear, or ready).
+ * When the next step is gear and the shop lists no rental equipment, return the no-rental message here
+ * — do not rely on the ai-search wrapper (that must not run on height→gear transitions).
+ */
+function followUpAfterDiverMeasurementAck (
+  p: BookingPayloadLocal,
+  diverIndex: number,
+  ackLine: string,
+  options?: { rentalEquipmentNames?: string[]; profilePrefill?: { defaultDivers?: ProfileDiverPrefill[]; defaultDiver?: ProfileDiverPrefill } }
+): FastPathResult {
+  const next = getNextBookingStep(p)
+  const divers = ensureDivers(p)
+  const n = (divers[diverIndex]?.name || '').trim() || `Diver ${diverIndex + 1}`
+
+  if (next?.step === 'weight' && (next.diverIndex ?? 0) === diverIndex) {
+    return { message: `${ackLine} What's ${n}'s weight? Please include the unit (lbs or kg).`, payload: p }
+  }
+  if (next?.step === 'gear' && (next.diverIndex ?? 0) === diverIndex) {
+    const noGear = !options?.rentalEquipmentNames?.length
+    if (noGear) {
+      return {
+        message: 'This dive shop doesn\'t offer rental gear. Please keep that in mind or arrange gear elsewhere.',
+        payload: p,
+        selectableOptions: [
+          { label: 'I understand', value: 'I understand' },
+          { label: 'Pick a new diveshop', value: 'Pick a new diveshop' }
+        ]
+      }
+    }
+    return { message: `${ackLine} Does ${n} need any rental gear?`, payload: p }
+  }
+  if (next?.step === 'ready') {
+    return { message: `${ackLine} All set — ready to send your booking request.`, payload: p }
+  }
+  return { message: ackLine, payload: p }
+}
+
 /** Try to parse a simple value and return next message + updated payload, or null to use LLM. */
 export function tryFastPath (
   step: NextStepResult,
@@ -458,18 +563,27 @@ export function tryFastPath (
       divers[i].numberOfDives = num
       p.divers = divers
       const n = divers[i].name || 'They'
-      return { message: `Thanks — got ${n}'s dive count as ${num}. What's ${n}'s height? Please include the unit (ft-in or cm).`, payload: p }
+      return { message: `Thanks — got ${n}'s dive count as ${num}. What's ${n}'s height? (e.g. 5'4", 5-3, or 170 cm — say or type the unit if it's not obvious.)`, payload: p }
     }
     case 'height': {
       if (!divers[i]) return null
-      const heightMatch = msg.match(/^([\d.'\s]+)\s*(ft[- ]?in|cm|in)?$/i)
-      const value = (heightMatch && heightMatch[1]) ? heightMatch[1].trim() : msg
-      const unit = (heightMatch && heightMatch[2]) ? (heightMatch[2].toLowerCase().includes('cm') ? 'cm' : 'ft-in') : (/\d+\s*cm/i.test(msg) ? 'cm' : 'ft-in')
+      const n = divers[i].name || 'They'
+      const parsed = parseHeightInputForFastPath(msg)
+      let value: string
+      let unit: 'ft-in' | 'cm'
+      if (parsed) {
+        value = parsed.value
+        unit = parsed.heightUnit
+      } else {
+        const heightMatch = msg.match(/^([\d.'\-\s]+)\s*(ft[- ]?in|cm|in)?$/i)
+        value = (heightMatch && heightMatch[1]) ? heightMatch[1].trim() : msg
+        unit = (heightMatch && heightMatch[2]) ? (heightMatch[2].toLowerCase().includes('cm') ? 'cm' : 'ft-in') : (/\d+\s*cm/i.test(msg) ? 'cm' : 'ft-in')
+      }
       divers[i].height = value
       divers[i].heightUnit = unit
       p.divers = divers
-      const n = divers[i].name || 'They'
-      return { message: `Thanks — I've recorded ${n}'s height as ${value} ${unit === 'ft-in' ? 'ft-in' : 'cm'}. What's ${n}'s weight? Please include the unit (lbs or kg).`, payload: p }
+      const ack = `Thanks — I've recorded ${n}'s height as ${value} ${unit === 'ft-in' ? 'ft-in' : 'cm'}.`
+      return followUpAfterDiverMeasurementAck(p, i, ack, options)
     }
     case 'weight': {
       if (!divers[i]) return null
@@ -480,7 +594,15 @@ export function tryFastPath (
         divers[i].weightUnit = lower.startsWith('lb') || lower === 'pounds' ? 'lbs' : 'kg'
         p.divers = divers
         const n = divers[i].name || 'They'
-        return { message: `Got it — recorded ${n}'s weight as ${divers[i].weight} ${divers[i].weightUnit}. Does ${n} need any rental gear?`, payload: p }
+        const ack = `Got it — recorded ${n}'s weight as ${divers[i].weight} ${divers[i].weightUnit}.`
+        return followUpAfterDiverMeasurementAck(p, i, ack, options)
+      }
+      if (looksLikeFeetInchesHeightInput(msg)) {
+        const n = divers[i].name || 'They'
+        return {
+          message: `That looks like a height in feet and inches. What's ${n}'s weight? Please include the unit (lbs or kg).`,
+          payload: p
+        }
       }
       const weightMatch = msg.match(/^([\d.]+)\s*(lbs?|kg)?$/i)
       const value = (weightMatch && weightMatch[1]) ? weightMatch[1].trim() : msg.replace(/\s*(lbs?|kg)\s*/gi, ' ').trim()
@@ -506,7 +628,8 @@ export function tryFastPath (
       divers[i].weightUnit = unit
       p.divers = divers
       const n = divers[i].name || 'They'
-      return { message: `Thanks — recorded ${n}'s weight as ${value} ${unit}. Does ${n} need any rental gear?`, payload: p }
+      const ack = `Thanks — recorded ${n}'s weight as ${value} ${unit}.`
+      return followUpAfterDiverMeasurementAck(p, i, ack, options)
     }
     case 'gear': {
       const lower = msg.toLowerCase()
