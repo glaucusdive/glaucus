@@ -186,9 +186,9 @@
           <NuxtLink v-if="!isSignedIn" to="/auth" class="flex-1 text-center py-2 px-3 rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer">
             Sign in to save draft
           </NuxtLink>
-          <button v-else type="button" @click="saveDraft" :disabled="draftLoading"
-            class="flex-1 py-2 px-3 rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 cursor-pointer transition-colors">
-            {{ draftLoading ? 'Saving…' : 'Save as draft' }}
+          <button v-else type="button" @click="saveDraft" :disabled="draftLoading || draftSaved"
+            class="flex-1 py-2 px-3 rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors">
+            {{ draftLoading ? 'Saving…' : (draftSaved ? 'Draft saved' : 'Save as draft') }}
           </button>
         </div>
 
@@ -206,6 +206,7 @@
 
 <script setup lang="ts">
 import { ref, watch, computed, onMounted } from 'vue'
+import { readChatsRoot } from '~/composables/useSearchCache'
 import { X } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
 import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst } from '~/utils/mergeProfileDefaultDivers'
@@ -237,7 +238,7 @@ const props = defineProps({
   }
 })
 
-const { closeDrawer } = useDrawer()
+const { closeDrawer, updateDraftIdIfOpen } = useDrawer()
 const { client } = useSupabase()
 const { isSignedIn, accessToken, user } = useAuth()
 
@@ -364,12 +365,34 @@ function applyInitialPayload () {
 }
 
 onMounted(async () => {
+  if (props.draftId) {
+    localDraftId.value = String(props.draftId)
+  } else {
+    const k = bookingDraftStorageKey()
+    const stored = k ? window.sessionStorage.getItem(k) : null
+    if (stored) localDraftId.value = stored
+  }
   await applyProfilePrefill()
   applyInitialPayload()
   fetchCoursesForShop()
   fetchDiveSitesForShop()
 })
 watch(() => props.initialPayload, () => applyInitialPayload(), { deep: true })
+
+function currentDraftSnapshot (): string {
+  return JSON.stringify(buildPayload())
+}
+
+watch(
+  formData,
+  () => {
+    if (!draftSaved.value || lastSavedDraftSnapshot.value == null) return
+    if (currentDraftSnapshot() !== lastSavedDraftSnapshot.value) {
+      draftSaved.value = false
+    }
+  },
+  { deep: true }
+)
 
 // Auto-sync main name to Diver 1
 watch(() => formData.value.name, (newName) => {
@@ -498,6 +521,22 @@ async function fetchDiveSitesForShop () {
 const submitLoading = ref(false)
 const submitError = ref('')
 const draftLoading = ref(false)
+/** After a successful save, show disabled "Draft saved" until the user edits the form */
+const draftSaved = ref(false)
+/** JSON snapshot at last successful draft save — ignores no-op form writes (e.g. chat re-syncing the same payload) */
+const lastSavedDraftSnapshot = ref<string | null>(null)
+/** Server draft row id for this booking (resume prop, session, or last save) so we always update one row */
+const localDraftId = ref<string | undefined>(undefined)
+
+function bookingDraftStorageKey (): string | null {
+  if (typeof window === 'undefined') return null
+  const root = readChatsRoot()
+  const sid = root?.activeSessionId
+  if (!sid || !props.shopId) return null
+  return `glaucus-booking-draft:${sid}:${props.shopId}`
+}
+
+const effectiveDraftId = computed(() => localDraftId.value || (props.draftId as string | undefined))
 
 function buildPayload () {
   return {
@@ -526,21 +565,34 @@ async function saveDraft () {
   draftLoading.value = true
   try {
     const payload = buildPayload()
-    await $fetch('/api/booking/draft', {
+    const res = await $fetch<{ draftId: string }>('/api/booking/draft', {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken.value}` },
       body: {
         shopId: payload.shopId,
         payload,
-        ...(props.draftId ? { draftId: props.draftId } : {})
+        ...(effectiveDraftId.value ? { draftId: effectiveDraftId.value } : {})
       }
     })
-    // Optional: show brief "Draft saved"
+    if (res?.draftId) {
+      localDraftId.value = res.draftId
+      updateDraftIdIfOpen(res.draftId)
+      const k = bookingDraftStorageKey()
+      if (k) window.sessionStorage.setItem(k, res.draftId)
+    }
+    lastSavedDraftSnapshot.value = JSON.stringify(payload)
+    draftSaved.value = true
   } catch {
-    // could set a draftError ref
+    draftSaved.value = false
+    lastSavedDraftSnapshot.value = null
   } finally {
     draftLoading.value = false
   }
+}
+
+function clearStoredBookingDraftId () {
+  const k = bookingDraftStorageKey()
+  if (k) window.sessionStorage.removeItem(k)
 }
 
 // Form submission
@@ -551,6 +603,7 @@ const handleSubmit = async () => {
     const payload = buildPayload()
     const res = await $fetch('/api/booking', { method: 'POST', body: payload }) as BookingApiResponse
     if (res?.sent) {
+      clearStoredBookingDraftId()
       if (isSignedIn.value && user.value?.id && Array.isArray(payload.divers) && payload.divers.length > 0) {
         try {
           const { data: profile } = await client.from('profiles').select('default_divers').eq('id', user.value.id).single()

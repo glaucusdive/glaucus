@@ -315,7 +315,7 @@ import { Menu, ArrowUp, ChevronRight } from 'lucide-vue-next'
 import gsap from 'gsap'
 import CardSearchResult from '~/components/CardSearchResult.vue'
 import ShopDetailPanel from '~/components/ShopDetailPanel.vue'
-import { useSearchCache, ensureChatsRoot, readChatsRoot, getActiveSession } from '~/composables/useSearchCache'
+import { useSearchCache, ensureChatsRoot, readChatsRoot, getActiveSession, persistActiveChatsRoot } from '~/composables/useSearchCache'
 import { useChatSessions, notifyChatSidebarUpdated } from '~/composables/useChatSessions'
 import { useDrawer } from '~/composables/useDrawer'
 import { useAuth } from '~/composables/useAuth'
@@ -684,12 +684,92 @@ const persistCache = () => {
   notifyChatSidebarUpdated()
 }
 
+const PENDING_DRAFT_RESUME_KEY = 'glaucus-pending-draft-resume'
+
+/** Profile → Resume: go to chat with shop panel + booking messages + form (same as in-flow booking). */
+function applyPendingDraftResumeFromProfile () {
+  if (import.meta.server) return false
+  const raw = sessionStorage.getItem(PENDING_DRAFT_RESUME_KEY)
+  if (!raw) return false
+  sessionStorage.removeItem(PENDING_DRAFT_RESUME_KEY)
+  let parsed
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return false
+  }
+  const shopId = parsed.shopId && String(parsed.shopId).trim()
+  const shopName = (parsed.shopName && String(parsed.shopName).trim()) || 'Dive shop'
+  const draftId = parsed.draftId && String(parsed.draftId).trim()
+  const payload = parsed.payload && typeof parsed.payload === 'object' ? parsed.payload : null
+  if (!shopId || !payload) return false
+
+  isRestoringCache.value = true
+  closeDrawer()
+  if (abortController.value) {
+    abortController.value.abort()
+    abortController.value = null
+    isLoading.value = false
+  }
+  pendingBookingPayload.value = null
+
+  const mergedPayload = { ...payload, shopId: payload.shopId ?? shopId }
+  const resumeMessages = [
+    { role: 'user', content: `Book with ${shopName}` },
+    {
+      role: 'assistant',
+      content: 'Resume your saved booking. Use the form on the right to continue where you left off.',
+      intent: 'booking',
+      shopId,
+      shopName,
+      payload: mergedPayload,
+      bookingPayload: mergedPayload
+    }
+  ]
+  messages.value = resumeMessages
+  userInput.value = ''
+  selectedShopId.value = shopId
+  mobileDetailShopId.value = shopId
+
+  const root = readChatsRoot() ?? ensureChatsRoot()
+  persistActiveChatsRoot(root, {
+    messages: resumeMessages,
+    userInput: '',
+    lastQuery: null,
+    selectedShopId: shopId,
+    mobileDetailShopId: shopId,
+    drawerOpen: true,
+    drawerShopId: shopId,
+    drawerShopName: shopName
+  })
+
+  isRestoringCache.value = false
+  notifyChatSidebarUpdated()
+  void nextTick(() => {
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        finishChatIndexBoot()
+        openDrawer('booking-form', {
+          shopId,
+          shopName,
+          bookingPayload: mergedPayload,
+          ...(draftId ? { draftId } : {})
+        })
+      }, 300)
+    })
+  })
+  return true
+}
+
 // Restore cache or run initial query
 onMounted(async () => {
   if (isSignedIn.value && user.value?.id) {
     await initSignedInChatsFromRemote(client, user.value.id)
   } else {
     ensureChatsRoot()
+  }
+  if (applyPendingDraftResumeFromProfile()) {
+    return
   }
   const root = readChatsRoot()
   const activeRecord = root ? getActiveSession(root) : null

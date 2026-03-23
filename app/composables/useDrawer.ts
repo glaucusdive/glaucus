@@ -19,8 +19,15 @@ const drawerOpenKey = ref(0)
 const isMobileMenuOpen = ref(false)
 const shouldAnimateMenu = ref(false)
 
+/** Pending clear from closeDrawer — must be cancelled if openDrawer runs before it fires (e.g. draft resume: close then open 300ms later). */
+let clearDrawerDataTimer: ReturnType<typeof setTimeout> | null = null
+
 export const useDrawer = () => {
   const openDrawer = (type: DrawerContentType, data: DrawerData = {}) => {
+    if (clearDrawerDataTimer) {
+      clearTimeout(clearDrawerDataTimer)
+      clearDrawerDataTimer = null
+    }
     contentType.value = type
     drawerData.value = data
     drawerOpenKey.value += 1
@@ -29,8 +36,12 @@ export const useDrawer = () => {
 
   const closeDrawer = () => {
     isOpen.value = false
-    // Clear data after animation completes
-    setTimeout(() => {
+    if (clearDrawerDataTimer) {
+      clearTimeout(clearDrawerDataTimer)
+      clearDrawerDataTimer = null
+    }
+    clearDrawerDataTimer = setTimeout(() => {
+      clearDrawerDataTimer = null
       contentType.value = null
       drawerData.value = {}
     }, 400) // Match GSAP animation duration
@@ -40,6 +51,13 @@ export const useDrawer = () => {
   const updateBookingPayloadIfOpen = (payload: Record<string, unknown> | undefined) => {
     if (contentType.value === 'booking-form' && payload && isOpen.value) {
       drawerData.value = { ...drawerData.value, bookingPayload: payload }
+    }
+  }
+
+  /** After first "Save as draft" in this drawer session, keep draft id so repeat saves update the same row */
+  const updateDraftIdIfOpen = (draftId: string) => {
+    if (contentType.value === 'booking-form' && isOpen.value) {
+      drawerData.value = { ...drawerData.value, draftId }
     }
   }
 
@@ -65,6 +83,7 @@ export const useDrawer = () => {
     openDrawer,
     closeDrawer,
     updateBookingPayloadIfOpen,
+    updateDraftIdIfOpen,
     isMobileMenuOpen,
     shouldAnimateMenu,
     openMobileMenu,

@@ -19,27 +19,28 @@ export default defineEventHandler(async (event) => {
     token
   )
 
-  const { data, error } = await client
+  const { data: row, error } = await client
     .from('booking_drafts')
-    .select(`
-      id,
-      shop_id,
-      payload,
-      created_at,
-      updated_at,
-      diveshops ( id, business_name )
-    `)
+    .select('id, shop_id, payload, created_at, updated_at')
     .eq('id', id)
-    .single()
+    .maybeSingle()
 
-  if (error || !data) {
+  if (error) {
+    throw createError({ statusCode: 500, statusMessage: error.message })
+  }
+  if (!row) {
     throw createError({ statusCode: 404, statusMessage: 'Draft not found' })
   }
 
-  const shop = (data as Record<string, unknown>).diveshops as { id: string; business_name: string } | null
-  const { diveshops: _, ...rest } = data as Record<string, unknown>
+  const shopId = row.shop_id as string
+  const { data: shopRow } = await client
+    .from('diveshops')
+    .select('business_name')
+    .eq('id', shopId)
+    .maybeSingle()
+
   return {
-    ...rest,
-    shopName: shop?.business_name ?? null
+    ...row,
+    shopName: shopRow?.business_name ?? null
   }
 })

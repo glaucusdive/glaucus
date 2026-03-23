@@ -1,6 +1,6 @@
 <template>
   <NuxtLayout name="default">
-    <div class="min-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4">
+    <div class="max-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4 overflow-y-auto">
       <NuxtLink to="/profile" class="inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white mb-4 cursor-pointer">
         ← Profile
       </NuxtLink>
@@ -38,7 +38,6 @@
 definePageMeta({ middleware: 'auth' })
 
 const { accessToken } = useAuth()
-const { openDrawer } = useDrawer()
 
 const drafts = ref<Array<{
   id: string
@@ -76,6 +75,8 @@ async function fetchDrafts () {
   }
 }
 
+const PENDING_DRAFT_RESUME_KEY = 'glaucus-pending-draft-resume'
+
 async function resumeDraft (d: (typeof drafts.value)[0]) {
   if (!accessToken.value) return
   resumeLoading.value = d.id
@@ -83,12 +84,15 @@ async function resumeDraft (d: (typeof drafts.value)[0]) {
     const one = await $fetch<{ shop_id: string; shopName: string | null; payload: Record<string, unknown>; id: string }>(`/api/booking/drafts/${d.id}`, {
       headers: { Authorization: `Bearer ${accessToken.value}` }
     })
-    openDrawer('booking-form', {
-      shopId: one.shop_id,
-      shopName: one.shopName ?? 'Dive shop',
-      bookingPayload: one.payload,
-      draftId: one.id
-    })
+    if (import.meta.client) {
+      sessionStorage.setItem(PENDING_DRAFT_RESUME_KEY, JSON.stringify({
+        draftId: one.id,
+        shopId: one.shop_id,
+        shopName: one.shopName ?? 'Dive shop',
+        payload: one.payload
+      }))
+    }
+    await navigateTo('/')
   } finally {
     resumeLoading.value = null
   }
