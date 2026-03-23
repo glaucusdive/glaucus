@@ -245,6 +245,44 @@ export interface ProfileDiverPrefill {
   times_used?: number
 }
 
+/** Non-empty diver names already on this booking (for chip filtering). */
+export function collectAssignedDiverNamesLower (payload: BookingPayloadLocal): Set<string> {
+  const out = new Set<string>()
+  const divers = payload.divers || []
+  const num = payload.numberOfDivers
+  const n = num != null && num >= 1 ? Math.min(num, divers.length) : divers.length
+  for (let j = 0; j < n; j++) {
+    const t = (divers[j]?.name || '').trim()
+    if (t) out.add(t.toLowerCase())
+  }
+  return out
+}
+
+/** Top profile divers (by times_used) not already on this trip, plus "Create new diver". */
+export function profileDiverSelectableChipsFromPrefill (
+  profilePrefill?: { defaultDivers?: ProfileDiverPrefill[]; defaultDiver?: ProfileDiverPrefill },
+  options?: { bookingPayload?: BookingPayloadLocal }
+): { label: string; value: string }[] | undefined {
+  const defaultDiversListFull = (profilePrefill?.defaultDivers?.length ? profilePrefill.defaultDivers : profilePrefill?.defaultDiver ? [profilePrefill.defaultDiver] : []) as ProfileDiverPrefill[]
+  if (defaultDiversListFull.length === 0) return undefined
+  const assigned = options?.bookingPayload ? collectAssignedDiverNamesLower(options.bookingPayload) : new Set<string>()
+  const available = [...defaultDiversListFull]
+    .sort((a, b) => (b.times_used ?? 0) - (a.times_used ?? 0))
+    .filter((d) => {
+      const nm = (d.name || '').trim().toLowerCase()
+      return nm && !assigned.has(nm)
+    })
+  const topTwo = available.slice(0, 2)
+  const useChips = topTwo.map((d) => ({
+    label: `Use ${(d.name || '').trim()}`,
+    value: `Use ${(d.name || '').trim()}`
+  }))
+  if (useChips.length === 0) {
+    return [{ label: 'Create new diver', value: 'Create new diver' }]
+  }
+  return [...useChips, { label: 'Create new diver', value: 'Create new diver' }]
+}
+
 function profileDiverToPayload (d: ProfileDiverPrefill): BookingDiverLocal {
   const hu = (d.height_unit || 'ft-in').toLowerCase()
   const wu = (d.weight_unit || 'lbs').toLowerCase()
@@ -273,8 +311,6 @@ export function tryFastPath (
 
   const pref = options?.profilePrefill
   const defaultDiversListFull = (pref?.defaultDivers?.length ? pref.defaultDivers : pref?.defaultDiver ? [pref.defaultDiver] : []) as ProfileDiverPrefill[]
-  /** Top 2 most-used divers for chips (by times_used desc); fallback to first 2 if no usage. */
-  const defaultDiversList = [...defaultDiversListFull].sort((a, b) => (b.times_used ?? 0) - (a.times_used ?? 0)).slice(0, 2)
   const defaultDiversListForMatch = defaultDiversListFull
 
   const p = JSON.parse(JSON.stringify(payload)) as BookingPayloadLocal
@@ -309,12 +345,9 @@ export function tryFastPath (
           weight: '', weightUnit: 'lbs', gear: []
         })
       }
-      const useProfileChips = defaultDiversList
-        .filter((d) => (d.name || '').trim())
-        .map((d) => ({ label: `Use ${(d.name || '').trim()}`, value: `Use ${(d.name || '').trim()}` }))
-      if (defaultDiversListFull.length > 0 && useProfileChips.length > 0) {
-        const chips: { label: string; value: string }[] = [...useProfileChips, { label: 'Create new diver', value: 'Create new diver' }]
-        return { message: 'Use an existing diver from your profile or create a new one?', payload: p, selectableOptions: chips }
+      const chips = profileDiverSelectableChipsFromPrefill(pref, { bookingPayload: p })
+      if (chips && chips.length > 0) {
+        return { message: 'Use an existing diver from your profile or create a new one for Diver 1?', payload: p, selectableOptions: chips }
       }
       const contactName = (p.name || '').trim() || 'you'
       const contactDisplay = contactName.charAt(0).toUpperCase() + contactName.slice(1)
@@ -330,6 +363,14 @@ export function tryFastPath (
       }
       if (defaultDiversListForMatch.length) {
         if (/^create\s+new\s+diver$/i.test(msg)) {
+          const diverChips = i >= 1 ? profileDiverSelectableChipsFromPrefill(pref, { bookingPayload: p }) : undefined
+          if (diverChips?.length) {
+            return {
+              message: `Use an existing diver from your profile or create a new one for Diver ${i + 1}?`,
+              payload: p,
+              selectableOptions: diverChips
+            }
+          }
           return { message: `What's Diver ${i + 1}'s full name?`, payload: p }
         }
         const useMatch = msg.match(/^use\s+(.+)$/i)
@@ -337,6 +378,22 @@ export function tryFastPath (
           const namePart = useMatch[1].trim()
           const match = defaultDiversListForMatch.find((d) => (d.name || '').trim().toLowerCase() === namePart.toLowerCase())
           if (match) {
+            const nameLc = (match.name || '').trim().toLowerCase()
+            if (nameLc) {
+              const dlist = p.divers || []
+              const cap = Math.max(0, p.numberOfDivers ?? dlist.length, dlist.length)
+              for (let j = 0; j < cap && j < dlist.length; j++) {
+                if (j === i) continue
+                const t = (dlist[j]?.name || '').trim().toLowerCase()
+                if (t && t === nameLc) {
+                  return {
+                    message: 'That diver is already on this trip. Pick someone else or say "Create new diver".',
+                    payload: p,
+                    selectableOptions: profileDiverSelectableChipsFromPrefill(pref, { bookingPayload: p })
+                  }
+                }
+              }
+            }
             if (!divers[i]) divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
             const filled = profileDiverToPayload(match)
             divers[i] = { ...filled, gearAsked: divers[i].gearAsked }
@@ -372,6 +429,14 @@ export function tryFastPath (
       }
       if (msg.length < 2 || msg.length > 80) return null
       if (looksLikeSingleName(msg)) {
+        const diverChips = i >= 1 ? profileDiverSelectableChipsFromPrefill(pref, { bookingPayload: p }) : undefined
+        if (diverChips?.length) {
+          return {
+            message: `Use an existing diver from your profile or create a new one for Diver ${i + 1}?`,
+            payload: p,
+            selectableOptions: diverChips
+          }
+        }
         return { message: `Could you give me Diver ${i + 1}'s full name (first and last)?`, payload: p }
       }
       if (!divers[i]) divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
@@ -456,6 +521,15 @@ export function tryFastPath (
         p.divers = divers
         const numDivers = p.numberOfDivers ?? 1
         if (i < numDivers - 1) {
+          const diverChips = profileDiverSelectableChipsFromPrefill(pref, { bookingPayload: p })
+          const dn = (divers[i].name || 'They').trim()
+          if (diverChips?.length) {
+            return {
+              message: `Got it — no rental gear for ${dn}. Use an existing diver from your profile or create a new one for Diver ${i + 2}?`,
+              payload: p,
+              selectableOptions: diverChips
+            }
+          }
           return { message: `Got it — no rental gear for ${divers[i].name}. What's Diver ${i + 2}'s full name?`, payload: p }
         }
         return { message: `Got it — no rental gear. All set — ready to send your booking request.`, payload: p }
@@ -484,6 +558,14 @@ export function tryFastPath (
         const numDivers = p.numberOfDivers ?? 1
         const n = divers[i].name || 'They'
         if (i < numDivers - 1) {
+          const diverChips = profileDiverSelectableChipsFromPrefill(pref, { bookingPayload: p })
+          if (diverChips?.length) {
+            return {
+              message: `Got it — ${n}'s gear is set. Use an existing diver from your profile or create a new one for Diver ${i + 2}?`,
+              payload: p,
+              selectableOptions: diverChips
+            }
+          }
           return { message: `Got it — ${n}'s gear is set. What's Diver ${i + 2}'s full name?`, payload: p }
         }
         return { message: `Got it — ${n}'s gear is set. All set — ready to send your booking request.`, payload: p }
@@ -495,6 +577,15 @@ export function tryFastPath (
         p.divers = divers
         const numDivers = p.numberOfDivers ?? 1
         if (i < numDivers - 1) {
+          const diverChips = profileDiverSelectableChipsFromPrefill(pref, { bookingPayload: p })
+          const dn = (divers[i].name || 'They').trim()
+          if (diverChips?.length) {
+            return {
+              message: `Got it — no rental gear for ${dn}. Use an existing diver from your profile or create a new one for Diver ${i + 2}?`,
+              payload: p,
+              selectableOptions: diverChips
+            }
+          }
           return { message: `Got it — no rental gear for ${divers[i].name}. What's Diver ${i + 2}'s full name?`, payload: p }
         }
         return { message: `Got it — no rental gear. All set — ready to send your booking request.`, payload: p }

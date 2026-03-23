@@ -4294,7 +4294,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "2c0b8354-f583-4253-a6ab-112c2db64207",
+    "buildId": "86888ab8-c9e9-43ad-af76-f896007d64a9",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -4981,6 +4981,40 @@ function looksLikeSingleName(s) {
   const parts = t.split(/\s+/);
   return parts.length === 1;
 }
+function collectAssignedDiverNamesLower(payload) {
+  var _a;
+  const out = /* @__PURE__ */ new Set();
+  const divers = payload.divers || [];
+  const num = payload.numberOfDivers;
+  const n = num != null && num >= 1 ? Math.min(num, divers.length) : divers.length;
+  for (let j = 0; j < n; j++) {
+    const t = (((_a = divers[j]) == null ? void 0 : _a.name) || "").trim();
+    if (t) out.add(t.toLowerCase());
+  }
+  return out;
+}
+function profileDiverSelectableChipsFromPrefill(profilePrefill, options) {
+  var _a;
+  const defaultDiversListFull = ((_a = profilePrefill == null ? void 0 : profilePrefill.defaultDivers) == null ? void 0 : _a.length) ? profilePrefill.defaultDivers : (profilePrefill == null ? void 0 : profilePrefill.defaultDiver) ? [profilePrefill.defaultDiver] : [];
+  if (defaultDiversListFull.length === 0) return void 0;
+  const assigned = (options == null ? void 0 : options.bookingPayload) ? collectAssignedDiverNamesLower(options.bookingPayload) : /* @__PURE__ */ new Set();
+  const available = [...defaultDiversListFull].sort((a, b) => {
+    var _a2, _b;
+    return ((_a2 = b.times_used) != null ? _a2 : 0) - ((_b = a.times_used) != null ? _b : 0);
+  }).filter((d) => {
+    const nm = (d.name || "").trim().toLowerCase();
+    return nm && !assigned.has(nm);
+  });
+  const topTwo = available.slice(0, 2);
+  const useChips = topTwo.map((d) => ({
+    label: `Use ${(d.name || "").trim()}`,
+    value: `Use ${(d.name || "").trim()}`
+  }));
+  if (useChips.length === 0) {
+    return [{ label: "Create new diver", value: "Create new diver" }];
+  }
+  return [...useChips, { label: "Create new diver", value: "Create new diver" }];
+}
 function profileDiverToPayload(d) {
   var _a, _b, _c, _d, _e;
   const hu = (d.height_unit || "ft-in").toLowerCase();
@@ -5000,15 +5034,11 @@ function profileDiverToPayload(d) {
   };
 }
 function tryFastPath(step, userMessage, payload, _shopName, options) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o;
   const msg = userMessage.trim();
   if (!msg) return null;
   const pref = options == null ? void 0 : options.profilePrefill;
   const defaultDiversListFull = ((_a = pref == null ? void 0 : pref.defaultDivers) == null ? void 0 : _a.length) ? pref.defaultDivers : (pref == null ? void 0 : pref.defaultDiver) ? [pref.defaultDiver] : [];
-  const defaultDiversList = [...defaultDiversListFull].sort((a, b) => {
-    var _a2, _b2;
-    return ((_a2 = b.times_used) != null ? _a2 : 0) - ((_b2 = a.times_used) != null ? _b2 : 0);
-  }).slice(0, 2);
   const defaultDiversListForMatch = defaultDiversListFull;
   const p = JSON.parse(JSON.stringify(payload));
   const divers = ensureDivers(p);
@@ -5047,10 +5077,9 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
           gear: []
         });
       }
-      const useProfileChips = defaultDiversList.filter((d) => (d.name || "").trim()).map((d) => ({ label: `Use ${(d.name || "").trim()}`, value: `Use ${(d.name || "").trim()}` }));
-      if (defaultDiversListFull.length > 0 && useProfileChips.length > 0) {
-        const chips = [...useProfileChips, { label: "Create new diver", value: "Create new diver" }];
-        return { message: "Use an existing diver from your profile or create a new one?", payload: p, selectableOptions: chips };
+      const chips = profileDiverSelectableChipsFromPrefill(pref, { bookingPayload: p });
+      if (chips && chips.length > 0) {
+        return { message: "Use an existing diver from your profile or create a new one for Diver 1?", payload: p, selectableOptions: chips };
       }
       const contactName = (p.name || "").trim() || "you";
       const contactDisplay = contactName.charAt(0).toUpperCase() + contactName.slice(1);
@@ -5066,6 +5095,14 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
       }
       if (defaultDiversListForMatch.length) {
         if (/^create\s+new\s+diver$/i.test(msg)) {
+          const diverChips = i >= 1 ? profileDiverSelectableChipsFromPrefill(pref, { bookingPayload: p }) : void 0;
+          if (diverChips == null ? void 0 : diverChips.length) {
+            return {
+              message: `Use an existing diver from your profile or create a new one for Diver ${i + 1}?`,
+              payload: p,
+              selectableOptions: diverChips
+            };
+          }
           return { message: `What's Diver ${i + 1}'s full name?`, payload: p };
         }
         const useMatch = msg.match(/^use\s+(.+)$/i);
@@ -5073,6 +5110,22 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
           const namePart = useMatch[1].trim();
           const match = defaultDiversListForMatch.find((d) => (d.name || "").trim().toLowerCase() === namePart.toLowerCase());
           if (match) {
+            const nameLc = (match.name || "").trim().toLowerCase();
+            if (nameLc) {
+              const dlist = p.divers || [];
+              const cap = Math.max(0, (_c = p.numberOfDivers) != null ? _c : dlist.length, dlist.length);
+              for (let j = 0; j < cap && j < dlist.length; j++) {
+                if (j === i) continue;
+                const t = (((_d = dlist[j]) == null ? void 0 : _d.name) || "").trim().toLowerCase();
+                if (t && t === nameLc) {
+                  return {
+                    message: 'That diver is already on this trip. Pick someone else or say "Create new diver".',
+                    payload: p,
+                    selectableOptions: profileDiverSelectableChipsFromPrefill(pref, { bookingPayload: p })
+                  };
+                }
+              }
+            }
             if (!divers[i]) divers.push({ name: "", certificationNumber: "", numberOfDives: "", height: "", heightUnit: "ft-in", weight: "", weightUnit: "lbs", gear: [] });
             const filled = profileDiverToPayload(match);
             divers[i] = { ...filled, gearAsked: divers[i].gearAsked };
@@ -5107,6 +5160,14 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
       }
       if (msg.length < 2 || msg.length > 80) return null;
       if (looksLikeSingleName(msg)) {
+        const diverChips = i >= 1 ? profileDiverSelectableChipsFromPrefill(pref, { bookingPayload: p }) : void 0;
+        if (diverChips == null ? void 0 : diverChips.length) {
+          return {
+            message: `Use an existing diver from your profile or create a new one for Diver ${i + 1}?`,
+            payload: p,
+            selectableOptions: diverChips
+          };
+        }
         return { message: `Could you give me Diver ${i + 1}'s full name (first and last)?`, payload: p };
       }
       if (!divers[i]) divers.push({ name: "", certificationNumber: "", numberOfDives: "", height: "", heightUnit: "ft-in", weight: "", weightUnit: "lbs", gear: [] });
@@ -5182,21 +5243,30 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
       const isDone = /\b(done|that's all|finish|that's it)\b/.test(lower);
       const isNone = /\b(none|no|nope|nothing|n\/a)\b/.test(lower) || msg.trim() === "" && !isDone;
       const isIUnderstand = /\b(i understand|understood|got it|ok|okay)\b/i.test(msg);
-      if (isIUnderstand && (!((_c = divers[i]) == null ? void 0 : _c.gear) || divers[i].gear.length === 0)) {
+      if (isIUnderstand && (!((_e = divers[i]) == null ? void 0 : _e.gear) || divers[i].gear.length === 0)) {
         if (!divers[i]) return null;
         divers[i].gear = [];
         divers[i].gearAsked = true;
         p.divers = divers;
-        const numDivers = (_d = p.numberOfDivers) != null ? _d : 1;
+        const numDivers = (_f = p.numberOfDivers) != null ? _f : 1;
         if (i < numDivers - 1) {
+          const diverChips = profileDiverSelectableChipsFromPrefill(pref, { bookingPayload: p });
+          const dn = (divers[i].name || "They").trim();
+          if (diverChips == null ? void 0 : diverChips.length) {
+            return {
+              message: `Got it \u2014 no rental gear for ${dn}. Use an existing diver from your profile or create a new one for Diver ${i + 2}?`,
+              payload: p,
+              selectableOptions: diverChips
+            };
+          }
           return { message: `Got it \u2014 no rental gear for ${divers[i].name}. What's Diver ${i + 2}'s full name?`, payload: p };
         }
         return { message: `Got it \u2014 no rental gear. All set \u2014 ready to send your booking request.`, payload: p };
       }
       const wantsGear = /\b(yes|yeah|yep|yup|they do|she does|he does|we do|i do|please|sure)\b/i.test(msg) || /^\s*y\s*$/i.test(msg);
       const noRentalGearAvailable = !(options == null ? void 0 : options.rentalEquipmentNames) || options.rentalEquipmentNames.length === 0;
-      if (wantsGear && (!((_e = divers[i]) == null ? void 0 : _e.gear) || divers[i].gear.length === 0)) {
-        const n = ((_f = divers[i]) == null ? void 0 : _f.name) || "They";
+      if (wantsGear && (!((_g = divers[i]) == null ? void 0 : _g.gear) || divers[i].gear.length === 0)) {
+        const n = ((_h = divers[i]) == null ? void 0 : _h.name) || "They";
         p.divers = divers;
         if (noRentalGearAvailable) {
           return {
@@ -5210,28 +5280,45 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
         }
         return { message: `Got it \u2014 ${n} will need rental gear. What would ${n} like to rent? Pick from the options below or say "none" when done.`, payload: p };
       }
-      if (isDone && ((_h = (_g = divers[i]) == null ? void 0 : _g.gear) == null ? void 0 : _h.length)) {
+      if (isDone && ((_j = (_i = divers[i]) == null ? void 0 : _i.gear) == null ? void 0 : _j.length)) {
         if (divers[i]) divers[i].gearAsked = true;
         p.divers = divers;
-        const numDivers = (_i = p.numberOfDivers) != null ? _i : 1;
+        const numDivers = (_k = p.numberOfDivers) != null ? _k : 1;
         const n = divers[i].name || "They";
         if (i < numDivers - 1) {
+          const diverChips = profileDiverSelectableChipsFromPrefill(pref, { bookingPayload: p });
+          if (diverChips == null ? void 0 : diverChips.length) {
+            return {
+              message: `Got it \u2014 ${n}'s gear is set. Use an existing diver from your profile or create a new one for Diver ${i + 2}?`,
+              payload: p,
+              selectableOptions: diverChips
+            };
+          }
           return { message: `Got it \u2014 ${n}'s gear is set. What's Diver ${i + 2}'s full name?`, payload: p };
         }
         return { message: `Got it \u2014 ${n}'s gear is set. All set \u2014 ready to send your booking request.`, payload: p };
       }
-      if (isNone || isDone && !((_k = (_j = divers[i]) == null ? void 0 : _j.gear) == null ? void 0 : _k.length)) {
+      if (isNone || isDone && !((_m = (_l = divers[i]) == null ? void 0 : _l.gear) == null ? void 0 : _m.length)) {
         if (!divers[i]) return null;
         divers[i].gear = [];
         divers[i].gearAsked = true;
         p.divers = divers;
-        const numDivers = (_l = p.numberOfDivers) != null ? _l : 1;
+        const numDivers = (_n = p.numberOfDivers) != null ? _n : 1;
         if (i < numDivers - 1) {
+          const diverChips = profileDiverSelectableChipsFromPrefill(pref, { bookingPayload: p });
+          const dn = (divers[i].name || "They").trim();
+          if (diverChips == null ? void 0 : diverChips.length) {
+            return {
+              message: `Got it \u2014 no rental gear for ${dn}. Use an existing diver from your profile or create a new one for Diver ${i + 2}?`,
+              payload: p,
+              selectableOptions: diverChips
+            };
+          }
           return { message: `Got it \u2014 no rental gear for ${divers[i].name}. What's Diver ${i + 2}'s full name?`, payload: p };
         }
         return { message: `Got it \u2014 no rental gear. All set \u2014 ready to send your booking request.`, payload: p };
       }
-      const equipmentNames = (_m = options == null ? void 0 : options.rentalEquipmentNames) != null ? _m : [];
+      const equipmentNames = (_o = options == null ? void 0 : options.rentalEquipmentNames) != null ? _o : [];
       if (equipmentNames.length > 0) {
         const removeMatch = msg.match(/^remove\s+(.+)$/i);
         if (removeMatch) {
@@ -6584,5 +6671,5 @@ function getCacheHeaders(url) {
   return {};
 }
 
-export { $fetch$1 as $, getAuthUser as A, getBearerToken as B, createSupabaseClientForUser as C, getRouterParam as D, buildAssetsURL as E, getResponseStatusText as F, getResponseStatus as G, defineRenderHandler as H, publicAssetsURL as I, getQuery as J, destr as K, getRouteRules as L, useNitroApp as M, serialize$1 as N, parseQuery as O, hasProtocol as P, isScriptProtocol as Q, joinURL as R, withQuery as S, sanitizeStatusCode as T, withTrailingSlash as U, withoutTrailingSlash as V, klona as W, defuFn as X, getContext as Y, baseURL as Z, defu as _, tryShopInfoResponse as a, createHooks as a0, executeAsync as a1, isEqual as a2, toRouteMatcher as a3, createRouter$1 as a4, handler as a5, extractBookingTargetFallback as b, clarifyResponsePayload as c, defineEventHandler as d, extractReferredEntityPhrase as e, resolveBookingTargetFromPhrase as f, getNextBookingStep as g, handleForcedEntityClarify as h, getShopById as i, probeReferentPhrase as j, routeReferentFromProbe as k, getDiveSitesForShop as l, getRentalEquipmentForShop as m, getCoursesForShop as n, clampBookingPayloadToNextStep as o, parseEntityClarifyMessage as p, applyInferredCoursesToPayloadIfEligible as q, readBody as r, shopDisambiguationResponsePayload as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, tryParseTripDatesFromMessage as v, tryFastPath as w, mergeCollectedIntoBookingPayload as x, buildDiveShopQuery as y, createError$1 as z };
+export { $fetch$1 as $, createError$1 as A, getAuthUser as B, getBearerToken as C, createSupabaseClientForUser as D, getRouterParam as E, buildAssetsURL as F, getResponseStatusText as G, getResponseStatus as H, defineRenderHandler as I, publicAssetsURL as J, getQuery as K, destr as L, getRouteRules as M, useNitroApp as N, serialize$1 as O, parseQuery as P, hasProtocol as Q, isScriptProtocol as R, joinURL as S, withQuery as T, sanitizeStatusCode as U, withTrailingSlash as V, withoutTrailingSlash as W, klona as X, defuFn as Y, getContext as Z, baseURL as _, tryShopInfoResponse as a, defu as a0, createHooks as a1, executeAsync as a2, isEqual as a3, toRouteMatcher as a4, createRouter$1 as a5, handler as a6, extractBookingTargetFallback as b, clarifyResponsePayload as c, defineEventHandler as d, extractReferredEntityPhrase as e, resolveBookingTargetFromPhrase as f, getNextBookingStep as g, handleForcedEntityClarify as h, getShopById as i, probeReferentPhrase as j, routeReferentFromProbe as k, getDiveSitesForShop as l, getRentalEquipmentForShop as m, getCoursesForShop as n, clampBookingPayloadToNextStep as o, parseEntityClarifyMessage as p, applyInferredCoursesToPayloadIfEligible as q, readBody as r, shopDisambiguationResponsePayload as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, tryParseTripDatesFromMessage as v, profileDiverSelectableChipsFromPrefill as w, tryFastPath as x, mergeCollectedIntoBookingPayload as y, buildDiveShopQuery as z };
 //# sourceMappingURL=nitro.mjs.map

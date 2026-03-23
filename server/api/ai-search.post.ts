@@ -4,7 +4,7 @@ import { getShopById } from '../utils/resolveShop'
 import { getDiveSitesForShop } from '../utils/getDiveSitesForShop'
 import { getCoursesForShop } from '../utils/getCoursesForShop'
 import { getRentalEquipmentForShop } from '../utils/getRentalEquipmentForShop'
-import { clampBookingPayloadToNextStep, getNextBookingStep, tryFastPath, tryFastPathUnitOnly, type BookingPayloadLocal } from '../utils/bookingFastPath'
+import { clampBookingPayloadToNextStep, getNextBookingStep, tryFastPath, tryFastPathUnitOnly, profileDiverSelectableChipsFromPrefill, type BookingPayloadLocal } from '../utils/bookingFastPath'
 import { tryParseTripDatesFromMessage } from '../utils/parseTripDates'
 import { mergeCollectedIntoBookingPayload } from '../utils/mergeBookingCollected'
 import { extractBookingTargetFallback, extractReferredEntityPhrase } from '../utils/extractReferredEntityPhrase'
@@ -1106,25 +1106,14 @@ export default defineEventHandler(async (event) => {
               divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
             }
             p.divers = divers
-            const defaultDiversListFull = (Array.isArray(profilePrefill?.defaultDivers) && profilePrefill.defaultDivers.length > 0)
-              ? profilePrefill.defaultDivers
-              : (profilePrefill?.defaultDiver ? [profilePrefill.defaultDiver] : [])
-            const topTwo = [...defaultDiversListFull]
-              .sort((a, b) => (b.times_used ?? 0) - (a.times_used ?? 0))
-              .slice(0, 2)
-              .filter((d) => (d.name || '').trim())
-            const hasNamedProfileDivers = topTwo.length > 0
-            const selectableOptions = hasNamedProfileDivers
-              ? [
-                  ...topTwo.map((d) => ({ label: `Use ${(d.name || '').trim()}`, value: `Use ${(d.name || '').trim()}` })),
-                  { label: 'Create new diver', value: 'Create new diver' }
-                ]
-              : undefined
+            const selectableOptions = profileDiverSelectableChipsFromPrefill(profilePrefill, { bookingPayload: p })
             return {
               success: true,
               intent: 'booking' as const,
               bookingReady: false,
-              message: hasNamedProfileDivers ? 'Use an existing diver from your profile or create a new one?' : `What's Diver ${newNum}'s full name?`,
+              message: selectableOptions?.length
+                ? `Use an existing diver from your profile or create a new one for Diver ${newNum}?`
+                : `What's Diver ${newNum}'s full name?`,
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               bookingPayload: p,
@@ -1485,6 +1474,18 @@ export default defineEventHandler(async (event) => {
         (messageAsksForGear(replyMessage) && gearChips ? gearChips : undefined) ||
         (messageIsAddAnotherGear(replyMessage) && gearChips ? gearChips : undefined) ||
         (bookingPayload && addGearOptions(bookingPayload) && gearChips ? gearChips : undefined)
+      const mergedForDiverChips = (collectedPayload ?? bookingPayload) ?? ({} as BookingPayloadLocal)
+      const nextHintDiverChips = getNextBookingStep(mergedForDiverChips)
+      const profileDiverOptionsFromLlm =
+        nextHintDiverChips?.step === 'diverName' &&
+        (nextHintDiverChips.diverIndex ?? 0) >= 1 &&
+        profilePrefill
+          ? profileDiverSelectableChipsFromPrefill(profilePrefill, { bookingPayload: mergedForDiverChips })
+          : undefined
+      if (profileDiverOptionsFromLlm?.length && nextHintDiverChips?.diverIndex != null) {
+        const diverNum = nextHintDiverChips.diverIndex + 1
+        replyMessage = `Use an existing diver from your profile or create a new one for Diver ${diverNum}?`
+      }
       return {
         success: true,
         intent: 'booking' as const,
@@ -1493,7 +1494,7 @@ export default defineEventHandler(async (event) => {
         shopId: resolvedShop.id,
         shopName: resolvedShop.business_name,
         bookingPayload: collectedPayload,
-        selectableOptions: undefined,
+        selectableOptions: profileDiverOptionsFromLlm?.length ? profileDiverOptionsFromLlm : undefined,
         rentalEquipmentOptions: finalGearOptions && (Array.isArray(finalGearOptions) ? finalGearOptions.length > 0 : true) ? finalGearOptions : undefined,
         hideNoneForGear: hideNoneForGear(collectedPayload ?? bookingPayload),
         courseOptions: (collectedPayload ? addCourseOptions(collectedPayload) : undefined) ||

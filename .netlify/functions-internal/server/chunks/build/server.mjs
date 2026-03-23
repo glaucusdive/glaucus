@@ -1,5 +1,5 @@
 import { defineComponent, shallowRef, h, resolveComponent, hasInjectionContext, inject, toRef, isRef, computed, toValue, getCurrentInstance, onServerPrefetch, mergeProps, unref, provide, cloneVNode, createElementBlock, ref, nextTick, defineAsyncComponent, useSSRContext, Suspense, Fragment, createApp, mergeModels, useModel, withCtx, renderSlot, createVNode, createBlock, createCommentVNode, openBlock, createTextVNode, toDisplayString, watch, resolveDynamicComponent, renderList, useId, shallowReactive, onErrorCaptured, reactive, effectScope, isReadonly, isShallow, isReactive, toRaw, useSlots, withModifiers, getCurrentScope, markRaw } from 'vue';
-import { N as serialize, O as parseQuery, z as createError$1, P as hasProtocol, Q as isScriptProtocol, R as joinURL, S as withQuery, T as sanitizeStatusCode, U as withTrailingSlash, V as withoutTrailingSlash, W as klona, X as defuFn, Y as getContext, $ as $fetch$1, Z as baseURL, _ as defu, a0 as createHooks, a1 as executeAsync, a2 as isEqual, a3 as toRouteMatcher, a4 as createRouter$1 } from '../nitro/nitro.mjs';
+import { O as serialize, P as parseQuery, A as createError$1, Q as hasProtocol, R as isScriptProtocol, S as joinURL, T as withQuery, U as sanitizeStatusCode, V as withTrailingSlash, W as withoutTrailingSlash, X as klona, Y as defuFn, Z as getContext, $ as $fetch$1, _ as baseURL, a0 as defu, a1 as createHooks, a2 as executeAsync, a3 as isEqual, a4 as toRouteMatcher, a5 as createRouter$1 } from '../nitro/nitro.mjs';
 import { RouterView, createMemoryHistory, createRouter, START_LOCATION } from 'vue-router';
 import colors from 'tailwindcss/colors';
 import { Icon, getIcon, loadIcon as loadIcon$1, _api, addAPIProvider, setCustomIconsLoader } from '@iconify/vue';
@@ -484,7 +484,7 @@ const _routes = [
   {
     name: "index",
     path: "/",
-    component: () => import('./index-WKJ1I_bI.mjs')
+    component: () => import('./index-BUP5Pf7Y.mjs')
   },
   {
     name: "auth",

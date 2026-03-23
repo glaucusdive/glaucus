@@ -1,4 +1,4 @@
-import { d as defineEventHandler, r as readBody, t as tryFastPathUnitOnly, g as getNextBookingStep, u as useRuntimeConfig, a as tryShopInfoResponse, p as parseEntityClarifyMessage, h as handleForcedEntityClarify, c as clarifyResponsePayload, s as shopDisambiguationResponsePayload, e as extractReferredEntityPhrase, b as extractBookingTargetFallback, f as resolveBookingTargetFromPhrase, i as getShopById, j as probeReferentPhrase, k as routeReferentFromProbe, l as getDiveSitesForShop, m as getRentalEquipmentForShop, n as getCoursesForShop, o as clampBookingPayloadToNextStep, q as applyInferredCoursesToPayloadIfEligible, v as tryParseTripDatesFromMessage, w as tryFastPath, x as mergeCollectedIntoBookingPayload, y as buildDiveShopQuery } from '../../nitro/nitro.mjs';
+import { d as defineEventHandler, r as readBody, t as tryFastPathUnitOnly, g as getNextBookingStep, u as useRuntimeConfig, a as tryShopInfoResponse, p as parseEntityClarifyMessage, h as handleForcedEntityClarify, c as clarifyResponsePayload, s as shopDisambiguationResponsePayload, e as extractReferredEntityPhrase, b as extractBookingTargetFallback, f as resolveBookingTargetFromPhrase, i as getShopById, j as probeReferentPhrase, k as routeReferentFromProbe, l as getDiveSitesForShop, m as getRentalEquipmentForShop, n as getCoursesForShop, o as clampBookingPayloadToNextStep, q as applyInferredCoursesToPayloadIfEligible, v as tryParseTripDatesFromMessage, w as profileDiverSelectableChipsFromPrefill, x as tryFastPath, y as mergeCollectedIntoBookingPayload, z as buildDiveShopQuery } from '../../nitro/nitro.mjs';
 import '@supabase/supabase-js';
 import 'node:http';
 import 'node:https';
@@ -206,7 +206,7 @@ COLLECTED: {"name":"...","email":"...","startDate":"...","endDate":"...","number
 Never put COLLECTED in the middle of your reply \u2014 your message to the user must come first, then COLLECTED on its own line. Include every field you have collected so far (use empty string or [] for not yet collected). Use the exact same JSON shape as BOOKING_READY. Always proceed to the next empty field question (e.g. after dates ask for courses; after courses ask for dive sites; after dive sites ask for number of divers; after gear for last diver, output BOOKING_READY).`;
 }
 const aiSearch_post = defineEventHandler(async (event) => {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __, _$, _aa, _ba, _ca, _da, _ea;
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __, _$, _aa, _ba, _ca, _da, _ea, _fa, _ga;
   try {
     const body = await readBody(event);
     const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill, pendingEntityClarifyPhrase } = body;
@@ -947,21 +947,12 @@ const aiSearch_post = defineEventHandler(async (event) => {
               divers.push({ name: "", certificationNumber: "", numberOfDives: "", height: "", heightUnit: "ft-in", weight: "", weightUnit: "lbs", gear: [] });
             }
             p.divers = divers;
-            const defaultDiversListFull = Array.isArray(profilePrefill == null ? void 0 : profilePrefill.defaultDivers) && profilePrefill.defaultDivers.length > 0 ? profilePrefill.defaultDivers : (profilePrefill == null ? void 0 : profilePrefill.defaultDiver) ? [profilePrefill.defaultDiver] : [];
-            const topTwo = [...defaultDiversListFull].sort((a, b) => {
-              var _a2, _b2;
-              return ((_a2 = b.times_used) != null ? _a2 : 0) - ((_b2 = a.times_used) != null ? _b2 : 0);
-            }).slice(0, 2).filter((d) => (d.name || "").trim());
-            const hasNamedProfileDivers = topTwo.length > 0;
-            const selectableOptions2 = hasNamedProfileDivers ? [
-              ...topTwo.map((d) => ({ label: `Use ${(d.name || "").trim()}`, value: `Use ${(d.name || "").trim()}` })),
-              { label: "Create new diver", value: "Create new diver" }
-            ] : void 0;
+            const selectableOptions2 = profileDiverSelectableChipsFromPrefill(profilePrefill, { bookingPayload: p });
             return {
               success: true,
               intent: "booking",
               bookingReady: false,
-              message: hasNamedProfileDivers ? "Use an existing diver from your profile or create a new one?" : `What's Diver ${newNum}'s full name?`,
+              message: (selectableOptions2 == null ? void 0 : selectableOptions2.length) ? `Use an existing diver from your profile or create a new one for Diver ${newNum}?` : `What's Diver ${newNum}'s full name?`,
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               bookingPayload: p,
@@ -1303,6 +1294,13 @@ const aiSearch_post = defineEventHandler(async (event) => {
         };
       }
       const finalGearOptions = (collectedPayload ? addGearOptions(collectedPayload) : void 0) || (messageAsksForGear(replyMessage) && gearChips ? gearChips : void 0) || (messageIsAddAnotherGear(replyMessage) && gearChips ? gearChips : void 0) || (bookingPayload && addGearOptions(bookingPayload) && gearChips ? gearChips : void 0);
+      const mergedForDiverChips = (_S = collectedPayload != null ? collectedPayload : bookingPayload) != null ? _S : {};
+      const nextHintDiverChips = getNextBookingStep(mergedForDiverChips);
+      const profileDiverOptionsFromLlm = (nextHintDiverChips == null ? void 0 : nextHintDiverChips.step) === "diverName" && ((_T = nextHintDiverChips.diverIndex) != null ? _T : 0) >= 1 && profilePrefill ? profileDiverSelectableChipsFromPrefill(profilePrefill, { bookingPayload: mergedForDiverChips }) : void 0;
+      if ((profileDiverOptionsFromLlm == null ? void 0 : profileDiverOptionsFromLlm.length) && (nextHintDiverChips == null ? void 0 : nextHintDiverChips.diverIndex) != null) {
+        const diverNum = nextHintDiverChips.diverIndex + 1;
+        replyMessage = `Use an existing diver from your profile or create a new one for Diver ${diverNum}?`;
+      }
       return {
         success: true,
         intent: "booking",
@@ -1311,7 +1309,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
         shopId: resolvedShop.id,
         shopName: resolvedShop.business_name,
         bookingPayload: collectedPayload,
-        selectableOptions: void 0,
+        selectableOptions: (profileDiverOptionsFromLlm == null ? void 0 : profileDiverOptionsFromLlm.length) ? profileDiverOptionsFromLlm : void 0,
         rentalEquipmentOptions: finalGearOptions && (Array.isArray(finalGearOptions) ? finalGearOptions.length > 0 : true) ? finalGearOptions : void 0,
         hideNoneForGear: hideNoneForGear(collectedPayload != null ? collectedPayload : bookingPayload),
         courseOptions: (collectedPayload ? addCourseOptions(collectedPayload) : void 0) || (messageAsksForCourses(replyMessage) && courses.length > 0 ? courses : void 0) || (bookingPayload && addCourseOptions(bookingPayload) ? courses : void 0),
@@ -1363,7 +1361,7 @@ Do not include a MESSAGE. Just return the FILTERS.`;
         });
         if (filterResponse.ok) {
           const filterData = await filterResponse.json();
-          const filterMessage = ((_T = (_S = filterData.choices[0]) == null ? void 0 : _S.message) == null ? void 0 : _T.content) || "";
+          const filterMessage = ((_V = (_U = filterData.choices[0]) == null ? void 0 : _U.message) == null ? void 0 : _V.content) || "";
           const filtersMatch = filterMessage.match(/FILTERS:\s*(\{[^}]+\})/s);
           if (filtersMatch) {
             lastFilters = JSON.parse(filtersMatch[1]);
@@ -1380,10 +1378,10 @@ Do not include a MESSAGE. Just return the FILTERS.`;
               for (let i = 0; i < history.length; i++) {
                 const msg = history[i];
                 if (msg.role === "assistant") {
-                  const hasResultsPhrase = ((_U = msg.content) == null ? void 0 : _U.includes("Here are")) || ((_V = msg.content) == null ? void 0 : _V.includes("top results")) || ((_W = msg.content) == null ? void 0 : _W.includes("Here are the"));
-                  const isAskingQuestion = ((_X = msg.content) == null ? void 0 : _X.includes("What type")) || ((_Y = msg.content) == null ? void 0 : _Y.includes("Would you")) || ((_Z = msg.content) == null ? void 0 : _Z.trim().endsWith("?"));
+                  const hasResultsPhrase = ((_W = msg.content) == null ? void 0 : _W.includes("Here are")) || ((_X = msg.content) == null ? void 0 : _X.includes("top results")) || ((_Y = msg.content) == null ? void 0 : _Y.includes("Here are the"));
+                  const isAskingQuestion = ((_Z = msg.content) == null ? void 0 : _Z.includes("What type")) || ((__ = msg.content) == null ? void 0 : __.includes("Would you")) || ((_$ = msg.content) == null ? void 0 : _$.trim().endsWith("?"));
                   if (hasResultsPhrase && !isAskingQuestion) {
-                    const nextN = (_$ = (__ = msg.content) == null ? void 0 : __.match(/next (\d+)\s+results?/i)) == null ? void 0 : _$[1];
+                    const nextN = (_ba = (_aa = msg.content) == null ? void 0 : _aa.match(/next (\d+)\s+results?/i)) == null ? void 0 : _ba[1];
                     const shown = nextN ? parseInt(nextN, 10) : 5;
                     alreadyShown += Number.isNaN(shown) ? 5 : shown;
                     console.log(`[AI Search] Found result message at index ${i}, shown: ${shown}, total shown: ${alreadyShown}`);
@@ -1472,7 +1470,7 @@ Do not include a MESSAGE. Just return the FILTERS.`;
       throw new Error(`OpenRouter API error: ${aiResponse.statusText}`);
     }
     const aiData = await aiResponse.json();
-    const aiMessage = ((_ba = (_aa = aiData.choices[0]) == null ? void 0 : _aa.message) == null ? void 0 : _ba.content) || "";
+    const aiMessage = ((_da = (_ca = aiData.choices[0]) == null ? void 0 : _ca.message) == null ? void 0 : _da.content) || "";
     console.log(`[AI Search] Raw AI response:`, aiMessage);
     let filters = {};
     let conversationalMessage = aiMessage;
@@ -1495,7 +1493,7 @@ Do not include a MESSAGE. Just return the FILTERS.`;
       filters = {};
     }
     const conversationText = [...(history || []).map((h) => h.content), message].join(" ");
-    if (!((_ca = filters.country) == null ? void 0 : _ca.trim())) {
+    if (!((_ea = filters.country) == null ? void 0 : _ea.trim())) {
       const inferred = inferCountryFromConversation(conversationText);
       if (inferred) {
         filters.country = inferred;
@@ -1605,7 +1603,7 @@ RULES:
       shouldAskFollowUp = true;
       console.log(`[AI Search] Low results (${resultCount}) or user wants more options, suggesting to broaden search...`);
       followUpMessage = broadeningResult.content ? broadeningResult.content.replace(/\b1\s+dive shop(s?)\b/gi, `${resultCount} dive shop${resultCount === 1 ? "" : "s"}`).replace(/\bonly 1\b/gi, `only ${resultCount}`) : "";
-      if ((_da = broadeningResult.suggestions) == null ? void 0 : _da.length) {
+      if ((_fa = broadeningResult.suggestions) == null ? void 0 : _fa.length) {
         selectableOptions = broadeningResult.suggestions.map((s) => ({ label: s, value: s }));
       }
       if (!(followUpMessage == null ? void 0 : followUpMessage.trim())) {
@@ -1613,7 +1611,7 @@ RULES:
         if (!(selectableOptions == null ? void 0 : selectableOptions.length) && filters.country) selectableOptions = [{ label: `Search all of ${filters.country}`, value: `Search all of ${filters.country}` }];
       }
     } else if (resultCount > 5) {
-      const lastAssistantMessage = ((_ea = history.filter((h) => h.role === "assistant").pop()) == null ? void 0 : _ea.content) || "";
+      const lastAssistantMessage = ((_ga = history.filter((h) => h.role === "assistant").pop()) == null ? void 0 : _ga.content) || "";
       const lastWasAQuestion = lastAssistantMessage.includes("?");
       const noPreference = /\b(any|all|doesn't matter|don't care|no preference|whatever|either)\b/i.test(message);
       const looksLikeNewSearch = /\b(want to|find|search|looking for|dive in|diving in)\b/i.test(message) && message.trim().length > 25;

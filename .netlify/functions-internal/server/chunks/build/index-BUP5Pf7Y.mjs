@@ -649,6 +649,15 @@ const _sfc_main = {
     function isGearChipSelected(msg, eq) {
       return getSelectedGearNamesForMessage(msg).has((eq.name ?? "").toString().trim().toLowerCase());
     }
+    function getSelectedCourseNamesForMessage(msg) {
+      const payload = msg.payload ?? msg.bookingPayload;
+      const list = payload?.desiredCourses;
+      if (!Array.isArray(list)) return /* @__PURE__ */ new Set();
+      return new Set(list.map((c) => String(c).trim().toLowerCase()).filter(Boolean));
+    }
+    function isCourseChipSelected(msg, course) {
+      return getSelectedCourseNamesForMessage(msg).has((course.name ?? "").toString().trim().toLowerCase());
+    }
     function getPendingEntityClarifyPhraseForOutgoing(outgoingMessage) {
       if (!/^entity_clarify:/i.test(String(outgoingMessage).trim())) return void 0;
       const arr = messages.value;
@@ -1104,7 +1113,7 @@ const _sfc_main = {
                 if (msg.courseOptions && msg.courseOptions.length > 0) {
                   _push2(`<div class="${ssrRenderClass([index !== activeChipMessageIndex.value ? "opacity-50 pointer-events-none" : "", "flex flex-wrap gap-2 transition-opacity duration-200"])}"${_scopeId}><div class="flex gap-2 w-full"${_scopeId}><button type="button" class="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"${_scopeId}> Any </button><button type="button" class="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"${_scopeId}> Done </button></div><!--[-->`);
                   ssrRenderList(msg.courseOptions, (course) => {
-                    _push2(`<button type="button" class="w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"${_scopeId}>${ssrInterpolate(course.name)}</button>`);
+                    _push2(`<button type="button" class="${ssrRenderClass(isCourseChipSelected(msg, course) ? "w-fit px-3 py-1.5 text-sm rounded-full border border-black dark:border-white bg-white dark:bg-zinc-900 text-black dark:text-white font-medium transition-colors cursor-pointer" : "w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer")}"${_scopeId}>${ssrInterpolate(course.name)}</button>`);
                   });
                   _push2(`<!--]--></div>`);
                 } else {
@@ -1362,8 +1371,8 @@ const _sfc_main = {
                                     key: course.id,
                                     type: "button",
                                     onClick: ($event) => sendMessage(course.name),
-                                    class: "w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
-                                  }, toDisplayString(course.name), 9, ["onClick"]);
+                                    class: isCourseChipSelected(msg, course) ? "w-fit px-3 py-1.5 text-sm rounded-full border border-black dark:border-white bg-white dark:bg-zinc-900 text-black dark:text-white font-medium transition-colors cursor-pointer" : "w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                                  }, toDisplayString(course.name), 11, ["onClick"]);
                                 }), 128))
                               ], 2)) : createCommentVNode("", true),
                               msg.diveSiteOptions && msg.diveSiteOptions.length > 0 ? (openBlock(), createBlock("div", {
@@ -1530,4 +1539,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-WKJ1I_bI.mjs.map
+//# sourceMappingURL=index-BUP5Pf7Y.mjs.map
