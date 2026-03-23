@@ -19,6 +19,12 @@ import {
 import { resolveBookingTargetFromPhrase } from '../utils/resolveBookingTarget'
 import { tryShopInfoResponse } from '../utils/shopInfoForChat'
 import { applyInferredCoursesToPayloadIfEligible } from '../utils/inferCoursesFromConversation'
+import {
+  buildDiverFieldEditPrompt,
+  clearDiverFieldOnCopy,
+  snapshotDiverField,
+  tryParseDiverFieldEditIntent
+} from '../utils/bookingDiverEditIntent'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -893,6 +899,43 @@ export default defineEventHandler(async (event) => {
             }
           }
         }
+        // User asked to change a diver's weight/height/cert/dives (e.g. during gear) — clear field, show current value, re-ask
+        const nextForDiverEdit = getNextBookingStep(bookingPayload)
+        const diverFieldEdit = tryParseDiverFieldEditIntent(msgTrim, bookingPayload as BookingPayloadLocal, {
+          currentGearDiverIndex: nextForDiverEdit?.step === 'gear' ? nextForDiverEdit.diverIndex ?? null : null
+        })
+        if (diverFieldEdit) {
+          const numDiversEdit = Math.max(1, bookingPayload.numberOfDivers ?? 1)
+          const diversEdit = Array.isArray(bookingPayload.divers) ? bookingPayload.divers.map(d => ({ ...d })) : []
+          while (diversEdit.length < numDiversEdit) {
+            diversEdit.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
+          }
+          const di = diverFieldEdit.diverIndex
+          if (diversEdit[di]) {
+            const prevVal = snapshotDiverField(diversEdit[di], diverFieldEdit.field)
+            diversEdit[di] = clearDiverFieldOnCopy(diversEdit[di], diverFieldEdit.field)
+            let pEdit = { ...bookingPayload, divers: diversEdit } as BookingPayload
+            pEdit = clampBookingPayloadToNextStep(pEdit as BookingPayloadLocal, {
+              shopCourseCount: courses.length,
+              shopDiveSiteCount: diveSites.length
+            }) as BookingPayload
+            const editMsg = buildDiverFieldEditPrompt(diverFieldEdit.field, diverFieldEdit.displayName, prevVal)
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message: editMsg,
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              bookingPayload: pEdit,
+              selectableOptions: undefined,
+              rentalEquipmentOptions: addGearOptions(pEdit),
+              hideNoneForGear: hideNoneForGear(pEdit),
+              courseOptions: addCourseOptions(pEdit),
+              diveSiteOptions: addDiveSiteOptions(pEdit)
+            }
+          }
+        }
         // Equipment-name tap (e.g. "Regulator", "Fins"): add to the diver we're currently asking for (gear step), not always the last diver
         const nextStepForGearTap = getNextBookingStep(bookingPayload)
         if (rentalEquipmentNames.length > 0 && msgTrim.length > 0 && nextStepForGearTap?.step === 'gear' && nextStepForGearTap.diverIndex != null) {
@@ -1164,7 +1207,7 @@ export default defineEventHandler(async (event) => {
         }
         if (nextStep) {
           const fastOptions: { rentalEquipmentNames?: string[]; profilePrefill?: typeof body.profilePrefill } = {}
-          if (nextStep.step === 'gear') fastOptions.rentalEquipmentNames = rentalEquipmentNames
+          fastOptions.rentalEquipmentNames = rentalEquipmentNames
           if (profilePrefill) fastOptions.profilePrefill = profilePrefill
           const fast = tryFastPath(nextStep, message, bookingPayload, resolvedShop.business_name, fastOptions)
           if (fast) {
@@ -1186,25 +1229,7 @@ export default defineEventHandler(async (event) => {
                 selectableOptions: undefined
               }
             }
-            // Shop has no rental gear and we're at the gear step → tell user and offer I understand / Pick a new diveshop (don't show "Does X need gear?" with None/Done)
-            if (nextAfterFast === 'gear' && rentalEquipment.length === 0) {
-              return {
-                success: true,
-                intent: 'booking' as const,
-                bookingReady: false,
-                message: "This dive shop doesn't offer rental gear. Please keep that in mind or arrange gear elsewhere.",
-                shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
-                bookingPayload: fp,
-                selectableOptions: [
-                  { label: 'I understand', value: 'I understand' },
-                  { label: 'Pick a new diveshop', value: 'Pick a new diveshop' }
-                ],
-                rentalEquipmentOptions: undefined,
-                courseOptions: addCourseOptions(fp),
-                diveSiteOptions: addDiveSiteOptions(fp)
-              }
-            }
+            // No blanket "no rental gear" here: height/weight → gear is handled inside tryFastPath (followUpAfterDiverMeasurementAck).
             const gearChipsForFast = rentalEquipment.length > 0 ? rentalEquipment : undefined
             // When fast path returns selectableOptions (e.g. no-rental-gear: "I understand" / "Pick a new diveshop"), use them and skip gear chips
             const noRentalGearOptions = fast.selectableOptions?.length ? fast.selectableOptions : undefined
@@ -1448,27 +1473,6 @@ export default defineEventHandler(async (event) => {
         const divers = (collectedPayload ?? bookingPayload)?.divers ?? []
         const lastName = divers[numDivers - 1]?.name || `Diver ${numDivers}`
         replyMessage = `Does ${lastName} need any rental gear?`
-      }
-      // Shop has no rental gear and we're at the gear step → tell user and offer I understand / Pick a new diveshop (LLM path)
-      const nextStepAfterReply = getNextBookingStep((collectedPayload ?? bookingPayload) ?? {} as BookingPayloadLocal)?.step
-      if (nextStepAfterReply === 'gear' && rentalEquipment.length === 0) {
-        return {
-          success: true,
-          intent: 'booking' as const,
-          bookingReady: false,
-          message: "This dive shop doesn't offer rental gear. Please keep that in mind or arrange gear elsewhere.",
-          shopId: resolvedShop.id,
-          shopName: resolvedShop.business_name,
-          bookingPayload: collectedPayload ?? bookingPayload,
-          selectableOptions: [
-            { label: 'I understand', value: 'I understand' },
-            { label: 'Pick a new diveshop', value: 'Pick a new diveshop' }
-          ],
-          rentalEquipmentOptions: undefined,
-          courseOptions: undefined,
-
-          diveSiteOptions: undefined
-        }
       }
       const finalGearOptions = (collectedPayload ? addGearOptions(collectedPayload) : undefined) ||
         (messageAsksForGear(replyMessage) && gearChips ? gearChips : undefined) ||
