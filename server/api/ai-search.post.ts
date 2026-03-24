@@ -112,6 +112,65 @@ interface RequestBody {
   pendingEntityClarifyPhrase?: string
 }
 
+type OptionalSelectionState = 'unset' | 'empty' | 'selected'
+
+interface BookingPayloadGuardSummary {
+  hasName: boolean
+  hasEmail: boolean
+  hasDates: boolean
+  desiredCourses: OptionalSelectionState
+  coursesSelectionComplete: 'unset' | 'true' | 'false'
+  desiredDiveSites: OptionalSelectionState
+  numberOfDivers: number | null
+  diversCount: number
+  nextStep: string | null
+}
+
+function summarizeOptionalSelection (list: unknown): OptionalSelectionState {
+  if (!Array.isArray(list)) return 'unset'
+  return list.length > 0 ? 'selected' : 'empty'
+}
+
+function summarizeBookingPayloadForGuard (
+  payload: BookingPayload | BookingPayloadLocal | undefined | null
+): BookingPayloadGuardSummary {
+  const p = payload || {}
+  const hasName = typeof p.name === 'string' && p.name.trim() !== ''
+  const hasEmail = typeof p.email === 'string' && p.email.trim() !== ''
+  const hasDates = typeof p.startDate === 'string' && p.startDate.trim() !== '' && typeof p.endDate === 'string' && p.endDate.trim() !== ''
+  const nextProbe = JSON.parse(JSON.stringify(p || {})) as BookingPayloadLocal
+  return {
+    hasName,
+    hasEmail,
+    hasDates,
+    desiredCourses: summarizeOptionalSelection(p.desiredCourses),
+    coursesSelectionComplete: p.coursesSelectionComplete === undefined ? 'unset' : p.coursesSelectionComplete ? 'true' : 'false',
+    desiredDiveSites: summarizeOptionalSelection(p.desiredDiveSites),
+    numberOfDivers: typeof p.numberOfDivers === 'number' ? p.numberOfDivers : null,
+    diversCount: Array.isArray(p.divers) ? p.divers.length : 0,
+    nextStep: getNextBookingStep(nextProbe)?.step ?? null
+  }
+}
+
+function clampBookingPayloadWithGuard (
+  payload: BookingPayload | BookingPayloadLocal | undefined | null,
+  options: { shopCourseCount: number; shopDiveSiteCount: number },
+  context: string
+): BookingPayloadLocal {
+  const beforeSerialized = JSON.stringify(payload ?? null)
+  const beforeSummary = summarizeBookingPayloadForGuard(payload)
+  const clamped = clampBookingPayloadToNextStep(payload as BookingPayloadLocal, options)
+  const afterSerialized = JSON.stringify(clamped ?? null)
+  if (beforeSerialized !== afterSerialized) {
+    console.warn('[booking-payload-guard] corrected out-of-order payload', {
+      context,
+      before: beforeSummary,
+      after: summarizeBookingPayloadForGuard(clamped)
+    })
+  }
+  return clamped
+}
+
 const SYSTEM_PROMPT = `You are an AI assistant helping users find the perfect dive shop for their needs. 
 
 Your task is to:
@@ -451,10 +510,10 @@ export default defineEventHandler(async (event) => {
         getCoursesForShop(supabaseUrl, supabaseKey, resolvedShop.id)
       ])
       if (continuingBooking && bookingPayload) {
-        bookingPayload = clampBookingPayloadToNextStep(bookingPayload as BookingPayloadLocal, {
+        bookingPayload = clampBookingPayloadWithGuard(bookingPayload as BookingPayloadLocal, {
           shopCourseCount: courses.length,
           shopDiveSiteCount: diveSites.length
-        }) as BookingPayload
+        }, 'continue-booking-initial-clamp') as BookingPayload
         bookingPayload = applyInferredCoursesToPayloadIfEligible(
           bookingPayload as BookingPayloadLocal,
           history,
@@ -507,10 +566,10 @@ export default defineEventHandler(async (event) => {
           initialPayload = { ...initialPayload, desiredCourses: [] }
           nextHint = getNextBookingStep(initialPayload)
         }
-        initialPayload = clampBookingPayloadToNextStep(initialPayload as BookingPayloadLocal, {
+        initialPayload = clampBookingPayloadWithGuard(initialPayload as BookingPayloadLocal, {
           shopCourseCount: courses.length,
           shopDiveSiteCount: diveSites.length
-        }) as BookingPayload
+        }, 'start-booking-initial-clamp') as BookingPayload
         initialPayload = applyInferredCoursesToPayloadIfEligible(
           initialPayload as BookingPayloadLocal,
           history,
@@ -617,10 +676,10 @@ export default defineEventHandler(async (event) => {
             initialPayload = { ...initialPayload, desiredCourses: [] }
             nextHint = getNextBookingStep(initialPayload)
           }
-          initialPayload = clampBookingPayloadToNextStep(initialPayload as BookingPayloadLocal, {
+          initialPayload = clampBookingPayloadWithGuard(initialPayload as BookingPayloadLocal, {
             shopCourseCount: courses.length,
             shopDiveSiteCount: diveSites.length
-          }) as BookingPayload
+          }, 'continue-no-gear-initial-clamp') as BookingPayload
           initialPayload = applyInferredCoursesToPayloadIfEligible(
             initialPayload as BookingPayloadLocal,
             history,
@@ -677,10 +736,10 @@ export default defineEventHandler(async (event) => {
             if (getNextBookingStep(p)?.step === 'diveSites' && diveSites.length === 0) {
               p = { ...p, desiredDiveSites: [] }
             }
-            p = clampBookingPayloadToNextStep(p as BookingPayloadLocal, {
+            p = clampBookingPayloadWithGuard(p as BookingPayloadLocal, {
               shopCourseCount: courses.length,
               shopDiveSiteCount: diveSites.length
-            }) as BookingPayload
+            }, 'dates-parser-clamp') as BookingPayload
             const nextAfter = getNextBookingStep(p)
             let msg = `Got it — diving ${parsedDates.startDate} to ${parsedDates.endDate}.`
             if (nextAfter?.step === 'courses' && courses.length > 0) {
@@ -915,10 +974,10 @@ export default defineEventHandler(async (event) => {
             const prevVal = snapshotDiverField(diversEdit[di], diverFieldEdit.field)
             diversEdit[di] = clearDiverFieldOnCopy(diversEdit[di], diverFieldEdit.field)
             let pEdit = { ...bookingPayload, divers: diversEdit } as BookingPayload
-            pEdit = clampBookingPayloadToNextStep(pEdit as BookingPayloadLocal, {
+            pEdit = clampBookingPayloadWithGuard(pEdit as BookingPayloadLocal, {
               shopCourseCount: courses.length,
               shopDiveSiteCount: diveSites.length
-            }) as BookingPayload
+            }, 'diver-field-edit-clamp') as BookingPayload
             const editMsg = buildDiverFieldEditPrompt(diverFieldEdit.field, diverFieldEdit.displayName, prevVal)
             return {
               success: true,
@@ -1211,10 +1270,10 @@ export default defineEventHandler(async (event) => {
           if (profilePrefill) fastOptions.profilePrefill = profilePrefill
           const fast = tryFastPath(nextStep, message, bookingPayload, resolvedShop.business_name, fastOptions)
           if (fast) {
-            const fp = clampBookingPayloadToNextStep(fast.payload as BookingPayloadLocal, {
+            const fp = clampBookingPayloadWithGuard(fast.payload as BookingPayloadLocal, {
               shopCourseCount: courses.length,
               shopDiveSiteCount: diveSites.length
-            }) as BookingPayload
+            }, 'fast-path-clamp') as BookingPayload
             const nextAfterFast = getNextBookingStep(fp)?.step
             if (nextAfterFast === 'ready') {
               const p = { ...fp, shopId: resolvedShop.id }
