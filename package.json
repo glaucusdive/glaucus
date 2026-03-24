@@ -9,8 +9,8 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "test": "vitest",
-    "test:run": "vitest run"
+    "test": "nuxt prepare && vitest",
+    "test:run": "nuxt prepare && vitest run"
   },
   "dependencies": {
     "@nuxt/ui": "^3.3.0",
