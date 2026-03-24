@@ -8,7 +8,9 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "test": "nuxt prepare && vitest",
+    "test:run": "nuxt prepare && vitest run"
   },
   "dependencies": {
     "@nuxt/ui": "^3.3.0",
@@ -19,5 +21,9 @@
     "resend": "^6.9.3",
     "vue": "^3.5.18",
     "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.1",
+    "vitest": "^4.1.1"
   }
 }
