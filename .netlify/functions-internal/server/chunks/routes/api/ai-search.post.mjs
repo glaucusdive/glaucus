@@ -10,6 +10,11 @@ import 'node:crypto';
 import '@iconify/utils';
 import 'consola';
 
+function splitGotItIsoDateAckLine(text) {
+  const m = text.match(/^(Got it — \d{4}-\d{2}-\d{2} to \d{4}-\d{2}-\d{2}\.)\s+([\s\S]+)$/);
+  if (!m) return null;
+  return { messagePreamble: m[1], message: m[2].trim() };
+}
 function inferCountryFromConversation(conversationText) {
   const countryPatterns = [
     { pattern: /\bthailand\b/i, country: "Thailand" },
@@ -447,12 +452,19 @@ const aiSearch_post = defineEventHandler(async (event) => {
         }
         return `Great \u2014 I'll help you book with ${shopName}. Are you interested in any courses on this trip? ${COURSES_LINE}`;
       };
-      const coursesDateAckMessage = (p, startDate, endDate) => {
+      const coursesDateAckParts = (p, startDate, endDate) => {
         var _a2;
+        const messagePreamble = `Got it \u2014 ${startDate} to ${endDate}.`;
         if (((_a2 = p.desiredCourses) == null ? void 0 : _a2.length) && p.coursesSelectionComplete === false) {
-          return `Got it \u2014 ${startDate} to ${endDate}. I noted ${p.desiredCourses.join(", ")} from your search. ${COURSES_LINE}`;
+          return {
+            messagePreamble,
+            message: `I noted ${p.desiredCourses.join(", ")} from your search. ${COURSES_LINE}`
+          };
         }
-        return `Got it \u2014 ${startDate} to ${endDate}. Are you interested in any courses on this trip? ${COURSES_LINE}`;
+        return {
+          messagePreamble,
+          message: `Are you interested in any courses on this trip? ${COURSES_LINE}`
+        };
       };
       if (continuingBooking && !bookingPayload) {
         const msgTrim = message.trim();
@@ -538,18 +550,24 @@ const aiSearch_post = defineEventHandler(async (event) => {
             });
             const nextAfter = getNextBookingStep(p);
             let msg = `Got it \u2014 diving ${parsedDates.startDate} to ${parsedDates.endDate}.`;
+            let dateStepPreamble;
             if ((nextAfter == null ? void 0 : nextAfter.step) === "courses" && courses.length > 0) {
-              msg = coursesDateAckMessage(p, parsedDates.startDate, parsedDates.endDate);
+              const parts = coursesDateAckParts(p, parsedDates.startDate, parsedDates.endDate);
+              dateStepPreamble = parts.messagePreamble;
+              msg = parts.message;
             } else if ((nextAfter == null ? void 0 : nextAfter.step) === "diveSites" && diveSites.length > 0) {
-              msg = ((_p = p.desiredCourses) == null ? void 0 : _p.length) ? `Got it \u2014 ${parsedDates.startDate} to ${parsedDates.endDate}. I noted ${p.desiredCourses.join(", ")} from your search. Which dive sites would you like to dive? ${DIVE_SITES_LINE}` : `Got it \u2014 ${parsedDates.startDate} to ${parsedDates.endDate}. Which dive sites would you like to dive? ${DIVE_SITES_LINE}`;
+              dateStepPreamble = `Got it \u2014 ${parsedDates.startDate} to ${parsedDates.endDate}.`;
+              msg = ((_p = p.desiredCourses) == null ? void 0 : _p.length) ? `I noted ${p.desiredCourses.join(", ")} from your search. Which dive sites would you like to dive? ${DIVE_SITES_LINE}` : `Which dive sites would you like to dive? ${DIVE_SITES_LINE}`;
             } else if ((nextAfter == null ? void 0 : nextAfter.step) === "numberOfDivers") {
-              msg = ((_q = p.desiredCourses) == null ? void 0 : _q.length) && courses.length > 0 ? `Got it \u2014 ${parsedDates.startDate} to ${parsedDates.endDate}. I noted ${p.desiredCourses.join(", ")} from your search. How many divers should we book for?` : `Got it \u2014 ${parsedDates.startDate} to ${parsedDates.endDate}. How many divers should we book for?`;
+              dateStepPreamble = `Got it \u2014 ${parsedDates.startDate} to ${parsedDates.endDate}.`;
+              msg = ((_q = p.desiredCourses) == null ? void 0 : _q.length) && courses.length > 0 ? `I noted ${p.desiredCourses.join(", ")} from your search. How many divers should we book for?` : `How many divers should we book for?`;
             }
             return {
               success: true,
               intent: "booking",
               bookingReady: false,
               message: msg,
+              ...dateStepPreamble ? { messagePreamble: dateStepPreamble } : {},
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               bookingPayload: p,
@@ -938,7 +956,6 @@ const aiSearch_post = defineEventHandler(async (event) => {
         const lastDiverForDone = (_F = bookingPayload.divers) == null ? void 0 : _F[numDiversForDone - 1];
         if (((_G = lastDiverForDone == null ? void 0 : lastDiverForDone.gear) == null ? void 0 : _G.length) && (/^(done|that's all|finish|that's it)$/i.test(msgTrim) || msgTrim.toLowerCase() === "none")) {
           const name = lastDiverForDone.name || "They";
-          const nextMsg = `Got it \u2014 ${name}'s gear is set. Do you want to add another diver? (yes/no)`;
           const payloadWithGearAsked = { ...bookingPayload, divers: [...bookingPayload.divers || []] };
           const lastIdx = numDiversForDone - 1;
           if (payloadWithGearAsked.divers && payloadWithGearAsked.divers[lastIdx]) {
@@ -948,7 +965,8 @@ const aiSearch_post = defineEventHandler(async (event) => {
             success: true,
             intent: "booking",
             bookingReady: false,
-            message: nextMsg,
+            messagePreamble: `Got it \u2014 ${name}'s gear is set.`,
+            message: "Do you want to add another diver? (yes/no)",
             shopId: resolvedShop.id,
             shopName: resolvedShop.business_name,
             bookingPayload: payloadWithGearAsked,
@@ -1007,6 +1025,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
               intent: "booking",
               bookingReady: false,
               message: fastUnit.message,
+              ...fastUnit.messagePreamble ? { messagePreamble: fastUnit.messagePreamble } : {},
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               bookingPayload: fastUnit.payload,
@@ -1067,6 +1086,7 @@ const aiSearch_post = defineEventHandler(async (event) => {
               intent: "booking",
               bookingReady: false,
               message: fast.message,
+              ...fast.messagePreamble ? { messagePreamble: fast.messagePreamble } : {},
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               bookingPayload: fp,
@@ -1300,11 +1320,15 @@ const aiSearch_post = defineEventHandler(async (event) => {
         const diverNum = nextHintDiverChips.diverIndex + 1;
         replyMessage = `Use an existing diver from your profile or create a new one for Diver ${diverNum}?`;
       }
+      const bookingBubbleSplit = splitGotItIsoDateAckLine(replyMessage);
+      const messageForClient = bookingBubbleSplit ? bookingBubbleSplit.message : replyMessage;
+      const messagePreambleForClient = bookingBubbleSplit == null ? void 0 : bookingBubbleSplit.messagePreamble;
       return {
         success: true,
         intent: "booking",
         bookingReady: false,
-        message: replyMessage,
+        message: messageForClient,
+        ...messagePreambleForClient ? { messagePreamble: messagePreambleForClient } : {},
         shopId: resolvedShop.id,
         shopName: resolvedShop.business_name,
         bookingPayload: collectedPayload,

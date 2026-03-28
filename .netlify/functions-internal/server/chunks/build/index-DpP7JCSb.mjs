@@ -705,7 +705,9 @@ const _sfc_main = {
             message,
             history: messages.value.filter((m) => m.role === "user" || m.role === "assistant").map((m) => ({
               role: m.role,
-              content: m.content
+              content: m.role === "assistant" && m.preamble ? `${m.preamble}
+
+${m.content}` : m.content
             })),
             selectedShopId: selectedShopId.value || void 0,
             lastShops,
@@ -734,6 +736,7 @@ const _sfc_main = {
               {
                 role: "assistant",
                 content: resetContent,
+                ...response.messagePreamble ? { preamble: response.messagePreamble } : {},
                 shops: response.shops || [],
                 totalResults: response.totalResults,
                 hasMoreResults: response.hasMoreResults,
@@ -820,6 +823,7 @@ const _sfc_main = {
           messages.value.push({
             role: "assistant",
             content,
+            ...response.messagePreamble ? { preamble: response.messagePreamble } : {},
             shops: response.shops || [],
             totalResults: response.totalResults,
             hasMoreResults: response.hasMoreResults,
@@ -1050,7 +1054,13 @@ const _sfc_main = {
               if (msg.role === "user") {
                 _push2(`<div class="flex justify-end"${_scopeId}><div class="max-w-[80%] bg-blue-600 text-white rounded-lg p-2"${_scopeId}><p class="text-sm lg:text-base"${_scopeId}>${ssrInterpolate(msg.content)}</p></div></div>`);
               } else if (msg.role === "assistant") {
-                _push2(`<div class="flex justify-start"${_scopeId}><div class="md:max-w-[90%] flex-1 min-w-0 flex flex-col gap-2"${_scopeId}><div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 flex items-stretch gap-2"${_scopeId}><p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis"${_scopeId}>${ssrInterpolate(msg.content)}</p>`);
+                _push2(`<div class="flex justify-start"${_scopeId}><div class="md:max-w-[90%] flex-1 min-w-0 flex flex-col gap-2"${_scopeId}>`);
+                if (msg.preamble) {
+                  _push2(`<div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2"${_scopeId}><p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap"${_scopeId}>${ssrInterpolate(msg.preamble)}</p></div>`);
+                } else {
+                  _push2(`<!---->`);
+                }
+                _push2(`<div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 flex items-stretch gap-2"${_scopeId}><p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis"${_scopeId}>${ssrInterpolate(msg.content)}</p>`);
                 if ((bookingShopForDrawer.value || msg.shopId && msg.shopName) && !(msg.shops && msg.shops.length > 0)) {
                   _push2(`<button type="button" class="w-10 shrink-0 self-stretch flex items-center justify-center rounded-sm border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200 transition-colors cursor-pointer" aria-label="Open booking form"${_scopeId}>`);
                   _push2(ssrRenderComponent(unref(ChevronRight), { class: "w-5 h-5" }, null, _parent2, _scopeId));
@@ -1272,6 +1282,12 @@ const _sfc_main = {
                             class: "flex justify-start"
                           }, [
                             createVNode("div", { class: "md:max-w-[90%] flex-1 min-w-0 flex flex-col gap-2" }, [
+                              msg.preamble ? (openBlock(), createBlock("div", {
+                                key: 0,
+                                class: "bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2"
+                              }, [
+                                createVNode("p", { class: "text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap" }, toDisplayString(msg.preamble), 1)
+                              ])) : createCommentVNode("", true),
                               createVNode("div", { class: "bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 flex items-stretch gap-2" }, [
                                 createVNode("p", { class: "text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis" }, toDisplayString(msg.content), 1),
                                 (bookingShopForDrawer.value || msg.shopId && msg.shopName) && !(msg.shops && msg.shops.length > 0) ? (openBlock(), createBlock("button", {
@@ -1285,7 +1301,7 @@ const _sfc_main = {
                                 ], 8, ["onClick"])) : createCommentVNode("", true)
                               ]),
                               msg.shops && msg.shops.length > 0 ? (openBlock(), createBlock("div", {
-                                key: 0,
+                                key: 1,
                                 class: "flex flex-col gap-2 md:p-2"
                               }, [
                                 createVNode("div", { class: "flex items-center gap-2 text-sm text-zinc-600" }, [
@@ -1308,7 +1324,7 @@ const _sfc_main = {
                                 }, toDisplayString(getResultsRangeLabel(index)), 1)) : createCommentVNode("", true)
                               ])) : createCommentVNode("", true),
                               msg.selectableOptions && msg.selectableOptions.length > 0 || msg.shops?.length && selectedShopId.value && selectedShopName.value ? (openBlock(), createBlock("div", {
-                                key: 1,
+                                key: 2,
                                 class: ["flex flex-wrap gap-2 p-2 transition-opacity duration-200", index !== activeChipMessageIndex.value ? "opacity-50 pointer-events-none" : ""]
                               }, [
                                 msg.shops?.length && selectedShopId.value && selectedShopName.value ? (openBlock(), createBlock("button", {
@@ -1327,7 +1343,7 @@ const _sfc_main = {
                                 }), 128))
                               ], 2)) : createCommentVNode("", true),
                               Array.isArray(msg.rentalEquipmentOptions) ? (openBlock(), createBlock("div", {
-                                key: 2,
+                                key: 3,
                                 class: ["flex flex-wrap gap-2 p-2 transition-opacity duration-200", index !== activeChipMessageIndex.value ? "opacity-50 pointer-events-none" : ""]
                               }, [
                                 (openBlock(true), createBlock(Fragment, null, renderList(msg.rentalEquipmentOptions, (eq) => {
@@ -1351,7 +1367,7 @@ const _sfc_main = {
                                 }, " Done ", 8, ["onClick"])
                               ], 2)) : createCommentVNode("", true),
                               msg.courseOptions && msg.courseOptions.length > 0 ? (openBlock(), createBlock("div", {
-                                key: 3,
+                                key: 4,
                                 class: ["flex flex-wrap gap-2 transition-opacity duration-200", index !== activeChipMessageIndex.value ? "opacity-50 pointer-events-none" : ""]
                               }, [
                                 createVNode("div", { class: "flex gap-2 w-full" }, [
@@ -1376,7 +1392,7 @@ const _sfc_main = {
                                 }), 128))
                               ], 2)) : createCommentVNode("", true),
                               msg.diveSiteOptions && msg.diveSiteOptions.length > 0 ? (openBlock(), createBlock("div", {
-                                key: 4,
+                                key: 5,
                                 class: ["flex flex-wrap gap-2 transition-opacity duration-200", index !== activeChipMessageIndex.value ? "opacity-50 pointer-events-none" : ""]
                               }, [
                                 createVNode("div", { class: "flex gap-2 w-full" }, [
@@ -1539,4 +1555,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=index-DfFS74MK.mjs.map
+//# sourceMappingURL=index-DpP7JCSb.mjs.map

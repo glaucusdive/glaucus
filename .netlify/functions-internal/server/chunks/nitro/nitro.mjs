@@ -4294,7 +4294,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "6d0fdacf-8c3d-4f07-8ad5-d5a7ac50e2c2",
+    "buildId": "99931128-2223-4e67-a40b-b2be802b8dd0",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -5241,7 +5241,7 @@ function followUpAfterDiverMeasurementAck(p, diverIndex, ackLine, options) {
   const divers = ensureDivers(p);
   const n = (((_a = divers[diverIndex]) == null ? void 0 : _a.name) || "").trim() || `Diver ${diverIndex + 1}`;
   if ((next == null ? void 0 : next.step) === "weight" && ((_b = next.diverIndex) != null ? _b : 0) === diverIndex) {
-    return { message: `${ackLine} What's ${n}'s weight? Please include the unit (lbs or kg).`, payload: p };
+    return { messagePreamble: ackLine, message: `What's ${n}'s weight? Please include the unit (lbs or kg).`, payload: p };
   }
   if ((next == null ? void 0 : next.step) === "gear" && ((_c = next.diverIndex) != null ? _c : 0) === diverIndex) {
     const noGear = !((_d = options == null ? void 0 : options.rentalEquipmentNames) == null ? void 0 : _d.length);
@@ -5255,10 +5255,10 @@ function followUpAfterDiverMeasurementAck(p, diverIndex, ackLine, options) {
         ]
       };
     }
-    return { message: `${ackLine} Does ${n} need any rental gear?`, payload: p };
+    return { messagePreamble: ackLine, message: `Does ${n} need any rental gear?`, payload: p };
   }
   if ((next == null ? void 0 : next.step) === "ready") {
-    return { message: `${ackLine} All set \u2014 ready to send your booking request.`, payload: p };
+    return { messagePreamble: ackLine, message: "All set \u2014 ready to send your booking request.", payload: p };
   }
   return { message: ackLine, payload: p };
 }
@@ -5279,7 +5279,11 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
         return { message: `Got it \u2014 could you give me your full name (first and last)?`, payload: p };
       }
       p.name = msg;
-      return { message: `Thanks \u2014 got your name. What's the best email address for the booking?`, payload: p };
+      return {
+        messagePreamble: "Thanks \u2014 got your name.",
+        message: "What's the best email address for the booking?",
+        payload: p
+      };
     }
     case "email": {
       const email = msg.replace(/\s+/g, "");
@@ -5362,16 +5366,32 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
             const name = divers[i].name || "They";
             const next = getNextBookingStep(p);
             if ((next == null ? void 0 : next.step) === "courses") {
-              return { message: `Thanks \u2014 I've added ${name} from your profile. Are you interested in any courses on this trip?`, payload: p };
+              return {
+                messagePreamble: `Thanks \u2014 I've added ${name} from your profile.`,
+                message: "Are you interested in any courses on this trip?",
+                payload: p
+              };
             }
             if ((next == null ? void 0 : next.step) === "diveSites") {
-              return { message: `Thanks \u2014 I've added ${name} from your profile. Which dive sites would you like to dive?`, payload: p };
+              return {
+                messagePreamble: `Thanks \u2014 I've added ${name} from your profile.`,
+                message: "Which dive sites would you like to dive?",
+                payload: p
+              };
             }
             if ((next == null ? void 0 : next.step) === "gear") {
-              return { message: `Thanks \u2014 I've added ${name} from your profile. Does ${name} need any rental gear?`, payload: p };
+              return {
+                messagePreamble: `Thanks \u2014 I've added ${name} from your profile.`,
+                message: `Does ${name} need any rental gear?`,
+                payload: p
+              };
             }
             if ((next == null ? void 0 : next.step) === "certificationNumber") {
-              return { message: `Thanks \u2014 I've added ${name} from your profile. What is ${name}'s certification number?`, payload: p };
+              return {
+                messagePreamble: `Thanks \u2014 I've added ${name} from your profile.`,
+                message: `What is ${name}'s certification number?`,
+                payload: p
+              };
             }
             return { message: `Thanks \u2014 I've added ${name} from your profile.`, payload: p };
           }
@@ -5384,7 +5404,11 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
           divers[0].name = String(p.name).trim();
           p.divers = divers;
           const name = divers[0].name;
-          return { message: `Thanks \u2014 I'll use ${name} for Diver 1. What is ${name}'s certification number?`, payload: p };
+          return {
+            messagePreamble: `Thanks \u2014 I'll use ${name} for Diver 1.`,
+            message: `What is ${name}'s certification number?`,
+            payload: p
+          };
         }
       }
       if (msg.length < 2 || msg.length > 80) return null;
@@ -5402,14 +5426,22 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
       if (!divers[i]) divers.push({ name: "", certificationNumber: "", numberOfDives: "", height: "", heightUnit: "ft-in", weight: "", weightUnit: "lbs", gear: [] });
       divers[i].name = msg;
       p.divers = divers;
-      return { message: `Thanks \u2014 ${msg}, got it. What is ${msg}'s certification number?`, payload: p };
+      return {
+        messagePreamble: `Thanks \u2014 ${msg}, got it.`,
+        message: `What is ${msg}'s certification number?`,
+        payload: p
+      };
     }
     case "certificationNumber": {
       if (!divers[i]) return null;
       divers[i].certificationNumber = msg;
       p.divers = divers;
       const n = divers[i].name || "They";
-      return { message: `Thanks \u2014 got ${n}'s certification number as ${msg}. How many dives has ${n} completed?`, payload: p };
+      return {
+        messagePreamble: `Thanks \u2014 got ${n}'s certification number as ${msg}.`,
+        message: `How many dives has ${n} completed?`,
+        payload: p
+      };
     }
     case "numberOfDives": {
       if (!divers[i]) return null;
@@ -5418,7 +5450,11 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
       divers[i].numberOfDives = num;
       p.divers = divers;
       const n = divers[i].name || "They";
-      return { message: `Thanks \u2014 got ${n}'s dive count as ${num}. What's ${n}'s height? (e.g. 5'4", 5-3, or 170 cm \u2014 say or type the unit if it's not obvious.)`, payload: p };
+      return {
+        messagePreamble: `Thanks \u2014 got ${n}'s dive count as ${num}.`,
+        message: `What's ${n}'s height? (e.g. 5'4", 5-3, or 170 cm \u2014 say or type the unit if it's not obvious.)`,
+        payload: p
+      };
     }
     case "height": {
       if (!divers[i]) return null;
@@ -5501,14 +5537,23 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
           const dn = (divers[i].name || "They").trim();
           if (diverChips == null ? void 0 : diverChips.length) {
             return {
-              message: `Got it \u2014 no rental gear for ${dn}. Use an existing diver from your profile or create a new one for Diver ${i + 2}?`,
+              messagePreamble: `Got it \u2014 no rental gear for ${dn}.`,
+              message: `Use an existing diver from your profile or create a new one for Diver ${i + 2}?`,
               payload: p,
               selectableOptions: diverChips
             };
           }
-          return { message: `Got it \u2014 no rental gear for ${divers[i].name}. What's Diver ${i + 2}'s full name?`, payload: p };
+          return {
+            messagePreamble: `Got it \u2014 no rental gear for ${divers[i].name}.`,
+            message: `What's Diver ${i + 2}'s full name?`,
+            payload: p
+          };
         }
-        return { message: `Got it \u2014 no rental gear. All set \u2014 ready to send your booking request.`, payload: p };
+        return {
+          messagePreamble: "Got it \u2014 no rental gear.",
+          message: "All set \u2014 ready to send your booking request.",
+          payload: p
+        };
       }
       const wantsGear = /\b(yes|yeah|yep|yup|they do|she does|he does|we do|i do|please|sure)\b/i.test(msg) || /^\s*y\s*$/i.test(msg);
       const noRentalGearAvailable = !(options == null ? void 0 : options.rentalEquipmentNames) || options.rentalEquipmentNames.length === 0;
@@ -5525,7 +5570,11 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
             ]
           };
         }
-        return { message: `Got it \u2014 ${n} will need rental gear. What would ${n} like to rent? Pick from the options below or say "none" when done.`, payload: p };
+        return {
+          messagePreamble: `Got it \u2014 ${n} will need rental gear.`,
+          message: `What would ${n} like to rent? Pick from the options below or say "none" when done.`,
+          payload: p
+        };
       }
       if (isDone && ((_j = (_i = divers[i]) == null ? void 0 : _i.gear) == null ? void 0 : _j.length)) {
         if (divers[i]) divers[i].gearAsked = true;
@@ -5536,14 +5585,23 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
           const diverChips = profileDiverSelectableChipsFromPrefill(pref, { bookingPayload: p });
           if (diverChips == null ? void 0 : diverChips.length) {
             return {
-              message: `Got it \u2014 ${n}'s gear is set. Use an existing diver from your profile or create a new one for Diver ${i + 2}?`,
+              messagePreamble: `Got it \u2014 ${n}'s gear is set.`,
+              message: `Use an existing diver from your profile or create a new one for Diver ${i + 2}?`,
               payload: p,
               selectableOptions: diverChips
             };
           }
-          return { message: `Got it \u2014 ${n}'s gear is set. What's Diver ${i + 2}'s full name?`, payload: p };
+          return {
+            messagePreamble: `Got it \u2014 ${n}'s gear is set.`,
+            message: `What's Diver ${i + 2}'s full name?`,
+            payload: p
+          };
         }
-        return { message: `Got it \u2014 ${n}'s gear is set. All set \u2014 ready to send your booking request.`, payload: p };
+        return {
+          messagePreamble: `Got it \u2014 ${n}'s gear is set.`,
+          message: "All set \u2014 ready to send your booking request.",
+          payload: p
+        };
       }
       if (isNone || isDone && !((_m = (_l = divers[i]) == null ? void 0 : _l.gear) == null ? void 0 : _m.length)) {
         if (!divers[i]) return null;
@@ -5556,14 +5614,23 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
           const dn = (divers[i].name || "They").trim();
           if (diverChips == null ? void 0 : diverChips.length) {
             return {
-              message: `Got it \u2014 no rental gear for ${dn}. Use an existing diver from your profile or create a new one for Diver ${i + 2}?`,
+              messagePreamble: `Got it \u2014 no rental gear for ${dn}.`,
+              message: `Use an existing diver from your profile or create a new one for Diver ${i + 2}?`,
               payload: p,
               selectableOptions: diverChips
             };
           }
-          return { message: `Got it \u2014 no rental gear for ${divers[i].name}. What's Diver ${i + 2}'s full name?`, payload: p };
+          return {
+            messagePreamble: `Got it \u2014 no rental gear for ${divers[i].name}.`,
+            message: `What's Diver ${i + 2}'s full name?`,
+            payload: p
+          };
         }
-        return { message: `Got it \u2014 no rental gear. All set \u2014 ready to send your booking request.`, payload: p };
+        return {
+          messagePreamble: "Got it \u2014 no rental gear.",
+          message: "All set \u2014 ready to send your booking request.",
+          payload: p
+        };
       }
       const equipmentNames = (_o = options == null ? void 0 : options.rentalEquipmentNames) != null ? _o : [];
       if (equipmentNames.length > 0) {
@@ -5620,7 +5687,11 @@ function tryFastPathUnitOnly(userMessage, payload, _shopName) {
   d[targetIdx].weightUnit = unit;
   p.divers = d;
   const n = d[targetIdx].name || "They";
-  return { message: `Got it \u2014 recorded ${n}'s weight as ${d[targetIdx].weight} ${unit}. Does ${n} need any rental gear?`, payload: p };
+  return {
+    messagePreamble: `Got it \u2014 recorded ${n}'s weight as ${d[targetIdx].weight} ${unit}.`,
+    message: `Does ${n} need any rental gear?`,
+    payload: p
+  };
 }
 
 function diveshopLocaleOrConditions(term) {

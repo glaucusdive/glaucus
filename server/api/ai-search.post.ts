@@ -31,6 +31,13 @@ interface Message {
   content: string
 }
 
+/** ISO date range ack + following question → two UI bubbles when the model mirrors our copy. */
+function splitGotItIsoDateAckLine (text: string): { messagePreamble: string; message: string } | null {
+  const m = text.match(/^(Got it — \d{4}-\d{2}-\d{2} to \d{4}-\d{2}-\d{2}\.)\s+([\s\S]+)$/)
+  if (!m) return null
+  return { messagePreamble: m[1], message: m[2].trim() }
+}
+
 /** When the AI omits country but user clearly said a location (e.g. trip-type-only reply), infer country from conversation. */
 function inferCountryFromConversation (conversationText: string): string | null {
   // Match "in Thailand", "Thailand", "dive shops in Thailand", etc. Use word boundary so "Thailand-based" matches.
@@ -470,6 +477,30 @@ export default defineEventHandler(async (event) => {
       const startingFreshBooking = (wantsToBook || resolvedByNamedShop) && !continuingBooking
       const noPayloadYet = !bookingPayload || !(bookingPayload.name && String(bookingPayload.name).trim())
 
+      /** Copy for courses step (same UX as dive sites). */
+      const COURSES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.'
+      /** Copy for dive-sites step: makes multi-select and "done" obvious so users don't think one tap commits. */
+      const DIVE_SITES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.'
+      const coursesIntroMessage = (shopName: string, p: BookingPayload) => {
+        if (p.desiredCourses?.length && p.coursesSelectionComplete === false) {
+          return `Great — I'll help you book with ${shopName}. I noted ${p.desiredCourses.join(', ')} from your search. ${COURSES_LINE}`
+        }
+        return `Great — I'll help you book with ${shopName}. Are you interested in any courses on this trip? ${COURSES_LINE}`
+      }
+      const coursesDateAckParts = (p: BookingPayload, startDate: string, endDate: string) => {
+        const messagePreamble = `Got it — ${startDate} to ${endDate}.`
+        if (p.desiredCourses?.length && p.coursesSelectionComplete === false) {
+          return {
+            messagePreamble,
+            message: `I noted ${p.desiredCourses.join(', ')} from your search. ${COURSES_LINE}`
+          }
+        }
+        return {
+          messagePreamble,
+          message: `Are you interested in any courses on this trip? ${COURSES_LINE}`
+        }
+      }
+
       // If shop has no rental gear and user is just starting booking, tell them and offer to continue or pick another shop
       if (startingFreshBooking && noPayloadYet && rentalEquipment.length === 0) {
         return {
@@ -565,22 +596,6 @@ export default defineEventHandler(async (event) => {
       const messageAsksForDiveSites = (text: string) => /dive sites|which sites|sites would you like|available sites|pick one or more/i.test(text)
       const messageAsksForCourses = (text: string) => /courses|which course|interested in any course|certification course/i.test(text)
       const messageIsAddAnotherGear = (text: string) => /add another or say/i.test(text)
-      /** Copy for courses step (same UX as dive sites). */
-      const COURSES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.'
-      /** Copy for dive-sites step: makes multi-select and "done" obvious so users don't think one tap commits. */
-      const DIVE_SITES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.'
-      const coursesIntroMessage = (shopName: string, p: BookingPayload) => {
-        if (p.desiredCourses?.length && p.coursesSelectionComplete === false) {
-          return `Great — I'll help you book with ${shopName}. I noted ${p.desiredCourses.join(', ')} from your search. ${COURSES_LINE}`
-        }
-        return `Great — I'll help you book with ${shopName}. Are you interested in any courses on this trip? ${COURSES_LINE}`
-      }
-      const coursesDateAckMessage = (p: BookingPayload, startDate: string, endDate: string) => {
-        if (p.desiredCourses?.length && p.coursesSelectionComplete === false) {
-          return `Got it — ${startDate} to ${endDate}. I noted ${p.desiredCourses.join(', ')} from your search. ${COURSES_LINE}`
-        }
-        return `Got it — ${startDate} to ${endDate}. Are you interested in any courses on this trip? ${COURSES_LINE}`
-      }
 
       // User replied to "shop has no gear" with no payload yet: Pick a new diveshop (clear shop) or Continue (start form)
       if (continuingBooking && !bookingPayload) {
@@ -683,22 +698,28 @@ export default defineEventHandler(async (event) => {
             }) as BookingPayload
             const nextAfter = getNextBookingStep(p)
             let msg = `Got it — diving ${parsedDates.startDate} to ${parsedDates.endDate}.`
+            let dateStepPreamble: string | undefined
             if (nextAfter?.step === 'courses' && courses.length > 0) {
-              msg = coursesDateAckMessage(p, parsedDates.startDate, parsedDates.endDate)
+              const parts = coursesDateAckParts(p, parsedDates.startDate, parsedDates.endDate)
+              dateStepPreamble = parts.messagePreamble
+              msg = parts.message
             } else if (nextAfter?.step === 'diveSites' && diveSites.length > 0) {
+              dateStepPreamble = `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}.`
               msg = p.desiredCourses?.length
-                ? `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}. I noted ${p.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive? ${DIVE_SITES_LINE}`
-                : `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}. Which dive sites would you like to dive? ${DIVE_SITES_LINE}`
+                ? `I noted ${p.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive? ${DIVE_SITES_LINE}`
+                : `Which dive sites would you like to dive? ${DIVE_SITES_LINE}`
             } else if (nextAfter?.step === 'numberOfDivers') {
+              dateStepPreamble = `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}.`
               msg = p.desiredCourses?.length && courses.length > 0
-                ? `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}. I noted ${p.desiredCourses.join(', ')} from your search. How many divers should we book for?`
-                : `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}. How many divers should we book for?`
+                ? `I noted ${p.desiredCourses.join(', ')} from your search. How many divers should we book for?`
+                : `How many divers should we book for?`
             }
             return {
               success: true,
               intent: 'booking' as const,
               bookingReady: false,
               message: msg,
+              ...(dateStepPreamble ? { messagePreamble: dateStepPreamble } : {}),
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               bookingPayload: p,
@@ -1102,7 +1123,6 @@ export default defineEventHandler(async (event) => {
         const lastDiverForDone = bookingPayload.divers?.[numDiversForDone - 1]
         if (lastDiverForDone?.gear?.length && (/^(done|that's all|finish|that's it)$/i.test(msgTrim) || msgTrim.toLowerCase() === 'none')) {
           const name = lastDiverForDone.name || 'They'
-          const nextMsg = `Got it — ${name}'s gear is set. Do you want to add another diver? (yes/no)`
           const payloadWithGearAsked = { ...bookingPayload, divers: [...(bookingPayload.divers || [])] }
           const lastIdx = numDiversForDone - 1
           if (payloadWithGearAsked.divers && payloadWithGearAsked.divers[lastIdx]) {
@@ -1112,7 +1132,8 @@ export default defineEventHandler(async (event) => {
             success: true,
             intent: 'booking' as const,
             bookingReady: false,
-            message: nextMsg,
+            messagePreamble: `Got it — ${name}'s gear is set.`,
+            message: 'Do you want to add another diver? (yes/no)',
             shopId: resolvedShop.id,
             shopName: resolvedShop.business_name,
             bookingPayload: payloadWithGearAsked,
@@ -1176,6 +1197,7 @@ export default defineEventHandler(async (event) => {
               intent: 'booking' as const,
               bookingReady: false,
               message: fastUnit.message,
+              ...(fastUnit.messagePreamble ? { messagePreamble: fastUnit.messagePreamble } : {}),
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               bookingPayload: fastUnit.payload,
@@ -1243,6 +1265,7 @@ export default defineEventHandler(async (event) => {
               intent: 'booking' as const,
               bookingReady: false,
               message: fast.message,
+              ...(fast.messagePreamble ? { messagePreamble: fast.messagePreamble } : {}),
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               bookingPayload: fp,
@@ -1490,11 +1513,15 @@ export default defineEventHandler(async (event) => {
         const diverNum = nextHintDiverChips.diverIndex + 1
         replyMessage = `Use an existing diver from your profile or create a new one for Diver ${diverNum}?`
       }
+      const bookingBubbleSplit = splitGotItIsoDateAckLine(replyMessage)
+      const messageForClient = bookingBubbleSplit ? bookingBubbleSplit.message : replyMessage
+      const messagePreambleForClient = bookingBubbleSplit?.messagePreamble
       return {
         success: true,
         intent: 'booking' as const,
         bookingReady: false,
-        message: replyMessage,
+        message: messageForClient,
+        ...(messagePreambleForClient ? { messagePreamble: messagePreambleForClient } : {}),
         shopId: resolvedShop.id,
         shopName: resolvedShop.business_name,
         bookingPayload: collectedPayload,

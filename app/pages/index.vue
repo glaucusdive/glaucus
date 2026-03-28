@@ -68,6 +68,13 @@
               <!-- Assistant message -->
               <div v-else-if="msg.role === 'assistant'" class="flex justify-start">
                 <div class="md:max-w-[90%] flex-1 min-w-0 flex flex-col gap-2">
+                  <!-- Prior-topic ack only (e.g. dates); next bubble holds the question + chevron -->
+                  <div
+                    v-if="msg.preamble"
+                    class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2"
+                  >
+                    <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap">{{ msg.preamble }}</p>
+                  </div>
                   <!-- AI text response (chevron inside bubble when shown) -->
                   <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 flex items-stretch gap-2">
                     <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis">{{ msg.content }}
@@ -1002,7 +1009,9 @@ const sendMessage = async (messageText, displayText) => {
         message: message,
         history: messages.value.filter(m => m.role === 'user' || m.role === 'assistant').map(m => ({
           role: m.role,
-          content: m.content
+          content: m.role === 'assistant' && m.preamble
+            ? `${m.preamble}\n\n${m.content}`
+            : m.content
         })),
         selectedShopId: selectedShopId.value || undefined,
         lastShops,
@@ -1036,6 +1045,7 @@ const sendMessage = async (messageText, displayText) => {
           {
             role: 'assistant',
             content: resetContent,
+            ...(response.messagePreamble ? { preamble: response.messagePreamble } : {}),
             shops: response.shops || [],
             totalResults: response.totalResults,
             hasMoreResults: response.hasMoreResults,
@@ -1126,6 +1136,7 @@ const sendMessage = async (messageText, displayText) => {
       messages.value.push({
         role: 'assistant',
         content,
+        ...(response.messagePreamble ? { preamble: response.messagePreamble } : {}),
         shops: response.shops || [],
         totalResults: response.totalResults,
         hasMoreResults: response.hasMoreResults,
