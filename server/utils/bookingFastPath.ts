@@ -472,18 +472,11 @@ export function tryFastPath (
       if (i === 0 && p.name && (/^no\s*$/i.test(msg) || /different|i'll give|i will give|give you the name/i.test(msg))) {
         return { message: `What's Diver 1's full name?`, payload: p }
       }
+      // Structured chip / phrase: always advance to manual name entry (never re-show profile chips — that looped for Diver 2+).
+      if (/^create\s+new\s+diver$/i.test(msg)) {
+        return { message: `What's Diver ${i + 1}'s full name?`, payload: p }
+      }
       if (defaultDiversListForMatch.length) {
-        if (/^create\s+new\s+diver$/i.test(msg)) {
-          const diverChips = i >= 1 ? profileDiverSelectableChipsFromPrefill(pref, { bookingPayload: p }) : undefined
-          if (diverChips?.length) {
-            return {
-              message: `Use an existing diver from your profile or create a new one for Diver ${i + 1}?`,
-              payload: p,
-              selectableOptions: diverChips
-            }
-          }
-          return { message: `What's Diver ${i + 1}'s full name?`, payload: p }
-        }
         const useMatch = msg.match(/^use\s+(.+)$/i)
         if (useMatch) {
           const namePart = useMatch[1].trim()
