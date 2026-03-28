@@ -71,10 +71,14 @@
                   <!-- Prior-topic ack only (e.g. dates); next bubble holds the question + chevron -->
                   <div
                     v-if="msg.preamble"
-                    class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2"
+                    class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 chat-bubble-pop-first"
                   >
                     <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap">{{ msg.preamble }}</p>
                   </div>
+                  <div
+                    class="flex flex-col gap-2 min-w-0"
+                    :class="{ 'chat-bubble-pop-follow': msg.preamble }"
+                  >
                   <!-- AI text response (chevron inside bubble when shown) -->
                   <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 flex items-stretch gap-2">
                     <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis">{{ msg.content }}
@@ -233,6 +237,7 @@
                     >
                       {{ site.name }}
                     </button>
+                  </div>
                   </div>
                 </div>
               </div>
@@ -1368,3 +1373,34 @@ useHead({
   title: 'AI Dive Shop Search - Glaucus'
 })
 </script>
+
+<style scoped>
+@keyframes chat-bubble-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-bubble-pop-first {
+  animation: chat-bubble-pop-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.chat-bubble-pop-follow {
+  opacity: 0;
+  animation: chat-bubble-pop-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.52s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-bubble-pop-first,
+  .chat-bubble-pop-follow {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+</style>
