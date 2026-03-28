@@ -10,10 +10,55 @@ import 'node:crypto';
 import '@iconify/utils';
 import 'consola';
 
-function splitGotItIsoDateAckLine(text) {
-  const m = text.match(/^(Got it — \d{4}-\d{2}-\d{2} to \d{4}-\d{2}-\d{2}\.)\s+([\s\S]+)$/);
-  if (!m) return null;
-  return { messagePreamble: m[1], message: m[2].trim() };
+function buildBookingAckSummaryForPayload(p) {
+  const dateSeg = p.startDate && p.endDate ? `your dates (${p.startDate} to ${p.endDate})` : "";
+  const tailParts = [];
+  if (Array.isArray(p.desiredCourses) && p.desiredCourses.length > 0) {
+    tailParts.push(p.desiredCourses.join(", "));
+  }
+  if (Array.isArray(p.desiredDiveSites) && p.desiredDiveSites.length > 0) {
+    tailParts.push(p.desiredDiveSites.join(", "));
+  }
+  if (dateSeg && tailParts.length > 0) {
+    return `Great \u2014 I have ${dateSeg} and ${tailParts.join(" and ")}.`;
+  }
+  if (dateSeg) return `Great \u2014 I have ${dateSeg}.`;
+  if (tailParts.length > 0) return `Great \u2014 I have ${tailParts.join(" and ")}.`;
+  return void 0;
+}
+function bookingCoursesDateAckParts(p, startDate, endDate, coursesLine) {
+  var _a;
+  const messagePreamble = `Got it \u2014 ${startDate} to ${endDate}.`;
+  if (((_a = p.desiredCourses) == null ? void 0 : _a.length) && p.coursesSelectionComplete === false) {
+    return {
+      messagePreamble,
+      message: `I noted ${p.desiredCourses.join(", ")} from your search. ${coursesLine}`
+    };
+  }
+  return {
+    messagePreamble,
+    message: `Are you interested in any courses on this trip? ${coursesLine}`
+  };
+}
+function orchestratorSplitBookingCopyForStep(next, p, opts) {
+  var _a;
+  const { shopCourseCount, shopDiveSiteCount, coursesLine, diveSitesLine } = opts;
+  if (next.step === "numberOfDivers") {
+    const preamble = buildBookingAckSummaryForPayload(p);
+    return {
+      message: "How many divers will be on the trip?",
+      ...preamble ? { messagePreamble: preamble } : {}
+    };
+  }
+  if (next.step === "courses" && shopCourseCount > 0 && p.startDate && p.endDate) {
+    return bookingCoursesDateAckParts(p, p.startDate, p.endDate, coursesLine);
+  }
+  if (next.step === "diveSites" && shopDiveSiteCount > 0 && p.startDate && p.endDate) {
+    const messagePreamble = `Got it \u2014 ${p.startDate} to ${p.endDate}.`;
+    const message = ((_a = p.desiredCourses) == null ? void 0 : _a.length) ? `I noted ${p.desiredCourses.join(", ")} from your search. Which dive sites would you like to dive? ${diveSitesLine}` : `Which dive sites would you like to dive? ${diveSitesLine}`;
+    return { messagePreamble, message };
+  }
+  return null;
 }
 function inferCountryFromConversation(conversationText) {
   const countryPatterns = [
@@ -359,6 +404,16 @@ const aiSearch_post = defineEventHandler(async (event) => {
       const rentalEquipmentNames = rentalEquipment.map((e) => e.name);
       const startingFreshBooking = (wantsToBook || resolvedByNamedShop) && !continuingBooking;
       const noPayloadYet = !bookingPayload || !(bookingPayload.name && String(bookingPayload.name).trim());
+      const COURSES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.';
+      const DIVE_SITES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.';
+      const coursesIntroMessage = (shopName, p) => {
+        var _a2;
+        if (((_a2 = p.desiredCourses) == null ? void 0 : _a2.length) && p.coursesSelectionComplete === false) {
+          return `Great \u2014 I'll help you book with ${shopName}. I noted ${p.desiredCourses.join(", ")} from your search. ${COURSES_LINE}`;
+        }
+        return `Great \u2014 I'll help you book with ${shopName}. Are you interested in any courses on this trip? ${COURSES_LINE}`;
+      };
+      const coursesDateAckParts = (p, startDate, endDate) => bookingCoursesDateAckParts(p, startDate, endDate, COURSES_LINE);
       if (startingFreshBooking && noPayloadYet && rentalEquipment.length === 0) {
         return {
           success: true,
@@ -443,29 +498,6 @@ const aiSearch_post = defineEventHandler(async (event) => {
       const messageAsksForDiveSites = (text) => /dive sites|which sites|sites would you like|available sites|pick one or more/i.test(text);
       const messageAsksForCourses = (text) => /courses|which course|interested in any course|certification course/i.test(text);
       const messageIsAddAnotherGear = (text) => /add another or say/i.test(text);
-      const COURSES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.';
-      const DIVE_SITES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.';
-      const coursesIntroMessage = (shopName, p) => {
-        var _a2;
-        if (((_a2 = p.desiredCourses) == null ? void 0 : _a2.length) && p.coursesSelectionComplete === false) {
-          return `Great \u2014 I'll help you book with ${shopName}. I noted ${p.desiredCourses.join(", ")} from your search. ${COURSES_LINE}`;
-        }
-        return `Great \u2014 I'll help you book with ${shopName}. Are you interested in any courses on this trip? ${COURSES_LINE}`;
-      };
-      const coursesDateAckParts = (p, startDate, endDate) => {
-        var _a2;
-        const messagePreamble = `Got it \u2014 ${startDate} to ${endDate}.`;
-        if (((_a2 = p.desiredCourses) == null ? void 0 : _a2.length) && p.coursesSelectionComplete === false) {
-          return {
-            messagePreamble,
-            message: `I noted ${p.desiredCourses.join(", ")} from your search. ${COURSES_LINE}`
-          };
-        }
-        return {
-          messagePreamble,
-          message: `Are you interested in any courses on this trip? ${COURSES_LINE}`
-        };
-      };
       if (continuingBooking && !bookingPayload) {
         const msgTrim = message.trim();
         if (/pick a new diveshop|choose another shop|different (shop|diveshop)/i.test(msgTrim)) {
@@ -868,7 +900,8 @@ const aiSearch_post = defineEventHandler(async (event) => {
                   success: true,
                   intent: "booking",
                   bookingReady: false,
-                  message: "No specific dive sites for this shop. How many divers will be on the trip?",
+                  messagePreamble: "No specific dive sites for this shop.",
+                  message: "How many divers will be on the trip?",
                   shopId: resolvedShop.id,
                   shopName: resolvedShop.business_name,
                   bookingPayload: p2,
@@ -902,7 +935,8 @@ const aiSearch_post = defineEventHandler(async (event) => {
               success: true,
               intent: "booking",
               bookingReady: false,
-              message: "No specific dive sites for this shop. How many divers will be on the trip?",
+              messagePreamble: "No specific dive sites for this shop.",
+              message: "How many divers will be on the trip?",
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               bookingPayload: p,
@@ -1320,9 +1354,16 @@ const aiSearch_post = defineEventHandler(async (event) => {
         const diverNum = nextHintDiverChips.diverIndex + 1;
         replyMessage = `Use an existing diver from your profile or create a new one for Diver ${diverNum}?`;
       }
-      const bookingBubbleSplit = splitGotItIsoDateAckLine(replyMessage);
-      const messageForClient = bookingBubbleSplit ? bookingBubbleSplit.message : replyMessage;
-      const messagePreambleForClient = bookingBubbleSplit == null ? void 0 : bookingBubbleSplit.messagePreamble;
+      const mergedForClientUi = collectedPayload != null ? collectedPayload : bookingPayload;
+      const nextForClientUi = mergedForClientUi ? getNextBookingStep(mergedForClientUi) : null;
+      const orchestratorBubbles = nextForClientUi && mergedForClientUi ? orchestratorSplitBookingCopyForStep(nextForClientUi, mergedForClientUi, {
+        shopCourseCount: courses.length,
+        shopDiveSiteCount: diveSites.length,
+        coursesLine: COURSES_LINE,
+        diveSitesLine: DIVE_SITES_LINE
+      }) : null;
+      const messageForClient = orchestratorBubbles ? orchestratorBubbles.message : replyMessage;
+      const messagePreambleForClient = orchestratorBubbles == null ? void 0 : orchestratorBubbles.messagePreamble;
       return {
         success: true,
         intent: "booking",

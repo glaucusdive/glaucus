@@ -4,7 +4,7 @@ import { getShopById } from '../utils/resolveShop'
 import { getDiveSitesForShop } from '../utils/getDiveSitesForShop'
 import { getCoursesForShop } from '../utils/getCoursesForShop'
 import { getRentalEquipmentForShop } from '../utils/getRentalEquipmentForShop'
-import { clampBookingPayloadToNextStep, getNextBookingStep, tryFastPath, tryFastPathUnitOnly, profileDiverSelectableChipsFromPrefill, type BookingPayloadLocal } from '../utils/bookingFastPath'
+import { clampBookingPayloadToNextStep, getNextBookingStep, tryFastPath, tryFastPathUnitOnly, profileDiverSelectableChipsFromPrefill, type BookingPayloadLocal, type NextStepResult } from '../utils/bookingFastPath'
 import { tryParseTripDatesFromMessage } from '../utils/parseTripDates'
 import { mergeCollectedIntoBookingPayload } from '../utils/mergeBookingCollected'
 import { extractBookingTargetFallback, extractReferredEntityPhrase } from '../utils/extractReferredEntityPhrase'
@@ -31,11 +31,72 @@ interface Message {
   content: string
 }
 
-/** ISO date range ack + following question → two UI bubbles when the model mirrors our copy. */
-function splitGotItIsoDateAckLine (text: string): { messagePreamble: string; message: string } | null {
-  const m = text.match(/^(Got it — \d{4}-\d{2}-\d{2} to \d{4}-\d{2}-\d{2}\.)\s+([\s\S]+)$/)
-  if (!m) return null
-  return { messagePreamble: m[1], message: m[2].trim() }
+/** Acknowledges what’s already on the payload (dates, courses, sites) — first bubble before the next-step question. */
+function buildBookingAckSummaryForPayload (p: BookingPayload): string | undefined {
+  const dateSeg = p.startDate && p.endDate
+    ? `your dates (${p.startDate} to ${p.endDate})`
+    : ''
+  const tailParts: string[] = []
+  if (Array.isArray(p.desiredCourses) && p.desiredCourses.length > 0) {
+    tailParts.push(p.desiredCourses.join(', '))
+  }
+  if (Array.isArray(p.desiredDiveSites) && p.desiredDiveSites.length > 0) {
+    tailParts.push(p.desiredDiveSites.join(', '))
+  }
+  if (dateSeg && tailParts.length > 0) {
+    return `Great — I have ${dateSeg} and ${tailParts.join(' and ')}.`
+  }
+  if (dateSeg) return `Great — I have ${dateSeg}.`
+  if (tailParts.length > 0) return `Great — I have ${tailParts.join(' and ')}.`
+  return undefined
+}
+
+function bookingCoursesDateAckParts (p: BookingPayload, startDate: string, endDate: string, coursesLine: string) {
+  const messagePreamble = `Got it — ${startDate} to ${endDate}.`
+  if (p.desiredCourses?.length && p.coursesSelectionComplete === false) {
+    return {
+      messagePreamble,
+      message: `I noted ${p.desiredCourses.join(', ')} from your search. ${coursesLine}`
+    }
+  }
+  return {
+    messagePreamble,
+    message: `Are you interested in any courses on this trip? ${coursesLine}`
+  }
+}
+
+/**
+ * User-visible copy for the booking UI: optional preamble bubble + main message from step + payload (not from parsing LLM prose).
+ */
+function orchestratorSplitBookingCopyForStep (
+  next: NextStepResult,
+  p: BookingPayload,
+  opts: {
+    shopCourseCount: number
+    shopDiveSiteCount: number
+    coursesLine: string
+    diveSitesLine: string
+  }
+): { message: string; messagePreamble?: string } | null {
+  const { shopCourseCount, shopDiveSiteCount, coursesLine, diveSitesLine } = opts
+  if (next.step === 'numberOfDivers') {
+    const preamble = buildBookingAckSummaryForPayload(p)
+    return {
+      message: 'How many divers will be on the trip?',
+      ...(preamble ? { messagePreamble: preamble } : {})
+    }
+  }
+  if (next.step === 'courses' && shopCourseCount > 0 && p.startDate && p.endDate) {
+    return bookingCoursesDateAckParts(p, p.startDate, p.endDate, coursesLine)
+  }
+  if (next.step === 'diveSites' && shopDiveSiteCount > 0 && p.startDate && p.endDate) {
+    const messagePreamble = `Got it — ${p.startDate} to ${p.endDate}.`
+    const message = p.desiredCourses?.length
+      ? `I noted ${p.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive? ${diveSitesLine}`
+      : `Which dive sites would you like to dive? ${diveSitesLine}`
+    return { messagePreamble, message }
+  }
+  return null
 }
 
 /** When the AI omits country but user clearly said a location (e.g. trip-type-only reply), infer country from conversation. */
@@ -487,19 +548,8 @@ export default defineEventHandler(async (event) => {
         }
         return `Great — I'll help you book with ${shopName}. Are you interested in any courses on this trip? ${COURSES_LINE}`
       }
-      const coursesDateAckParts = (p: BookingPayload, startDate: string, endDate: string) => {
-        const messagePreamble = `Got it — ${startDate} to ${endDate}.`
-        if (p.desiredCourses?.length && p.coursesSelectionComplete === false) {
-          return {
-            messagePreamble,
-            message: `I noted ${p.desiredCourses.join(', ')} from your search. ${COURSES_LINE}`
-          }
-        }
-        return {
-          messagePreamble,
-          message: `Are you interested in any courses on this trip? ${COURSES_LINE}`
-        }
-      }
+      const coursesDateAckParts = (p: BookingPayload, startDate: string, endDate: string) =>
+        bookingCoursesDateAckParts(p, startDate, endDate, COURSES_LINE)
 
       // If shop has no rental gear and user is just starting booking, tell them and offer to continue or pick another shop
       if (startingFreshBooking && noPayloadYet && rentalEquipment.length === 0) {
@@ -1033,7 +1083,8 @@ export default defineEventHandler(async (event) => {
                   success: true,
                   intent: 'booking' as const,
                   bookingReady: false,
-                  message: 'No specific dive sites for this shop. How many divers will be on the trip?',
+                  messagePreamble: 'No specific dive sites for this shop.',
+                  message: 'How many divers will be on the trip?',
                   shopId: resolvedShop.id,
                   shopName: resolvedShop.business_name,
                   bookingPayload: p2,
@@ -1068,7 +1119,8 @@ export default defineEventHandler(async (event) => {
               success: true,
               intent: 'booking' as const,
               bookingReady: false,
-              message: 'No specific dive sites for this shop. How many divers will be on the trip?',
+              messagePreamble: 'No specific dive sites for this shop.',
+              message: 'How many divers will be on the trip?',
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
               bookingPayload: p,
@@ -1513,9 +1565,19 @@ export default defineEventHandler(async (event) => {
         const diverNum = nextHintDiverChips.diverIndex + 1
         replyMessage = `Use an existing diver from your profile or create a new one for Diver ${diverNum}?`
       }
-      const bookingBubbleSplit = splitGotItIsoDateAckLine(replyMessage)
-      const messageForClient = bookingBubbleSplit ? bookingBubbleSplit.message : replyMessage
-      const messagePreambleForClient = bookingBubbleSplit?.messagePreamble
+      const mergedForClientUi = (collectedPayload ?? bookingPayload) as BookingPayload | undefined
+      const nextForClientUi = mergedForClientUi ? getNextBookingStep(mergedForClientUi as BookingPayloadLocal) : null
+      const orchestratorBubbles =
+        nextForClientUi && mergedForClientUi
+          ? orchestratorSplitBookingCopyForStep(nextForClientUi, mergedForClientUi, {
+              shopCourseCount: courses.length,
+              shopDiveSiteCount: diveSites.length,
+              coursesLine: COURSES_LINE,
+              diveSitesLine: DIVE_SITES_LINE
+            })
+          : null
+      const messageForClient = orchestratorBubbles ? orchestratorBubbles.message : replyMessage
+      const messagePreambleForClient = orchestratorBubbles?.messagePreamble
       return {
         success: true,
         intent: 'booking' as const,
