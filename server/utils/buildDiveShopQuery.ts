@@ -14,10 +14,18 @@ export interface SearchFilters {
 }
 
 /**
+ * PostgREST `.or()` fragment: location text matches city, state, `locale`, or `street_address` (ilike).
+ */
+export function diveshopLocaleOrConditions (term: string): string {
+  const t = term.trim()
+  return `city.ilike.%${t}%,state.ilike.%${t}%,locale.ilike.%${t}%,street_address.ilike.%${t}%`
+}
+
+/**
  * Build and execute the dive shop search query.
  * Filtering process:
  * 1. Resolve country/region names to IDs (so we filter on diveshops.country_id / region_id directly).
- * 2. Apply locale (city/state/locale), minRating, diveTypes, languages.
+ * 2. Apply locale (city/state/locale/street_address), minRating, diveTypes, languages.
  * 3. Order by rating then name, limit 50.
  */
 export async function buildDiveShopQuery (supabaseUrl: string, supabaseKey: string, filters: SearchFilters) {
@@ -52,9 +60,9 @@ export async function buildDiveShopQuery (supabaseUrl: string, supabaseKey: stri
     if (regionIds.length > 0) query = query.in('region_id', regionIds)
   }
 
-  // Apply locale filter (city, state, or locale text)
+  // Apply locale filter (city, state, locale, or street address)
   if (filters.locale?.trim()) {
-    query = query.or(`city.ilike.%${filters.locale.trim()}%,state.ilike.%${filters.locale.trim()}%,locale.ilike.%${filters.locale.trim()}%`)
+    query = query.or(diveshopLocaleOrConditions(filters.locale))
   }
 
   // Apply minimum rating filter (include shops with no rating so we don't return zero when data has nulls)
