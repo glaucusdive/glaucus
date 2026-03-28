@@ -27,22 +27,18 @@ const _id__get = defineEventHandler(async (event) => {
     config.public.supabaseKey,
     token
   );
-  const { data, error } = await client.from("booking_drafts").select(`
-      id,
-      shop_id,
-      payload,
-      created_at,
-      updated_at,
-      diveshops ( id, business_name )
-    `).eq("id", id).single();
-  if (error || !data) {
+  const { data: row, error } = await client.from("booking_drafts").select("id, shop_id, payload, created_at, updated_at").eq("id", id).maybeSingle();
+  if (error) {
+    throw createError({ statusCode: 500, statusMessage: error.message });
+  }
+  if (!row) {
     throw createError({ statusCode: 404, statusMessage: "Draft not found" });
   }
-  const shop = data.diveshops;
-  const { diveshops: _, ...rest } = data;
+  const shopId = row.shop_id;
+  const { data: shopRow } = await client.from("diveshops").select("business_name").eq("id", shopId).maybeSingle();
   return {
-    ...rest,
-    shopName: (_a = shop == null ? void 0 : shop.business_name) != null ? _a : null
+    ...row,
+    shopName: (_a = shopRow == null ? void 0 : shopRow.business_name) != null ? _a : null
   };
 });
 

@@ -1,9 +1,8 @@
-import { _ as __nuxt_component_0 } from './nuxt-layout-BfvNfCEe.mjs';
-import { _ as __nuxt_component_0$1 } from './server.mjs';
+import { _ as __nuxt_component_0 } from './nuxt-layout-CrmWeqUx.mjs';
+import { _ as __nuxt_component_0$1, n as navigateTo } from './server.mjs';
 import { defineComponent, ref, mergeProps, withCtx, createTextVNode, unref, createVNode, createBlock, openBlock, Fragment, renderList, toDisplayString, useSSRContext } from 'vue';
 import { ssrRenderComponent, ssrRenderList, ssrInterpolate, ssrIncludeBooleanAttr } from 'vue/server-renderer';
 import { u as useAuth } from './useAuth-BWS1ISvo.mjs';
-import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
 import 'vue-router';
 import '../nitro/nitro.mjs';
 import '@supabase/supabase-js';
@@ -36,7 +35,6 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
   __ssrInlineRender: true,
   setup(__props) {
     const { accessToken } = useAuth();
-    const { openDrawer } = useDrawer();
     const drafts = ref([]);
     const draftsLoading = ref(true);
     const resumeLoading = ref(null);
@@ -56,12 +54,8 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
         const one = await $fetch(`/api/booking/drafts/${d.id}`, {
           headers: { Authorization: `Bearer ${accessToken.value}` }
         });
-        openDrawer("booking-form", {
-          shopId: one.shop_id,
-          shopName: one.shopName ?? "Dive shop",
-          bookingPayload: one.payload,
-          draftId: one.id
-        });
+        if (false) ;
+        await navigateTo("/");
       } finally {
         resumeLoading.value = null;
       }
@@ -85,7 +79,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
       _push(ssrRenderComponent(_component_NuxtLayout, mergeProps({ name: "default" }, _attrs), {
         default: withCtx((_, _push2, _parent2, _scopeId) => {
           if (_push2) {
-            _push2(`<div class="min-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4"${_scopeId}>`);
+            _push2(`<div class="max-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4 overflow-y-auto"${_scopeId}>`);
             _push2(ssrRenderComponent(_component_NuxtLink, {
               to: "/profile",
               class: "inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white mb-4 cursor-pointer"
@@ -116,7 +110,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
             _push2(`</div>`);
           } else {
             return [
-              createVNode("div", { class: "min-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4" }, [
+              createVNode("div", { class: "max-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4 overflow-y-auto" }, [
                 createVNode(_component_NuxtLink, {
                   to: "/profile",
                   class: "inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white mb-4 cursor-pointer"
@@ -181,4 +175,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=drafts-DPz8FHtt.mjs.map
+//# sourceMappingURL=drafts-IOwdDEPB.mjs.map

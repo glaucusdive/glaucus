@@ -4294,7 +4294,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "f73aedcf-5976-4172-91a7-a85faaf28244",
+    "buildId": "6d0fdacf-8c3d-4f07-8ad5-d5a7ac50e2c2",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -5623,6 +5623,10 @@ function tryFastPathUnitOnly(userMessage, payload, _shopName) {
   return { message: `Got it \u2014 recorded ${n}'s weight as ${d[targetIdx].weight} ${unit}. Does ${n} need any rental gear?`, payload: p };
 }
 
+function diveshopLocaleOrConditions(term) {
+  const t = term.trim();
+  return `city.ilike.%${t}%,state.ilike.%${t}%,locale.ilike.%${t}%,street_address.ilike.%${t}%`;
+}
 async function buildDiveShopQuery(supabaseUrl, supabaseKey, filters) {
   var _a, _b, _c;
   const client = createClient(supabaseUrl, supabaseKey);
@@ -5642,7 +5646,7 @@ async function buildDiveShopQuery(supabaseUrl, supabaseKey, filters) {
     if (regionIds.length > 0) query = query.in("region_id", regionIds);
   }
   if ((_c = filters.locale) == null ? void 0 : _c.trim()) {
-    query = query.or(`city.ilike.%${filters.locale.trim()}%,state.ilike.%${filters.locale.trim()}%,locale.ilike.%${filters.locale.trim()}%`);
+    query = query.or(diveshopLocaleOrConditions(filters.locale));
   }
   if (filters.minRating !== void 0 && filters.minRating > 0) {
     query = query.or(`google_rating.gte.${filters.minRating},google_rating.is.null`);
@@ -5705,7 +5709,7 @@ async function probeReferentPhrase(supabaseUrl, supabaseKey, phraseRaw) {
     client.from("dive_sites").select("id, name").ilike("name", `%${phrase}%`).limit(5),
     probeCountries(client, phrase),
     client.from("regions").select("id, name").ilike("name", `%${phrase}%`).limit(5),
-    client.from("diveshops").select("id").or(`city.ilike.%${phrase}%,state.ilike.%${phrase}%,locale.ilike.%${phrase}%`).limit(1)
+    client.from("diveshops").select("id").or(diveshopLocaleOrConditions(phrase)).limit(1)
   ]);
   const diveSites = diveSitesRes.data || [];
   const regions = regionsRes.data || [];

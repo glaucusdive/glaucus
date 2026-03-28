@@ -33,15 +33,29 @@ const draft_post = defineEventHandler(async (event) => {
     token
   );
   if (draftId) {
-    const { data: data2, error: error2 } = await client.from("booking_drafts").update({ shop_id: shopId, payload, updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", draftId).eq("user_id", user.id).select("id, updated_at").single();
+    const { data: data2, error: error2 } = await client.from("booking_drafts").update({ shop_id: shopId, payload, updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", draftId).eq("user_id", user.id).select("id").maybeSingle();
     if (error2) {
       throw createError({ statusCode: 500, statusMessage: error2.message });
     }
+    if (!(data2 == null ? void 0 : data2.id)) {
+      throw createError({ statusCode: 404, statusMessage: "Draft not found" });
+    }
     return { draftId: data2.id, updated: true };
   }
-  const { data, error } = await client.from("booking_drafts").insert({ user_id: user.id, shop_id: shopId, payload }).select("id").single();
+  const { data, error } = await client.from("booking_drafts").upsert(
+    {
+      user_id: user.id,
+      shop_id: shopId,
+      payload,
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    },
+    { onConflict: "user_id,shop_id" }
+  ).select("id").maybeSingle();
   if (error) {
     throw createError({ statusCode: 500, statusMessage: error.message });
+  }
+  if (!(data == null ? void 0 : data.id)) {
+    throw createError({ statusCode: 500, statusMessage: "Draft save returned no row" });
   }
   return { draftId: data.id, updated: false };
 });

@@ -3,7 +3,7 @@ import { computed, ref, mergeProps, unref, withCtx, createVNode, createTextVNode
 import { ssrRenderAttrs, ssrRenderComponent, ssrRenderAttr, ssrRenderSlot, ssrInterpolate, ssrRenderList, ssrIncludeBooleanAttr, ssrLooseContain, ssrLooseEqual } from 'vue/server-renderer';
 import { u as useChatSessions, _ as _imports_0 } from './userChatsRemote-DMcayfPn.mjs';
 import { X, CircleUser, LogIn, LogOut, Sun, Moon, Star } from 'lucide-vue-next';
-import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
+import { u as useDrawer } from './useDrawer-5AAmvDVV.mjs';
 import { u as useAuth } from './useAuth-BWS1ISvo.mjs';
 import { u as useSupabase } from './useSupabase-G2CWeDSk.mjs';
 import { _ as _export_sfc } from './_plugin-vue_export-helper-1tPrXgE0.mjs';
@@ -218,6 +218,19 @@ const _sfc_main$3 = /* @__PURE__ */ defineComponent({
       if (Array.isArray(p.desiredDiveSites)) formData.value.desiredDiveSites = p.desiredDiveSites.filter(Boolean);
     }
     watch(() => props.initialPayload, () => applyInitialPayload(), { deep: true });
+    function currentDraftSnapshot() {
+      return JSON.stringify(buildPayload());
+    }
+    watch(
+      formData,
+      () => {
+        if (!draftSaved.value || lastSavedDraftSnapshot.value == null) return;
+        if (currentDraftSnapshot() !== lastSavedDraftSnapshot.value) {
+          draftSaved.value = false;
+        }
+      },
+      { deep: true }
+    );
     watch(() => formData.value.name, (newName) => {
       if (formData.value.divers[0]) {
         formData.value.divers[0].name = newName;
@@ -261,6 +274,31 @@ const _sfc_main$3 = /* @__PURE__ */ defineComponent({
     const submitLoading = ref(false);
     const submitError = ref("");
     const draftLoading = ref(false);
+    const draftSaved = ref(false);
+    const lastSavedDraftSnapshot = ref(null);
+    const localDraftId = ref(void 0);
+    computed(() => localDraftId.value || props.draftId);
+    function buildPayload() {
+      return {
+        shopId: formData.value.shopId || props.shopId,
+        name: formData.value.name,
+        email: formData.value.email,
+        startDate: formData.value.startDate,
+        endDate: formData.value.endDate,
+        desiredCourses: formData.value.desiredCourses || [],
+        desiredDiveSites: formData.value.desiredDiveSites || [],
+        divers: formData.value.divers.map((d) => ({
+          name: d.name,
+          certificationNumber: d.certificationNumber,
+          numberOfDives: d.numberOfDives,
+          height: d.height,
+          heightUnit: d.heightUnit,
+          weight: d.weight,
+          weightUnit: d.weightUnit,
+          gear: (d.gear || []).map((g) => ({ gearType: g.gearType || "" }))
+        }))
+      };
+    }
     return (_ctx, _push, _parent, _attrs) => {
       const _component_NuxtLink = __nuxt_component_0$1;
       _push(`<div${ssrRenderAttrs(mergeProps({ class: "flex flex-col h-full" }, _attrs))}><div class="w-full h-10 lg:h-[65px] p-1 border-b border-zinc-300 dark:border-zinc-700 shrink-0 flex items-center"><div class="w-full flex items-center justify-between px-2 overflow-auto"><h2 class="text-base font-medium truncate text-zinc-900 dark:text-white">Book with ${ssrInterpolate(__props.shopName)}</h2><button class="lg:p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-sm transition-colors cursor-pointer text-zinc-900 dark:text-white">`);
@@ -325,7 +363,7 @@ const _sfc_main$3 = /* @__PURE__ */ defineComponent({
           _: 1
         }, _parent));
       } else {
-        _push(`<button type="button"${ssrIncludeBooleanAttr(draftLoading.value) ? " disabled" : ""} class="flex-1 py-2 px-3 rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 cursor-pointer transition-colors">${ssrInterpolate(draftLoading.value ? "Saving…" : "Save as draft")}</button>`);
+        _push(`<button type="button"${ssrIncludeBooleanAttr(draftLoading.value || draftSaved.value) ? " disabled" : ""} class="flex-1 py-2 px-3 rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors">${ssrInterpolate(draftLoading.value ? "Saving…" : draftSaved.value ? "Draft saved" : "Save as draft")}</button>`);
       }
       _push(`</div><div class="sticky bottom-0 bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-300 dark:border-zinc-700 p-2 mt-2"><button type="submit"${ssrIncludeBooleanAttr(submitLoading.value) ? " disabled" : ""} class="bg-zinc-900 dark:bg-zinc-800 hover:bg-zinc-800 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">${ssrInterpolate(submitLoading.value ? "Sending…" : "Submit Booking Request")}</button></div></form></div></div>`);
     };
@@ -668,4 +706,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=default-CiwlUeKg.mjs.map
+//# sourceMappingURL=default-D9ZgxHXS.mjs.map

@@ -2,7 +2,7 @@ import { e as useAsyncData, g as createError, _ as __nuxt_component_0$1 } from '
 import { computed, ref, watch, mergeProps, unref, withCtx, createBlock, openBlock, createCommentVNode, toDisplayString, Fragment, renderList, createVNode, toValue, useSSRContext } from 'vue';
 import { ssrRenderAttrs, ssrRenderComponent, ssrInterpolate, ssrRenderClass, ssrRenderList, ssrRenderAttr, ssrRenderSlot } from 'vue/server-renderer';
 import { ChevronLeft, X, MapPin, Phone, Mail, Globe, Star, Trash2 } from 'lucide-vue-next';
-import { u as useDrawer } from './useDrawer-DEsd6Mko.mjs';
+import { u as useDrawer } from './useDrawer-5AAmvDVV.mjs';
 import { u as useAuth } from './useAuth-BWS1ISvo.mjs';
 import { u as useSupabase } from './useSupabase-G2CWeDSk.mjs';
 
@@ -399,20 +399,19 @@ const _sfc_main = {
       scheduleCloseEnabled();
     });
     const showFullDetails = ref(false);
-    const activeTab = ref("details");
+    const activeTab = ref("reviews");
     const tabs = [
-      { id: "details", label: "Details" },
+      { id: "reviews", label: "Reviews" },
       { id: "destinations", label: "Dive Destinations" },
       { id: "courses", label: "Courses" },
       { id: "information", label: "More Information" },
-      { id: "reviews", label: "Reviews" },
       { id: "nearby", label: "Nearby Dive Shops" }
     ];
     const { shopData, nearbyShops } = useShopDetail(props.shopLookup);
     const shopRowId = computed(() => shopData.value?.id ?? "");
     const { user, isAppAdmin } = useAuth();
     const { client } = useSupabase();
-    const { reviews, topReviews, pending: reviewsPending, refresh: refreshReviews } = useShopReviews(shopRowId);
+    const { reviews, pending: reviewsPending, refresh: refreshReviews } = useShopReviews(shopRowId);
     const myReview = computed(() => {
       const uid = user.value?.id;
       if (!uid) return null;
@@ -540,8 +539,46 @@ const _sfc_main = {
         ])}">${ssrInterpolate(tab.label)}</button>`);
       });
       _push(`<!--]--></div></div><div class="w-full h-0 flex-1 cq:lg:overflow-y-auto"><div class="flex flex-col cq:lg:flex-row justify-between cq:lg:justify-stretch items-start cq:lg:items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 cq:divide-zinc-700 divide-zinc-700 dark:divide-zinc-700 w-full h-full"><div class="w-full flex flex-col border-b-0 cq:lg:order-1 overflow-y-auto"><div class="flex flex-col gap-4 h-full w-full p-0">`);
-      if (activeTab.value === "details") {
-        _push(`<div class="flex flex-col gap-4 p-2 h-full overflow-y-auto"><div class="flex flex-col gap-4"><div class="flex flex-col gap-2"><div class="flex flex-col cq:lg:flex-row gap-2">`);
+      if (activeTab.value === "destinations") {
+        _push(`<div class="flex flex-col gap-2 p-2 h-full">`);
+        if (groupedDestinations.value.length === 0) {
+          _push(`<div class="text-zinc-500 dark:text-zinc-400 italic p-4"> No dive destinations listed. </div>`);
+        } else {
+          _push(`<div class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-1 gap-2"><!--[-->`);
+          ssrRenderList(groupedDestinations.value, (dest) => {
+            _push(ssrRenderComponent(_sfc_main$3, {
+              key: dest.title,
+              title: dest.title,
+              items: dest.items
+            }, null, _parent));
+          });
+          _push(`<!--]--></div>`);
+        }
+        _push(`</div>`);
+      } else {
+        _push(`<!---->`);
+      }
+      if (activeTab.value === "courses") {
+        _push(`<div class="flex flex-col gap-4 p-2 h-full overflow-y-auto">`);
+        if (coursesList.value.length === 0) {
+          _push(`<div class="text-zinc-500 dark:text-zinc-400 italic p-4"> No courses listed. </div>`);
+        } else {
+          _push(`<div class="grid grid-cols-1 cq:grid-cols-2 gap-2"><!--[-->`);
+          ssrRenderList(coursesList.value, (course, idx) => {
+            _push(ssrRenderComponent(_sfc_main$3, {
+              key: course.title + String(idx),
+              title: course.title,
+              items: course.items.length ? course.items : ["Contact shop for dates"]
+            }, null, _parent));
+          });
+          _push(`<!--]--></div>`);
+        }
+        _push(`</div>`);
+      } else {
+        _push(`<!---->`);
+      }
+      if (activeTab.value === "information") {
+        _push(`<div class="flex flex-col gap-4 p-2 h-full overflow-y-auto"><div class="flex flex-col cq:lg:flex-row gap-2">`);
         _push(ssrRenderComponent(_sfc_main$3, {
           title: "Hours",
           items: displayHours.value,
@@ -604,80 +641,7 @@ const _sfc_main = {
           }),
           _: 1
         }, _parent));
-        _push(`</div></div><div class="flex flex-col gap-2 mt-1"><div class="flex flex-row items-center justify-between gap-2 flex-wrap"><h3 class="text-sm font-semibold text-zinc-900 dark:text-white">Top reviews</h3><button type="button" class="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer shrink-0">${ssrInterpolate(myReview.value ? "Edit your review" : "Write a review")}</button></div>`);
-        if (unref(reviewsPending)) {
-          _push(`<div class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-3 gap-2"><!--[-->`);
-          ssrRenderList([1, 2, 3], (n) => {
-            _push(`<div class="w-full p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-4 animate-pulse"><div class="flex gap-3"><div class="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-700"></div><div class="flex-1 space-y-2 pt-1"><div class="h-3 bg-zinc-200 dark:bg-zinc-700 rounded w-1/2"></div><div class="h-2 bg-zinc-200 dark:bg-zinc-700 rounded w-1/3"></div></div></div><div class="flex gap-1"><!--[-->`);
-            ssrRenderList(5, (n2) => {
-              _push(`<div class="w-4 h-4 rounded bg-zinc-200 dark:bg-zinc-700"></div>`);
-            });
-            _push(`<!--]--></div><div class="space-y-2"><div class="h-2 bg-zinc-200 dark:bg-zinc-700 rounded"></div><div class="h-2 bg-zinc-200 dark:bg-zinc-700 rounded w-4/5"></div></div></div>`);
-          });
-          _push(`<!--]--></div>`);
-        } else if (unref(topReviews).length === 0) {
-          _push(`<div class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-3 gap-2 w-full">`);
-          _push(ssrRenderComponent(_sfc_main$1, { onOpen: openReviewDrawer }, null, _parent));
-          _push(`</div>`);
-        } else {
-          _push(`<div class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-3 gap-2"><!--[-->`);
-          ssrRenderList(unref(topReviews), (r) => {
-            _push(ssrRenderComponent(_sfc_main$2, {
-              key: r.id,
-              "reviewer-name": r.author_display_name || "Diver",
-              "review-date": formatReviewDate(r.created_at),
-              rating: r.rating,
-              "review-text": r.body,
-              "show-delete": canDeleteReview(r),
-              onDelete: ($event) => handleDeleteReview(r)
-            }, null, _parent));
-          });
-          _push(`<!--]--></div>`);
-        }
-        _push(`</div></div></div>`);
-      } else {
-        _push(`<!---->`);
-      }
-      if (activeTab.value === "destinations") {
-        _push(`<div class="flex flex-col gap-2 p-2 h-full">`);
-        if (groupedDestinations.value.length === 0) {
-          _push(`<div class="text-zinc-500 dark:text-zinc-400 italic p-4"> No dive destinations listed. </div>`);
-        } else {
-          _push(`<div class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-1 gap-2"><!--[-->`);
-          ssrRenderList(groupedDestinations.value, (dest) => {
-            _push(ssrRenderComponent(_sfc_main$3, {
-              key: dest.title,
-              title: dest.title,
-              items: dest.items
-            }, null, _parent));
-          });
-          _push(`<!--]--></div>`);
-        }
-        _push(`</div>`);
-      } else {
-        _push(`<!---->`);
-      }
-      if (activeTab.value === "courses") {
-        _push(`<div class="flex flex-col gap-4 p-2 h-full overflow-y-auto">`);
-        if (coursesList.value.length === 0) {
-          _push(`<div class="text-zinc-500 dark:text-zinc-400 italic p-4"> No courses listed. </div>`);
-        } else {
-          _push(`<div class="grid grid-cols-1 cq:grid-cols-2 gap-2"><!--[-->`);
-          ssrRenderList(coursesList.value, (course, idx) => {
-            _push(ssrRenderComponent(_sfc_main$3, {
-              key: course.title + String(idx),
-              title: course.title,
-              items: course.items.length ? course.items : ["Contact shop for dates"]
-            }, null, _parent));
-          });
-          _push(`<!--]--></div>`);
-        }
-        _push(`</div>`);
-      } else {
-        _push(`<!---->`);
-      }
-      if (activeTab.value === "information") {
-        _push(`<div class="flex flex-col gap-4 p-2 h-full overflow-y-auto"><div class="flex flex-col cq:lg:flex-row gap-2 rounded-md">`);
+        _push(`</div><div class="flex flex-col cq:lg:flex-row gap-2 rounded-md">`);
         _push(ssrRenderComponent(_sfc_main$3, {
           title: "Equipment Rental",
           items: equipmentList.value,
@@ -802,4 +766,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as _, useShopDetail as u };
-//# sourceMappingURL=DiveShopDetail-brOqozY8.mjs.map
+//# sourceMappingURL=DiveShopDetail-BrxtYs6x.mjs.map

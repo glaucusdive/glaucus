@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { buildDiveShopQuery, type SearchFilters } from './buildDiveShopQuery'
+import { buildDiveShopQuery, diveshopLocaleOrConditions, type SearchFilters } from './buildDiveShopQuery'
 import type { EntityClarifyKind } from './entityClarify'
 import { entityClarifySelectableOptions } from './entityClarify'
 import type { ResolvedShop } from './resolveShop'
@@ -45,7 +45,7 @@ export async function probeReferentPhrase (
     client
       .from('diveshops')
       .select('id')
-      .or(`city.ilike.%${phrase}%,state.ilike.%${phrase}%,locale.ilike.%${phrase}%`)
+      .or(diveshopLocaleOrConditions(phrase))
       .limit(1)
   ])
 

@@ -11,6 +11,7 @@ import '@iconify/utils';
 import 'consola';
 
 const index_get = defineEventHandler(async (event) => {
+  var _a;
   const user = await getAuthUser(event);
   if (!user) {
     throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
@@ -22,24 +23,25 @@ const index_get = defineEventHandler(async (event) => {
     config.public.supabaseKey,
     token
   );
-  const { data, error } = await client.from("booking_drafts").select(`
-      id,
-      shop_id,
-      payload,
-      created_at,
-      updated_at,
-      diveshops ( id, business_name )
-    `).order("updated_at", { ascending: false });
+  const { data: rows, error } = await client.from("booking_drafts").select("id, shop_id, payload, created_at, updated_at").order("updated_at", { ascending: false });
   if (error) {
     throw createError({ statusCode: 500, statusMessage: error.message });
   }
-  const drafts = (data || []).map((row) => {
-    var _a;
-    const shop = row.diveshops;
-    const { diveshops: _, ...rest } = row;
+  const list = rows || [];
+  const shopIds = [...new Set(list.map((r) => r.shop_id).filter(Boolean))];
+  let shopNames = /* @__PURE__ */ new Map();
+  if (shopIds.length > 0) {
+    const { data: shops } = await client.from("diveshops").select("id, business_name").in("id", shopIds);
+    for (const s of shops || []) {
+      const row = s;
+      if (row.id) shopNames.set(row.id, (_a = row.business_name) != null ? _a : "");
+    }
+  }
+  const drafts = list.map((row) => {
+    var _a2;
     return {
-      ...rest,
-      shopName: (_a = shop == null ? void 0 : shop.business_name) != null ? _a : null
+      ...row,
+      shopName: (_a2 = shopNames.get(String(row.shop_id))) != null ? _a2 : null
     };
   });
   return { drafts };
