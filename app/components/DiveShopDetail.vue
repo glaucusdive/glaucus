@@ -44,86 +44,6 @@
         <!-- Tab Content -->
         <div class="w-full flex flex-col border-b-0 cq:lg:order-1 overflow-y-auto">
           <div class="flex flex-col gap-4 h-full w-full p-0">
-            <!-- Details Tab -->
-            <div v-if="activeTab === 'details'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
-              <div class="flex flex-col gap-4">
-                <div class="flex flex-col gap-2">
-                  <div class="flex flex-col cq:lg:flex-row gap-2">
-                    <CardInfo title="Hours" :items="displayHours" empty-message="Hours not available" />
-                    <CardInfo title="Languages" :items="displayLanguages || []" display-mode="text" empty-message="Languages not available" />
-                    <CardInfo title="Details" empty-message="No description available for this dive shop.">
-                      <div v-if="paragraphs.length > 0">
-                        <div v-if="!showFullDetails">
-                          {{ firstParagraph }}
-                        </div>
-                        <div v-else>
-                          <p v-for="(paragraph, index) in paragraphs" :key="index" class="mb-4 last:mb-0">
-                            {{ paragraph }}
-                          </p>
-                        </div>
-                        <button v-if="remainingParagraphs.length > 0" @click="showFullDetails = !showFullDetails"
-                          class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline mt-2 text-sm cursor-pointer">
-                          {{ showFullDetails ? 'Read less' : 'Read more' }}
-                        </button>
-                      </div>
-                      <span v-else class="text-zinc-500 dark:text-zinc-400 italic">
-                        No description available for this dive shop.
-                      </span>
-                    </CardInfo>
-                  </div>
-                </div>
-                <!-- Top reviews (Details tab) -->
-                <div class="flex flex-col gap-2 mt-1">
-                  <div class="flex flex-row items-center justify-between gap-2 flex-wrap">
-                    <h3 class="text-sm font-semibold text-zinc-900 dark:text-white">Top reviews</h3>
-                    <button
-                      type="button"
-                      class="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer shrink-0"
-                      @click="openReviewDrawer"
-                    >
-                      {{ myReview ? 'Edit your review' : 'Write a review' }}
-                    </button>
-                  </div>
-                  <div v-if="reviewsPending" class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-3 gap-2">
-                    <div
-                      v-for="n in [1, 2, 3]"
-                      :key="'sk-' + n"
-                      class="w-full p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-4 animate-pulse"
-                    >
-                      <div class="flex gap-3">
-                        <div class="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-700" />
-                        <div class="flex-1 space-y-2 pt-1">
-                          <div class="h-3 bg-zinc-200 dark:bg-zinc-700 rounded w-1/2" />
-                          <div class="h-2 bg-zinc-200 dark:bg-zinc-700 rounded w-1/3" />
-                        </div>
-                      </div>
-                      <div class="flex gap-1">
-                        <div v-for="n in 5" :key="n" class="w-4 h-4 rounded bg-zinc-200 dark:bg-zinc-700" />
-                      </div>
-                      <div class="space-y-2">
-                        <div class="h-2 bg-zinc-200 dark:bg-zinc-700 rounded" />
-                        <div class="h-2 bg-zinc-200 dark:bg-zinc-700 rounded w-4/5" />
-                      </div>
-                    </div>
-                  </div>
-                  <div v-else-if="topReviews.length === 0" class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-3 gap-2 w-full">
-                    <CardReviewEmpty @open="openReviewDrawer" />
-                  </div>
-                  <div v-else class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-3 gap-2">
-                    <CardReview
-                      v-for="r in topReviews"
-                      :key="r.id"
-                      :reviewer-name="r.author_display_name || 'Diver'"
-                      :review-date="formatReviewDate(r.created_at)"
-                      :rating="r.rating"
-                      :review-text="r.body"
-                      :show-delete="canDeleteReview(r)"
-                      @delete="handleDeleteReview(r)"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
             <!-- Dive Destinations Tab -->
             <div v-if="activeTab === 'destinations'" class="flex flex-col gap-2 p-2 h-full">
               <div v-if="groupedDestinations.length === 0" class="text-zinc-500 dark:text-zinc-400 italic p-4">
@@ -154,6 +74,29 @@
             </div>
             <!-- More Information Tab -->
             <div v-if="activeTab === 'information'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
+              <div class="flex flex-col cq:lg:flex-row gap-2">
+                <CardInfo title="Hours" :items="displayHours" empty-message="Hours not available" />
+                <CardInfo title="Languages" :items="displayLanguages || []" display-mode="text" empty-message="Languages not available" />
+                <CardInfo title="Details" empty-message="No description available for this dive shop.">
+                  <div v-if="paragraphs.length > 0">
+                    <div v-if="!showFullDetails">
+                      {{ firstParagraph }}
+                    </div>
+                    <div v-else>
+                      <p v-for="(paragraph, index) in paragraphs" :key="index" class="mb-4 last:mb-0">
+                        {{ paragraph }}
+                      </p>
+                    </div>
+                    <button v-if="remainingParagraphs.length > 0" @click="showFullDetails = !showFullDetails"
+                      class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline mt-2 text-sm cursor-pointer">
+                      {{ showFullDetails ? 'Read less' : 'Read more' }}
+                    </button>
+                  </div>
+                  <span v-else class="text-zinc-500 dark:text-zinc-400 italic">
+                    No description available for this dive shop.
+                  </span>
+                </CardInfo>
+              </div>
               <div class="flex flex-col cq:lg:flex-row gap-2 rounded-md">
                 <CardInfo
                   title="Equipment Rental"
@@ -357,14 +300,13 @@ onUnmounted(() => {
 const showFullDetails = ref(false)
 
 // Tab system state
-const activeTab = ref('details')
+const activeTab = ref('reviews')
 
 const tabs = [
-  { id: 'details', label: 'Details' },
+  { id: 'reviews', label: 'Reviews' },
   { id: 'destinations', label: 'Dive Destinations' },
   { id: 'courses', label: 'Courses' },
   { id: 'information', label: 'More Information' },
-  { id: 'reviews', label: 'Reviews' },
   { id: 'nearby', label: 'Nearby Dive Shops' }
 ]
 
@@ -375,7 +317,7 @@ const shopRowId = computed(() => shopData.value?.id ?? '')
 
 const { user, isAppAdmin } = useAuth()
 const { client } = useSupabase()
-const { reviews, topReviews, pending: reviewsPending, refresh: refreshReviews } = useShopReviews(shopRowId)
+const { reviews, pending: reviewsPending, refresh: refreshReviews } = useShopReviews(shopRowId)
 
 const myReview = computed(() => {
   const uid = user.value?.id
