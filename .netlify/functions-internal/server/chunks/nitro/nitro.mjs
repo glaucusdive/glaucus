@@ -4294,7 +4294,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "84ca9d72-e268-4f14-ae05-85d024c225fa",
+    "buildId": "2be15a00-b941-4025-adbd-de22e3aa30ef",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -5326,18 +5326,10 @@ function tryFastPath(step, userMessage, payload, _shopName, options) {
       if (i === 0 && p.name && (/^no\s*$/i.test(msg) || /different|i'll give|i will give|give you the name/i.test(msg))) {
         return { message: `What's Diver 1's full name?`, payload: p };
       }
+      if (/^create\s+new\s+diver$/i.test(msg)) {
+        return { message: `What's Diver ${i + 1}'s full name?`, payload: p };
+      }
       if (defaultDiversListForMatch.length) {
-        if (/^create\s+new\s+diver$/i.test(msg)) {
-          const diverChips = i >= 1 ? profileDiverSelectableChipsFromPrefill(pref, { bookingPayload: p }) : void 0;
-          if (diverChips == null ? void 0 : diverChips.length) {
-            return {
-              message: `Use an existing diver from your profile or create a new one for Diver ${i + 1}?`,
-              payload: p,
-              selectableOptions: diverChips
-            };
-          }
-          return { message: `What's Diver ${i + 1}'s full name?`, payload: p };
-        }
         const useMatch = msg.match(/^use\s+(.+)$/i);
         if (useMatch) {
           const namePart = useMatch[1].trim();
