@@ -89,13 +89,15 @@ Use **multiple independent checks** so no single path (LLM, fast path, profile p
 
 2. **Orchestrator gate (server)** — Before returning a booking-branch reply (fast path, merged COLLECTED, or other payload updates), compute `next = getNextBookingStep(payload)` and ensure the **assistant question / chips** match that step (e.g. do not ask for certification while `next.step` is still `courses` or `numberOfDivers`). If payload was merged from the model, **reconcile or clamp** so skipped fields are not marked complete.
 
-3. **Prefill vs progression** — Profile defaults and `profilePrefill` may **suggest** names, cert, etc., but must not **satisfy** later steps unless the user chose a chip or the product explicitly defines auto-fill for that field. Prefer: prefill **empty** diver rows for display, still run **number of divers** and **courses/sites** when the shop has data for those steps.
+3. **Structured booking UI (chips)** — Attach `rentalEquipmentOptions`, `courseOptions`, and `diveSiteOptions` only when `getNextBookingStep(mergedPayload)` matches that step (`gear`, `courses`, `diveSites` respectively). Do not attach those chips from LLM substring heuristics or prose alone.
 
-4. **COLLECTED / LLM merge** — When parsing `COLLECTED:` or similar, validate against `getNextBookingStep`: if the model fills `divers[0].certificationNumber` while `desiredCourses` is still `undefined`, drop those downstream fields or reject the merge for that turn.
+4. **Prefill vs progression** — Profile defaults and `profilePrefill` may **suggest** names, cert, etc., but must not **satisfy** later steps unless the user chose a chip or the product explicitly defines auto-fill for that field. Prefer: prefill **empty** diver rows for display, still run **number of divers** and **courses/sites** when the shop has data for those steps.
 
-5. **Automated tests** — Unit tests on `getNextBookingStep` for representative payloads (after dates only, after courses set, multi-diver, etc.). Optional: golden tests for “given message X and payload Y, next step is Z” for fast-path branches.
+5. **COLLECTED / LLM merge** — When parsing `COLLECTED:` or similar, validate against `getNextBookingStep`: if the model fills `divers[0].certificationNumber` while `desiredCourses` is still `undefined`, drop those downstream fields or reject the merge for that turn.
 
-6. **Client sanity (optional)** — After each `ai-search` response with `bookingPayload`, the client may compare `getNextBookingStep` (shared util or duplicated minimal check) to the assistant message intent in dev builds only; log mismatches.
+6. **Automated tests** — Unit tests on `getNextBookingStep` for representative payloads (after dates only, after courses set, multi-diver, etc.). Optional: golden tests for “given message X and payload Y, next step is Z” for fast-path branches.
+
+7. **Client sanity (optional)** — After each `ai-search` response with `bookingPayload`, the client may compare `getNextBookingStep` (shared util or duplicated minimal check) to the assistant message intent in dev builds only; log mismatches.
 
 ### Retries
 
@@ -129,4 +131,4 @@ flowchart TD
 - [x] Retries: aligned with sections 3 and 5 above.
 - [x] Steps: one turn per response; stopping conditions above.
 - [x] State: frontend-held payloads and clarification phrase; no destructive writes without confirm.
-- [x] Flow integrity: `clampBookingPayloadToNextStep` + `getNextBookingStep` after merges and on continuing booking; profile injects contact only (no prefilled divers before optional steps); extend with tests when a runner exists (see **Booking flow integrity**).
+- [x] Flow integrity: `clampBookingPayloadToNextStep` + `getNextBookingStep` after merges and on continuing booking; profile injects contact only (no prefilled divers before optional steps); `npm test` runs clamp/order tests in `server/utils/bookingFastPath.clamp.test.ts` (see **Booking flow integrity**).

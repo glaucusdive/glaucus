@@ -4294,7 +4294,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "2be15a00-b941-4025-adbd-de22e3aa30ef",
+    "buildId": "fa6acf47-ecd8-4271-811b-9944135438f5",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -5124,6 +5124,131 @@ function clampBookingPayloadToNextStep(payload, options) {
         continue;
       }
       break;
+    }
+    const di = next.diverIndex;
+    if (di != null && Array.isArray(p.divers) && p.divers[di]) {
+      const d = p.divers[di];
+      let changed = false;
+      const clearAfterName = () => {
+        var _a2;
+        if (String(d.certificationNumber || "").trim()) {
+          d.certificationNumber = "";
+          changed = true;
+        }
+        if (d.numberOfDives !== void 0 && d.numberOfDives !== null && String(d.numberOfDives).trim() !== "") {
+          d.numberOfDives = "";
+          changed = true;
+        }
+        if (String(d.height || "").trim()) {
+          d.height = "";
+          changed = true;
+        }
+        if (String(d.weight || "").trim()) {
+          d.weight = "";
+          changed = true;
+        }
+        if ((_a2 = d.gear) == null ? void 0 : _a2.length) {
+          d.gear = [];
+          changed = true;
+        }
+        if (d.gearAsked) {
+          delete d.gearAsked;
+          changed = true;
+        }
+      };
+      const clearAfterCert = () => {
+        var _a2;
+        if (d.numberOfDives !== void 0 && d.numberOfDives !== null && String(d.numberOfDives).trim() !== "") {
+          d.numberOfDives = "";
+          changed = true;
+        }
+        if (String(d.height || "").trim()) {
+          d.height = "";
+          changed = true;
+        }
+        if (String(d.weight || "").trim()) {
+          d.weight = "";
+          changed = true;
+        }
+        if ((_a2 = d.gear) == null ? void 0 : _a2.length) {
+          d.gear = [];
+          changed = true;
+        }
+        if (d.gearAsked) {
+          delete d.gearAsked;
+          changed = true;
+        }
+      };
+      const clearAfterDives = () => {
+        var _a2;
+        if (String(d.height || "").trim()) {
+          d.height = "";
+          changed = true;
+        }
+        if (String(d.weight || "").trim()) {
+          d.weight = "";
+          changed = true;
+        }
+        if ((_a2 = d.gear) == null ? void 0 : _a2.length) {
+          d.gear = [];
+          changed = true;
+        }
+        if (d.gearAsked) {
+          delete d.gearAsked;
+          changed = true;
+        }
+      };
+      const clearAfterHeight = () => {
+        var _a2;
+        if (String(d.weight || "").trim()) {
+          d.weight = "";
+          changed = true;
+        }
+        if ((_a2 = d.gear) == null ? void 0 : _a2.length) {
+          d.gear = [];
+          changed = true;
+        }
+        if (d.gearAsked) {
+          delete d.gearAsked;
+          changed = true;
+        }
+      };
+      const clearAfterWeight = () => {
+        var _a2;
+        if ((_a2 = d.gear) == null ? void 0 : _a2.length) {
+          d.gear = [];
+          changed = true;
+        }
+        if (d.gearAsked) {
+          delete d.gearAsked;
+          changed = true;
+        }
+      };
+      if (next.step === "diverName") {
+        clearAfterName();
+        if (changed) continue;
+        break;
+      }
+      if (next.step === "certificationNumber") {
+        clearAfterCert();
+        if (changed) continue;
+        break;
+      }
+      if (next.step === "numberOfDives") {
+        clearAfterDives();
+        if (changed) continue;
+        break;
+      }
+      if (next.step === "height") {
+        clearAfterHeight();
+        if (changed) continue;
+        break;
+      }
+      if (next.step === "weight") {
+        clearAfterWeight();
+        if (changed) continue;
+        break;
+      }
     }
     break;
   }
