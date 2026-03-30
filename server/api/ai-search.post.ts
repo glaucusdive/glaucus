@@ -96,6 +96,27 @@ function orchestratorSplitBookingCopyForStep (
       : `Which dive sites would you like to dive? ${diveSitesLine}`
     return { messagePreamble, message }
   }
+
+  const di = next.diverIndex ?? 0
+  const diverRow = p.divers?.[di]
+  const displayName = (diverRow?.name || next.diverName || '').trim() || `Diver ${di + 1}`
+
+  if (next.step === 'certificationNumber') {
+    return { message: `What's ${displayName}'s certification number?` }
+  }
+  if (next.step === 'numberOfDives') {
+    return { message: `How many dives has ${displayName} completed?` }
+  }
+  if (next.step === 'height') {
+    return { message: `What's ${displayName}'s height? (e.g. 5'10" or 175 cm)` }
+  }
+  if (next.step === 'weight') {
+    return { message: `What's ${displayName}'s weight? Please include the unit (lbs or kg).` }
+  }
+  if (next.step === 'gear') {
+    return { message: `Does ${displayName} need any rental gear?` }
+  }
+
   return null
 }
 
@@ -641,11 +662,8 @@ export default defineEventHandler(async (event) => {
         const gear = payload.divers?.[next.diverIndex]?.gear
         return Array.isArray(gear) && gear.length > 0
       }
-      const messageAsksForGear = (text: string) => /rental gear|need any.*gear|available rental|more gear|next detail/i.test(text)
-      const messageAsksForGearSelection = (text: string) => /what would .+ like to rent|pick from the options below/i.test(text)
       const messageAsksForDiveSites = (text: string) => /dive sites|which sites|sites would you like|available sites|pick one or more/i.test(text)
       const messageAsksForCourses = (text: string) => /courses|which course|interested in any course|certification course/i.test(text)
-      const messageIsAddAnotherGear = (text: string) => /add another or say/i.test(text)
 
       // User replied to "shop has no gear" with no payload yet: Pick a new diveshop (clear shop) or Continue (start form)
       if (continuingBooking && !bookingPayload) {
@@ -1307,11 +1325,12 @@ export default defineEventHandler(async (event) => {
             const gearChipsForFast = rentalEquipment.length > 0 ? rentalEquipment : undefined
             // When fast path returns selectableOptions (e.g. no-rental-gear: "I understand" / "Pick a new diveshop"), use them and skip gear chips
             const noRentalGearOptions = fast.selectableOptions?.length ? fast.selectableOptions : undefined
-            const showGearChips = noRentalGearOptions ? undefined : (
-              (addGearOptions(fp) && gearChipsForFast) ||
-              (messageIsAddAnotherGear(fast.message) && gearChipsForFast ? gearChipsForFast : undefined) ||
-              (messageAsksForGearSelection(fast.message) && gearChipsForFast ? gearChipsForFast : undefined)
-            )
+            const showGearChips =
+              noRentalGearOptions
+                ? undefined
+                : getNextBookingStep(fp as BookingPayloadLocal)?.step === 'gear'
+                  ? gearChipsForFast
+                  : undefined
             return {
               success: true,
               intent: 'booking' as const,
@@ -1538,21 +1557,17 @@ export default defineEventHandler(async (event) => {
       if (willShowDiveSiteOptions && replyMessage === genericFallback && !willShowCourseOptions) {
         replyMessage = 'Which dive sites would you like to dive?'
       }
-      // Same for gear: if next step is gear and we're showing gear chips but message was stripped, ask for rental gear
-      const willShowGearOptions = (collectedPayload ? addGearOptions(collectedPayload) : undefined) ||
-        (messageAsksForGear(replyMessage) && gearChips ? gearChips : undefined) ||
-        (messageIsAddAnotherGear(replyMessage) && gearChips ? gearChips : undefined) ||
-        (bookingPayload && addGearOptions(bookingPayload) && gearChips ? gearChips : undefined)
-      if (willShowGearOptions && replyMessage === genericFallback) {
-        const numDivers = Math.max(1, (collectedPayload ?? bookingPayload)?.numberOfDivers ?? 1)
-        const divers = (collectedPayload ?? bookingPayload)?.divers ?? []
-        const lastName = divers[numDivers - 1]?.name || `Diver ${numDivers}`
-        replyMessage = `Does ${lastName} need any rental gear?`
+      // Same for gear: if canonical next step is gear and message was stripped to generic fallback, ask for rental gear
+      const mergedForGearUi = (collectedPayload ?? bookingPayload) as BookingPayload | undefined
+      const gearOptionsFromStep = mergedForGearUi ? addGearOptions(mergedForGearUi) : undefined
+      if (gearOptionsFromStep && replyMessage === genericFallback) {
+        const numDivers = Math.max(1, mergedForGearUi?.numberOfDivers ?? 1)
+        const divers = mergedForGearUi?.divers ?? []
+        const idx = getNextBookingStep(mergedForGearUi as BookingPayloadLocal)?.diverIndex ?? numDivers - 1
+        const nm = divers[idx]?.name?.trim() || `Diver ${idx + 1}`
+        replyMessage = `Does ${nm} need any rental gear?`
       }
-      const finalGearOptions = (collectedPayload ? addGearOptions(collectedPayload) : undefined) ||
-        (messageAsksForGear(replyMessage) && gearChips ? gearChips : undefined) ||
-        (messageIsAddAnotherGear(replyMessage) && gearChips ? gearChips : undefined) ||
-        (bookingPayload && addGearOptions(bookingPayload) && gearChips ? gearChips : undefined)
+      const finalGearOptions = gearOptionsFromStep
       const mergedForDiverChips = (collectedPayload ?? bookingPayload) ?? ({} as BookingPayloadLocal)
       const nextHintDiverChips = getNextBookingStep(mergedForDiverChips)
       const profileDiverOptionsFromLlm =
@@ -1588,7 +1603,7 @@ export default defineEventHandler(async (event) => {
         shopName: resolvedShop.business_name,
         bookingPayload: collectedPayload,
         selectableOptions: profileDiverOptionsFromLlm?.length ? profileDiverOptionsFromLlm : undefined,
-        rentalEquipmentOptions: finalGearOptions && (Array.isArray(finalGearOptions) ? finalGearOptions.length > 0 : true) ? finalGearOptions : undefined,
+        rentalEquipmentOptions: finalGearOptions?.length ? finalGearOptions : undefined,
         hideNoneForGear: hideNoneForGear(collectedPayload ?? bookingPayload),
         courseOptions: (collectedPayload ? addCourseOptions(collectedPayload) : undefined) ||
           (messageAsksForCourses(replyMessage) && courses.length > 0 ? courses : undefined) ||

@@ -211,6 +211,129 @@ export function clampBookingPayloadToNextStep (
       }
       break
     }
+
+    // Per-diver: strip profile/LLM-prefilled fields that are ahead of the canonical next step
+    const di = next.diverIndex
+    if (di != null && Array.isArray(p.divers) && p.divers[di]) {
+      const d = p.divers[di]
+      let changed = false
+      const clearAfterName = () => {
+        if (String(d.certificationNumber || '').trim()) {
+          d.certificationNumber = ''
+          changed = true
+        }
+        if (d.numberOfDives !== undefined && d.numberOfDives !== null && String(d.numberOfDives).trim() !== '') {
+          d.numberOfDives = ''
+          changed = true
+        }
+        if (String(d.height || '').trim()) {
+          d.height = ''
+          changed = true
+        }
+        if (String(d.weight || '').trim()) {
+          d.weight = ''
+          changed = true
+        }
+        if (d.gear?.length) {
+          d.gear = []
+          changed = true
+        }
+        if (d.gearAsked) {
+          delete d.gearAsked
+          changed = true
+        }
+      }
+      const clearAfterCert = () => {
+        if (d.numberOfDives !== undefined && d.numberOfDives !== null && String(d.numberOfDives).trim() !== '') {
+          d.numberOfDives = ''
+          changed = true
+        }
+        if (String(d.height || '').trim()) {
+          d.height = ''
+          changed = true
+        }
+        if (String(d.weight || '').trim()) {
+          d.weight = ''
+          changed = true
+        }
+        if (d.gear?.length) {
+          d.gear = []
+          changed = true
+        }
+        if (d.gearAsked) {
+          delete d.gearAsked
+          changed = true
+        }
+      }
+      const clearAfterDives = () => {
+        if (String(d.height || '').trim()) {
+          d.height = ''
+          changed = true
+        }
+        if (String(d.weight || '').trim()) {
+          d.weight = ''
+          changed = true
+        }
+        if (d.gear?.length) {
+          d.gear = []
+          changed = true
+        }
+        if (d.gearAsked) {
+          delete d.gearAsked
+          changed = true
+        }
+      }
+      const clearAfterHeight = () => {
+        if (String(d.weight || '').trim()) {
+          d.weight = ''
+          changed = true
+        }
+        if (d.gear?.length) {
+          d.gear = []
+          changed = true
+        }
+        if (d.gearAsked) {
+          delete d.gearAsked
+          changed = true
+        }
+      }
+      const clearAfterWeight = () => {
+        if (d.gear?.length) {
+          d.gear = []
+          changed = true
+        }
+        if (d.gearAsked) {
+          delete d.gearAsked
+          changed = true
+        }
+      }
+
+      if (next.step === 'diverName') {
+        clearAfterName()
+        if (changed) continue
+        break
+      }
+      if (next.step === 'certificationNumber') {
+        clearAfterCert()
+        if (changed) continue
+        break
+      }
+      if (next.step === 'numberOfDives') {
+        clearAfterDives()
+        if (changed) continue
+        break
+      }
+      if (next.step === 'height') {
+        clearAfterHeight()
+        if (changed) continue
+        break
+      }
+      if (next.step === 'weight') {
+        clearAfterWeight()
+        if (changed) continue
+        break
+      }
+    }
     break
   }
 
