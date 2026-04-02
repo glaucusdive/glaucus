@@ -6,6 +6,9 @@
 .cache
 dist
 
+# Netlify local / CI build output (must not be committed; may contain inlined config)
+.netlify
+
 # Node dependencies
 node_modules
 

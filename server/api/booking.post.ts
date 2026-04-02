@@ -186,7 +186,10 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   const supabaseUrl = config.public.supabaseUrl
   const supabaseKey = config.public.supabaseKey
-  const resendApiKey = config.resendApiKey
+  const resendApiKey =
+    (typeof config.resendApiKey === 'string' && config.resendApiKey.trim()) ||
+    (typeof process.env.RESEND_API_KEY === 'string' && process.env.RESEND_API_KEY.trim()) ||
+    ''
 
   if (!resendApiKey) {
     throw createError({ statusCode: 500, statusMessage: 'Email is not configured (RESEND_API_KEY missing)' })
