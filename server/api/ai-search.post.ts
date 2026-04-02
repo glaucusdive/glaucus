@@ -5,7 +5,8 @@ import { getDiveSitesForShop } from '../utils/getDiveSitesForShop'
 import { getCoursesForShop } from '../utils/getCoursesForShop'
 import { getRentalEquipmentForShop } from '../utils/getRentalEquipmentForShop'
 import { clampBookingPayloadToNextStep, getNextBookingStep, tryFastPath, tryFastPathUnitOnly, profileDiverSelectableChipsFromPrefill, type BookingPayloadLocal, type NextStepResult } from '../utils/bookingFastPath'
-import { tryParseTripDatesFromMessage } from '../utils/parseTripDates'
+import { inclusiveTripDays, tryParseTripDatesFromMessage } from '../utils/parseTripDates'
+import { applyParsedTripDatesToBookingPayload } from '../utils/bookingApplyParsedTripDates'
 import { mergeCollectedIntoBookingPayload } from '../utils/mergeBookingCollected'
 import { extractBookingTargetFallback, extractReferredEntityPhrase } from '../utils/extractReferredEntityPhrase'
 import { parseEntityClarifyMessage } from '../utils/entityClarify'
@@ -50,6 +51,47 @@ function buildBookingAckSummaryForPayload (p: BookingPayload): string | undefine
   if (dateSeg) return `Great — I have ${dateSeg}.`
   if (tailParts.length > 0) return `Great — I have ${tailParts.join(' and ')}.`
   return undefined
+}
+
+function isLongTripConfirmMessage (msg: string): boolean {
+  const t = msg.trim()
+  return /^(yes|yeah|yep|correct|right|confirmed|confirm|absolutely|sure)$/i.test(t) ||
+    /^that'?s?\s*(right|correct)\b/i.test(t) ||
+    /^yes,?\s*(that'?s?\s*)?(is\s*)?correct\b/i.test(t) ||
+    /\bthat'?s?\s+correct\s+for\s+my\s+plans\b/i.test(t)
+}
+
+function isLongTripRejectMessage (msg: string): boolean {
+  return /^(no|nope)\b/i.test(msg.trim()) || /\b(wrong|not\s+right|different\s+dates)\b/i.test(msg.trim())
+}
+
+function formatReplyAfterAppliedTripDates (
+  p: BookingPayload,
+  parsedDates: { startDate: string; endDate: string },
+  coursesLen: number,
+  diveSitesLen: number,
+  coursesDateAckPartsFn: (p: BookingPayload, s: string, e: string) => { messagePreamble: string; message: string },
+  diveSitesLine: string
+): { message: string; messagePreamble?: string } {
+  const nextAfter = getNextBookingStep(p as BookingPayloadLocal)
+  let msg = `Got it — diving ${parsedDates.startDate} to ${parsedDates.endDate}.`
+  let dateStepPreamble: string | undefined
+  if (nextAfter?.step === 'courses' && coursesLen > 0) {
+    const parts = coursesDateAckPartsFn(p, parsedDates.startDate, parsedDates.endDate)
+    dateStepPreamble = parts.messagePreamble
+    msg = parts.message
+  } else if (nextAfter?.step === 'diveSites' && diveSitesLen > 0) {
+    dateStepPreamble = `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}.`
+    msg = p.desiredCourses?.length
+      ? `I noted ${p.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive? ${diveSitesLine}`
+      : `Which dive sites would you like to dive? ${diveSitesLine}`
+  } else if (nextAfter?.step === 'numberOfDivers') {
+    dateStepPreamble = `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}.`
+    msg = p.desiredCourses?.length && coursesLen > 0
+      ? `I noted ${p.desiredCourses.join(', ')} from your search. How many divers should we book for?`
+      : `How many divers should we book for?`
+  }
+  return { message: msg, messagePreamble: dateStepPreamble }
 }
 
 function bookingCoursesDateAckParts (p: BookingPayload, startDate: string, endDate: string, coursesLine: string) {
@@ -168,6 +210,7 @@ export interface BookingPayload {
   email?: string
   startDate?: string
   endDate?: string
+  pendingLongTripConfirmation?: { startDate: string; endDate: string }
   numberOfDivers?: number
   divers?: BookingDiver[]
   desiredCourses?: string[]
@@ -410,7 +453,7 @@ Ask for ONE piece of information at a time in this order: 1) name (the person ma
 
 When "Already collected" includes diver details from a previous booking (e.g. numberOfDives or gear already filled): (1) For number of dives — briefly confirm or ask to update, e.g. "Last time you had 21 dives — is this trip still 21 or have they done another?" or "Is this still 21 dives or 22 now?" so the count stays accurate. (2) For rental gear — mention what they had last time and that they can add or remove for this trip, e.g. "Last time you had Wetsuit and BCD. This shop offers [list from rental equipment]. Add or remove any for this trip?" Then let them pick from the chips or say "same" / "none" / etc.
 
-Dates (step 3): Accept dates in any form the user gives — e.g. "July 24 2026", "24th July", "070826", "7/24/26", "next week", "April 15 to April 18". Parse them into a start and end date and put startDate and endDate in COLLECTED as YYYY-MM-DD on the same turn (the server may also parse common ranges without you). After parsing, compute the trip length in days (end minus start). Most scuba trips are a few days to a week (roughly 3–10 days). If the trip is longer than 21 days (3 weeks), question the user before moving on: e.g. "That's [X] days — most dive trips are a few days to a week. Did you mean a shorter window, or is that correct for your plans?" If they confirm they want the long trip, keep those dates in COLLECTED. For trips of 21 days or less, you may briefly repeat the dates in your reply, then ask for the next field. Do not ask the user to type YYYY-MM-DD.
+Dates (step 3): The server parses most trip date formats (numeric ranges, month names, ISO, and many natural phrases). Do not spend tokens re-explaining parsing rules. If the user’s dates are still ambiguous after their message, put startDate and endDate in COLLECTED as YYYY-MM-DD. For trips longer than 21 days the server asks for confirmation first — follow its lead if the user is in that flow. Do not ask the user to type YYYY-MM-DD.
 
 Optional steps: For desiredCourses and desiredDiveSites, omit these keys from COLLECTED until you have asked that step and the user answered (or use a non-empty array when they picked courses/sites). Do not send empty arrays [] for those fields until the user has completed that step — otherwise use omit or null in COLLECTED if your JSON schema allows. For courses: if the user is still adding courses, set coursesSelectionComplete to false; when they are done (including "any" or "none"), set coursesSelectionComplete to true.
 
@@ -865,49 +908,126 @@ export default defineEventHandler(async (event) => {
 
           // Orchestrator: parse trip dates without LLM so payload + form stay aligned and steps are not skipped
           if (getNextBookingStep(bookingPayload)?.step === 'dates') {
+            const applyTripDatesCtx = {
+              shopCourseCount: courses.length,
+              shopDiveSiteCount: diveSites.length,
+              userMessage: msgTrim,
+              history,
+              courses
+            }
+
+            let bp: BookingPayload = { ...bookingPayload }
+            if (bp.pendingLongTripConfirmation) {
+              const pend = bp.pendingLongTripConfirmation
+              if (isLongTripConfirmMessage(msgTrim)) {
+                const p = applyParsedTripDatesToBookingPayload(
+                  { ...bp, pendingLongTripConfirmation: undefined } as BookingPayloadLocal,
+                  pend,
+                  applyTripDatesCtx
+                ) as BookingPayload
+                const copy = formatReplyAfterAppliedTripDates(
+                  p,
+                  pend,
+                  courses.length,
+                  diveSites.length,
+                  coursesDateAckParts,
+                  DIVE_SITES_LINE
+                )
+                return {
+                  success: true,
+                  intent: 'booking' as const,
+                  bookingReady: false,
+                  message: copy.message,
+                  ...(copy.messagePreamble ? { messagePreamble: copy.messagePreamble } : {}),
+                  shopId: resolvedShop.id,
+                  shopName: resolvedShop.business_name,
+                  bookingPayload: p,
+                  selectableOptions: undefined,
+                  rentalEquipmentOptions: addGearOptions(p),
+                  hideNoneForGear: hideNoneForGear(p),
+                  courseOptions: addCourseOptions(p),
+                  diveSiteOptions: addDiveSiteOptions(p)
+                }
+              }
+              if (isLongTripRejectMessage(msgTrim)) {
+                const cleared = clampBookingPayloadToNextStep(
+                  { ...bp, pendingLongTripConfirmation: undefined } as BookingPayloadLocal,
+                  { shopCourseCount: courses.length, shopDiveSiteCount: diveSites.length }
+                ) as BookingPayload
+                return {
+                  success: true,
+                  intent: 'booking' as const,
+                  bookingReady: false,
+                  message: 'No problem — what are your diving start and end dates?',
+                  shopId: resolvedShop.id,
+                  shopName: resolvedShop.business_name,
+                  bookingPayload: cleared,
+                  selectableOptions: undefined,
+                  rentalEquipmentOptions: undefined,
+                  hideNoneForGear: hideNoneForGear(cleared),
+                  courseOptions: undefined,
+                  diveSiteOptions: undefined
+                }
+              }
+              const altParsed = tryParseTripDatesFromMessage(msgTrim)
+              if (!altParsed) {
+                const days = inclusiveTripDays(pend.startDate, pend.endDate)
+                return {
+                  success: true,
+                  intent: 'booking' as const,
+                  bookingReady: false,
+                  message: `That's ${days} days (${pend.startDate} to ${pend.endDate}). Most dive trips are a week or two — is that the window you want? Reply yes to keep it, no to change dates, or type new dates.`,
+                  shopId: resolvedShop.id,
+                  shopName: resolvedShop.business_name,
+                  bookingPayload: bp,
+                  selectableOptions: undefined,
+                  rentalEquipmentOptions: undefined,
+                  hideNoneForGear: hideNoneForGear(bp),
+                  courseOptions: undefined,
+                  diveSiteOptions: undefined
+                }
+              }
+              bp = { ...bp, pendingLongTripConfirmation: undefined }
+            }
+
             const parsedDates = tryParseTripDatesFromMessage(msgTrim)
             if (parsedDates) {
-              let p: BookingPayload = {
-                ...bookingPayload,
-                startDate: parsedDates.startDate,
-                endDate: parsedDates.endDate
+              const days = inclusiveTripDays(parsedDates.startDate, parsedDates.endDate)
+              if (days > 21) {
+                const pendingPayload: BookingPayload = {
+                  ...bp,
+                  pendingLongTripConfirmation: { startDate: parsedDates.startDate, endDate: parsedDates.endDate }
+                }
+                return {
+                  success: true,
+                  intent: 'booking' as const,
+                  bookingReady: false,
+                  message: `That's ${days} days (${parsedDates.startDate} to ${parsedDates.endDate}). Most dive trips are a few days to a week or two — is that correct? Reply yes to confirm or no / new dates to adjust.`,
+                  shopId: resolvedShop.id,
+                  shopName: resolvedShop.business_name,
+                  bookingPayload: pendingPayload,
+                  selectableOptions: undefined,
+                  rentalEquipmentOptions: undefined,
+                  hideNoneForGear: hideNoneForGear(pendingPayload),
+                  courseOptions: undefined,
+                  diveSiteOptions: undefined
+                }
               }
-              if (getNextBookingStep(p)?.step === 'courses' && courses.length === 0) {
-                p = { ...p, desiredCourses: [] }
-              } else if (courses.length > 0) {
-                p = applyInferredCoursesToPayloadIfEligible(p as BookingPayloadLocal, history, msgTrim, courses) as BookingPayload
-              }
-              if (getNextBookingStep(p)?.step === 'diveSites' && diveSites.length === 0) {
-                p = { ...p, desiredDiveSites: [] }
-              }
-              p = clampBookingPayloadToNextStep(p as BookingPayloadLocal, {
-                shopCourseCount: courses.length,
-                shopDiveSiteCount: diveSites.length
-              }) as BookingPayload
-              const nextAfter = getNextBookingStep(p)
-              let msg = `Got it — diving ${parsedDates.startDate} to ${parsedDates.endDate}.`
-              let dateStepPreamble: string | undefined
-              if (nextAfter?.step === 'courses' && courses.length > 0) {
-                const parts = coursesDateAckParts(p, parsedDates.startDate, parsedDates.endDate)
-                dateStepPreamble = parts.messagePreamble
-                msg = parts.message
-              } else if (nextAfter?.step === 'diveSites' && diveSites.length > 0) {
-                dateStepPreamble = `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}.`
-                msg = p.desiredCourses?.length
-                  ? `I noted ${p.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive? ${DIVE_SITES_LINE}`
-                  : `Which dive sites would you like to dive? ${DIVE_SITES_LINE}`
-              } else if (nextAfter?.step === 'numberOfDivers') {
-                dateStepPreamble = `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}.`
-                msg = p.desiredCourses?.length && courses.length > 0
-                  ? `I noted ${p.desiredCourses.join(', ')} from your search. How many divers should we book for?`
-                  : `How many divers should we book for?`
-              }
+              const p = applyParsedTripDatesToBookingPayload(bp as BookingPayloadLocal, parsedDates, applyTripDatesCtx) as BookingPayload
+              const copy = formatReplyAfterAppliedTripDates(
+                p,
+                parsedDates,
+                courses.length,
+                diveSites.length,
+                coursesDateAckParts,
+                DIVE_SITES_LINE
+              )
               return {
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
-                message: msg,
-                ...(dateStepPreamble ? { messagePreamble: dateStepPreamble } : {}),
+                message: copy.message,
+                ...(copy.messagePreamble ? { messagePreamble: copy.messagePreamble } : {}),
                 shopId: resolvedShop.id,
                 shopName: resolvedShop.business_name,
                 bookingPayload: p,
@@ -1027,6 +1147,7 @@ export default defineEventHandler(async (event) => {
             if (editDates) {
               p.startDate = undefined
               p.endDate = undefined
+              delete p.pendingLongTripConfirmation
               return {
                 success: true,
                 intent: 'booking' as const,
@@ -1562,6 +1683,35 @@ export default defineEventHandler(async (event) => {
                 }
               ) as BookingPayload
               collectedPayload.shopId = collectedPayload.shopId || resolvedShop.id
+              if (collectedPayload && getNextBookingStep(collectedPayload as BookingPayloadLocal)?.step === 'dates') {
+                const reparsed = tryParseTripDatesFromMessage(message.trim())
+                if (reparsed) {
+                  const days = inclusiveTripDays(reparsed.startDate, reparsed.endDate)
+                  const base = { ...collectedPayload } as BookingPayload
+                  delete base.pendingLongTripConfirmation
+                  if (days > 21) {
+                    collectedPayload = {
+                      ...base,
+                      startDate: undefined,
+                      endDate: undefined,
+                      pendingLongTripConfirmation: { startDate: reparsed.startDate, endDate: reparsed.endDate }
+                    }
+                  } else {
+                    collectedPayload = applyParsedTripDatesToBookingPayload(
+                      base as BookingPayloadLocal,
+                      reparsed,
+                      {
+                        shopCourseCount: courses.length,
+                        shopDiveSiteCount: diveSites.length,
+                        userMessage: message,
+                        history,
+                        courses
+                      }
+                    ) as BookingPayload
+                  }
+                  collectedPayload.shopId = collectedPayload.shopId || resolvedShop.id
+                }
+              }
             } catch (e) {
               // ignore parse error, keep previous payload
             }
