@@ -338,7 +338,7 @@ import { initSignedInChatsFromRemote, chatRemoteHydrateTick } from '~/composable
 
 // Get route to check for initial query
 const route = useRoute()
-const { isSignedIn, user } = useAuth()
+const { isSignedIn, accessToken, user } = useAuth()
 const { client } = useSupabase()
 /** Profile snapshot for agent prefill (name, email, defaultDiver); set when signed in. */
 const profilePrefillSnapshot = ref(null)
@@ -999,7 +999,10 @@ const sendMessage = async (messageText, displayText) => {
     const lastIntent = inBookingFlow ? 'booking' : undefined
     const lastBookingShopId = inBookingFlow ? lastAssistantMessage.shopId : undefined
     const lastBookingShopName = inBookingFlow ? (lastAssistantMessage.shopName ?? selectedShopName.value) : undefined
-    const lastPayload = lastBookingPayload.value
+    const liveDrawerPayload = (isOpen.value && contentType.value === 'booking-form' && drawerData.value?.liveBookingPayload)
+      ? drawerData.value.liveBookingPayload
+      : null
+    const lastPayload = liveDrawerPayload || lastBookingPayload.value
 
     const shopsAlreadyShownCount = messages.value
       .filter(m => m.role === 'assistant' && m.shops?.length)
@@ -1075,8 +1078,11 @@ const sendMessage = async (messageText, displayText) => {
       }
 
       const storedPayload = response.bookingPayload ?? response.payload
-      const userSaidConfirmSend = /^(yes|yeah|yep|ok|okay|sure|send|submit|confirm|go ahead|do it|please send|ready)$/i.test(String(message).trim()) ||
-        /^(send|submit)\s+(booking\s+)?(request)?$/i.test(String(message).trim())
+      const trimmedMessage = String(message).trim()
+      const userSaidConfirmSend = /^(yes|yeah|yep|ok|okay|sure|send|submit|confirm|go ahead|do it|please send|ready)$/i.test(trimmedMessage) ||
+        /^(send|submit)\s+(booking\s+)?(request)?$/i.test(trimmedMessage) ||
+        /^(just\s+)?send(?:\s+it)?$/i.test(trimmedMessage) ||
+        /^(send anyway|still send|send it anyway|yes send anyway|confirm send anyway)$/i.test(trimmedMessage)
       const hasValidDivers = Array.isArray(storedPayload?.divers) && storedPayload.divers.length >= 1 &&
         storedPayload.divers.some(d => d?.name && String(d.name).trim())
       // When user said "send" (or similar) and we got bookingReady with payload, submit the booking now
@@ -1101,7 +1107,11 @@ const sendMessage = async (messageText, displayText) => {
               gear: (d.gear ?? []).map(g => ({ gearType: g?.gearType ?? '' }))
             }))
           }
-          const bookRes = await $fetch('/api/booking', { method: 'POST', body })
+          const bookRes = await $fetch('/api/booking', {
+            method: 'POST',
+            body,
+            ...(accessToken.value ? { headers: { Authorization: `Bearer ${accessToken.value}` } } : {})
+          })
           if (bookRes?.sent) {
             messages.value.push({
               role: 'assistant',

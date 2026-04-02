@@ -174,6 +174,76 @@ export interface BookingPayload {
   desiredDiveSites?: string[]
 }
 
+function isConfirmSendMessage (msg: string): boolean {
+  const t = msg.trim()
+  return /^(yes|yeah|yep|ok|okay|sure|send|submit|confirm|go ahead|do it|please send|ready)$/i.test(t) ||
+    /^(send|submit)\s+(booking\s+)?(request)?$/i.test(t) ||
+    /^(just\s+)?send(?:\s+it)?$/i.test(t)
+}
+
+function isSendAnywayMessage (msg: string): boolean {
+  const t = msg.trim()
+  return /^(send anyway|still send|send it anyway|yes send anyway|confirm send anyway)$/i.test(t)
+}
+
+function isFinishRemainingTasksMessage (msg: string): boolean {
+  const t = msg.trim()
+  return /^(finish|finish tasks|finish remaining tasks|complete (the )?(form|tasks)|i('| a)?ll finish|let'?s finish)$/i.test(t)
+}
+
+function listIncompleteBookingTasks (
+  p: BookingPayload,
+  options: { shopCourseCount: number; shopDiveSiteCount: number }
+): string[] {
+  const tasks: string[] = []
+  if (!String(p.name || '').trim()) tasks.push('Add booking contact name')
+  if (!String(p.email || '').trim()) tasks.push('Add booking contact email')
+  if (!String(p.startDate || '').trim() || !String(p.endDate || '').trim()) tasks.push('Set trip start and end dates')
+
+  const coursesSelectionPending = p.coursesSelectionComplete === false || p.desiredCourses === undefined
+  if (options.shopCourseCount > 0 && coursesSelectionPending) {
+    tasks.push('Choose courses (or mark none)')
+  }
+  if (options.shopDiveSiteCount > 0 && p.desiredDiveSites === undefined) {
+    tasks.push('Choose desired dive sites (or mark none)')
+  }
+
+  const numDivers = Number(p.numberOfDivers || 0)
+  if (!Number.isFinite(numDivers) || numDivers < 1) {
+    tasks.push('Set number of divers')
+    return tasks
+  }
+
+  for (let i = 0; i < numDivers; i++) {
+    const d = p.divers?.[i]
+    const diverLabel = `Diver ${i + 1}`
+    if (!String(d?.name || '').trim()) tasks.push(`${diverLabel}: add full name`)
+    if (!String(d?.certificationNumber || '').trim()) tasks.push(`${diverLabel}: add certification number`)
+    if (d?.numberOfDives === undefined || d?.numberOfDives === null || String(d.numberOfDives).trim() === '') {
+      tasks.push(`${diverLabel}: add number of dives`)
+    }
+    if (!String(d?.height || '').trim()) tasks.push(`${diverLabel}: add height`)
+    if (!String(d?.weight || '').trim()) tasks.push(`${diverLabel}: add weight with unit`)
+    const hasSelectedGear = Array.isArray(d?.gear) &&
+      d.gear.some(g => String(g?.gearType || '').trim() !== '')
+    const gearConfirmed = Boolean(d?.gearAsked) || hasSelectedGear
+    if (!gearConfirmed) tasks.push(`${diverLabel}: confirm rental gear needed or none`)
+  }
+
+  return tasks
+}
+
+function normalizeBookingPayloadForSendCheck (payload: BookingPayload): BookingPayload {
+  const p: BookingPayload = JSON.parse(JSON.stringify(payload || {}))
+  const divers = Array.isArray(p.divers) ? p.divers : []
+  const currentNum = Number(p.numberOfDivers || 0)
+  // If diver rows already exist, infer diver count so "just send" does not block on numberOfDivers.
+  if ((!Number.isFinite(currentNum) || currentNum < 1) && divers.length > 0) {
+    p.numberOfDivers = divers.length
+  }
+  return p
+}
+
 interface RequestBody {
   message: string
   history: Message[]
@@ -743,6 +813,55 @@ export default defineEventHandler(async (event) => {
       // Fast path: simple field (name, email, certification, height, weight, "none" or single gear item) → instant template response, no LLM
       if (continuingBooking && bookingPayload) {
         const msgTrim = message.trim()
+        const payloadForSendCheck = normalizeBookingPayloadForSendCheck(bookingPayload)
+        const nextStepBeforeInput = getNextBookingStep(payloadForSendCheck as BookingPayloadLocal)
+        const sendIntent = isConfirmSendMessage(msgTrim)
+        const sendAnywayIntent = isSendAnywayMessage(msgTrim)
+        const finishTasksIntent = isFinishRemainingTasksMessage(msgTrim)
+
+        // Explicit send intents should send immediately.
+        if (sendIntent || sendAnywayIntent || finishTasksIntent) {
+          if (sendIntent || sendAnywayIntent) {
+            const p = { ...payloadForSendCheck, shopId: resolvedShop.id }
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: true,
+              payload: p,
+              message: 'Understood — sending your booking request now.',
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              selectableOptions: undefined
+            }
+          }
+
+          // User chose to continue form completion after seeing send options.
+          if (finishTasksIntent && nextStepBeforeInput) {
+            const stepCopy = orchestratorSplitBookingCopyForStep(nextStepBeforeInput, bookingPayload, {
+              shopCourseCount: courses.length,
+              shopDiveSiteCount: diveSites.length,
+              coursesLine: COURSES_LINE,
+              diveSitesLine: DIVE_SITES_LINE
+            })
+            return {
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message: stepCopy?.message ?? 'No problem — let’s finish the remaining details.',
+              ...(stepCopy?.messagePreamble ? { messagePreamble: stepCopy.messagePreamble } : {}),
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              bookingPayload: payloadForSendCheck,
+              selectableOptions: undefined,
+              rentalEquipmentOptions: addGearOptions(payloadForSendCheck),
+              hideNoneForGear: hideNoneForGear(payloadForSendCheck),
+              courseOptions: addCourseOptions(payloadForSendCheck),
+              diveSiteOptions: addDiveSiteOptions(payloadForSendCheck)
+            }
+          }
+
+        }
+
         // Orchestrator: parse trip dates without LLM so payload + form stay aligned and steps are not skipped
         if (getNextBookingStep(bookingPayload)?.step === 'dates') {
           const parsedDates = tryParseTripDatesFromMessage(msgTrim)
@@ -802,8 +921,7 @@ export default defineEventHandler(async (event) => {
         // User already saw the booking-ready prompt and is confirming — never re-ask for gear; return ready so client can submit
         const lastAssistantContent = history?.filter(m => m.role === 'assistant').pop()?.content ?? ''
         const lastWasReadyToSend = /(?:ready to send your booking request|can i send the booking request)/i.test(lastAssistantContent)
-        const confirmSend = /^(yes|yeah|yep|ok|okay|sure|send|submit|confirm|go ahead|do it|please send|ready)$/i.test(msgTrim) ||
-          /^(send|submit)\s+(booking\s+)?(request)?$/i.test(msgTrim) ||
+        const confirmSend = isConfirmSendMessage(msgTrim) ||
           (lastWasReadyToSend && /^(yes|send|submit|confirm|ok)$/i.test(msgTrim))
         if (lastWasReadyToSend && confirmSend) {
           const p = { ...bookingPayload, shopId: resolvedShop.id }
@@ -1282,7 +1400,7 @@ export default defineEventHandler(async (event) => {
         const nextStep = getNextBookingStep(bookingPayload)
         // Already complete: user said "send" / "yes" / "confirm" — return ready to send, don't re-ask or call LLM
         if (nextStep?.step === 'ready') {
-          const confirmSend = /^(yes|yeah|yep|ok|okay|sure|send|submit|confirm|go ahead|do it|please send|ready)$/i.test(msgTrim)
+          const confirmSend = isConfirmSendMessage(msgTrim)
           if (confirmSend) {
             const p = { ...bookingPayload, shopId: resolvedShop.id }
             return {
@@ -2018,7 +2136,7 @@ RULES:
     }
 
     // Prepare response
-    let responseShops = []
+    let responseShops: unknown[] = []
     let finalMessage = ''
     
     if (resultCount <= 2 || wantsMoreOptions) {

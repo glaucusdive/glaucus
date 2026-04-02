@@ -1,5 +1,7 @@
 import { Resend } from 'resend'
+import type { H3Event } from 'h3'
 import { getShopById } from '../utils/resolveShop'
+import { createSupabaseClientForUser, getAuthUser, getBearerToken } from '../utils/getAuthUser'
 
 interface DiverPayload {
   name?: string
@@ -78,6 +80,35 @@ function buildUserConfirmationBody (shopName: string, userEmail: string, shopEma
     '',
     "If you don't hear back in a few days, reach out to them directly at " + shopEmail + '.'
   ].join('\n')
+}
+
+async function logSubmissionIfAuthenticated (
+  event: H3Event,
+  payload: BookingBody
+) {
+  const user = await getAuthUser(event)
+  if (!user) return
+
+  const token = getBearerToken(event)
+  if (!token) return
+
+  const config = useRuntimeConfig()
+  const client = createSupabaseClientForUser(
+    config.public.supabaseUrl,
+    config.public.supabaseKey,
+    token
+  )
+
+  const { error } = await client.from('booking_submissions').insert({
+    user_id: user.id,
+    shop_id: payload.shopId,
+    payload,
+    sent_at: new Date().toISOString()
+  })
+
+  if (error) {
+    console.error('Failed to log booking submission:', error.message)
+  }
 }
 
 export default defineEventHandler(async (event) => {
@@ -161,6 +192,8 @@ export default defineEventHandler(async (event) => {
       data: { message: msg, resendError: errShop.message }
     })
   }
+
+  await logSubmissionIfAuthenticated(event, payload)
 
   const userSubject = `We've sent your booking request to ${shopName}`
   const userText = buildUserConfirmationBody(shopName, email, shop.email)
