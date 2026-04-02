@@ -45,7 +45,7 @@
                   class="w-full text-left py-2 px-3 rounded-md text-sm border transition-colors cursor-pointer flex flex-row justify-between items-baseline gap-0.5"
                   :class="c.isActive
                     ? 'border-blue-500 bg-blue-50 dark:bg-zinc-900 text-zinc-900 dark:text-white'
-                    : 'border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'"
+                    : 'border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'"
                   @click="onSelectChat(c.id)"
                 >
                   <span class="font-medium line-clamp-2 truncate">{{ c.title }}</span>
@@ -271,6 +271,10 @@ const handleCloseMobileMenu = () => {
 
 function onSidebarNewChat () {
   handleCloseMobileMenu()
+  if (import.meta.client) {
+    window.sessionStorage.setItem('glaucus-force-new-chat', '1')
+    window.sessionStorage.removeItem('glaucus-pending-draft-resume')
+  }
   void runChatActionFromSidebar(() => requestNewChat())
 }
 
