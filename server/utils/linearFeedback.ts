@@ -1,10 +1,23 @@
 /** Shared builders for Linear issue title/description (unit-tested). */
 
-export type FeedbackKind = 'feature' | 'bug'
+export type FeedbackKind = 'feature' | 'bug' | 'correction'
 
 const TITLE_PREFIX: Record<FeedbackKind, string> = {
   bug: '[Bug]',
-  feature: '[Feature]'
+  feature: '[Feature]',
+  correction: '[Correction]'
+}
+
+/** Human-readable type line in the issue body (Linear / triage). */
+export function feedbackTypeLabel (kind: FeedbackKind): string {
+  switch (kind) {
+    case 'bug':
+      return 'Bug'
+    case 'feature':
+      return 'Feature'
+    case 'correction':
+      return 'Dive shop correction'
+  }
 }
 
 export const FEEDBACK_LIMITS = {
@@ -23,7 +36,7 @@ function oneLineSnippet (text: string, maxLen: number): string {
   return `${line.slice(0, Math.max(0, maxLen - 1))}…`
 }
 
-/** Issue title: `[Bug]` / `[Feature]` + user subject (TLDR), capped for Linear. */
+/** Issue title: `[Bug]` / `[Feature]` / `[Correction]` + subject (TLDR), capped for Linear. */
 export function buildLinearFeedbackTitle (params: {
   kind: FeedbackKind
   subject: string
@@ -47,7 +60,7 @@ export function buildLinearFeedbackDescription (params: {
   submittedAtIso: string
 }): string {
   const lines = [
-    `**Type:** ${params.kind === 'bug' ? 'Bug' : 'Feature'}`,
+    `**Type:** ${feedbackTypeLabel(params.kind)}`,
     '',
     `**Subject:** ${params.subject.trim()}`,
     '',

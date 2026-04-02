@@ -24,6 +24,14 @@ describe('buildLinearFeedbackTitle', () => {
     expect(title).toContain('Dark mode')
   })
 
+  it('prefixes correction', () => {
+    const title = buildLinearFeedbackTitle({
+      kind: 'correction',
+      subject: 'Wrong phone on listing'
+    })
+    expect(title).toBe('[Correction] Wrong phone on listing')
+  })
+
   it('caps at titleMax', () => {
     const long = 'x'.repeat(500)
     const title = buildLinearFeedbackTitle({
@@ -52,5 +60,17 @@ describe('buildLinearFeedbackDescription', () => {
     expect(md).toContain('Love the app!')
     expect(md).toContain('https://glaucusdive.com/profile')
     expect(md).toContain('Submitted from Glaucus')
+  })
+
+  it('uses dive shop correction type label', () => {
+    const md = buildLinearFeedbackDescription({
+      kind: 'correction',
+      subject: 'Hours wrong',
+      name: 'Shop',
+      email: 'shop@example.com',
+      message: 'We close at 6pm not 5.',
+      submittedAtIso: '2026-04-02T12:00:00.000Z'
+    })
+    expect(md).toContain('**Type:** Dive shop correction')
   })
 })

@@ -1,4 +1,4 @@
-import { d as defineEventHandler, u as useRuntimeConfig, H as createError, M as getHeader, N as readMultipartFormData, r as readBody, O as FEEDBACK_LIMITS, P as uploadBufferToLinear, Q as buildLinearFeedbackDescription, R as buildLinearFeedbackTitle, S as resolveFeedbackLabelId } from '../../nitro/nitro.mjs';
+import { d as defineEventHandler, u as useRuntimeConfig, H as createError, M as getHeader, N as readMultipartFormData, r as readBody, O as FEEDBACK_LIMITS, P as uploadBufferToLinear, Q as buildLinearFeedbackDescription, R as buildLinearFeedbackTitle, S as resolveFeedbackLabelIds } from '../../nitro/nitro.mjs';
 import '@supabase/supabase-js';
 import 'chrono-node';
 import 'node:http';
@@ -33,7 +33,7 @@ const ALLOWED_IMAGE_TYPES = /* @__PURE__ */ new Set([
 ]);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function isFeedbackKind(v) {
-  return v === "feature" || v === "bug";
+  return v === "feature" || v === "bug" || v === "correction";
 }
 async function linearGraphQL(apiKey, query, variables) {
   const res = await fetch(LINEAR_GRAPHQL_URL, {
@@ -119,7 +119,10 @@ const feedback_post = defineEventHandler(async (event) => {
   }
   kindRaw = kindRaw.trim().toLowerCase();
   if (!isFeedbackKind(kindRaw)) {
-    throw createError({ statusCode: 400, statusMessage: 'kind must be "feature" or "bug"' });
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'kind must be "feature", "bug", or "correction"'
+    });
   }
   const kind = kindRaw;
   subject = subject.trim().slice(0, FEEDBACK_LIMITS.subjectMax);
@@ -194,15 +197,15 @@ const feedback_post = defineEventHandler(async (event) => {
     description = appendAttachmentToDescription(description, assetUrl, fileFilename, fileMime);
   }
   const title = buildLinearFeedbackTitle({ kind, subject });
-  const labelId = await resolveFeedbackLabelId(apiKey, teamId, kind);
+  const labelIds = await resolveFeedbackLabelIds(apiKey, teamId, kind);
   const issueInput = {
     teamId,
     title,
     description,
     stateId
   };
-  if (labelId) {
-    issueInput.labelIds = [labelId];
+  if (labelIds.length > 0) {
+    issueInput.labelIds = labelIds;
   }
   const { ok, json } = await linearGraphQL(apiKey, ISSUE_CREATE_MUTATION, {
     input: issueInput
