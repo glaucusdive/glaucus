@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clampBookingPayloadToNextStep, getNextBookingStep, type BookingPayloadLocal } from './bookingFastPath'
+import { clampBookingPayloadToNextStep, getNextBookingStep, type BookingPayloadLocal } from '../../server/utils/bookingFastPath'
 
 const opts = { shopCourseCount: 0, shopDiveSiteCount: 0 }
 

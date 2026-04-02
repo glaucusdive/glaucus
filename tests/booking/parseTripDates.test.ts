@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { inclusiveTripDays, tryParseTripDatesFromMessage } from './parseTripDates'
+import { inclusiveTripDays, tryParseTripDatesFromMessage } from '../../server/utils/parseTripDates'
 
 /** Monday Apr 6, 2026 local — stable reference for relative/chrono cases */
 const REF = new Date(2026, 3, 6, 12, 0, 0)
