@@ -27,7 +27,11 @@ interface BookingBody {
 
 function buildDiveshopEmailBody (payload: BookingBody, shopName: string): string {
   const lines: string[] = [
-    `A dive trip booking request has been submitted via Glaucus.`,
+    `Hello ${shopName},`,
+    '',
+    'Glaucus Dive is an AI assistant for scuba divers looking for a fast and easy way to book dives. The divers below are interested in diving with you! We have compiled the divers\' information and dive preferences below. Replying to this email will reply directly to our divers\' inbox in Glaucus Dive. Please visit us at https://glaucusdive.com to see your business\'s profile, claim your business, make any changes, or reach out to us with any questions. Happy diving!',
+    '',
+    'DIVER(S) INFORMATION',
     '',
     '— Trip —',
     `Dates: ${payload.startDate} to ${payload.endDate}`,
@@ -68,7 +72,14 @@ function buildDiveshopEmailBody (payload: BookingBody, shopName: string): string
     }
     lines.push('')
   }
-  lines.push('— Guest contact —', `Name: ${payload.name}`, `Email: ${payload.email}`)
+  lines.push(
+    '— Guest contact —',
+    `Name: ${payload.name}`,
+    `Email: ${payload.email}`,
+    '',
+    'Sincerely,',
+    'Glaucus Dive'
+  )
   return lines.join('\n')
 }
 
