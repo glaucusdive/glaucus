@@ -13,6 +13,12 @@ export default defineNuxtConfig({
     bookingFromEmail: process.env.BOOKING_FROM_EMAIL || 'Glaucus <onboarding@resend.dev>',
     /** Required for geocode-shop API to update diveshops (bypasses RLS). Get from Supabase Dashboard > Project Settings > API. */
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    /** Linear personal API key (Settings → API). Used by /api/feedback to create issues. */
+    linearApiKey: process.env.NUXT_LINEAR_API_KEY,
+    /** Linear team UUID (e.g. Glaucus team). */
+    linearTeamId: process.env.NUXT_LINEAR_TEAM_ID,
+    /** Linear workflow state UUID for “User Feedback” status. */
+    linearFeedbackStateId: process.env.NUXT_LINEAR_FEEDBACK_STATE_ID,
 
     // Public keys - available both client and server-side
     public: {
