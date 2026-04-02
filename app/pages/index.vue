@@ -660,17 +660,27 @@ watch(chatRemoteHydrateTick, () => {
   void hydrateFromRecord(active)
 })
 
-watch(pendingNewChat, () => {
-  if (!consumePendingNewChat()) return
+function handlePendingNewChatRequest () {
+  if (!consumePendingNewChat()) return false
   if (abortController.value) {
     abortController.value.abort()
     abortController.value = null
     isLoading.value = false
   }
+  if (import.meta.client) {
+    sessionStorage.removeItem(PENDING_DRAFT_RESUME_KEY)
+    sessionStorage.removeItem(FORCE_NEW_CHAT_KEY)
+  }
   closeDrawer()
-  const root = applyNewChatFromPage(buildPageCachePayload())
+  const stateForArchive = activeSessionToPageState() || buildPageCachePayload()
+  const root = applyNewChatFromPage(stateForArchive)
   const s = getActiveSession(root)
   if (s) void hydrateFromRecord(s)
+  return true
+}
+
+watch(pendingNewChat, () => {
+  handlePendingNewChatRequest()
 })
 
 watch(pendingSwitchSessionId, (id) => {
@@ -697,6 +707,23 @@ const persistCache = () => {
 }
 
 const PENDING_DRAFT_RESUME_KEY = 'glaucus-pending-draft-resume'
+const FORCE_NEW_CHAT_KEY = 'glaucus-force-new-chat'
+
+function activeSessionToPageState () {
+  const root = readChatsRoot()
+  const active = root ? getActiveSession(root) : null
+  if (!active) return null
+  return {
+    messages: active.messages || [],
+    userInput: active.userInput || '',
+    lastQuery: active.lastQuery || null,
+    selectedShopId: active.selectedShopId ?? null,
+    mobileDetailShopId: active.mobileDetailShopId ?? null,
+    drawerOpen: active.drawerOpen ?? false,
+    drawerShopId: active.drawerShopId ?? null,
+    drawerShopName: active.drawerShopName ?? null
+  }
+}
 
 /** Profile → Resume: go to chat with shop panel + booking messages + form (same as in-flow booking). */
 function applyPendingDraftResumeFromProfile () {
@@ -775,10 +802,32 @@ function applyPendingDraftResumeFromProfile () {
 
 // Restore cache or run initial query
 onMounted(async () => {
+  if (import.meta.client && sessionStorage.getItem(FORCE_NEW_CHAT_KEY) === '1') {
+    sessionStorage.removeItem(FORCE_NEW_CHAT_KEY)
+    sessionStorage.removeItem(PENDING_DRAFT_RESUME_KEY)
+    if (abortController.value) {
+      abortController.value.abort()
+      abortController.value = null
+      isLoading.value = false
+    }
+    closeDrawer()
+    const stateForArchive = activeSessionToPageState() || buildPageCachePayload()
+    const root = applyNewChatFromPage(stateForArchive)
+    const s = getActiveSession(root)
+    if (s) void hydrateFromRecord(s)
+    return
+  }
+
+  if (handlePendingNewChatRequest()) {
+    return
+  }
   if (isSignedIn.value && user.value?.id) {
     await initSignedInChatsFromRemote(client, user.value.id)
   } else {
     ensureChatsRoot()
+  }
+  if (handlePendingNewChatRequest()) {
+    return
   }
   if (applyPendingDraftResumeFromProfile()) {
     return
