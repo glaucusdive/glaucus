@@ -1059,29 +1059,59 @@ const sendMessage = async (messageText, displayText) => {
 
     const pendingEntityClarifyPhrase = getPendingEntityClarifyPhraseForOutgoing(message)
 
-    const response = await $fetch('/api/ai-search', {
-      method: 'POST',
-      signal: currentAbortController.signal,
-      body: {
-        message: message,
-        history: messages.value.filter(m => m.role === 'user' || m.role === 'assistant').map(m => ({
-          role: m.role,
-          content: m.role === 'assistant' && m.preamble
-            ? `${m.preamble}\n\n${m.content}`
-            : m.content
-        })),
-        selectedShopId: selectedShopId.value || undefined,
-        lastShops,
-        shopsAlreadyShownCount,
-        lastIntent,
-        lastBookingShopId,
-        ...(inBookingFlow && lastBookingShopName ? { lastBookingShopName } : {}),
-        ...(inBookingFlow && lastPayload ? { bookingPayload: lastPayload } : {}),
-        ...(pendingBookingPayload.value ? { pendingBookingPayload: pendingBookingPayload.value } : {}),
-        ...(profilePrefillSnapshot.value ? { profilePrefill: profilePrefillSnapshot.value } : {}),
-        ...(pendingEntityClarifyPhrase ? { pendingEntityClarifyPhrase } : {})
+    const aiSearchBody = {
+      message: message,
+      history: messages.value.filter(m => m.role === 'user' || m.role === 'assistant').map(m => ({
+        role: m.role,
+        content: m.role === 'assistant' && m.preamble
+          ? `${m.preamble}\n\n${m.content}`
+          : m.content
+      })),
+      selectedShopId: selectedShopId.value || undefined,
+      lastShops,
+      shopsAlreadyShownCount,
+      lastIntent,
+      lastBookingShopId,
+      ...(inBookingFlow && lastBookingShopName ? { lastBookingShopName } : {}),
+      ...(inBookingFlow && lastPayload ? { bookingPayload: lastPayload } : {}),
+      ...(pendingBookingPayload.value ? { pendingBookingPayload: pendingBookingPayload.value } : {}),
+      ...(profilePrefillSnapshot.value ? { profilePrefill: profilePrefillSnapshot.value } : {}),
+      ...(pendingEntityClarifyPhrase ? { pendingEntityClarifyPhrase } : {})
+    }
+
+    const maxAiAttempts = 3
+    const baseAiRetryMs = 350
+    let response = null
+    for (let attempt = 1; attempt <= maxAiAttempts; attempt++) {
+      if (currentAbortController.signal.aborted) {
+        return
       }
-    })
+      try {
+        response = await $fetch('/api/ai-search', {
+          method: 'POST',
+          signal: currentAbortController.signal,
+          body: aiSearchBody
+        })
+      } catch (fetchErr) {
+        if (fetchErr?.name === 'AbortError' || currentAbortController.signal.aborted) {
+          return
+        }
+        if (attempt >= maxAiAttempts) {
+          throw fetchErr
+        }
+        console.warn(`[chat] ai-search request failed (${attempt}/${maxAiAttempts}), retrying:`, fetchErr)
+        await new Promise(r => setTimeout(r, baseAiRetryMs * Math.pow(2, attempt - 1)))
+        continue
+      }
+      if (response?.success) {
+        break
+      }
+      if (attempt >= maxAiAttempts) {
+        break
+      }
+      console.warn(`[chat] ai-search success:false (${attempt}/${maxAiAttempts}), retrying`)
+      await new Promise(r => setTimeout(r, baseAiRetryMs * Math.pow(2, attempt - 1)))
+    }
     
     // Check if this request was cancelled
     if (currentAbortController.signal.aborted) {

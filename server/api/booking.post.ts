@@ -2,6 +2,7 @@ import { Resend } from 'resend'
 import type { H3Event } from 'h3'
 import { getShopById } from '../utils/resolveShop'
 import { createSupabaseClientForUser, getAuthUser, getBearerToken } from '../utils/getAuthUser'
+import { runWithRetries } from '../utils/retryWithBackoff'
 
 interface DiverPayload {
   name?: string
@@ -186,10 +187,15 @@ export default defineEventHandler(async (event) => {
   const supabaseUrl = config.public.supabaseUrl
   const supabaseKey = config.public.supabaseKey
   const resendApiKey = config.resendApiKey
-  const fromEmail = config.bookingFromEmail
 
   if (!resendApiKey) {
     throw createError({ statusCode: 500, statusMessage: 'Email is not configured (RESEND_API_KEY missing)' })
+  }
+
+  const rawFrom = config.bookingFromEmail
+  const fromEmail = typeof rawFrom === 'string' ? rawFrom.trim() : ''
+  if (!fromEmail) {
+    throw createError({ statusCode: 500, statusMessage: 'Email is not configured (booking from address missing)' })
   }
 
   const shop = await getShopById(supabaseUrl, supabaseKey, shopId)
@@ -199,6 +205,8 @@ export default defineEventHandler(async (event) => {
   if (!shop.email || !String(shop.email).trim()) {
     throw createError({ statusCode: 400, statusMessage: 'This shop has no email on file.' })
   }
+
+  const shopEmail = String(shop.email).trim()
 
   const resend = new Resend(resendApiKey)
   const shopName = shop.business_name || 'Dive shop'
@@ -216,19 +224,37 @@ export default defineEventHandler(async (event) => {
   const diveshopSubject = `Dive trip booking request from ${name} via Glaucus`
   const diveshopText = buildDiveshopEmailBody(payload, shopName)
 
-  const { data: toShop, error: errShop } = await resend.emails.send({
-    from: fromEmail,
-    to: [shop.email],
-    subject: diveshopSubject,
-    text: diveshopText
-  })
-
-  if (errShop) {
-    const msg = errShop.message || 'Failed to send email to dive shop'
+  let toShop: { id?: string } | null
+  try {
+    toShop = await runWithRetries(
+      async () => {
+        const { data, error: errShop } = await resend.emails.send({
+          from: fromEmail,
+          to: [shopEmail],
+          subject: diveshopSubject,
+          text: diveshopText
+        })
+        if (errShop) {
+          throw Object.assign(new Error(errShop.message || 'Failed to send email to dive shop'), {
+            resendMessage: errShop.message
+          })
+        }
+        return data
+      },
+      {
+        maxAttempts: 4,
+        baseDelayMs: 400,
+        onRetry: ({ attempt, maxAttempts, error }) => {
+          console.warn(`[booking] shop email attempt ${attempt}/${maxAttempts} failed, retrying:`, error)
+        }
+      }
+    )
+  } catch (e: any) {
+    const msg = e?.resendMessage || e?.message || 'Failed to send email to dive shop'
     throw createError({
       statusCode: 502,
       statusMessage: msg,
-      data: { message: msg, resendError: errShop.message }
+      data: { message: msg, resendError: e?.resendMessage ?? e?.message }
     })
   }
 
@@ -236,13 +262,32 @@ export default defineEventHandler(async (event) => {
   await clearMatchingDraftIfAuthenticated(event, payload)
 
   const userSubject = `We've sent your booking request to ${shopName}`
-  const userText = buildUserConfirmationBody(shopName, email, shop.email)
-  const { error: errUser } = await resend.emails.send({
-    from: fromEmail,
-    to: [email],
-    subject: userSubject,
-    text: userText
-  })
+  const userText = buildUserConfirmationBody(shopName, email, shopEmail)
+  let errUser: { message?: string } | null = null
+  try {
+    await runWithRetries(
+      async () => {
+        const { error } = await resend.emails.send({
+          from: fromEmail,
+          to: [email],
+          subject: userSubject,
+          text: userText
+        })
+        if (error) {
+          throw new Error(error.message || 'Failed to send confirmation email')
+        }
+      },
+      {
+        maxAttempts: 4,
+        baseDelayMs: 400,
+        onRetry: ({ attempt, maxAttempts, error }) => {
+          console.warn(`[booking] user confirmation attempt ${attempt}/${maxAttempts} failed, retrying:`, error)
+        }
+      }
+    )
+  } catch (e: any) {
+    errUser = { message: e?.message }
+  }
 
   if (errUser) {
     return {
