@@ -1,6 +1,6 @@
 /**
  * Resolve team issue label ids for feedback (case-insensitive name match).
- * Correction requests: "Correction" and "Bug" labels when both exist (Correction first).
+ * Dive shop inquiries (kind `correction`): "Correction" and "Bug" labels when both exist (Correction first).
  */
 
 import type { FeedbackKind } from './linearFeedback'

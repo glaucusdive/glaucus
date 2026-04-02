@@ -63,7 +63,7 @@
           >
             <option value="bug">Bug</option>
             <option value="feature">Feature</option>
-            <option value="correction">Dive shop correction</option>
+            <option value="correction">Dive Shop Inquiries</option>
           </select>
         </div>
 
@@ -113,7 +113,7 @@
             rows="5"
             minlength="10"
             maxlength="10000"
-            placeholder="Describe your idea or what went wrong…"
+            :placeholder="messagePlaceholder"
             class="rounded-md w-full p-2 text-sm resize-y min-h-[100px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-600 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-500"
           />
         </div>
@@ -158,7 +158,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { CircleHelp, X } from 'lucide-vue-next'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
@@ -181,6 +181,12 @@ const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024
 
 const route = useRoute()
 const { user } = useAuth()
+
+const messagePlaceholder = computed(() =>
+  kind.value === 'correction'
+    ? 'Request to add or edit a dive shop here.'
+    : 'Describe your idea or what went wrong…'
+)
 
 function prefillFromUser () {
   const u = user.value
