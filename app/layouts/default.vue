@@ -74,16 +74,16 @@
           </nav>
 
           <!-- Theme Toggle Button -->
-          <div class="w-full p-0 shrink-0">
+          <div class="w-full h-12 p-0 shrink-0 flex flex-row gap-2 items-center">
             <ClientOnly>
               <button @click="toggleTheme"
-                class="w-full h-17 flex items-center justify-center rounded-full gap-0 p-1 border border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-white cursor-pointer relative before:content-[''] before:absolute before:inset-1 before:rounded-full before:bg-zinc-200 dark:before:bg-zinc-700 before:w-[calc(50%-4px)] before:z-[-1] before:transition-transform before:duration-300 before:ease-in-out before:left-1"
+                class="w-full h-full flex items-center justify-center rounded-full gap-0 p-1 border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 text-zinc-900 dark:text-white cursor-pointer relative before:content-[''] before:absolute before:inset-1 before:rounded-full before:bg-zinc-200 dark:before:bg-zinc-700 before:w-[calc(50%-4px)] before:z-[-1] before:transition-transform before:duration-300 before:ease-in-out before:left-1"
                 :class="isDark ? 'before:translate-x-full' : 'before:translate-x-0'">
                 <div class="w-full h-full flex items-center justify-center rounded-full">
-                  <Sun class="w-8 h-8" :class="isDark ? 'opacity-30' : 'opacity-100'" stroke-width="1" />
+                  <Sun class="w-6 h-6" :class="isDark ? 'opacity-30' : 'opacity-100'" stroke-width="1" />
                 </div>
                 <div class="w-full h-full flex items-center justify-center rounded-full">
-                  <Moon class="w-8 h-8" :class="isDark ? 'opacity-100' : 'opacity-30'" stroke-width="1" />
+                  <Moon class="w-6 h-6" :class="isDark ? 'opacity-100' : 'opacity-30'" stroke-width="1" />
                 </div>
               </button>
               <template #fallback>
@@ -94,6 +94,17 @@
                   <div class="w-full h-full flex items-center justify-center rounded-full">
                     <Moon class="w-8 h-8 opacity-30" stroke-width="1" />
                   </div>
+                </div>
+              </template>
+            </ClientOnly>
+            <ClientOnly>
+              <FeedbackFlyout />
+              <template #fallback>
+                <div
+                  class="w-full h-full flex items-center justify-center border border-zinc-300 dark:border-zinc-800 rounded-full text-zinc-900 dark:text-white"
+                  aria-hidden="true"
+                >
+                  <CircleHelp class="w-6 h-6 opacity-60" stroke-width="1.25" />
                 </div>
               </template>
             </ClientOnly>
@@ -136,7 +147,7 @@
 <script setup>
 import gsap from 'gsap'
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { X, Sun, Moon, FilePlus, CircleUser, LogIn, LogOut } from 'lucide-vue-next'
+import { X, Sun, Moon, FilePlus, CircleUser, LogIn, LogOut, CircleHelp } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
 import { useTheme } from '~/composables/useTheme'
 import { useAuth } from '~/composables/useAuth'
@@ -146,6 +157,7 @@ import { useSaveDraftFromCache } from '~/composables/useSaveDraftFromCache'
 import { useChatSessions } from '~/composables/useChatSessions'
 import BookingForm from '~/components/BookingForm.vue'
 import ShopReviewForm from '~/components/ShopReviewForm.vue'
+import FeedbackFlyout from '~/components/FeedbackFlyout.vue'
 import Logo from '~/components/Logo.vue'
 
 const route = useRoute()

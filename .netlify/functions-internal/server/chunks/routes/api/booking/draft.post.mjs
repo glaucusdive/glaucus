@@ -1,5 +1,6 @@
-import { d as defineEventHandler, F as getAuthUser, E as createError, r as readBody, G as getBearerToken, H as createSupabaseClientForUser, u as useRuntimeConfig } from '../../../nitro/nitro.mjs';
+import { d as defineEventHandler, I as getAuthUser, H as createError, r as readBody, J as getBearerToken, K as createSupabaseClientForUser, u as useRuntimeConfig } from '../../../nitro/nitro.mjs';
 import '@supabase/supabase-js';
+import 'chrono-node';
 import 'node:http';
 import 'node:https';
 import 'node:events';

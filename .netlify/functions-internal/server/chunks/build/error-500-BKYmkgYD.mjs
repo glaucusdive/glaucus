@@ -4,6 +4,7 @@ import { _ as _export_sfc } from './_plugin-vue_export-helper-1tPrXgE0.mjs';
 import { u as useHead } from './server.mjs';
 import '../nitro/nitro.mjs';
 import '@supabase/supabase-js';
+import 'chrono-node';
 import 'node:http';
 import 'node:https';
 import 'node:events';

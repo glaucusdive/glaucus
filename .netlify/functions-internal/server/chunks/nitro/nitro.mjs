@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { parse as parse$1, parseDate } from 'chrono-node';
 import http from 'node:http';
 import https from 'node:https';
 import { EventEmitter } from 'node:events';
@@ -776,6 +777,84 @@ function isError(input) {
   return input?.constructor?.__h3_error__ === true;
 }
 
+function parse(multipartBodyBuffer, boundary) {
+  let lastline = "";
+  let state = 0 /* INIT */;
+  let buffer = [];
+  const allParts = [];
+  let currentPartHeaders = [];
+  for (let i = 0; i < multipartBodyBuffer.length; i++) {
+    const prevByte = i > 0 ? multipartBodyBuffer[i - 1] : null;
+    const currByte = multipartBodyBuffer[i];
+    const newLineChar = currByte === 10 || currByte === 13;
+    if (!newLineChar) {
+      lastline += String.fromCodePoint(currByte);
+    }
+    const newLineDetected = currByte === 10 && prevByte === 13;
+    if (0 /* INIT */ === state && newLineDetected) {
+      if ("--" + boundary === lastline) {
+        state = 1 /* READING_HEADERS */;
+      }
+      lastline = "";
+    } else if (1 /* READING_HEADERS */ === state && newLineDetected) {
+      if (lastline.length > 0) {
+        const i2 = lastline.indexOf(":");
+        if (i2 > 0) {
+          const name = lastline.slice(0, i2).toLowerCase();
+          const value = lastline.slice(i2 + 1).trim();
+          currentPartHeaders.push([name, value]);
+        }
+      } else {
+        state = 2 /* READING_DATA */;
+        buffer = [];
+      }
+      lastline = "";
+    } else if (2 /* READING_DATA */ === state) {
+      if (lastline.length > boundary.length + 4) {
+        lastline = "";
+      }
+      if ("--" + boundary === lastline) {
+        const j = buffer.length - lastline.length;
+        const part = buffer.slice(0, j - 1);
+        allParts.push(process$1(part, currentPartHeaders));
+        buffer = [];
+        currentPartHeaders = [];
+        lastline = "";
+        state = 3 /* READING_PART_SEPARATOR */;
+      } else {
+        buffer.push(currByte);
+      }
+      if (newLineDetected) {
+        lastline = "";
+      }
+    } else if (3 /* READING_PART_SEPARATOR */ === state && newLineDetected) {
+      state = 1 /* READING_HEADERS */;
+    }
+  }
+  return allParts;
+}
+function process$1(data, headers) {
+  const dataObj = {};
+  const contentDispositionHeader = headers.find((h) => h[0] === "content-disposition")?.[1] || "";
+  for (const i of contentDispositionHeader.split(";")) {
+    const s = i.split("=");
+    if (s.length !== 2) {
+      continue;
+    }
+    const key = (s[0] || "").trim();
+    if (key === "name" || key === "filename") {
+      const _value = (s[1] || "").trim().replace(/"/g, "");
+      dataObj[key] = Buffer.from(_value, "latin1").toString("utf8");
+    }
+  }
+  const contentType = headers.find((h) => h[0] === "content-type")?.[1] || "";
+  if (contentType) {
+    dataObj.type = contentType;
+  }
+  dataObj.data = Buffer.from(data);
+  return dataObj;
+}
+
 function getQuery(event) {
   return getQuery$1(event.path || "");
 }
@@ -939,6 +1018,21 @@ async function readBody(event, options = {}) {
   }
   request[ParsedBodySymbol] = parsed;
   return parsed;
+}
+async function readMultipartFormData(event) {
+  const contentType = getRequestHeader(event, "content-type");
+  if (!contentType || !contentType.startsWith("multipart/form-data")) {
+    return;
+  }
+  const boundary = contentType.match(/boundary=([^;]*)(;|$)/i)?.[1];
+  if (!boundary) {
+    return;
+  }
+  const body = await readRawBody(event, false);
+  if (!body) {
+    return;
+  }
+  return parse(body, boundary);
 }
 function getRequestWebStream(event) {
   if (!PayloadMethods$1.includes(event.method)) {
@@ -4294,7 +4388,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "fa6acf47-ecd8-4271-811b-9944135438f5",
+    "buildId": "8bd57422-4dfa-40ab-a6c1-6391fd6144da",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -4334,6 +4428,9 @@ const _inlineRuntimeConfig = {
   "resendApiKey": "re_4ZVmKUEj_DhgKFYmb5euQAdHjNEdeAp3o",
   "bookingFromEmail": "Glaucus <bookings@glaucusdive.com>",
   "supabaseServiceRoleKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5bGRnbG5pbmtnbmdhd2Vlam13Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDU5MjQ5OSwiZXhwIjoyMDcwMTY4NDk5fQ.AdrjZhhp5VG2CE3lDTC7kCIXbcU0jOm8eEzIciFjxd8",
+  "linearApiKey": "lin_api_KwmBOkvGQnPBeTSnPzGqtxUUfcPDDUBJ9xfyZjx9",
+  "linearTeamId": "7c051c0f-1783-4ee2-bc3a-fcc3831d6b2f",
+  "linearFeedbackStateId": "ead7c9ad-ed31-4246-b036-09ff9f18f1ec",
   "icon": {
     "serverKnownCssClasses": []
   }
@@ -4826,160 +4923,6 @@ function publicAssetsURL(...path) {
   return path.length ? joinRelativeURL(publicBase, ...path) : publicBase;
 }
 
-function parseEditField(msg) {
-  if (/\bnumber\s+of\s+dives\b|\bdive\s+count\b/i.test(msg)) return "numberOfDives";
-  if (/\b(?:certification|cert(?:\s+number)?)\b/i.test(msg)) return "certificationNumber";
-  if (/\bweight\b/i.test(msg)) return "weight";
-  if (/\bheight\b/i.test(msg)) return "height";
-  if (/\bdives?\b/i.test(msg)) return "numberOfDives";
-  if (/\bname\b/i.test(msg) && /\bdiver\s*\d/i.test(msg)) return "name";
-  return null;
-}
-function wantsEditDiverField(msg) {
-  return /(?:^|\b)(?:could\s+you\s+)?(?:can\s+you\s+)?(?:please\s+)?(?:change|update|edit|fix|correct|need\s+to\s+change|want\s+to\s+change|i\s+need\s+to\s+change)\b/i.test(msg);
-}
-function stripTrailingFieldWord(s, field) {
-  let t = s.trim();
-  switch (field) {
-    case "numberOfDives":
-      t = t.replace(/\s+number\s+of\s+dives\s*$/i, "");
-      t = t.replace(/\s+dive\s+count\s*$/i, "");
-      t = t.replace(/\s+dives?\s*$/i, "");
-      break;
-    case "certificationNumber":
-      t = t.replace(/\s+certification\s*$/i, "");
-      t = t.replace(/\s+cert(?:\s+number)?\s*$/i, "");
-      break;
-    case "weight":
-      t = t.replace(/\s*weight\s*$/i, "");
-      break;
-    case "height":
-      t = t.replace(/\s*height\s*$/i, "");
-      break;
-    case "name":
-      t = t.replace(/\s+name\s*$/i, "");
-      break;
-  }
-  return t.trim();
-}
-function extractNameHintFromMessage(msg, field) {
-  const m = msg.match(/\b(?:for|for\s+diver|of)\s+([^.\n?!]+?)(?:\s*[.?!]|$)/i);
-  if (m == null ? void 0 : m[1]) {
-    return m[1].trim().replace(/\s*(?:please|thanks)\s*$/i, "").trim() || null;
-  }
-  const poss = msg.match(/^(.+?)'s\s+(?:weight|height|cert|certification|dives?)\b/i);
-  if (poss == null ? void 0 : poss[1]) return poss[1].trim();
-  let s = msg.trim();
-  s = s.replace(/^(?:could\s+you\s+)?(?:can\s+you\s+)?(?:please\s+)?(?:i\s+need\s+to\s+)?(?:want\s+to\s+)?(?:change|update|edit|fix|correct)\s+/i, "");
-  const afterStrip = stripTrailingFieldWord(s, field);
-  if (afterStrip !== s.trim()) {
-    return afterStrip.trim() || null;
-  }
-  return null;
-}
-function findDiverIndexByNameHint(payload, hint) {
-  var _a;
-  const h = hint.trim().toLowerCase().replace(/\s+/g, " ");
-  if (!h) return null;
-  const divers = payload.divers || [];
-  const n = Math.max(0, (_a = payload.numberOfDivers) != null ? _a : 0, divers.length);
-  for (let i = 0; i < n && i < divers.length; i++) {
-    const full = (divers[i].name || "").trim().toLowerCase();
-    if (!full) continue;
-    if (full === h || full.includes(h) || h.includes(full)) return i;
-    const hWords = h.split(/\s+/).filter((w) => w.length >= 2);
-    const fWords = full.split(/\s+/).filter((w) => w.length >= 2);
-    for (const hw of hWords) {
-      if (fWords.some((fw) => fw === hw || fw.startsWith(hw) || hw.startsWith(fw))) return i;
-    }
-  }
-  const numMatch = hint.match(/\b(?:diver\s*)?(\d+)\b/i);
-  if (numMatch) {
-    const idx = parseInt(numMatch[1], 10) - 1;
-    if (idx >= 0 && idx < n) return idx;
-  }
-  return null;
-}
-function snapshotDiverField(d, field) {
-  var _a;
-  if (!d) return "";
-  switch (field) {
-    case "weight":
-      return [d.weight, d.weightUnit].filter((x) => x && String(x).trim()).map(String).join(" ").trim();
-    case "height":
-      return [d.height, d.heightUnit].filter((x) => x && String(x).trim()).map(String).join(" ").trim();
-    case "certificationNumber":
-      return (d.certificationNumber || "").trim();
-    case "numberOfDives":
-      return String((_a = d.numberOfDives) != null ? _a : "").trim();
-    case "name":
-      return (d.name || "").trim();
-    default:
-      return "";
-  }
-}
-function clearDiverFieldOnCopy(d, field) {
-  const out = { ...d };
-  switch (field) {
-    case "weight":
-      out.weight = "";
-      out.weightUnit = "";
-      break;
-    case "height":
-      out.height = "";
-      out.heightUnit = "ft-in";
-      break;
-    case "certificationNumber":
-      out.certificationNumber = "";
-      break;
-    case "numberOfDives":
-      out.numberOfDives = "";
-      break;
-    case "name":
-      out.name = "";
-      break;
-  }
-  return out;
-}
-function buildDiverFieldEditPrompt(field, displayName, previousValue) {
-  const who = displayName || "This diver";
-  switch (field) {
-    case "weight":
-      return previousValue ? `${who}'s weight is currently ${previousValue}. What would you like to change it to? Please include the unit (lbs or kg).` : `What is ${who}'s weight? Please include the unit (lbs or kg).`;
-    case "height":
-      return previousValue ? `${who}'s height is currently ${previousValue}. What would you like to change it to? (e.g. 5'4", 5-3, or 170 cm.)` : `What is ${who}'s height? (e.g. 5'4", 5-3, or 170 cm.)`;
-    case "certificationNumber":
-      return previousValue ? `${who}'s certification number is currently ${previousValue}. What would you like to change it to?` : `What is ${who}'s certification number?`;
-    case "numberOfDives":
-      return previousValue ? `${who} has ${previousValue} dives logged. What number would you like to use instead?` : `How many dives has ${who} completed?`;
-    case "name":
-      return previousValue ? `The name on file for this diver is ${previousValue}. What should it be instead? Please give the full name (first and last).` : `What is this diver's full name?`;
-    default:
-      return `What would you like to change for ${who}?`;
-  }
-}
-function tryParseDiverFieldEditIntent(message, payload, options) {
-  var _a, _b, _c, _d;
-  const msg = message.trim();
-  if (!wantsEditDiverField(msg)) return null;
-  const field = parseEditField(msg);
-  if (!field) return null;
-  let nameHint = extractNameHintFromMessage(msg, field);
-  if (!nameHint && (options == null ? void 0 : options.currentGearDiverIndex) != null && options.currentGearDiverIndex >= 0) {
-    const onlyField = /\b(?:change|update|edit|fix)\s+(?:my\s+)?(?:the\s+)?(?:weight|height|certification|cert(?:\s+number)?|number\s+of\s+dives|dives?)\b/i.test(msg) && !/\bfor\b/i.test(msg);
-    if (onlyField || /\b(?:change|update)\s+(?:my\s+)?(?:weight|height|certification|dives?)\s*$/i.test(msg)) {
-      const idx2 = options.currentGearDiverIndex;
-      const displayName2 = (((_b = (_a = payload.divers) == null ? void 0 : _a[idx2]) == null ? void 0 : _b.name) || "").trim() || `Diver ${idx2 + 1}`;
-      return { diverIndex: idx2, field, displayName: displayName2 };
-    }
-  }
-  if (!nameHint) return null;
-  const idx = findDiverIndexByNameHint(payload, nameHint);
-  if (idx == null) return null;
-  const displayName = (((_d = (_c = payload.divers) == null ? void 0 : _c[idx]) == null ? void 0 : _d.name) || "").trim() || `Diver ${idx + 1}`;
-  return { diverIndex: idx, field, displayName };
-}
-
 function ensureDivers(p) {
   if (!p.divers || !Array.isArray(p.divers)) return [];
   return p.divers;
@@ -5045,6 +4988,7 @@ function clampBookingPayloadToNextStep(payload, options) {
     if (next.step === "name") {
       if (p.startDate !== void 0) delete p.startDate;
       if (p.endDate !== void 0) delete p.endDate;
+      if (p.pendingLongTripConfirmation !== void 0) delete p.pendingLongTripConfirmation;
       if (p.desiredCourses !== void 0) delete p.desiredCourses;
       if (p.coursesSelectionComplete !== void 0) delete p.coursesSelectionComplete;
       if (p.desiredDiveSites !== void 0) delete p.desiredDiveSites;
@@ -5055,6 +4999,7 @@ function clampBookingPayloadToNextStep(payload, options) {
     if (next.step === "email") {
       if (p.startDate !== void 0) delete p.startDate;
       if (p.endDate !== void 0) delete p.endDate;
+      if (p.pendingLongTripConfirmation !== void 0) delete p.pendingLongTripConfirmation;
       if (p.desiredCourses !== void 0) delete p.desiredCourses;
       if (p.coursesSelectionComplete !== void 0) delete p.coursesSelectionComplete;
       if (p.desiredDiveSites !== void 0) delete p.desiredDiveSites;
@@ -5811,6 +5756,328 @@ function tryFastPathUnitOnly(userMessage, payload, _shopName) {
   };
 }
 
+const STOP = /* @__PURE__ */ new Set([
+  "the",
+  "a",
+  "an",
+  "and",
+  "or",
+  "for",
+  "with",
+  "from",
+  "that",
+  "this",
+  "are",
+  "you",
+  "your",
+  "me",
+  "my",
+  "in",
+  "on",
+  "at",
+  "to",
+  "of",
+  "dive",
+  "diving",
+  "diveshop",
+  "shop",
+  "shops",
+  "trip",
+  "looking",
+  "want",
+  "find",
+  "show",
+  "some",
+  "any",
+  "best",
+  "good",
+  "near",
+  "nearby",
+  "offer",
+  "offers",
+  "has",
+  "have",
+  "get",
+  "need",
+  "like",
+  "would",
+  "could",
+  "can",
+  "please",
+  "help",
+  "about",
+  "top",
+  "results",
+  "mexico",
+  "liveaboard",
+  "resort",
+  "prefer",
+  "type",
+  "what",
+  "which",
+  "where",
+  "when",
+  "how",
+  "there",
+  "here",
+  "they",
+  "them"
+]);
+function tokenize(s) {
+  return s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w));
+}
+function collectUserConversationTextForInference(history, currentMessage) {
+  const parts = [];
+  for (const m of history || []) {
+    if (m.role === "user" && m.content) parts.push(String(m.content));
+  }
+  if (currentMessage == null ? void 0 : currentMessage.trim()) parts.push(currentMessage.trim());
+  return parts.join(" \n ");
+}
+function inferDesiredCourseNamesFromConversation(conversationText, courseOptions) {
+  const t = conversationText.toLowerCase();
+  const names = courseOptions.map((c) => c.name).filter(Boolean);
+  if (!t.trim() || names.length === 0) return [];
+  const matched = /* @__PURE__ */ new Set();
+  for (const n of names) {
+    const nl = n.toLowerCase();
+    if (t.includes(nl)) matched.add(n);
+  }
+  if (matched.size) return [...matched];
+  if (/\badvanced\b/.test(t) && /\b(cert|certification|course|courses|class|classes)\b/.test(t)) {
+    const adv = names.filter((n) => /\badvanced\b/i.test(n));
+    if (adv.length === 1) return adv;
+    if (adv.length > 1) {
+      const aow = adv.find((n) => /open\s*water/i.test(n));
+      return aow ? [aow] : [adv[0]];
+    }
+  }
+  const keywordRules = [
+    { pattern: /\b(nitrox|enriched\s*air|eanx)\b/i, pick: (n) => /nitrox|enriched/i.test(n) },
+    { pattern: /\badvanced\s+open\s*water\b|\baow\b/i, pick: (n) => /\badvanced\b/i.test(n) && /open\s*water/i.test(n) },
+    { pattern: /\bopen\s*water\b/i, pick: (n) => /open\s*water/i.test(n) && !/\badvanced\b/i.test(n) },
+    { pattern: /\brescue\b/i, pick: (n) => /rescue/i.test(n) },
+    { pattern: /\bwreck\b/i, pick: (n) => /wreck/i.test(n) },
+    { pattern: /\b(?:discover|try\s*scuba|intro\s*scuba)\b/i, pick: (n) => /discover|try\s*scuba|intro/i.test(n) },
+    { pattern: /\bdivemaster\b/i, pick: (n) => /divemaster/i.test(n) },
+    { pattern: /\b(?:owsi|open\s*water\s*scuba\s*instructor|scuba\s*instructor)\b/i, pick: (n) => /instructor/i.test(n) },
+    { pattern: /\bcourse\s*director\b/i, pick: (n) => /course\s*director/i.test(n) },
+    { pattern: /\bnight\s*diver\b/i, pick: (n) => /night/i.test(n) },
+    { pattern: /\bdeep\s*diver\b/i, pick: (n) => /deep/i.test(n) },
+    { pattern: /\b(?:navigation|navigator)\b/i, pick: (n) => /navigator/i.test(n) },
+    { pattern: /\bmaster\s*scuba\b/i, pick: (n) => /master\s*scuba/i.test(n) },
+    { pattern: /\bjunior\b/i, pick: (n) => /junior/i.test(n) }
+  ];
+  for (const { pattern, pick } of keywordRules) {
+    if (pattern.test(t)) {
+      const hit = names.filter(pick);
+      if (hit.length === 1) return hit;
+      if (hit.length > 1) return [hit[0]];
+    }
+  }
+  const userTokens = new Set(tokenize(t));
+  const scored = [];
+  for (const n of names) {
+    const words = tokenize(n).filter((w) => !["diver", "scuba", "course"].includes(w));
+    let score = 0;
+    for (const w of words) {
+      if (userTokens.has(w)) score++;
+    }
+    if (score >= 2) scored.push({ name: n, score });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  if (scored.length === 1) return [scored[0].name];
+  if (scored.length > 1 && scored[0].score > scored[1].score) return [scored[0].name];
+  return [];
+}
+function applyInferredCoursesToPayloadIfEligible(payload, history, currentMessage, courseOptions) {
+  var _a;
+  if (!courseOptions.length) return payload;
+  if (payload.desiredCourses !== void 0) return payload;
+  if (((_a = getNextBookingStep(payload)) == null ? void 0 : _a.step) !== "courses") return payload;
+  const msg = currentMessage.trim();
+  if (/^(any|none|done|skip|no|n\/a)\s*$/i.test(msg)) return payload;
+  const text = collectUserConversationTextForInference(history, currentMessage);
+  const inferred = inferDesiredCourseNamesFromConversation(text, courseOptions);
+  if (inferred.length === 0) return payload;
+  return { ...payload, desiredCourses: inferred, coursesSelectionComplete: false };
+}
+
+function applyParsedTripDatesToBookingPayload(bookingPayload, parsedDates, ctx) {
+  var _a, _b;
+  let p = {
+    ...bookingPayload,
+    startDate: parsedDates.startDate,
+    endDate: parsedDates.endDate
+  };
+  if (((_a = getNextBookingStep(p)) == null ? void 0 : _a.step) === "courses" && ctx.shopCourseCount === 0) {
+    p = { ...p, desiredCourses: [] };
+  } else if (ctx.shopCourseCount > 0) {
+    p = applyInferredCoursesToPayloadIfEligible(p, ctx.history, ctx.userMessage, ctx.courses);
+  }
+  if (((_b = getNextBookingStep(p)) == null ? void 0 : _b.step) === "diveSites" && ctx.shopDiveSiteCount === 0) {
+    p = { ...p, desiredDiveSites: [] };
+  }
+  return clampBookingPayloadToNextStep(p, {
+    shopCourseCount: ctx.shopCourseCount,
+    shopDiveSiteCount: ctx.shopDiveSiteCount
+  });
+}
+
+function parseEditField(msg) {
+  if (/\bnumber\s+of\s+dives\b|\bdive\s+count\b/i.test(msg)) return "numberOfDives";
+  if (/\b(?:certification|cert(?:\s+number)?)\b/i.test(msg)) return "certificationNumber";
+  if (/\bweight\b/i.test(msg)) return "weight";
+  if (/\bheight\b/i.test(msg)) return "height";
+  if (/\bdives?\b/i.test(msg)) return "numberOfDives";
+  if (/\bname\b/i.test(msg) && /\bdiver\s*\d/i.test(msg)) return "name";
+  return null;
+}
+function wantsEditDiverField(msg) {
+  return /(?:^|\b)(?:could\s+you\s+)?(?:can\s+you\s+)?(?:please\s+)?(?:change|update|edit|fix|correct|need\s+to\s+change|want\s+to\s+change|i\s+need\s+to\s+change)\b/i.test(msg);
+}
+function stripTrailingFieldWord(s, field) {
+  let t = s.trim();
+  switch (field) {
+    case "numberOfDives":
+      t = t.replace(/\s+number\s+of\s+dives\s*$/i, "");
+      t = t.replace(/\s+dive\s+count\s*$/i, "");
+      t = t.replace(/\s+dives?\s*$/i, "");
+      break;
+    case "certificationNumber":
+      t = t.replace(/\s+certification\s*$/i, "");
+      t = t.replace(/\s+cert(?:\s+number)?\s*$/i, "");
+      break;
+    case "weight":
+      t = t.replace(/\s*weight\s*$/i, "");
+      break;
+    case "height":
+      t = t.replace(/\s*height\s*$/i, "");
+      break;
+    case "name":
+      t = t.replace(/\s+name\s*$/i, "");
+      break;
+  }
+  return t.trim();
+}
+function extractNameHintFromMessage(msg, field) {
+  const m = msg.match(/\b(?:for|for\s+diver|of)\s+([^.\n?!]+?)(?:\s*[.?!]|$)/i);
+  if (m == null ? void 0 : m[1]) {
+    return m[1].trim().replace(/\s*(?:please|thanks)\s*$/i, "").trim() || null;
+  }
+  const poss = msg.match(/^(.+?)'s\s+(?:weight|height|cert|certification|dives?)\b/i);
+  if (poss == null ? void 0 : poss[1]) return poss[1].trim();
+  let s = msg.trim();
+  s = s.replace(/^(?:could\s+you\s+)?(?:can\s+you\s+)?(?:please\s+)?(?:i\s+need\s+to\s+)?(?:want\s+to\s+)?(?:change|update|edit|fix|correct)\s+/i, "");
+  const afterStrip = stripTrailingFieldWord(s, field);
+  if (afterStrip !== s.trim()) {
+    return afterStrip.trim() || null;
+  }
+  return null;
+}
+function findDiverIndexByNameHint(payload, hint) {
+  var _a;
+  const h = hint.trim().toLowerCase().replace(/\s+/g, " ");
+  if (!h) return null;
+  const divers = payload.divers || [];
+  const n = Math.max(0, (_a = payload.numberOfDivers) != null ? _a : 0, divers.length);
+  for (let i = 0; i < n && i < divers.length; i++) {
+    const full = (divers[i].name || "").trim().toLowerCase();
+    if (!full) continue;
+    if (full === h || full.includes(h) || h.includes(full)) return i;
+    const hWords = h.split(/\s+/).filter((w) => w.length >= 2);
+    const fWords = full.split(/\s+/).filter((w) => w.length >= 2);
+    for (const hw of hWords) {
+      if (fWords.some((fw) => fw === hw || fw.startsWith(hw) || hw.startsWith(fw))) return i;
+    }
+  }
+  const numMatch = hint.match(/\b(?:diver\s*)?(\d+)\b/i);
+  if (numMatch) {
+    const idx = parseInt(numMatch[1], 10) - 1;
+    if (idx >= 0 && idx < n) return idx;
+  }
+  return null;
+}
+function snapshotDiverField(d, field) {
+  var _a;
+  if (!d) return "";
+  switch (field) {
+    case "weight":
+      return [d.weight, d.weightUnit].filter((x) => x && String(x).trim()).map(String).join(" ").trim();
+    case "height":
+      return [d.height, d.heightUnit].filter((x) => x && String(x).trim()).map(String).join(" ").trim();
+    case "certificationNumber":
+      return (d.certificationNumber || "").trim();
+    case "numberOfDives":
+      return String((_a = d.numberOfDives) != null ? _a : "").trim();
+    case "name":
+      return (d.name || "").trim();
+    default:
+      return "";
+  }
+}
+function clearDiverFieldOnCopy(d, field) {
+  const out = { ...d };
+  switch (field) {
+    case "weight":
+      out.weight = "";
+      out.weightUnit = "";
+      break;
+    case "height":
+      out.height = "";
+      out.heightUnit = "ft-in";
+      break;
+    case "certificationNumber":
+      out.certificationNumber = "";
+      break;
+    case "numberOfDives":
+      out.numberOfDives = "";
+      break;
+    case "name":
+      out.name = "";
+      break;
+  }
+  return out;
+}
+function buildDiverFieldEditPrompt(field, displayName, previousValue) {
+  const who = displayName || "This diver";
+  switch (field) {
+    case "weight":
+      return previousValue ? `${who}'s weight is currently ${previousValue}. What would you like to change it to? Please include the unit (lbs or kg).` : `What is ${who}'s weight? Please include the unit (lbs or kg).`;
+    case "height":
+      return previousValue ? `${who}'s height is currently ${previousValue}. What would you like to change it to? (e.g. 5'4", 5-3, or 170 cm.)` : `What is ${who}'s height? (e.g. 5'4", 5-3, or 170 cm.)`;
+    case "certificationNumber":
+      return previousValue ? `${who}'s certification number is currently ${previousValue}. What would you like to change it to?` : `What is ${who}'s certification number?`;
+    case "numberOfDives":
+      return previousValue ? `${who} has ${previousValue} dives logged. What number would you like to use instead?` : `How many dives has ${who} completed?`;
+    case "name":
+      return previousValue ? `The name on file for this diver is ${previousValue}. What should it be instead? Please give the full name (first and last).` : `What is this diver's full name?`;
+    default:
+      return `What would you like to change for ${who}?`;
+  }
+}
+function tryParseDiverFieldEditIntent(message, payload, options) {
+  var _a, _b, _c, _d;
+  const msg = message.trim();
+  if (!wantsEditDiverField(msg)) return null;
+  const field = parseEditField(msg);
+  if (!field) return null;
+  let nameHint = extractNameHintFromMessage(msg, field);
+  if (!nameHint && (options == null ? void 0 : options.currentGearDiverIndex) != null && options.currentGearDiverIndex >= 0) {
+    const onlyField = /\b(?:change|update|edit|fix)\s+(?:my\s+)?(?:the\s+)?(?:weight|height|certification|cert(?:\s+number)?|number\s+of\s+dives|dives?)\b/i.test(msg) && !/\bfor\b/i.test(msg);
+    if (onlyField || /\b(?:change|update)\s+(?:my\s+)?(?:weight|height|certification|dives?)\s*$/i.test(msg)) {
+      const idx2 = options.currentGearDiverIndex;
+      const displayName2 = (((_b = (_a = payload.divers) == null ? void 0 : _a[idx2]) == null ? void 0 : _b.name) || "").trim() || `Diver ${idx2 + 1}`;
+      return { diverIndex: idx2, field, displayName: displayName2 };
+    }
+  }
+  if (!nameHint) return null;
+  const idx = findDiverIndexByNameHint(payload, nameHint);
+  if (idx == null) return null;
+  const displayName = (((_d = (_c = payload.divers) == null ? void 0 : _c[idx]) == null ? void 0 : _d.name) || "").trim() || `Diver ${idx + 1}`;
+  return { diverIndex: idx, field, displayName };
+}
+
 function diveshopLocaleOrConditions(term) {
   const t = term.trim();
   return `city.ilike.%${t}%,state.ilike.%${t}%,locale.ilike.%${t}%,street_address.ilike.%${t}%`;
@@ -6234,151 +6501,117 @@ async function getRentalEquipmentForShop(supabaseUrl, supabaseKey, shopId) {
   return data.filter((row) => row.rental_equipment != null && row.rental_equipment.name !== "None listed" && row.rental_equipment.name !== "Yes (unspecified gear)").map((row) => ({ id: row.rental_equipment.id, name: row.rental_equipment.name }));
 }
 
-const STOP = /* @__PURE__ */ new Set([
-  "the",
-  "a",
-  "an",
-  "and",
-  "or",
-  "for",
-  "with",
-  "from",
-  "that",
-  "this",
-  "are",
-  "you",
-  "your",
-  "me",
-  "my",
-  "in",
-  "on",
-  "at",
-  "to",
-  "of",
-  "dive",
-  "diving",
-  "diveshop",
-  "shop",
-  "shops",
-  "trip",
-  "looking",
-  "want",
-  "find",
-  "show",
-  "some",
-  "any",
-  "best",
-  "good",
-  "near",
-  "nearby",
-  "offer",
-  "offers",
-  "has",
-  "have",
-  "get",
-  "need",
-  "like",
-  "would",
-  "could",
-  "can",
-  "please",
-  "help",
-  "about",
-  "top",
-  "results",
-  "mexico",
-  "liveaboard",
-  "resort",
-  "prefer",
-  "type",
-  "what",
-  "which",
-  "where",
-  "when",
-  "how",
-  "there",
-  "here",
-  "they",
-  "them"
-]);
-function tokenize(s) {
-  return s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w));
+const TITLE_PREFIX = {
+  bug: "[Bug]",
+  feature: "[Feature]"
+};
+const FEEDBACK_LIMITS = {
+  titleMax: 200,
+  nameMax: 200,
+  messageMax: 1e4,
+  messageMin: 10,
+  pageUrlMax: 2e3
+};
+function oneLineSnippet(text, maxLen) {
+  const line = text.replace(/\s+/g, " ").trim();
+  if (line.length <= maxLen) return line;
+  return `${line.slice(0, Math.max(0, maxLen - 1))}\u2026`;
 }
-function collectUserConversationTextForInference(history, currentMessage) {
-  const parts = [];
-  for (const m of history || []) {
-    if (m.role === "user" && m.content) parts.push(String(m.content));
-  }
-  if (currentMessage == null ? void 0 : currentMessage.trim()) parts.push(currentMessage.trim());
-  return parts.join(" \n ");
+function buildLinearFeedbackTitle(params) {
+  const prefix = TITLE_PREFIX[params.kind];
+  const budget = FEEDBACK_LIMITS.titleMax - prefix.length - 1;
+  const fromMessage = oneLineSnippet(params.message, Math.max(20, budget - 3));
+  const fromName = oneLineSnippet(params.name, Math.min(40, budget));
+  let body = fromMessage.length >= 20 ? fromMessage : fromName || fromMessage;
+  body = oneLineSnippet(body, budget);
+  const title = `${prefix} ${body}`.trim();
+  return title.length > FEEDBACK_LIMITS.titleMax ? `${title.slice(0, FEEDBACK_LIMITS.titleMax - 1)}\u2026` : title;
 }
-function inferDesiredCourseNamesFromConversation(conversationText, courseOptions) {
-  const t = conversationText.toLowerCase();
-  const names = courseOptions.map((c) => c.name).filter(Boolean);
-  if (!t.trim() || names.length === 0) return [];
-  const matched = /* @__PURE__ */ new Set();
-  for (const n of names) {
-    const nl = n.toLowerCase();
-    if (t.includes(nl)) matched.add(n);
-  }
-  if (matched.size) return [...matched];
-  if (/\badvanced\b/.test(t) && /\b(cert|certification|course|courses|class|classes)\b/.test(t)) {
-    const adv = names.filter((n) => /\badvanced\b/i.test(n));
-    if (adv.length === 1) return adv;
-    if (adv.length > 1) {
-      const aow = adv.find((n) => /open\s*water/i.test(n));
-      return aow ? [aow] : [adv[0]];
-    }
-  }
-  const keywordRules = [
-    { pattern: /\b(nitrox|enriched\s*air|eanx)\b/i, pick: (n) => /nitrox|enriched/i.test(n) },
-    { pattern: /\badvanced\s+open\s*water\b|\baow\b/i, pick: (n) => /\badvanced\b/i.test(n) && /open\s*water/i.test(n) },
-    { pattern: /\bopen\s*water\b/i, pick: (n) => /open\s*water/i.test(n) && !/\badvanced\b/i.test(n) },
-    { pattern: /\brescue\b/i, pick: (n) => /rescue/i.test(n) },
-    { pattern: /\bwreck\b/i, pick: (n) => /wreck/i.test(n) },
-    { pattern: /\b(?:discover|try\s*scuba|intro\s*scuba)\b/i, pick: (n) => /discover|try\s*scuba|intro/i.test(n) },
-    { pattern: /\bdivemaster\b/i, pick: (n) => /divemaster/i.test(n) },
-    { pattern: /\b(?:owsi|open\s*water\s*scuba\s*instructor|scuba\s*instructor)\b/i, pick: (n) => /instructor/i.test(n) },
-    { pattern: /\bcourse\s*director\b/i, pick: (n) => /course\s*director/i.test(n) },
-    { pattern: /\bnight\s*diver\b/i, pick: (n) => /night/i.test(n) },
-    { pattern: /\bdeep\s*diver\b/i, pick: (n) => /deep/i.test(n) },
-    { pattern: /\b(?:navigation|navigator)\b/i, pick: (n) => /navigator/i.test(n) },
-    { pattern: /\bmaster\s*scuba\b/i, pick: (n) => /master\s*scuba/i.test(n) },
-    { pattern: /\bjunior\b/i, pick: (n) => /junior/i.test(n) }
-  ];
-  for (const { pattern, pick } of keywordRules) {
-    if (pattern.test(t)) {
-      const hit = names.filter(pick);
-      if (hit.length === 1) return hit;
-      if (hit.length > 1) return [hit[0]];
-    }
-  }
-  const userTokens = new Set(tokenize(t));
-  const scored = [];
-  for (const n of names) {
-    const words = tokenize(n).filter((w) => !["diver", "scuba", "course"].includes(w));
-    let score = 0;
-    for (const w of words) {
-      if (userTokens.has(w)) score++;
-    }
-    if (score >= 2) scored.push({ name: n, score });
-  }
-  scored.sort((a, b) => b.score - a.score);
-  if (scored.length === 1) return [scored[0].name];
-  if (scored.length > 1 && scored[0].score > scored[1].score) return [scored[0].name];
-  return [];
-}
-function applyInferredCoursesToPayloadIfEligible(payload, history, currentMessage, courseOptions) {
+function buildLinearFeedbackDescription(params) {
   var _a;
-  if (!courseOptions.length) return payload;
-  if (payload.desiredCourses !== void 0) return payload;
-  if (((_a = getNextBookingStep(payload)) == null ? void 0 : _a.step) !== "courses") return payload;
-  const msg = currentMessage.trim();
-  if (/^(any|none|done|skip|no|n\/a)\s*$/i.test(msg)) return payload;
-  const text = collectUserConversationTextForInference(history, currentMessage);
-  const inferred = inferDesiredCourseNamesFromConversation(text, courseOptions);
-  if (inferred.length === 0) return payload;
-  return { ...payload, desiredCourses: inferred, coursesSelectionComplete: false };
+  const lines = [
+    `**Type:** ${params.kind === "bug" ? "Bug" : "Feature"}`,
+    "",
+    `**Name:** ${params.name}`,
+    `**Email:** ${params.email}`,
+    "",
+    "**Message:**",
+    "",
+    params.message.trim()
+  ];
+  if ((_a = params.pageUrl) == null ? void 0 : _a.trim()) {
+    lines.push("", `**Page:** ${params.pageUrl.trim()}`);
+  }
+  lines.push("", `_Submitted from Glaucus \u2014 ${params.submittedAtIso}_`);
+  return lines.join("\n");
+}
+
+const LINEAR_GRAPHQL_URL = "https://api.linear.app/graphql";
+const FILE_UPLOAD_MUTATION = `
+mutation FileUpload($contentType: String!, $filename: String!, $size: Float!) {
+  fileUpload(contentType: $contentType, filename: $filename, size: $size) {
+    success
+    uploadFile {
+      uploadUrl
+      assetUrl
+      headers {
+        key
+        value
+      }
+    }
+  }
+}
+`;
+async function linearGraphQL(apiKey, query, variables) {
+  const res = await fetch(LINEAR_GRAPHQL_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: apiKey
+    },
+    body: JSON.stringify({ query, variables })
+  });
+  const json = await res.json().catch(() => null);
+  return { ok: res.ok, json };
+}
+async function uploadBufferToLinear(params) {
+  var _a, _b, _c, _d;
+  const { apiKey, buffer, filename, contentType } = params;
+  const size = buffer.byteLength;
+  const { ok, json } = await linearGraphQL(apiKey, FILE_UPLOAD_MUTATION, {
+    contentType,
+    filename: filename.slice(0, 255),
+    size
+  });
+  if (!ok || !json) {
+    throw new Error("Linear fileUpload: HTTP failure");
+  }
+  if (Array.isArray(json.errors) && json.errors.length > 0) {
+    throw new Error(`Linear fileUpload: ${json.errors.map((e) => e == null ? void 0 : e.message).join("; ")}`);
+  }
+  const payload = (_a = json.data) == null ? void 0 : _a.fileUpload;
+  if (!(payload == null ? void 0 : payload.success) || !((_b = payload.uploadFile) == null ? void 0 : _b.uploadUrl) || !((_c = payload.uploadFile) == null ? void 0 : _c.assetUrl)) {
+    throw new Error("Linear fileUpload: no upload URL returned");
+  }
+  const { uploadUrl, assetUrl, headers: hdrs } = payload.uploadFile;
+  const putHeaders = new Headers();
+  putHeaders.set("Content-Type", contentType);
+  putHeaders.set("Cache-Control", "public, max-age=31536000");
+  for (const h of hdrs != null ? hdrs : []) {
+    const k = (_d = h.key) != null ? _d : h.name;
+    const v = h.value;
+    if (k && v) putHeaders.set(k, v);
+  }
+  const putRes = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: putHeaders,
+    body: buffer
+  });
+  if (!putRes.ok) {
+    const errText = await putRes.text().catch(() => "");
+    throw new Error(`Linear storage PUT failed: ${putRes.status} ${errText.slice(0, 200)}`);
+  }
+  return assetUrl;
 }
 
 function mergeCollectedIntoBookingPayload(base, parsed, options) {
@@ -6462,6 +6695,23 @@ function pad2(n) {
 function toYmd(y, month1, day) {
   return `${y}-${pad2(month1)}-${pad2(day)}`;
 }
+function dateLocalToYmd(d) {
+  return toYmd(d.getFullYear(), d.getMonth() + 1, d.getDate());
+}
+function inclusiveTripDays(startDate, endDate) {
+  const as = startDate.split("-");
+  const ae = endDate.split("-");
+  if (as.length !== 3 || ae.length !== 3) return 1;
+  const ys = Number(as[0]);
+  const ms = Number(as[1]);
+  const ds = Number(as[2]);
+  const ye = Number(ae[0]);
+  const me = Number(ae[1]);
+  const de = Number(ae[2]);
+  const s = Date.UTC(ys, ms - 1, ds);
+  const e = Date.UTC(ye, me - 1, de);
+  return Math.floor((e - s) / (24 * 60 * 60 * 1e3)) + 1;
+}
 function inferYear(month1, day, ref) {
   const y = ref.getFullYear();
   const candidate = new Date(y, month1 - 1, day);
@@ -6471,9 +6721,176 @@ function inferYear(month1, day, ref) {
   }
   return y;
 }
-function tryParseTripDatesFromMessage(message, ref = /* @__PURE__ */ new Date()) {
-  const t = message.trim();
-  if (!t) return null;
+function isValidYmd(y, m, d) {
+  if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const dt = new Date(y, m - 1, d);
+  return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+}
+function parseMonthNameToken(raw) {
+  var _a;
+  const x = raw.toLowerCase().replace(/\./g, "").trim();
+  const map = {
+    january: 1,
+    jan: 1,
+    february: 2,
+    feb: 2,
+    march: 3,
+    mar: 3,
+    april: 4,
+    apr: 4,
+    may: 5,
+    june: 6,
+    jun: 6,
+    july: 7,
+    jul: 7,
+    august: 8,
+    aug: 8,
+    september: 9,
+    sep: 9,
+    sept: 9,
+    october: 10,
+    oct: 10,
+    november: 11,
+    nov: 11,
+    december: 12,
+    dec: 12
+  };
+  return (_a = map[x]) != null ? _a : null;
+}
+const MONTH_NAME = "(January|February|March|April|May|June|July|August|September|October|November|December|Jan\\.?|Feb\\.?|Mar\\.?|Apr\\.?|Jun\\.?|Jul\\.?|Aug\\.?|Sep\\.?|Sept\\.?|Oct\\.?|Nov\\.?|Dec\\.?)";
+function tryParseIsoRange(t) {
+  const iso = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s*[-–—]\s*(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/i;
+  const m = t.match(iso);
+  if (!m) return null;
+  const y1 = parseInt(m[1], 10);
+  const mo1 = parseInt(m[2], 10);
+  const d1 = parseInt(m[3], 10);
+  const y2 = parseInt(m[4], 10);
+  const mo2 = parseInt(m[5], 10);
+  const d2 = parseInt(m[6], 10);
+  if (!isValidYmd(y1, mo1, d1) || !isValidYmd(y2, mo2, d2)) return null;
+  const startDate = toYmd(y1, mo1, d1);
+  const endDate = toYmd(y2, mo2, d2);
+  if (startDate <= endDate) return { startDate, endDate };
+  return null;
+}
+function tryParseMonthNameRange(t, ref) {
+  var _a, _b;
+  const mdoy = new RegExp(
+    `^${MONTH_NAME}\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:\\s*,?\\s*(\\d{4}))?\\s*[-\u2013\u2014]\\s*${MONTH_NAME}\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:\\s*,?\\s*(\\d{4}))?$`,
+    "i"
+  );
+  const m = t.match(mdoy);
+  if (m) {
+    const mo1 = parseMonthNameToken(m[1]);
+    const d1 = parseInt(m[2], 10);
+    const y1Opt = m[3] ? parseInt(m[3], 10) : null;
+    const mo2 = parseMonthNameToken(m[4]);
+    const d2 = parseInt(m[5], 10);
+    const y2Opt = m[6] ? parseInt(m[6], 10) : null;
+    if (!mo1 || !mo2) return null;
+    let y1 = (_a = y1Opt != null ? y1Opt : y2Opt) != null ? _a : inferYear(mo1, d1, ref);
+    let y2 = (_b = y2Opt != null ? y2Opt : y1Opt) != null ? _b : inferYear(mo2, d2, ref);
+    if (y1Opt && !y2Opt) y2 = y1;
+    if (!y1Opt && y2Opt) y1 = y2;
+    if (!isValidYmd(y1, mo1, d1) || !isValidYmd(y2, mo2, d2)) return null;
+    let startDate = toYmd(y1, mo1, d1);
+    let endDate = toYmd(y2, mo2, d2);
+    if (startDate > endDate) {
+      y2 = y1 + 1;
+      endDate = toYmd(y2, mo2, d2);
+      if (startDate > endDate) return null;
+    }
+    return { startDate, endDate };
+  }
+  const sameMonth = new RegExp(
+    `^${MONTH_NAME}\\s+(\\d{1,2})(?:st|nd|rd|th)?\\s*[-\u2013\u2014]\\s*(\\d{1,2})(?:st|nd|rd|th)?(?:\\s*,?\\s*(\\d{4}))?$`,
+    "i"
+  );
+  const sm = t.match(sameMonth);
+  if (sm) {
+    const mo = parseMonthNameToken(sm[1]);
+    const d1 = parseInt(sm[2], 10);
+    const d2 = parseInt(sm[3], 10);
+    const yOpt = sm[4] ? parseInt(sm[4], 10) : null;
+    if (!mo) return null;
+    const y = yOpt != null ? yOpt : inferYear(mo, d1, ref);
+    if (!isValidYmd(y, mo, d1) || !isValidYmd(y, mo, d2)) return null;
+    const startDate = toYmd(y, mo, d1);
+    const endDate = toYmd(y, mo, d2);
+    if (startDate <= endDate) return { startDate, endDate };
+    return null;
+  }
+  const dmy = new RegExp(
+    `^(\\d{1,2})(?:st|nd|rd|th)?\\s+${MONTH_NAME}\\s*[-\u2013\u2014]\\s*(\\d{1,2})(?:st|nd|rd|th)?\\s+${MONTH_NAME}(?:\\s*,?\\s*(\\d{4}))?$`,
+    "i"
+  );
+  const dm = t.match(dmy);
+  if (dm) {
+    const d1 = parseInt(dm[1], 10);
+    const mo1 = parseMonthNameToken(dm[2]);
+    const d2 = parseInt(dm[3], 10);
+    const mo2 = parseMonthNameToken(dm[4]);
+    const yOpt = dm[5] ? parseInt(dm[5], 10) : null;
+    if (!mo1 || !mo2) return null;
+    const y = yOpt != null ? yOpt : inferYear(mo1, d1, ref);
+    if (!isValidYmd(y, mo1, d1) || !isValidYmd(y, mo2, d2)) return null;
+    let startDate = toYmd(y, mo1, d1);
+    let endDate = toYmd(y, mo2, d2);
+    if (startDate > endDate) {
+      const y2 = y + 1;
+      endDate = toYmd(y2, mo2, d2);
+      if (startDate > endDate) return null;
+    }
+    return { startDate, endDate };
+  }
+  return null;
+}
+function tryParseSingleIsoOrUs(t, ref) {
+  const isoOne = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/i.exec(t);
+  if (isoOne) {
+    const y = parseInt(isoOne[1], 10);
+    const mo = parseInt(isoOne[2], 10);
+    const d = parseInt(isoOne[3], 10);
+    if (!isValidYmd(y, mo, d)) return null;
+    const ymd = toYmd(y, mo, d);
+    return { startDate: ymd, endDate: ymd };
+  }
+  const usOne = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/i.exec(t);
+  if (usOne) {
+    const mo = parseInt(usOne[1], 10);
+    const d = parseInt(usOne[2], 10);
+    let y = parseInt(usOne[3], 10);
+    if (y < 100) y += 2e3;
+    if (!isValidYmd(y, mo, d)) return null;
+    const ymd = toYmd(y, mo, d);
+    return { startDate: ymd, endDate: ymd };
+  }
+  const monOne = new RegExp(`^${MONTH_NAME}\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:\\s*,?\\s*(\\d{4}))?$`, "i").exec(t);
+  if (monOne) {
+    const mo = parseMonthNameToken(monOne[1]);
+    const d = parseInt(monOne[2], 10);
+    const yOpt = monOne[3] ? parseInt(monOne[3], 10) : null;
+    if (!mo) return null;
+    const y = yOpt != null ? yOpt : inferYear(mo, d, ref);
+    if (!isValidYmd(y, mo, d)) return null;
+    const ymd = toYmd(y, mo, d);
+    return { startDate: ymd, endDate: ymd };
+  }
+  const dmyOne = new RegExp(`^(\\d{1,2})(?:st|nd|rd|th)?\\s+${MONTH_NAME}(?:\\s*,?\\s*(\\d{4}))?$`, "i").exec(t);
+  if (dmyOne) {
+    const d = parseInt(dmyOne[1], 10);
+    const mo = parseMonthNameToken(dmyOne[2]);
+    const yOpt = dmyOne[3] ? parseInt(dmyOne[3], 10) : null;
+    if (!mo) return null;
+    const y = yOpt != null ? yOpt : inferYear(mo, d, ref);
+    if (!isValidYmd(y, mo, d)) return null;
+    const ymd = toYmd(y, mo, d);
+    return { startDate: ymd, endDate: ymd };
+  }
+  return null;
+}
+function tryParseNumericSlashRange(t, ref) {
   const full = t.match(
     /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s*[-–—]\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/i
   );
@@ -6486,19 +6903,21 @@ function tryParseTripDatesFromMessage(message, ref = /* @__PURE__ */ new Date())
     const d2 = parseInt(full[5], 10);
     let y2 = parseInt(full[6], 10);
     if (y2 < 100) y2 += 2e3;
+    if (!isValidYmd(y1, m1, d1) || !isValidYmd(y2, m2, d2)) return null;
     const startDate = toYmd(y1, m1, d1);
     const endDate = toYmd(y2, m2, d2);
     if (startDate <= endDate) return { startDate, endDate };
     return null;
   }
   const md = t.match(/^(\d{1,2})\/(\d{1,2})\s*[-–—]\s*(\d{1,2})\/(\d{1,2})$/i);
-  if (md) {
+  if (md && md[1] != null && md[2] != null && md[3] != null && md[4] != null) {
     const m1 = parseInt(md[1], 10);
     const d1 = parseInt(md[2], 10);
     const m2 = parseInt(md[3], 10);
     const d2 = parseInt(md[4], 10);
     if (m1 < 1 || m1 > 12 || m2 < 1 || m2 > 12 || d1 < 1 || d1 > 31 || d2 < 1 || d2 > 31) return null;
     const y = inferYear(m1, d1, ref);
+    if (!isValidYmd(y, m1, d1)) return null;
     const startDate = toYmd(y, m1, d1);
     let endY = y;
     const startT = new Date(y, m1 - 1, d1).getTime();
@@ -6507,11 +6926,84 @@ function tryParseTripDatesFromMessage(message, ref = /* @__PURE__ */ new Date())
       endY = y + 1;
       endT = new Date(endY, m2 - 1, d2).getTime();
     }
+    if (!isValidYmd(endY, m2, d2)) return null;
     const endDate = toYmd(endY, m2, d2);
     if (startDate <= endDate) return { startDate, endDate };
     return null;
   }
   return null;
+}
+const RANGE_SPLIT = /\s+(?:to|through|until)\s+|\s*[-–—]\s+/i;
+function mondayOfWeekContaining(d) {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const day = x.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  x.setDate(x.getDate() + diff);
+  return x;
+}
+function tryParseRelativeWeekPhrase(t, ref) {
+  const lower = t.toLowerCase().trim();
+  if (lower === "this week") {
+    const mon = mondayOfWeekContaining(ref);
+    const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6);
+    return { startDate: dateLocalToYmd(mon), endDate: dateLocalToYmd(sun) };
+  }
+  if (lower === "next week") {
+    const thisMon = mondayOfWeekContaining(ref);
+    const nextMon = new Date(thisMon.getFullYear(), thisMon.getMonth(), thisMon.getDate() + 7);
+    const sun = new Date(nextMon.getFullYear(), nextMon.getMonth(), nextMon.getDate() + 6);
+    return { startDate: dateLocalToYmd(nextMon), endDate: dateLocalToYmd(sun) };
+  }
+  return null;
+}
+function tryChronoRange(t, ref) {
+  if (t.length > 200) return null;
+  if (!/[0-9]|monday|tues|wednes|thursday|friday|satur|sunday|today|tomorrow|next|last|week|month|year|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?/i.test(t)) {
+    return null;
+  }
+  const opt = { forwardDate: true };
+  const refArg = { instant: ref };
+  const results = parse$1(t, refArg, opt);
+  if (results.length > 0) {
+    const r = results[0];
+    if (!r) return null;
+    if (r.end) {
+      const s = dateLocalToYmd(r.start.date());
+      const e = dateLocalToYmd(r.end.date());
+      if (s <= e) return { startDate: s, endDate: e };
+    }
+    if (results.length >= 2) {
+      const second = results[1];
+      if (!second) return null;
+      const d0 = r.start.date();
+      const d1 = second.start.date();
+      const s = dateLocalToYmd(d0);
+      const e = dateLocalToYmd(d1);
+      if (s <= e) return { startDate: s, endDate: e };
+    }
+  }
+  const parts = t.split(RANGE_SPLIT).map((p) => p.trim()).filter(Boolean);
+  if (parts.length === 2 && parts[0] && parts[1]) {
+    const a = parseDate(parts[0], refArg, opt);
+    const b = parseDate(parts[1], refArg, opt);
+    if (a && b) {
+      const s = dateLocalToYmd(a);
+      const e = dateLocalToYmd(b);
+      if (s <= e) return { startDate: s, endDate: e };
+    }
+  }
+  const single = parseDate(t, refArg, opt);
+  if (single) {
+    const ymd = dateLocalToYmd(single);
+    return { startDate: ymd, endDate: ymd };
+  }
+  return null;
+}
+function tryParseTripDatesFromMessage(message, ref = /* @__PURE__ */ new Date()) {
+  var _a, _b, _c, _d, _e;
+  const t = message.trim();
+  if (!t) return null;
+  return (_e = (_d = (_c = (_b = (_a = tryParseIsoRange(t)) != null ? _a : tryParseMonthNameRange(t, ref)) != null ? _b : tryParseNumericSlashRange(t, ref)) != null ? _c : tryParseSingleIsoOrUs(t, ref)) != null ? _d : tryParseRelativeWeekPhrase(t, ref)) != null ? _e : tryChronoRange(t, ref);
 }
 
 function sanitizePhrase(s) {
@@ -6559,6 +7051,41 @@ async function resolveBookingTargetFromPhrase(phraseRaw, lastShops, supabaseUrl,
     return { kind: "ambiguous", shops: dbShops, phrase };
   }
   return { kind: "none", phrase };
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+function delayForAttempt(attemptIndex, baseDelayMs, jitterRatio) {
+  const exp = baseDelayMs * Math.pow(2, attemptIndex);
+  const jitter = exp * jitterRatio * (Math.random() * 2 - 1);
+  return Math.max(0, Math.round(exp + jitter));
+}
+async function runWithRetries(fn, options) {
+  const {
+    maxAttempts,
+    baseDelayMs,
+    jitterRatio = 0.2,
+    shouldSkipRetry,
+    onRetry
+  } = options;
+  let lastError;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (shouldSkipRetry == null ? void 0 : shouldSkipRetry(error)) {
+        throw error;
+      }
+      if (attempt >= maxAttempts) {
+        throw error;
+      }
+      onRetry == null ? void 0 : onRetry({ attempt, maxAttempts, error });
+      await sleep(delayForAttempt(attempt - 1, baseDelayMs, jitterRatio));
+    }
+  }
+  throw lastError;
 }
 
 const SHOP_INFO_PREFIX = "shop_info:";
@@ -6909,6 +7436,8 @@ const _lazy_YY5mu_ = () => import('../routes/api/booking/draft.post.mjs');
 const _lazy_SM6QX1 = () => import('../routes/api/booking/drafts/_id_.delete.mjs');
 const _lazy_XkUdlC = () => import('../routes/api/booking/drafts/_id_.get.mjs');
 const _lazy_jcB8Mw = () => import('../routes/api/booking/index.get.mjs');
+const _lazy_SpucAT = () => import('../routes/api/booking/index.get2.mjs');
+const _lazy_A84v5q = () => import('../routes/api/feedback.post.mjs');
 const _lazy_CtPe0M = () => import('../routes/api/geocode-shop.post.mjs');
 const _lazy_o23dZ7 = () => import('../routes/renderer.mjs').then(function (n) { return n.r; });
 
@@ -6919,6 +7448,8 @@ const handlers = [
   { route: '/api/booking/drafts/:id', handler: _lazy_SM6QX1, lazy: true, middleware: false, method: "delete" },
   { route: '/api/booking/drafts/:id', handler: _lazy_XkUdlC, lazy: true, middleware: false, method: "get" },
   { route: '/api/booking/drafts', handler: _lazy_jcB8Mw, lazy: true, middleware: false, method: "get" },
+  { route: '/api/booking/submissions', handler: _lazy_SpucAT, lazy: true, middleware: false, method: "get" },
+  { route: '/api/feedback', handler: _lazy_A84v5q, lazy: true, middleware: false, method: "post" },
   { route: '/api/geocode-shop', handler: _lazy_CtPe0M, lazy: true, middleware: false, method: "post" },
   { route: '/__nuxt_error', handler: _lazy_o23dZ7, lazy: true, middleware: false, method: undefined },
   { route: '/api/_nuxt_icon/:collection', handler: _FdR7bb, lazy: false, middleware: false, method: undefined },
@@ -7110,5 +7641,5 @@ function getCacheHeaders(url) {
   return {};
 }
 
-export { klona as $, profileDiverSelectableChipsFromPrefill as A, tryFastPath as B, mergeCollectedIntoBookingPayload as C, buildDiveShopQuery as D, createError$1 as E, getAuthUser as F, getBearerToken as G, createSupabaseClientForUser as H, getRouterParam as I, buildAssetsURL as J, getResponseStatusText as K, getResponseStatus as L, defineRenderHandler as M, publicAssetsURL as N, getQuery as O, destr as P, getRouteRules as Q, useNitroApp as R, serialize$1 as S, parseQuery as T, hasProtocol as U, isScriptProtocol as V, joinURL as W, withQuery as X, sanitizeStatusCode as Y, withTrailingSlash as Z, withoutTrailingSlash as _, tryShopInfoResponse as a, defuFn as a0, getContext as a1, $fetch$1 as a2, baseURL as a3, defu as a4, createHooks as a5, executeAsync as a6, isEqual as a7, toRouteMatcher as a8, createRouter$1 as a9, handler as aa, extractBookingTargetFallback as b, clarifyResponsePayload as c, defineEventHandler as d, extractReferredEntityPhrase as e, resolveBookingTargetFromPhrase as f, getNextBookingStep as g, handleForcedEntityClarify as h, getShopById as i, probeReferentPhrase as j, routeReferentFromProbe as k, getDiveSitesForShop as l, getRentalEquipmentForShop as m, getCoursesForShop as n, clampBookingPayloadToNextStep as o, parseEntityClarifyMessage as p, applyInferredCoursesToPayloadIfEligible as q, readBody as r, shopDisambiguationResponsePayload as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, tryParseTripDatesFromMessage as v, tryParseDiverFieldEditIntent as w, snapshotDiverField as x, clearDiverFieldOnCopy as y, buildDiverFieldEditPrompt as z };
+export { serialize$1 as $, snapshotDiverField as A, clearDiverFieldOnCopy as B, buildDiverFieldEditPrompt as C, profileDiverSelectableChipsFromPrefill as D, tryFastPath as E, mergeCollectedIntoBookingPayload as F, buildDiveShopQuery as G, createError$1 as H, getAuthUser as I, getBearerToken as J, createSupabaseClientForUser as K, getRouterParam as L, getHeader as M, readMultipartFormData as N, FEEDBACK_LIMITS as O, uploadBufferToLinear as P, buildLinearFeedbackDescription as Q, buildLinearFeedbackTitle as R, buildAssetsURL as S, getResponseStatusText as T, getResponseStatus as U, defineRenderHandler as V, publicAssetsURL as W, getQuery as X, destr as Y, getRouteRules as Z, useNitroApp as _, tryShopInfoResponse as a, parseQuery as a0, hasProtocol as a1, isScriptProtocol as a2, joinURL as a3, withQuery as a4, sanitizeStatusCode as a5, withTrailingSlash as a6, withoutTrailingSlash as a7, klona as a8, defuFn as a9, getContext as aa, $fetch$1 as ab, baseURL as ac, defu as ad, createHooks as ae, executeAsync as af, isEqual as ag, toRouteMatcher as ah, createRouter$1 as ai, handler as aj, runWithRetries as b, clarifyResponsePayload as c, defineEventHandler as d, extractReferredEntityPhrase as e, extractBookingTargetFallback as f, getNextBookingStep as g, handleForcedEntityClarify as h, resolveBookingTargetFromPhrase as i, getShopById as j, probeReferentPhrase as k, routeReferentFromProbe as l, getDiveSitesForShop as m, getRentalEquipmentForShop as n, getCoursesForShop as o, parseEntityClarifyMessage as p, clampBookingPayloadToNextStep as q, readBody as r, shopDisambiguationResponsePayload as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, applyInferredCoursesToPayloadIfEligible as v, applyParsedTripDatesToBookingPayload as w, tryParseTripDatesFromMessage as x, inclusiveTripDays as y, tryParseDiverFieldEditIntent as z };
 //# sourceMappingURL=nitro.mjs.map

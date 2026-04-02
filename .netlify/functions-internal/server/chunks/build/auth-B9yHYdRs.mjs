@@ -2,6 +2,7 @@ import { k as defineNuxtRouteMiddleware } from './server.mjs';
 import 'vue';
 import '../nitro/nitro.mjs';
 import '@supabase/supabase-js';
+import 'chrono-node';
 import 'node:http';
 import 'node:https';
 import 'node:events';

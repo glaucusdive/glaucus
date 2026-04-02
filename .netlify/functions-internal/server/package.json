@@ -36,6 +36,7 @@
     "@vueuse/core": "13.6.0",
     "@vueuse/shared": "13.6.0",
     "aria-hidden": "1.2.6",
+    "chrono-node": "2.9.0",
     "consola": "3.4.2",
     "debug": "4.4.1",
     "defu": "6.1.4",

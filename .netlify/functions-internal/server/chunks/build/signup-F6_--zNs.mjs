@@ -3,6 +3,7 @@ import { ssrRenderAttrs } from 'vue/server-renderer';
 import { n as navigateTo } from './server.mjs';
 import '../nitro/nitro.mjs';
 import '@supabase/supabase-js';
+import 'chrono-node';
 import 'node:http';
 import 'node:https';
 import 'node:events';

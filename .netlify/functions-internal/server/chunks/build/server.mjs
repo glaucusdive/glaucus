@@ -1,5 +1,5 @@
 import { defineComponent, shallowRef, h, resolveComponent, hasInjectionContext, inject, toRef, isRef, computed, toValue, getCurrentInstance, onServerPrefetch, mergeProps, unref, provide, cloneVNode, createElementBlock, ref, nextTick, defineAsyncComponent, useSSRContext, Suspense, Fragment, createApp, mergeModels, useModel, withCtx, renderSlot, createVNode, createBlock, createCommentVNode, openBlock, createTextVNode, toDisplayString, watch, resolveDynamicComponent, renderList, useId, shallowReactive, onErrorCaptured, reactive, effectScope, isReadonly, isShallow, isReactive, toRaw, useSlots, withModifiers, getCurrentScope, markRaw } from 'vue';
-import { S as serialize, T as parseQuery, E as createError$1, U as hasProtocol, V as isScriptProtocol, W as joinURL, X as withQuery, Y as sanitizeStatusCode, Z as withTrailingSlash, _ as withoutTrailingSlash, $ as klona, a0 as defuFn, a1 as getContext, a2 as $fetch$1, a3 as baseURL, a4 as defu, a5 as createHooks, a6 as executeAsync, a7 as isEqual, a8 as toRouteMatcher, a9 as createRouter$1 } from '../nitro/nitro.mjs';
+import { $ as serialize, a0 as parseQuery, H as createError$1, a1 as hasProtocol, a2 as isScriptProtocol, a3 as joinURL, a4 as withQuery, a5 as sanitizeStatusCode, a6 as withTrailingSlash, a7 as withoutTrailingSlash, a8 as klona, a9 as defuFn, aa as getContext, ab as $fetch$1, ac as baseURL, ad as defu, ae as createHooks, af as executeAsync, ag as isEqual, ah as toRouteMatcher, ai as createRouter$1 } from '../nitro/nitro.mjs';
 import { RouterView, createMemoryHistory, createRouter, START_LOCATION } from 'vue-router';
 import colors from 'tailwindcss/colors';
 import { Icon, getIcon, loadIcon as loadIcon$1, _api, addAPIProvider, setCustomIconsLoader } from '@iconify/vue';
@@ -11,6 +11,7 @@ import { getIconCSS } from '@iconify/utils/lib/css/icon';
 import { debounce } from 'perfect-debounce';
 import { u as useSeoMeta$1, a as useHead$1, h as headSymbol } from '../routes/renderer.mjs';
 import '@supabase/supabase-js';
+import 'chrono-node';
 import 'node:http';
 import 'node:https';
 import 'node:events';
@@ -484,12 +485,12 @@ const _routes = [
   {
     name: "index",
     path: "/",
-    component: () => import('./index-DahzzEwi.mjs')
+    component: () => import('./index-iVRVw8BU.mjs')
   },
   {
     name: "auth",
     path: "/auth",
-    component: () => import('./index-C1VVSn7x.mjs')
+    component: () => import('./index-CJKNJTeo.mjs')
   },
   {
     name: "auth-signup",
@@ -499,35 +500,35 @@ const _routes = [
   {
     name: "shops",
     path: "/shops",
-    component: () => import('./index-CrrJDu4p.mjs')
+    component: () => import('./index-CGAQlHbG.mjs')
   },
   {
     name: "shops-slug",
     path: "/shops/:slug()",
-    component: () => import('./_slug_-C14qaNFy.mjs')
+    component: () => import('./_slug_-r6bBycil.mjs')
   },
   {
     name: "profile",
     path: "/profile",
     meta: { "middleware": "auth" },
-    component: () => import('./index-BIMSsg9M.mjs')
+    component: () => import('./index-B-iqFRVg.mjs')
   },
   {
     name: "profile-drafts",
     path: "/profile/drafts",
     meta: { "middleware": "auth" },
-    component: () => import('./drafts-IOwdDEPB.mjs')
+    component: () => import('./drafts-CmxQ1Spk.mjs')
   },
   {
     name: "community",
     path: "/community",
-    component: () => import('./index-BIIYFNz7.mjs')
+    component: () => import('./index-Cw8IoF1u.mjs')
   },
   {
     name: "profile-defaults",
     path: "/profile/defaults",
     meta: { "middleware": "auth" },
-    component: () => import('./defaults-BcjQD1kM.mjs')
+    component: () => import('./defaults-BI7uhqkP.mjs')
   }
 ];
 const _wrapInTransition = (props, children) => {

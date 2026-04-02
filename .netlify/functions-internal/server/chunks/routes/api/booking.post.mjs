@@ -1,6 +1,7 @@
-import { d as defineEventHandler, r as readBody, E as createError, u as useRuntimeConfig, i as getShopById } from '../../nitro/nitro.mjs';
+import { d as defineEventHandler, r as readBody, H as createError, u as useRuntimeConfig, j as getShopById, b as runWithRetries, I as getAuthUser, J as getBearerToken, K as createSupabaseClientForUser } from '../../nitro/nitro.mjs';
 import { Resend } from 'resend';
 import '@supabase/supabase-js';
+import 'chrono-node';
 import 'node:http';
 import 'node:https';
 import 'node:events';
@@ -14,7 +15,11 @@ import 'consola';
 function buildDiveshopEmailBody(payload, shopName) {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
   const lines = [
-    `A dive trip booking request has been submitted via Glaucus.`,
+    `Hello ${shopName},`,
+    "",
+    "Glaucus Dive is an AI assistant for scuba divers looking for a fast and easy way to book dives. The divers below are interested in diving with you! We have compiled the divers' information and dive preferences below. Replying to this email will reply directly to our divers' inbox in Glaucus Dive. Please visit us at https://glaucusdive.com to see your business's profile, claim your business, make any changes, or reach out to us with any questions. Happy diving!",
+    "",
+    "DIVER(S) INFORMATION",
     "",
     "\u2014 Trip \u2014",
     `Dates: ${payload.startDate} to ${payload.endDate}`,
@@ -53,7 +58,14 @@ function buildDiveshopEmailBody(payload, shopName) {
     }
     lines.push("");
   }
-  lines.push("\u2014 Guest contact \u2014", `Name: ${payload.name}`, `Email: ${payload.email}`);
+  lines.push(
+    "\u2014 Guest contact \u2014",
+    `Name: ${payload.name}`,
+    `Email: ${payload.email}`,
+    "",
+    "Sincerely,",
+    "Glaucus Dive"
+  );
   return lines.join("\n");
 }
 function buildUserConfirmationBody(shopName, userEmail, shopEmail) {
@@ -65,7 +77,45 @@ function buildUserConfirmationBody(shopName, userEmail, shopEmail) {
     "If you don't hear back in a few days, reach out to them directly at " + shopEmail + "."
   ].join("\n");
 }
+async function logSubmissionIfAuthenticated(event, payload) {
+  const user = await getAuthUser(event);
+  if (!user) return;
+  const token = getBearerToken(event);
+  if (!token) return;
+  const config = useRuntimeConfig();
+  const client = createSupabaseClientForUser(
+    config.public.supabaseUrl,
+    config.public.supabaseKey,
+    token
+  );
+  const { error } = await client.from("booking_submissions").insert({
+    user_id: user.id,
+    shop_id: payload.shopId,
+    payload,
+    sent_at: (/* @__PURE__ */ new Date()).toISOString()
+  });
+  if (error) {
+    console.error("Failed to log booking submission:", error.message);
+  }
+}
+async function clearMatchingDraftIfAuthenticated(event, payload) {
+  const user = await getAuthUser(event);
+  if (!user) return;
+  const token = getBearerToken(event);
+  if (!token) return;
+  const config = useRuntimeConfig();
+  const client = createSupabaseClientForUser(
+    config.public.supabaseUrl,
+    config.public.supabaseKey,
+    token
+  );
+  const { error } = await client.from("booking_drafts").delete().eq("user_id", user.id).eq("shop_id", payload.shopId);
+  if (error) {
+    console.error("Failed to clear matching booking draft after send:", error.message);
+  }
+}
 const booking_post = defineEventHandler(async (event) => {
+  var _a;
   const body = await readBody(event);
   const shopId = (body == null ? void 0 : body.shopId) && String(body.shopId).trim();
   const name = (body == null ? void 0 : body.name) && String(body.name).trim();
@@ -98,9 +148,13 @@ const booking_post = defineEventHandler(async (event) => {
   const supabaseUrl = config.public.supabaseUrl;
   const supabaseKey = config.public.supabaseKey;
   const resendApiKey = config.resendApiKey;
-  const fromEmail = config.bookingFromEmail;
   if (!resendApiKey) {
     throw createError({ statusCode: 500, statusMessage: "Email is not configured (RESEND_API_KEY missing)" });
+  }
+  const rawFrom = config.bookingFromEmail;
+  const fromEmail = typeof rawFrom === "string" ? rawFrom.trim() : "";
+  if (!fromEmail) {
+    throw createError({ statusCode: 500, statusMessage: "Email is not configured (booking from address missing)" });
   }
   const shop = await getShopById(supabaseUrl, supabaseKey, shopId);
   if (!shop) {
@@ -109,9 +163,11 @@ const booking_post = defineEventHandler(async (event) => {
   if (!shop.email || !String(shop.email).trim()) {
     throw createError({ statusCode: 400, statusMessage: "This shop has no email on file." });
   }
+  const shopEmail = String(shop.email).trim();
   const resend = new Resend(resendApiKey);
   const shopName = shop.business_name || "Dive shop";
   const payload = {
+    shopId,
     name,
     email,
     startDate,
@@ -121,29 +177,69 @@ const booking_post = defineEventHandler(async (event) => {
     divers
   };
   const diveshopSubject = `Dive trip booking request from ${name} via Glaucus`;
-  const diveshopText = buildDiveshopEmailBody(payload);
-  const { data: toShop, error: errShop } = await resend.emails.send({
-    from: fromEmail,
-    to: [shop.email],
-    subject: diveshopSubject,
-    text: diveshopText
-  });
-  if (errShop) {
-    const msg = errShop.message || "Failed to send email to dive shop";
+  const diveshopText = buildDiveshopEmailBody(payload, shopName);
+  let toShop;
+  try {
+    toShop = await runWithRetries(
+      async () => {
+        const { data, error: errShop } = await resend.emails.send({
+          from: fromEmail,
+          to: [shopEmail],
+          subject: diveshopSubject,
+          text: diveshopText
+        });
+        if (errShop) {
+          throw Object.assign(new Error(errShop.message || "Failed to send email to dive shop"), {
+            resendMessage: errShop.message
+          });
+        }
+        return data;
+      },
+      {
+        maxAttempts: 4,
+        baseDelayMs: 400,
+        onRetry: ({ attempt, maxAttempts, error }) => {
+          console.warn(`[booking] shop email attempt ${attempt}/${maxAttempts} failed, retrying:`, error);
+        }
+      }
+    );
+  } catch (e) {
+    const msg = (e == null ? void 0 : e.resendMessage) || (e == null ? void 0 : e.message) || "Failed to send email to dive shop";
     throw createError({
       statusCode: 502,
       statusMessage: msg,
-      data: { message: msg, resendError: errShop.message }
+      data: { message: msg, resendError: (_a = e == null ? void 0 : e.resendMessage) != null ? _a : e == null ? void 0 : e.message }
     });
   }
+  await logSubmissionIfAuthenticated(event, payload);
+  await clearMatchingDraftIfAuthenticated(event, payload);
   const userSubject = `We've sent your booking request to ${shopName}`;
-  const userText = buildUserConfirmationBody(shopName, email, shop.email);
-  const { error: errUser } = await resend.emails.send({
-    from: fromEmail,
-    to: [email],
-    subject: userSubject,
-    text: userText
-  });
+  const userText = buildUserConfirmationBody(shopName, email, shopEmail);
+  let errUser = null;
+  try {
+    await runWithRetries(
+      async () => {
+        const { error } = await resend.emails.send({
+          from: fromEmail,
+          to: [email],
+          subject: userSubject,
+          text: userText
+        });
+        if (error) {
+          throw new Error(error.message || "Failed to send confirmation email");
+        }
+      },
+      {
+        maxAttempts: 4,
+        baseDelayMs: 400,
+        onRetry: ({ attempt, maxAttempts, error }) => {
+          console.warn(`[booking] user confirmation attempt ${attempt}/${maxAttempts} failed, retrying:`, error);
+        }
+      }
+    );
+  } catch (e) {
+    errUser = { message: e == null ? void 0 : e.message };
+  }
   if (errUser) {
     return {
       sent: true,

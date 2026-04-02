@@ -1,5 +1,6 @@
-import { d as defineEventHandler, F as getAuthUser, E as createError, G as getBearerToken, H as createSupabaseClientForUser, u as useRuntimeConfig } from '../../../nitro/nitro.mjs';
+import { d as defineEventHandler, I as getAuthUser, H as createError, J as getBearerToken, K as createSupabaseClientForUser, u as useRuntimeConfig, g as getNextBookingStep } from '../../../nitro/nitro.mjs';
 import '@supabase/supabase-js';
+import 'chrono-node';
 import 'node:http';
 import 'node:https';
 import 'node:events';
@@ -38,10 +39,14 @@ const index_get = defineEventHandler(async (event) => {
     }
   }
   const drafts = list.map((row) => {
-    var _a2;
+    var _a2, _b, _c, _d;
+    const payload = JSON.parse(JSON.stringify((_a2 = row.payload) != null ? _a2 : {}));
+    const nextStep = (_c = (_b = getNextBookingStep(payload)) == null ? void 0 : _b.step) != null ? _c : null;
     return {
       ...row,
-      shopName: (_a2 = shopNames.get(String(row.shop_id))) != null ? _a2 : null
+      shopName: (_d = shopNames.get(String(row.shop_id))) != null ? _d : null,
+      nextStep,
+      isReady: nextStep === "ready"
     };
   });
   return { drafts };
