@@ -255,10 +255,10 @@
           </div>
 
           <!-- Input area -->
-          <div class="flex items-stretch justify-center z-100 overflow-hidden">
+          <div class="flex items-stretch justify-center z-1 overflow-hidden">
             <div class="bg-transparent p-0.5 pt-0 backdrop-blur-sm 2xl:min-w-md max-w-4xl w-full rounded-full overflow-hidden">
               <div :class="[
-                'p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-hidden gradient-container z-0',
+                'p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-hidden gradient-container',
                 isLoading ? 'animate-ring-gradient !bg-[#02C8FF]' : ''
               ]">
                 <form class="w-full h-full bg-zinc-100 dark:bg-zinc-700 rounded-full p-1 z-10 overflow-hidden"

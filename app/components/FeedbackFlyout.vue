@@ -1,8 +1,8 @@
 <template>
-  <div ref="rootRef" class="relative w-full h-full">
+  <div ref="rootRef" class="relative z-0 w-full h-full">
     <button
       type="button"
-      class="w-full h-full flex items-center justify-center border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 rounded-full cursor-pointer text-zinc-900 dark:text-white"
+      class="relative z-[2101] w-full h-full flex items-center justify-center border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 rounded-full cursor-pointer text-zinc-900 dark:text-white bg-zinc-50 dark:bg-black"
       aria-label="Help and feedback"
       :aria-expanded="open"
       aria-haspopup="dialog"
@@ -13,7 +13,11 @@
 
     <div
       v-if="open"
-      class="absolute bottom-full left-0 mb-2 z-[60] w-[min(20rem,calc(100vw-1rem))] max-h-[min(32rem,calc(100dvh-6rem))] overflow-y-auto rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg flex flex-col"
+      class="z-[2000] flex flex-col overflow-y-auto overflow-x-hidden rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg
+        max-lg:fixed max-lg:left-2 max-lg:w-[min(24rem,calc(100vw-1rem))]
+        max-lg:bottom-[calc(0.5rem+3rem+0.5rem+env(safe-area-inset-bottom,0px))]
+        max-lg:max-h-[min(44rem,calc(100dvh-5.5rem-env(safe-area-inset-bottom,0px)))]
+        lg:absolute lg:bottom-full lg:left-0 lg:mb-2 lg:h-fit lg:w-[min(24rem,calc(100vw-1rem))] lg:max-h-[min(44rem,calc(100dvh-3rem))]"
       role="dialog"
       aria-labelledby="feedback-flyout-title"
       @click.stop
@@ -52,18 +56,20 @@
         </button>
       </div>
 
-      <form v-else class="flex flex-col gap-2.5 p-3" @submit.prevent="handleSubmit">
-        <fieldset class="flex flex-col gap-1">
+      <form v-else class="flex flex-col gap-4 p-2" @submit.prevent="handleSubmit">
+        <div class="flex flex-col gap-1">
           <legend class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400 px-0.5">Type</legend>
           <select
             id="feedback-kind"
             v-model="kind"
             class="rounded-md w-full p-2 text-sm bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-600 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-500"
           >
-            <option value="feature">Feature</option>
             <option value="bug">Bug</option>
+            <option value="feature">Feature</option>
           </select>
-        </fieldset>
+        </div>
+
+        <hr class="border-zinc-200 dark:border-zinc-800" />
 
         <div class="flex flex-col gap-1">
           <label for="feedback-name" class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">Name</label>
@@ -88,6 +94,16 @@
             autocomplete="email"
             class="rounded-md w-full p-2 text-sm bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-600 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-500"
           >
+        </div>
+
+        <hr class="border-zinc-200 dark:border-zinc-800" />
+
+        <div class="flex flex-col gap-1">
+          <label for="feedback-subject"
+            class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">Subject</label>
+          <input id="feedback-subject" v-model="subject" type="text" required minlength="3" maxlength="200"
+            placeholder="Short summary for the issue title"
+            class="rounded-md w-full p-2 text-sm bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-600 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-500">
         </div>
 
         <div class="flex flex-col gap-1">
@@ -131,13 +147,13 @@
 
         <p v-if="submitError" class="text-sm text-red-600 dark:text-red-400">{{ submitError }}</p>
 
-        <button
-          type="submit"
-          :disabled="submitting"
-          class="mt-1 border border-zinc-900 dark:border-zinc-100 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium py-2.5 px-3 rounded-md text-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {{ submitting ? 'Sending…' : 'Submit' }}
-        </button>
+        <div class="sticky bottom-0 w-full">
+          <button type="submit" :disabled="submitting"
+            class="mt-1 border border-zinc-900 dark:border-zinc-100 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium py-2.5 px-3 rounded-md text-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full">
+            {{ submitting ? 'Sending…' : 'Submit' }}
+          </button>
+        </div>
+        
       </form>
     </div>
   </div>
@@ -152,6 +168,7 @@ import { useAuth } from '~/composables/useAuth'
 const rootRef = ref(null)
 const open = ref(false)
 const kind = ref('bug')
+const subject = ref('')
 const name = ref('')
 const email = ref('')
 const message = ref('')
@@ -194,6 +211,7 @@ function close () {
 
 function resetAfterSuccess () {
   successInfo.value = null
+  subject.value = ''
   message.value = ''
   kind.value = 'bug'
   clearAttachment()
@@ -283,6 +301,7 @@ async function handleSubmit () {
     }
     const fd = new FormData()
     fd.append('kind', kind.value)
+    fd.append('subject', subject.value.trim())
     fd.append('name', name.value.trim())
     fd.append('email', email.value.trim())
     fd.append('message', message.value.trim())

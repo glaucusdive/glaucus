@@ -6,31 +6,29 @@ import {
 } from '../../server/utils/linearFeedback'
 
 describe('buildLinearFeedbackTitle', () => {
-  it('prefixes bug and uses message snippet when long enough', () => {
+  it('prefixes bug and uses subject as TLDR', () => {
     const title = buildLinearFeedbackTitle({
       kind: 'bug',
-      name: 'Ada',
-      message: 'The checkout button does nothing when I click it twice in a row'
+      subject: 'Checkout fails on double-click'
     })
-    expect(title.startsWith('[Bug]')).toBe(true)
+    expect(title).toBe('[Bug] Checkout fails on double-click')
     expect(title.length).toBeLessThanOrEqual(FEEDBACK_LIMITS.titleMax)
   })
 
   it('prefixes feature', () => {
     const title = buildLinearFeedbackTitle({
       kind: 'feature',
-      name: 'Bob',
-      message: 'Please add dark mode for the profile page settings area'
+      subject: 'Dark mode for profile'
     })
     expect(title.startsWith('[Feature]')).toBe(true)
+    expect(title).toContain('Dark mode')
   })
 
   it('caps at titleMax', () => {
     const long = 'x'.repeat(500)
     const title = buildLinearFeedbackTitle({
       kind: 'bug',
-      name: 'N',
-      message: long
+      subject: long
     })
     expect(title.length).toBeLessThanOrEqual(FEEDBACK_LIMITS.titleMax)
   })
@@ -40,6 +38,7 @@ describe('buildLinearFeedbackDescription', () => {
   it('includes structured fields and optional page', () => {
     const md = buildLinearFeedbackDescription({
       kind: 'feature',
+      subject: 'Better onboarding',
       name: 'Casey',
       email: 'casey@example.com',
       message: 'Love the app!',
@@ -47,6 +46,7 @@ describe('buildLinearFeedbackDescription', () => {
       submittedAtIso: '2026-04-02T12:00:00.000Z'
     })
     expect(md).toContain('**Type:** Feature')
+    expect(md).toContain('**Subject:** Better onboarding')
     expect(md).toContain('**Name:** Casey')
     expect(md).toContain('casey@example.com')
     expect(md).toContain('Love the app!')

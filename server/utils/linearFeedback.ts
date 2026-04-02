@@ -9,6 +9,8 @@ const TITLE_PREFIX: Record<FeedbackKind, string> = {
 
 export const FEEDBACK_LIMITS = {
   titleMax: 200,
+  subjectMax: 200,
+  subjectMin: 3,
   nameMax: 200,
   messageMax: 10_000,
   messageMin: 10,
@@ -21,17 +23,14 @@ function oneLineSnippet (text: string, maxLen: number): string {
   return `${line.slice(0, Math.max(0, maxLen - 1))}…`
 }
 
+/** Issue title: `[Bug]` / `[Feature]` + user subject (TLDR), capped for Linear. */
 export function buildLinearFeedbackTitle (params: {
   kind: FeedbackKind
-  name: string
-  message: string
+  subject: string
 }): string {
   const prefix = TITLE_PREFIX[params.kind]
   const budget = FEEDBACK_LIMITS.titleMax - prefix.length - 1
-  const fromMessage = oneLineSnippet(params.message, Math.max(20, budget - 3))
-  const fromName = oneLineSnippet(params.name, Math.min(40, budget))
-  let body = fromMessage.length >= 20 ? fromMessage : fromName || fromMessage
-  body = oneLineSnippet(body, budget)
+  const body = oneLineSnippet(params.subject, Math.max(1, budget))
   const title = `${prefix} ${body}`.trim()
   return title.length > FEEDBACK_LIMITS.titleMax
     ? `${title.slice(0, FEEDBACK_LIMITS.titleMax - 1)}…`
@@ -40,6 +39,7 @@ export function buildLinearFeedbackTitle (params: {
 
 export function buildLinearFeedbackDescription (params: {
   kind: FeedbackKind
+  subject: string
   name: string
   email: string
   message: string
@@ -48,6 +48,8 @@ export function buildLinearFeedbackDescription (params: {
 }): string {
   const lines = [
     `**Type:** ${params.kind === 'bug' ? 'Bug' : 'Feature'}`,
+    '',
+    `**Subject:** ${params.subject.trim()}`,
     '',
     `**Name:** ${params.name}`,
     `**Email:** ${params.email}`,
