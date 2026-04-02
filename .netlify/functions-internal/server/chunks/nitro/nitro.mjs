@@ -4388,7 +4388,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "8bd57422-4dfa-40ab-a6c1-6391fd6144da",
+    "buildId": "5fdefc6a-c018-477e-b544-6978a789af6a",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -6507,6 +6507,8 @@ const TITLE_PREFIX = {
 };
 const FEEDBACK_LIMITS = {
   titleMax: 200,
+  subjectMax: 200,
+  subjectMin: 3,
   nameMax: 200,
   messageMax: 1e4,
   messageMin: 10,
@@ -6520,10 +6522,7 @@ function oneLineSnippet(text, maxLen) {
 function buildLinearFeedbackTitle(params) {
   const prefix = TITLE_PREFIX[params.kind];
   const budget = FEEDBACK_LIMITS.titleMax - prefix.length - 1;
-  const fromMessage = oneLineSnippet(params.message, Math.max(20, budget - 3));
-  const fromName = oneLineSnippet(params.name, Math.min(40, budget));
-  let body = fromMessage.length >= 20 ? fromMessage : fromName || fromMessage;
-  body = oneLineSnippet(body, budget);
+  const body = oneLineSnippet(params.subject, Math.max(1, budget));
   const title = `${prefix} ${body}`.trim();
   return title.length > FEEDBACK_LIMITS.titleMax ? `${title.slice(0, FEEDBACK_LIMITS.titleMax - 1)}\u2026` : title;
 }
@@ -6531,6 +6530,8 @@ function buildLinearFeedbackDescription(params) {
   var _a;
   const lines = [
     `**Type:** ${params.kind === "bug" ? "Bug" : "Feature"}`,
+    "",
+    `**Subject:** ${params.subject.trim()}`,
     "",
     `**Name:** ${params.name}`,
     `**Email:** ${params.email}`,
@@ -6546,9 +6547,57 @@ function buildLinearFeedbackDescription(params) {
   return lines.join("\n");
 }
 
+const LINEAR_GRAPHQL_URL$1 = "https://api.linear.app/graphql";
+const TEAM_LABELS_QUERY = `
+query FeedbackTeamLabels($teamId: String!) {
+  team(id: $teamId) {
+    labels(first: 250) {
+      nodes {
+        id
+        name
+      }
+    }
+  }
+}
+`;
+async function linearGraphQLJson(apiKey, query, variables) {
+  const res = await fetch(LINEAR_GRAPHQL_URL$1, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: apiKey
+    },
+    body: JSON.stringify({ query, variables })
+  });
+  const json = await res.json().catch(() => null);
+  return { ok: res.ok, json };
+}
+const LABEL_NAME = {
+  bug: "Bug",
+  feature: "Feature"
+};
+async function resolveFeedbackLabelId(apiKey, teamId, kind) {
+  var _a, _b, _c, _d, _e;
+  const want = LABEL_NAME[kind].toLowerCase();
+  const { ok, json } = await linearGraphQLJson(apiKey, TEAM_LABELS_QUERY, { teamId });
+  if (!ok || !json) {
+    return null;
+  }
+  if (Array.isArray(json.errors) && json.errors.length > 0) {
+    console.warn("Linear team labels query failed:", json.errors.map((e) => e == null ? void 0 : e.message).join("; "));
+    return null;
+  }
+  const nodes = (_d = (_c = (_b = (_a = json.data) == null ? void 0 : _a.team) == null ? void 0 : _b.labels) == null ? void 0 : _c.nodes) != null ? _d : [];
+  const hit = nodes.find((n) => {
+    var _a2;
+    return ((_a2 = n.name) != null ? _a2 : "").trim().toLowerCase() === want;
+  });
+  return (_e = hit == null ? void 0 : hit.id) != null ? _e : null;
+}
+
 const LINEAR_GRAPHQL_URL = "https://api.linear.app/graphql";
 const FILE_UPLOAD_MUTATION = `
-mutation FileUpload($contentType: String!, $filename: String!, $size: Float!) {
+mutation FileUpload($contentType: String!, $filename: String!, $size: Int!) {
   fileUpload(contentType: $contentType, filename: $filename, size: $size) {
     success
     uploadFile {
@@ -6581,7 +6630,7 @@ async function uploadBufferToLinear(params) {
   const { ok, json } = await linearGraphQL(apiKey, FILE_UPLOAD_MUTATION, {
     contentType,
     filename: filename.slice(0, 255),
-    size
+    size: Math.min(Math.floor(size), 2147483647)
   });
   if (!ok || !json) {
     throw new Error("Linear fileUpload: HTTP failure");
@@ -7641,5 +7690,5 @@ function getCacheHeaders(url) {
   return {};
 }
 
-export { serialize$1 as $, snapshotDiverField as A, clearDiverFieldOnCopy as B, buildDiverFieldEditPrompt as C, profileDiverSelectableChipsFromPrefill as D, tryFastPath as E, mergeCollectedIntoBookingPayload as F, buildDiveShopQuery as G, createError$1 as H, getAuthUser as I, getBearerToken as J, createSupabaseClientForUser as K, getRouterParam as L, getHeader as M, readMultipartFormData as N, FEEDBACK_LIMITS as O, uploadBufferToLinear as P, buildLinearFeedbackDescription as Q, buildLinearFeedbackTitle as R, buildAssetsURL as S, getResponseStatusText as T, getResponseStatus as U, defineRenderHandler as V, publicAssetsURL as W, getQuery as X, destr as Y, getRouteRules as Z, useNitroApp as _, tryShopInfoResponse as a, parseQuery as a0, hasProtocol as a1, isScriptProtocol as a2, joinURL as a3, withQuery as a4, sanitizeStatusCode as a5, withTrailingSlash as a6, withoutTrailingSlash as a7, klona as a8, defuFn as a9, getContext as aa, $fetch$1 as ab, baseURL as ac, defu as ad, createHooks as ae, executeAsync as af, isEqual as ag, toRouteMatcher as ah, createRouter$1 as ai, handler as aj, runWithRetries as b, clarifyResponsePayload as c, defineEventHandler as d, extractReferredEntityPhrase as e, extractBookingTargetFallback as f, getNextBookingStep as g, handleForcedEntityClarify as h, resolveBookingTargetFromPhrase as i, getShopById as j, probeReferentPhrase as k, routeReferentFromProbe as l, getDiveSitesForShop as m, getRentalEquipmentForShop as n, getCoursesForShop as o, parseEntityClarifyMessage as p, clampBookingPayloadToNextStep as q, readBody as r, shopDisambiguationResponsePayload as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, applyInferredCoursesToPayloadIfEligible as v, applyParsedTripDatesToBookingPayload as w, tryParseTripDatesFromMessage as x, inclusiveTripDays as y, tryParseDiverFieldEditIntent as z };
+export { useNitroApp as $, snapshotDiverField as A, clearDiverFieldOnCopy as B, buildDiverFieldEditPrompt as C, profileDiverSelectableChipsFromPrefill as D, tryFastPath as E, mergeCollectedIntoBookingPayload as F, buildDiveShopQuery as G, createError$1 as H, getAuthUser as I, getBearerToken as J, createSupabaseClientForUser as K, getRouterParam as L, getHeader as M, readMultipartFormData as N, FEEDBACK_LIMITS as O, uploadBufferToLinear as P, buildLinearFeedbackDescription as Q, buildLinearFeedbackTitle as R, resolveFeedbackLabelId as S, buildAssetsURL as T, getResponseStatusText as U, getResponseStatus as V, defineRenderHandler as W, publicAssetsURL as X, getQuery as Y, destr as Z, getRouteRules as _, tryShopInfoResponse as a, serialize$1 as a0, parseQuery as a1, hasProtocol as a2, isScriptProtocol as a3, joinURL as a4, withQuery as a5, sanitizeStatusCode as a6, withTrailingSlash as a7, withoutTrailingSlash as a8, klona as a9, defuFn as aa, getContext as ab, $fetch$1 as ac, baseURL as ad, defu as ae, createHooks as af, executeAsync as ag, isEqual as ah, toRouteMatcher as ai, createRouter$1 as aj, handler as ak, runWithRetries as b, clarifyResponsePayload as c, defineEventHandler as d, extractReferredEntityPhrase as e, extractBookingTargetFallback as f, getNextBookingStep as g, handleForcedEntityClarify as h, resolveBookingTargetFromPhrase as i, getShopById as j, probeReferentPhrase as k, routeReferentFromProbe as l, getDiveSitesForShop as m, getRentalEquipmentForShop as n, getCoursesForShop as o, parseEntityClarifyMessage as p, clampBookingPayloadToNextStep as q, readBody as r, shopDisambiguationResponsePayload as s, tryFastPathUnitOnly as t, useRuntimeConfig as u, applyInferredCoursesToPayloadIfEligible as v, applyParsedTripDatesToBookingPayload as w, tryParseTripDatesFromMessage as x, inclusiveTripDays as y, tryParseDiverFieldEditIntent as z };
 //# sourceMappingURL=nitro.mjs.map

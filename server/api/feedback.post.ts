@@ -6,6 +6,10 @@
  * - NUXT_LINEAR_API_KEY — Linear personal API key (read + write; file upload uses write)
  * - NUXT_LINEAR_TEAM_ID — team UUID
  * - NUXT_LINEAR_FEEDBACK_STATE_ID — workflow state UUID for “User Feedback”
+ *
+ * Labels: before creating an issue, the handler loads the team’s labels and attaches
+ * the one named “Bug” or “Feature” (case-insensitive) to match the selected type.
+ * If those labels are missing or renamed, the issue is still created without labels.
  */
 
 import type { H3Event } from 'h3'
@@ -17,6 +21,7 @@ import {
   type FeedbackKind
 } from '../utils/linearFeedback'
 import { uploadBufferToLinear } from '../utils/linearUpload'
+import { resolveFeedbackLabelId } from '../utils/linearTeamLabels'
 
 const LINEAR_GRAPHQL_URL = 'https://api.linear.app/graphql'
 
@@ -45,6 +50,7 @@ const ALLOWED_IMAGE_TYPES = new Set([
 
 interface FeedbackBody {
   kind?: string
+  subject?: string
   name?: string
   email?: string
   message?: string
@@ -103,6 +109,7 @@ export default defineEventHandler(async (event: H3Event) => {
 
   const contentTypeHeader = getHeader(event, 'content-type') || ''
   let kindRaw = ''
+  let subject = ''
   let name = ''
   let email = ''
   let message = ''
@@ -125,6 +132,7 @@ export default defineEventHandler(async (event: H3Event) => {
       } else if (p.data) {
         const text = p.data.toString('utf8').trim()
         if (field === 'kind') kindRaw = text
+        else if (field === 'subject') subject = text
         else if (field === 'name') name = text
         else if (field === 'email') email = text
         else if (field === 'message') message = text
@@ -134,6 +142,7 @@ export default defineEventHandler(async (event: H3Event) => {
   } else {
     const raw = await readBody<FeedbackBody>(event).catch(() => ({}))
     kindRaw = raw?.kind != null ? String(raw.kind).trim().toLowerCase() : ''
+    subject = raw?.subject != null ? String(raw.subject).trim() : ''
     name = raw?.name != null ? String(raw.name).trim() : ''
     email = raw?.email != null ? String(raw.email).trim() : ''
     message = raw?.message != null ? String(raw.message).trim() : ''
@@ -147,6 +156,14 @@ export default defineEventHandler(async (event: H3Event) => {
     throw createError({ statusCode: 400, statusMessage: 'kind must be "feature" or "bug"' })
   }
   const kind = kindRaw
+
+  subject = subject.trim().slice(0, FEEDBACK_LIMITS.subjectMax)
+  if (subject.length < FEEDBACK_LIMITS.subjectMin) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Subject must be at least ${FEEDBACK_LIMITS.subjectMin} characters`
+    })
+  }
 
   name = name.trim().slice(0, FEEDBACK_LIMITS.nameMax)
   if (!name) {
@@ -207,6 +224,7 @@ export default defineEventHandler(async (event: H3Event) => {
 
   let description = buildLinearFeedbackDescription({
     kind,
+    subject,
     name,
     email,
     message,
@@ -217,15 +235,22 @@ export default defineEventHandler(async (event: H3Event) => {
     description = appendAttachmentToDescription(description, assetUrl, fileFilename, fileMime)
   }
 
-  const title = buildLinearFeedbackTitle({ kind, name, message })
+  const title = buildLinearFeedbackTitle({ kind, subject })
+
+  const labelId = await resolveFeedbackLabelId(apiKey, teamId, kind)
+
+  const issueInput: Record<string, unknown> = {
+    teamId,
+    title,
+    description,
+    stateId
+  }
+  if (labelId) {
+    issueInput.labelIds = [labelId]
+  }
 
   const { ok, json } = await linearGraphQL(apiKey, ISSUE_CREATE_MUTATION, {
-    input: {
-      teamId,
-      title,
-      description,
-      stateId
-    }
+    input: issueInput
   })
 
   if (!ok || !json) {

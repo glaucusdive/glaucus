@@ -1,4 +1,4 @@
-import { d as defineEventHandler, u as useRuntimeConfig, H as createError, M as getHeader, N as readMultipartFormData, r as readBody, O as FEEDBACK_LIMITS, P as uploadBufferToLinear, Q as buildLinearFeedbackDescription, R as buildLinearFeedbackTitle } from '../../nitro/nitro.mjs';
+import { d as defineEventHandler, u as useRuntimeConfig, H as createError, M as getHeader, N as readMultipartFormData, r as readBody, O as FEEDBACK_LIMITS, P as uploadBufferToLinear, Q as buildLinearFeedbackDescription, R as buildLinearFeedbackTitle, S as resolveFeedbackLabelId } from '../../nitro/nitro.mjs';
 import '@supabase/supabase-js';
 import 'chrono-node';
 import 'node:http';
@@ -77,6 +77,7 @@ const feedback_post = defineEventHandler(async (event) => {
   }
   const contentTypeHeader = getHeader(event, "content-type") || "";
   let kindRaw = "";
+  let subject = "";
   let name = "";
   let email = "";
   let message = "";
@@ -98,6 +99,7 @@ const feedback_post = defineEventHandler(async (event) => {
       } else if (p.data) {
         const text = p.data.toString("utf8").trim();
         if (field === "kind") kindRaw = text;
+        else if (field === "subject") subject = text;
         else if (field === "name") name = text;
         else if (field === "email") email = text;
         else if (field === "message") message = text;
@@ -107,6 +109,7 @@ const feedback_post = defineEventHandler(async (event) => {
   } else {
     const raw = await readBody(event).catch(() => ({}));
     kindRaw = (raw == null ? void 0 : raw.kind) != null ? String(raw.kind).trim().toLowerCase() : "";
+    subject = (raw == null ? void 0 : raw.subject) != null ? String(raw.subject).trim() : "";
     name = (raw == null ? void 0 : raw.name) != null ? String(raw.name).trim() : "";
     email = (raw == null ? void 0 : raw.email) != null ? String(raw.email).trim() : "";
     message = (raw == null ? void 0 : raw.message) != null ? String(raw.message).trim() : "";
@@ -119,6 +122,13 @@ const feedback_post = defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'kind must be "feature" or "bug"' });
   }
   const kind = kindRaw;
+  subject = subject.trim().slice(0, FEEDBACK_LIMITS.subjectMax);
+  if (subject.length < FEEDBACK_LIMITS.subjectMin) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Subject must be at least ${FEEDBACK_LIMITS.subjectMin} characters`
+    });
+  }
   name = name.trim().slice(0, FEEDBACK_LIMITS.nameMax);
   if (!name) {
     throw createError({ statusCode: 400, statusMessage: "name is required" });
@@ -173,6 +183,7 @@ const feedback_post = defineEventHandler(async (event) => {
   }
   let description = buildLinearFeedbackDescription({
     kind,
+    subject,
     name,
     email,
     message,
@@ -182,14 +193,19 @@ const feedback_post = defineEventHandler(async (event) => {
   if (assetUrl && fileFilename && fileMime) {
     description = appendAttachmentToDescription(description, assetUrl, fileFilename, fileMime);
   }
-  const title = buildLinearFeedbackTitle({ kind, name, message });
+  const title = buildLinearFeedbackTitle({ kind, subject });
+  const labelId = await resolveFeedbackLabelId(apiKey, teamId, kind);
+  const issueInput = {
+    teamId,
+    title,
+    description,
+    stateId
+  };
+  if (labelId) {
+    issueInput.labelIds = [labelId];
+  }
   const { ok, json } = await linearGraphQL(apiKey, ISSUE_CREATE_MUTATION, {
-    input: {
-      teamId,
-      title,
-      description,
-      stateId
-    }
+    input: issueInput
   });
   if (!ok || !json) {
     console.error("Linear feedback: HTTP or parse failure", { ok });
