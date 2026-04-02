@@ -37,16 +37,13 @@
       </div>
 
       <div v-if="successInfo" class="p-3 text-sm text-zinc-700 dark:text-zinc-300 flex flex-col gap-2">
-        <p>Thanks — tracked as <strong class="text-zinc-900 dark:text-white">{{ successInfo.identifier }}</strong>.</p>
-        <a
-          v-if="successInfo.url"
-          :href="successInfo.url"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="text-blue-600 dark:text-blue-400 underline font-medium"
-        >
-          Open in Linear
-        </a>
+        <p>
+          Thanks — we've received your feedback and saved it as
+          <strong class="text-zinc-900 dark:text-white">{{ successInfo.identifier }}</strong>.
+        </p>
+        <p class="text-zinc-600 dark:text-zinc-400 leading-snug">
+          Our team will review it and aim to get back to you within 48 hours.
+        </p>
         <button
           type="button"
           class="mt-1 text-left text-sm font-medium text-zinc-900 dark:text-white underline cursor-pointer"
@@ -313,7 +310,7 @@ async function handleSubmit () {
       method: 'POST',
       body: fd
     })
-    successInfo.value = { identifier: res.identifier, url: res.url }
+    successInfo.value = { identifier: res.identifier }
   } catch (err) {
     const msg = err?.data?.statusMessage || err?.data?.message || err?.message || 'Something went wrong.'
     submitError.value = typeof msg === 'string' ? msg : 'Something went wrong.'
