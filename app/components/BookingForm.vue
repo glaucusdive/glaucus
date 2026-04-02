@@ -604,10 +604,11 @@ const handleSubmit = async () => {
   submitLoading.value = true
   try {
     const payload = buildPayload()
+    const token = accessToken.value || (await client.auth.getSession()).data.session?.access_token || null
     const res = await $fetch('/api/booking', {
       method: 'POST',
       body: payload,
-      ...(accessToken.value ? { headers: { Authorization: `Bearer ${accessToken.value}` } } : {})
+      ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {})
     }) as BookingApiResponse
     if (res?.sent) {
       clearStoredBookingDraftId()

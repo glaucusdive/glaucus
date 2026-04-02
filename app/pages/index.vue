@@ -1088,6 +1088,7 @@ const sendMessage = async (messageText, displayText) => {
       // When user said "send" (or similar) and we got bookingReady with payload, submit the booking now
       if (response.bookingReady && storedPayload?.shopId && hasValidDivers && userSaidConfirmSend) {
         try {
+          const token = accessToken.value || (await client.auth.getSession()).data.session?.access_token || null
           const body = {
             shopId: storedPayload.shopId,
             name: storedPayload.name ?? '',
@@ -1110,7 +1111,7 @@ const sendMessage = async (messageText, displayText) => {
           const bookRes = await $fetch('/api/booking', {
             method: 'POST',
             body,
-            ...(accessToken.value ? { headers: { Authorization: `Bearer ${accessToken.value}` } } : {})
+            ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {})
           })
           if (bookRes?.sent) {
             messages.value.push({

@@ -111,6 +111,34 @@ async function logSubmissionIfAuthenticated (
   }
 }
 
+async function clearMatchingDraftIfAuthenticated (
+  event: H3Event,
+  payload: BookingBody
+) {
+  const user = await getAuthUser(event)
+  if (!user) return
+
+  const token = getBearerToken(event)
+  if (!token) return
+
+  const config = useRuntimeConfig()
+  const client = createSupabaseClientForUser(
+    config.public.supabaseUrl,
+    config.public.supabaseKey,
+    token
+  )
+
+  const { error } = await client
+    .from('booking_drafts')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('shop_id', payload.shopId)
+
+  if (error) {
+    console.error('Failed to clear matching booking draft after send:', error.message)
+  }
+}
+
 export default defineEventHandler(async (event) => {
   const body = await readBody<BookingBody>(event)
 
@@ -194,6 +222,7 @@ export default defineEventHandler(async (event) => {
   }
 
   await logSubmissionIfAuthenticated(event, payload)
+  await clearMatchingDraftIfAuthenticated(event, payload)
 
   const userSubject = `We've sent your booking request to ${shopName}`
   const userText = buildUserConfirmationBody(shopName, email, shop.email)
