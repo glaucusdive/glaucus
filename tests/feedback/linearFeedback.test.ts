@@ -24,12 +24,12 @@ describe('buildLinearFeedbackTitle', () => {
     expect(title).toContain('Dark mode')
   })
 
-  it('prefixes correction', () => {
+  it('prefixes dive shop inquiry', () => {
     const title = buildLinearFeedbackTitle({
       kind: 'correction',
       subject: 'Wrong phone on listing'
     })
-    expect(title).toBe('[Correction] Wrong phone on listing')
+    expect(title).toBe('[Dive shop inquiry] Wrong phone on listing')
   })
 
   it('caps at titleMax', () => {
@@ -62,7 +62,7 @@ describe('buildLinearFeedbackDescription', () => {
     expect(md).toContain('Submitted from Glaucus')
   })
 
-  it('uses dive shop correction type label', () => {
+  it('uses Dive Shop Inquiries type label', () => {
     const md = buildLinearFeedbackDescription({
       kind: 'correction',
       subject: 'Hours wrong',
@@ -71,6 +71,6 @@ describe('buildLinearFeedbackDescription', () => {
       message: 'We close at 6pm not 5.',
       submittedAtIso: '2026-04-02T12:00:00.000Z'
     })
-    expect(md).toContain('**Type:** Dive shop correction')
+    expect(md).toContain('**Type:** Dive Shop Inquiries')
   })
 })

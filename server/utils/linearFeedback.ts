@@ -5,7 +5,7 @@ export type FeedbackKind = 'feature' | 'bug' | 'correction'
 const TITLE_PREFIX: Record<FeedbackKind, string> = {
   bug: '[Bug]',
   feature: '[Feature]',
-  correction: '[Correction]'
+  correction: '[Dive shop inquiry]'
 }
 
 /** Human-readable type line in the issue body (Linear / triage). */
@@ -16,7 +16,7 @@ export function feedbackTypeLabel (kind: FeedbackKind): string {
     case 'feature':
       return 'Feature'
     case 'correction':
-      return 'Dive shop correction'
+      return 'Dive Shop Inquiries'
   }
 }
 
@@ -36,7 +36,7 @@ function oneLineSnippet (text: string, maxLen: number): string {
   return `${line.slice(0, Math.max(0, maxLen - 1))}…`
 }
 
-/** Issue title: `[Bug]` / `[Feature]` / `[Correction]` + subject (TLDR), capped for Linear. */
+/** Issue title: `[Bug]` / `[Feature]` / `[Dive shop inquiry]` + subject (TLDR), capped for Linear. */
 export function buildLinearFeedbackTitle (params: {
   kind: FeedbackKind
   subject: string

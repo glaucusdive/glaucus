@@ -8,7 +8,7 @@
  * - NUXT_LINEAR_FEEDBACK_STATE_ID — workflow state UUID for “User Feedback”
  *
  * Labels: loads team labels and attaches “Bug”, “Feature”, and/or “Correction” (case-insensitive).
- * Dive shop correction: applies Correction + Bug labels when those names exist on the team.
+ * Dive Shop Inquiries (`correction`): applies Correction + Bug labels when those names exist on the team.
  * If labels are missing, the issue is still created without them.
  */
 
