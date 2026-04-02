@@ -238,7 +238,7 @@ const props = defineProps({
   }
 })
 
-const { closeDrawer, updateDraftIdIfOpen } = useDrawer()
+const { closeDrawer, updateDraftIdIfOpen, updateLiveBookingPayloadIfOpen } = useDrawer()
 const { client } = useSupabase()
 const { isSignedIn, accessToken, user } = useAuth()
 
@@ -374,6 +374,7 @@ onMounted(async () => {
   }
   await applyProfilePrefill()
   applyInitialPayload()
+  updateLiveBookingPayloadIfOpen(buildPayload())
   fetchCoursesForShop()
   fetchDiveSitesForShop()
 })
@@ -386,6 +387,7 @@ function currentDraftSnapshot (): string {
 watch(
   formData,
   () => {
+    updateLiveBookingPayloadIfOpen(buildPayload())
     if (!draftSaved.value || lastSavedDraftSnapshot.value == null) return
     if (currentDraftSnapshot() !== lastSavedDraftSnapshot.value) {
       draftSaved.value = false
@@ -545,6 +547,7 @@ function buildPayload () {
     email: formData.value.email,
     startDate: formData.value.startDate,
     endDate: formData.value.endDate,
+    numberOfDivers: Number(formData.value.numberOfDivers || 0),
     desiredCourses: formData.value.desiredCourses || [],
     desiredDiveSites: formData.value.desiredDiveSites || [],
     divers: formData.value.divers.map(d => ({
@@ -601,7 +604,11 @@ const handleSubmit = async () => {
   submitLoading.value = true
   try {
     const payload = buildPayload()
-    const res = await $fetch('/api/booking', { method: 'POST', body: payload }) as BookingApiResponse
+    const res = await $fetch('/api/booking', {
+      method: 'POST',
+      body: payload,
+      ...(accessToken.value ? { headers: { Authorization: `Bearer ${accessToken.value}` } } : {})
+    }) as BookingApiResponse
     if (res?.sent) {
       clearStoredBookingDraftId()
       if (isSignedIn.value && user.value?.id && Array.isArray(payload.divers) && payload.divers.length > 0) {

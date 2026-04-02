@@ -6,6 +6,7 @@ export type DrawerContentType = 'booking-form' | 'review-form' | null
 interface DrawerData {
   shopId?: string
   shopName?: string
+  liveBookingPayload?: Record<string, unknown>
   [key: string]: any
 }
 
@@ -54,6 +55,13 @@ export const useDrawer = () => {
     }
   }
 
+  /** Keep a live copy of what's currently typed in the booking form (separate from initial payload). */
+  const updateLiveBookingPayloadIfOpen = (payload: Record<string, unknown> | undefined) => {
+    if (contentType.value === 'booking-form' && payload && isOpen.value) {
+      drawerData.value = { ...drawerData.value, liveBookingPayload: payload }
+    }
+  }
+
   /** After first "Save as draft" in this drawer session, keep draft id so repeat saves update the same row */
   const updateDraftIdIfOpen = (draftId: string) => {
     if (contentType.value === 'booking-form' && isOpen.value) {
@@ -83,6 +91,7 @@ export const useDrawer = () => {
     openDrawer,
     closeDrawer,
     updateBookingPayloadIfOpen,
+    updateLiveBookingPayloadIfOpen,
     updateDraftIdIfOpen,
     isMobileMenuOpen,
     shouldAnimateMenu,
