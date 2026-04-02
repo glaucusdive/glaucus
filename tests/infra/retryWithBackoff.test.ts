@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { runWithRetries } from './retryWithBackoff'
+import { runWithRetries } from '../../server/utils/retryWithBackoff'
 
 describe('runWithRetries', () => {
   it('returns on first success', async () => {
