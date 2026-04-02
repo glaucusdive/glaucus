@@ -17,6 +17,8 @@ export interface BookingPayloadLocal {
   email?: string
   startDate?: string
   endDate?: string
+  /** When trip length >21 days, server stores proposed range until user confirms. */
+  pendingLongTripConfirmation?: { startDate: string; endDate: string }
   numberOfDivers?: number
   divers?: BookingDiverLocal[]
   desiredCourses?: string[]
@@ -131,6 +133,7 @@ export function clampBookingPayloadToNextStep (
     if (next.step === 'name') {
       if (p.startDate !== undefined) delete p.startDate
       if (p.endDate !== undefined) delete p.endDate
+      if (p.pendingLongTripConfirmation !== undefined) delete p.pendingLongTripConfirmation
       if (p.desiredCourses !== undefined) delete p.desiredCourses
       if (p.coursesSelectionComplete !== undefined) delete p.coursesSelectionComplete
       if (p.desiredDiveSites !== undefined) delete p.desiredDiveSites
@@ -141,6 +144,7 @@ export function clampBookingPayloadToNextStep (
     if (next.step === 'email') {
       if (p.startDate !== undefined) delete p.startDate
       if (p.endDate !== undefined) delete p.endDate
+      if (p.pendingLongTripConfirmation !== undefined) delete p.pendingLongTripConfirmation
       if (p.desiredCourses !== undefined) delete p.desiredCourses
       if (p.coursesSelectionComplete !== undefined) delete p.coursesSelectionComplete
       if (p.desiredDiveSites !== undefined) delete p.desiredDiveSites
