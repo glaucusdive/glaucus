@@ -90,6 +90,49 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.61.1** — Update feedback terminology and improve placeholder text (2026-04-02).
+- **0.61.0** — Enhance feedback handling and extend feedback types (2026-04-02).
+- **0.60.3** — Update FeedbackFlyout component to enhance user feedback experience (2026-04-02).
+- **0.60.2** — Update FeedbackFlyout positioning for improved responsiveness (2026-04-02).
+- **0.60.1** — Update nitro.json date, refactor main.mjs exports, and clean up build files (2026-04-02).
+- **0.60.0** — Add Linear API integration and update dependencies (2026-04-02).
+- **0.59.1** — Refactor test configuration and remove obsolete test files (2026-04-02).
+- **0.59.0** — Add chrono-node for date parsing and enhance booking logic (2026-04-02).
+- **0.58.0** — Implement retry logic for AI search and booking email notifications (2026-04-02).
+- **0.57.1** — Enhance booking email notification content (2026-04-02).
+- **0.57.0** — Enhance chat session management and improve user experience (2026-04-02).
+- **0.56.0** — Enhance booking submission process and draft management (2026-04-02).
+- **0.55.1** — Refactor drafts management and enhance booking submission logging (2026-04-02).
+- **0.55.0** — Update package.json and package-lock.json for Vitest integration and enhance booking flow logic (2026-03-30).
+- **0.54.5** — Update nitro.json date and refactor diver name entry logic (2026-03-28).
+- **0.54.4** — Update nitro.json date, refactor AI search response, and enhance chat bubble animations (2026-03-28).
+- **0.54.3** — Update nitro.json date, refactor client manifest, and enhance AI search response structure (2026-03-28).
+- **0.54.2** — Update nitro.json date, remove obsolete build files, and refactor client manifest (2026-03-28).
+- **0.54.1** — Refactor DiveShopDetail component to streamline tab structure and enhance user experience (2026-03-28).
+- **0.54.0** — Enhance booking draft management and improve user experience (2026-03-22).
+- **0.53.2** — Update nitro.json date, refactor booking logic, and enhance diver field management (2026-03-22).
+- **0.53.1** — Update nitro.json date, refactor build files, and enhance booking flow logic (2026-03-22).
+- **0.53.0** — Enhance booking flow with course selection management (2026-03-22).
+- **0.52.0** — Enhance booking flow integrity and update AI search functionality (2026-03-22).
+- **0.51.6** — Update nitro.json date and remove obsolete build files (2026-03-22).
+- **0.51.5** — Update profile layout for improved scrolling behavior (2026-03-22).
+- **0.51.4** — Update nitro.json date and remove obsolete build files (2026-03-22).
+- **0.51.3** — Update AI agent structure and remove obsolete build files (2026-03-22).
+- **0.51.2** — Update AI agent structure and remove obsolete build files (2026-03-22).
+- **0.51.1** — Update nitro.json date and remove obsolete build files (2026-03-21).
+- **0.51.0** — Enhance sign-up process with email redirection and refactor client usage (2026-03-21).
+- **0.50.0** — Enhance authentication feedback and handle duplicate sign-up scenarios (2026-03-21).
+- **0.49.3** — Update nitro.json date and remove obsolete build files (2026-03-21).
+- **0.49.2** — Refactor booking confirmation messages for clarity (2026-03-21).
+- **0.49.1** — Update nitro.json date and remove obsolete build files (2026-03-21).
+- **0.49.0** — Enhance AI agent structure and update profile diver defaults (2026-03-21).
+- **0.48.7** — Update nitro.json date and remove obsolete build files (2026-03-21).
+- **0.48.6** — Enhance AI agent structure and update nitro configuration (2026-03-21).
+- **0.48.5** — Update nitro.json date and remove obsolete build files (2026-03-21).
+- **0.48.4** — Update nitro.json date and remove obsolete build files (2026-03-21).
+- **0.48.3** — Update nitro.json date and remove obsolete build files (2026-03-21).
+- **0.48.2** — Update version to 0.48.0 and modify nitro.json date (2026-03-20).
+- **0.48.1** — Update version to 0.48.0 and add versioning guidelines to README.md (2026-03-17).
 - **0.48.0** — Enhance selectable options and rental gear interaction in index.vue (2026-03-17).
 - **0.47.1** — Refactor button styles in index.vue for improved UI consistency (2026-03-17).
 - **0.47.0** — Enhance booking form functionality and diver management (2026-03-17).
