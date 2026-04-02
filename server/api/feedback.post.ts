@@ -7,9 +7,9 @@
  * - NUXT_LINEAR_TEAM_ID — team UUID
  * - NUXT_LINEAR_FEEDBACK_STATE_ID — workflow state UUID for “User Feedback”
  *
- * Labels: before creating an issue, the handler loads the team’s labels and attaches
- * the one named “Bug” or “Feature” (case-insensitive) to match the selected type.
- * If those labels are missing or renamed, the issue is still created without labels.
+ * Labels: loads team labels and attaches “Bug”, “Feature”, and/or “Correction” (case-insensitive).
+ * Dive shop correction: applies Correction + Bug labels when those names exist on the team.
+ * If labels are missing, the issue is still created without them.
  */
 
 import type { H3Event } from 'h3'
@@ -21,7 +21,7 @@ import {
   type FeedbackKind
 } from '../utils/linearFeedback'
 import { uploadBufferToLinear } from '../utils/linearUpload'
-import { resolveFeedbackLabelId } from '../utils/linearTeamLabels'
+import { resolveFeedbackLabelIds } from '../utils/linearTeamLabels'
 
 const LINEAR_GRAPHQL_URL = 'https://api.linear.app/graphql'
 
@@ -60,7 +60,7 @@ interface FeedbackBody {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function isFeedbackKind (v: string): v is FeedbackKind {
-  return v === 'feature' || v === 'bug'
+  return v === 'feature' || v === 'bug' || v === 'correction'
 }
 
 async function linearGraphQL (apiKey: string, query: string, variables: Record<string, unknown>) {
@@ -153,7 +153,10 @@ export default defineEventHandler(async (event: H3Event) => {
 
   kindRaw = kindRaw.trim().toLowerCase()
   if (!isFeedbackKind(kindRaw)) {
-    throw createError({ statusCode: 400, statusMessage: 'kind must be "feature" or "bug"' })
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'kind must be "feature", "bug", or "correction"'
+    })
   }
   const kind = kindRaw
 
@@ -237,7 +240,7 @@ export default defineEventHandler(async (event: H3Event) => {
 
   const title = buildLinearFeedbackTitle({ kind, subject })
 
-  const labelId = await resolveFeedbackLabelId(apiKey, teamId, kind)
+  const labelIds = await resolveFeedbackLabelIds(apiKey, teamId, kind)
 
   const issueInput: Record<string, unknown> = {
     teamId,
@@ -245,8 +248,8 @@ export default defineEventHandler(async (event: H3Event) => {
     description,
     stateId
   }
-  if (labelId) {
-    issueInput.labelIds = [labelId]
+  if (labelIds.length > 0) {
+    issueInput.labelIds = labelIds
   }
 
   const { ok, json } = await linearGraphQL(apiKey, ISSUE_CREATE_MUTATION, {

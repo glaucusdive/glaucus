@@ -63,6 +63,7 @@
           >
             <option value="bug">Bug</option>
             <option value="feature">Feature</option>
+            <option value="correction">Dive shop correction</option>
           </select>
         </div>
 
