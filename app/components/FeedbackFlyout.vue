@@ -14,7 +14,7 @@
     <div
       v-if="open"
       class="z-[2000] flex flex-col overflow-y-auto overflow-x-hidden rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg
-        max-lg:fixed max-lg:left-2 max-lg:w-[min(24rem,calc(100vw-1rem))]
+        max-lg:fixed max-lg:right-2 max-lg:left-auto max-lg:w-[min(24rem,calc(100vw-1rem))]
         max-lg:bottom-[calc(0.5rem+3rem+0.5rem+env(safe-area-inset-bottom,0px))]
         max-lg:max-h-[min(44rem,calc(100dvh-5.5rem-env(safe-area-inset-bottom,0px)))]
         lg:absolute lg:bottom-full lg:left-0 lg:mb-2 lg:h-fit lg:w-[min(24rem,calc(100vw-1rem))] lg:max-h-[min(44rem,calc(100dvh-3rem))]"
