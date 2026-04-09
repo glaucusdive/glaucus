@@ -11,8 +11,15 @@
   - booking step progression guard checks (no skipped canonical steps in covered payload snapshots)
 - [x] Add a dedicated npm script for running evals and wire CI to execute tests on pushes/PRs.
 - [x] Update `README.md` with exact commands and KPI interpretation guidance.
-- [ ] Run tests locally and capture outcomes.
+- [x] Run tests locally and capture outcomes.
 
 ## Review
 
-- Pending.
+- Implemented offline booking-agent eval suite with 20-40 seeded utterances and KPI threshold gates.
+- Added deterministic UI option gating helpers and updated orchestrator usage for booking intent + chips.
+- Wired CI workflow to run full tests plus booking regression/eval suite.
+- Added README instructions for local commands, KPI targets, and production completion-rate tracking.
+- Local verification:
+  - `npm run test:evals` ✅
+  - `npm run test:booking-regression` ✅
+  - `npm test` ✅

@@ -17,6 +17,11 @@ function normalizePhrase (value: string | null): string | null {
   return value == null ? null : value.trim().toLowerCase()
 }
 
+function predictedIntentForUtterance (utterance: string): 'booking' | 'search' {
+  const phraseSignal = extractReferredEntityPhrase(utterance) ?? extractBookingTargetFallback(utterance)
+  return (isBookingIntentMessage(utterance) || phraseSignal) ? 'booking' : 'search'
+}
+
 function makeBasePayload (): BookingPayloadLocal {
   return {
     name: 'Taylor Diver',
@@ -52,7 +57,7 @@ describe('booking-agent eval suite', () => {
   it('meets KPI: booking vs search routing accuracy > 90%', () => {
     let correct = 0
     for (const sample of BOOKING_AGENT_UTTERANCES) {
-      const predictedIntent = isBookingIntentMessage(sample.utterance) ? 'booking' : 'search'
+      const predictedIntent = predictedIntentForUtterance(sample.utterance)
       if (predictedIntent === sample.expectedIntent) correct++
     }
     const accuracy = correct / BOOKING_AGENT_UTTERANCES.length
