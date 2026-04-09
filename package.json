@@ -9,7 +9,9 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:evals": "vitest run tests/evals/**/*.test.ts",
+    "test:booking-regression": "vitest run tests/booking/**/*.test.ts tests/evals/**/*.test.ts"
   },
   "dependencies": {
     "@nuxt/ui": "^3.3.0",
