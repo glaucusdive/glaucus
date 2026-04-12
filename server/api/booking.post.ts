@@ -1,5 +1,9 @@
 import { Resend } from 'resend'
 import type { H3Event } from 'h3'
+import {
+  BOOKING_EMAIL_TEST_MODE,
+  isBookingEmailAllowedInTestMode
+} from '../../shared/bookingEmailTestMode'
 import { getShopById } from '../utils/resolveShop'
 import { createSupabaseClientForUser, getAuthUser, getBearerToken } from '../utils/getAuthUser'
 import { runWithRetries } from '../utils/retryWithBackoff'
@@ -210,6 +214,19 @@ export default defineEventHandler(async (event) => {
   }
 
   const shopEmail = String(shop.email).trim()
+
+  if (BOOKING_EMAIL_TEST_MODE && !isBookingEmailAllowedInTestMode(shop.business_name)) {
+    throw createError({
+      statusCode: 403,
+      statusMessage:
+        'Booking email test mode is on: only Dive Porter and Dive Shash can receive shop emails. Turn off BOOKING_EMAIL_TEST_MODE in shared/bookingEmailTestMode.ts (or restart after changing it).',
+      data: {
+        code: 'BOOKING_EMAIL_TEST_MODE_BLOCKED',
+        message:
+          'Test mode blocks sending to this dive shop. Use Dive Porter or Dive Shash, or disable test mode in shared/bookingEmailTestMode.ts.'
+      }
+    })
+  }
 
   const resend = new Resend(resendApiKey)
   const shopName = shop.business_name || 'Dive shop'
