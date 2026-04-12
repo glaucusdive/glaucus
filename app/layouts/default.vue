@@ -1,5 +1,8 @@
 <template>
-  <div class="h-dvh w-dvw overflow-hidden">
+  <div
+    class="h-dvh w-dvw overflow-hidden"
+    :class="BOOKING_EMAIL_TEST_MODE ? 'shadow-[inset_0_0_0_2px_rgb(245_158_11)]' : ''"
+  >
     <div class="h-full w-full lg:flex lg:flex-row">
       <!-- Backdrop for mobile menu -->
       <Transition @enter="onBackdropEnter" @leave="onBackdropLeave" :css="false">
@@ -10,7 +13,7 @@
       <!-- Sidebar - Always visible on desktop, conditional on mobile -->
       <Transition v-if="isMobileMenuOpen || isDesktop" @enter="onMobileMenuEnter" @leave="onMobileMenuLeave" @before-enter="onBeforeMenuEnter" :css="false">
         <div
-          class="w-full lg:w-56 h-full shrink-0 bg-zinc-50 dark:bg-black flex flex-col justify-between p-2 absolute lg:relative z-50">
+          class="w-full lg:w-56 h-full shrink-0 flex flex-col justify-between p-2 absolute lg:relative z-50">
           <div>
             <div class="h-fit flex flex-row justify-between items-center p-2 lg:p-4">
               <NuxtLink to="/" @click="handleCloseMobileMenu" class="w-[120px] h-auto flex flex-row items-center justify-center gap-2">
@@ -145,6 +148,7 @@
 </template>
 
 <script setup>
+import { BOOKING_EMAIL_TEST_MODE } from '#shared/bookingEmailTestMode'
 import gsap from 'gsap'
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { X, Sun, Moon, FilePlus, CircleUser, LogIn, LogOut, CircleHelp } from 'lucide-vue-next'
