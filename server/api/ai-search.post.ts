@@ -5,6 +5,7 @@ import { getDiveSitesForShop } from '../utils/getDiveSitesForShop'
 import { getCoursesForShop } from '../utils/getCoursesForShop'
 import { getRentalEquipmentForShop } from '../utils/getRentalEquipmentForShop'
 import { clampBookingPayloadToNextStep, getNextBookingStep, tryFastPath, tryFastPathUnitOnly, profileDiverSelectableChipsFromPrefill, type BookingPayloadLocal, type NextStepResult } from '../utils/bookingFastPath'
+import { canImmediateSendBookingReply } from '../utils/bookingSendIntentGate'
 import { inclusiveTripDays, tryParseTripDatesFromMessage } from '../utils/parseTripDates'
 import { applyParsedTripDatesToBookingPayload } from '../utils/bookingApplyParsedTripDates'
 import { mergeCollectedIntoBookingPayload } from '../utils/mergeBookingCollected'
@@ -862,10 +863,17 @@ export default defineEventHandler(async (event) => {
           const sendIntent = isConfirmSendMessage(msgTrim)
           const sendAnywayIntent = isSendAnywayMessage(msgTrim)
           const finishTasksIntent = isFinishRemainingTasksMessage(msgTrim)
+          const lastAssistantForSendGate = history?.filter(m => m.role === 'assistant').pop()?.content ?? ''
+          const canImmediateSendBooking = canImmediateSendBookingReply({
+            sendIntent,
+            sendAnywayIntent,
+            nextStep: nextStepBeforeInput,
+            lastAssistantContent: lastAssistantForSendGate
+          })
 
-          // Explicit send intents should send immediately.
+          // Explicit send intents: only short-circuit when canonical step is ready (or user said send anyway).
           if (sendIntent || sendAnywayIntent || finishTasksIntent) {
-            if (sendIntent || sendAnywayIntent) {
+            if ((sendIntent || sendAnywayIntent) && canImmediateSendBooking) {
               const p = { ...payloadForSendCheck, shopId: resolvedShop.id }
               return {
                 success: true,
