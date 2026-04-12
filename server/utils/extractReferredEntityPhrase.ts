@@ -1,3 +1,66 @@
+/** Trailing tokens that are discourse / filler, not part of a shop or place name. */
+const REFERENT_TAIL_SINGLE = new Set([
+  'instead', 'though', 'tho', 'however', 'please', 'thanks', 'actually', 'really',
+  'maybe', 'probably', 'also', 'too', 'still', 'now', 'today', 'tonight', 'tomorrow',
+  'rather', 'anyway', 'ok', 'okay', 'alright'
+])
+
+const REFERENT_TAIL_MULTI: string[][] = [
+  ['thank', 'you'],
+  ['thanks', 'again']
+]
+
+function stripTokenEdgePunctuation (token: string): string {
+  return token.replace(/^['"]+/g, '').replace(/[.,;:!?'"]+$/g, '')
+}
+
+/**
+ * Removes trailing discourse words (e.g. "instead", "thank you") from a referent fragment.
+ * Used after regex capture so "dive porter instead" → "dive porter".
+ */
+export function stripTrailingReferentNoise (phrase: string): string {
+  let s = phrase.trim()
+  if (!s) return s
+
+  let changed = true
+  while (changed && s.length >= 2) {
+    changed = false
+    const parts = s.split(/\s+/).filter(Boolean)
+    if (parts.length === 0) break
+
+    for (const tail of REFERENT_TAIL_MULTI) {
+      if (parts.length < tail.length) continue
+      const slice = parts.slice(-tail.length)
+      const ok = slice.every((p, i) => stripTokenEdgePunctuation(p).toLowerCase() === tail[i])
+      if (ok) {
+        s = parts.slice(0, -tail.length).join(' ').trim()
+        changed = true
+        break
+      }
+    }
+    if (changed) continue
+
+    const lastRaw = parts[parts.length - 1]!
+    const last = stripTokenEdgePunctuation(lastRaw).toLowerCase()
+    if (REFERENT_TAIL_SINGLE.has(last)) {
+      s = parts.slice(0, -1).join(' ').trim()
+      changed = true
+    }
+  }
+  return s
+}
+
+/**
+ * Trim, drop leading "the ", strip trailing discourse — for extracted or pending clarify phrases.
+ */
+export function cleanReferentPhraseForProbe (phrase: string): string {
+  let s = phrase.trim()
+  if (!s) return s
+  s = s.replace(/^the\s+/i, '').trim()
+  s = stripTrailingReferentNoise(s)
+  return s.trim()
+}
+
 /**
  * Extract a user-mentioned referent (shop / place / site name) from common phrasing.
  * Used by the orchestrator before DB probes — not by the LLM.
@@ -29,10 +92,7 @@ export function extractReferredEntityPhrase (message: string): string | null {
 }
 
 function normalizePhrase (raw: string): string | null {
-  let s = raw.trim()
-  if (!s) return null
-  // Drop leading "the "
-  s = s.replace(/^the\s+/i, '').trim()
+  const s = cleanReferentPhraseForProbe(raw)
   if (s.length < 2) return null
   return s
 }
