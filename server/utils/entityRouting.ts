@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { buildDiveShopQuery, diveshopLocaleOrConditions, type SearchFilters } from './buildDiveShopQuery'
+import { cleanReferentPhraseForProbe } from './extractReferredEntityPhrase'
 import type { EntityClarifyKind } from './entityClarify'
 import { entityClarifySelectableOptions } from './entityClarify'
 import type { ResolvedShop } from './resolveShop'
@@ -260,8 +261,10 @@ export async function handleForcedEntityClarify (
   | { kind: 'clarify', phrase: string }
   | { kind: 'browse' }
 > {
-  const phrase = sanitizeIlike(phraseRaw)
-  if (!phrase) return { kind: 'clarify', phrase: phraseRaw }
+  const sanitized = sanitizeIlike(phraseRaw)
+  if (!sanitized) return { kind: 'clarify', phrase: phraseRaw }
+  const phrase = cleanReferentPhraseForProbe(sanitized)
+  if (!phrase || phrase.length < 2) return { kind: 'clarify', phrase: phraseRaw }
 
   if (kind === 'browse') {
     return { kind: 'browse' }
