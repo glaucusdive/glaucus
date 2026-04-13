@@ -79,6 +79,8 @@ When the referent is **ambiguous** (multiple entity categories match) or **unkno
 
 One user message → one handler response. **Stopping conditions:** `BOOKING_READY` + user confirm to send; search results returned; or clarification chips shown (next turn applies forced kind + phrase).
 
+**Pre-send review and signup (orchestrator):** When `getNextBookingStep` is `ready`, the server must not return `bookingReady: true` until the user has passed **pre-send review** (`preSendReviewAck` on the booking payload). Review and final send use structured chips with stable tokens `booking_presend:confirm_send`, `booking_presend:open_form`, `booking_presend:skip_signup`, `booking_presend:create_account` (see `shared/bookingPreSendTokens.ts` and `server/utils/bookingPreSend.ts`). Optional **before-send** account prompt is gated by `NUXT_PUBLIC_BOOKING_SIGNUP_TIMING` (`before_send` \| `after_send` \| `off`); guests are detected via `Authorization: Bearer` on `/api/ai-search` and `getAuthUser`. Any orchestrator path that would previously return `bookingReady: true` should go through `resolvePreSendWhenPayloadReady`; clearing booking fields for edits clears `preSendReviewAck` / `preSendSignupSkipped` so the user reviews again.
+
 **Booking field order (orchestrator):** after trip dates, optional **courses** (when the shop lists courses in Supabase, chips via `courseOptions`; if none listed, the step is skipped with `desiredCourses: []`), then optional **dive sites** (same pattern with `diveSiteOptions`), then diver count and per-diver details.
 
 ### Booking flow integrity (avoid skipping steps)

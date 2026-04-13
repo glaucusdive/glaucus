@@ -335,9 +335,17 @@ import { useSupabase } from '~/composables/useSupabase'
 import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst } from '~/utils/mergeProfileDefaultDivers'
 import { getLatestBookingPayloadFromMessages, bookingPayloadHasNamedDiver } from '~/utils/chatBookingPayload'
 import { initSignedInChatsFromRemote, chatRemoteHydrateTick } from '~/composables/userChatsRemote'
+import {
+  BOOKING_PRESEND_CONFIRM_SEND,
+  BOOKING_PRESEND_CREATE_ACCOUNT,
+  BOOKING_PRESEND_OPEN_FORM,
+  BOOKING_RESUME_SESSION_KEY
+} from '~~/shared/bookingPreSendTokens'
 
 // Get route to check for initial query
 const route = useRoute()
+const router = useRouter()
+const runtimeConfig = useRuntimeConfig()
 const { isSignedIn, accessToken, user } = useAuth()
 const { client } = useSupabase()
 /** Profile snapshot for agent prefill (name, email, defaultDiver); set when signed in. */
@@ -802,6 +810,15 @@ function applyPendingDraftResumeFromProfile () {
 
 // Restore cache or run initial query
 onMounted(async () => {
+  if (import.meta.client && tryRestoreBookingSessionAfterAuth()) {
+    isRestoringCache.value = false
+    notifyChatSidebarUpdated()
+    await nextTick()
+    requestAnimationFrame(() => {
+      setTimeout(() => finishChatIndexBoot(), 300)
+    })
+    return
+  }
   if (import.meta.client && sessionStorage.getItem(FORCE_NEW_CHAT_KEY) === '1') {
     sessionStorage.removeItem(FORCE_NEW_CHAT_KEY)
     sessionStorage.removeItem(PENDING_DRAFT_RESUME_KEY)
@@ -1004,12 +1021,94 @@ function getPendingEntityClarifyPhraseForOutgoing (outgoingMessage) {
   return undefined
 }
 
+function openBookingFormDrawerFromPreSend () {
+  const shop = bookingShopForDrawer.value
+  if (!shop) return
+  armShopDetailCloseGuard()
+  nextTick(() => {
+    selectedShopId.value = shop.id
+    mobileDetailShopId.value = shop.id
+    openDrawer('booking-form', {
+      shopId: shop.id,
+      shopName: shop.name,
+      bookingPayload: lastBookingPayload.value ?? undefined
+    })
+  })
+}
+
+function persistBookingResumeSnapshot () {
+  if (import.meta.server) return
+  try {
+    const snap = {
+      v: 1,
+      messages: JSON.parse(JSON.stringify(messages.value)),
+      selectedShopId: selectedShopId.value,
+      mobileDetailShopId: mobileDetailShopId.value,
+      pendingBookingPayload: pendingBookingPayload.value
+        ? JSON.parse(JSON.stringify(pendingBookingPayload.value))
+        : null
+    }
+    sessionStorage.setItem(BOOKING_RESUME_SESSION_KEY, JSON.stringify(snap))
+  } catch (e) {
+    console.warn('[booking resume] persist failed', e)
+  }
+}
+
+function stripBookingResumeQuery () {
+  const q = { ...route.query }
+  delete q.bookingResume
+  void router.replace({ path: route.path, query: q })
+}
+
+/** Restore chat after returning from /auth with ?bookingResume=1 */
+function tryRestoreBookingSessionAfterAuth () {
+  if (import.meta.server || route.query.bookingResume !== '1') return false
+  stripBookingResumeQuery()
+  const raw = sessionStorage.getItem(BOOKING_RESUME_SESSION_KEY)
+  if (!raw) return false
+  try {
+    const snap = JSON.parse(raw)
+    if (!snap?.v || !Array.isArray(snap.messages)) return false
+    sessionStorage.removeItem(BOOKING_RESUME_SESSION_KEY)
+    messages.value = snap.messages
+    if (snap.selectedShopId) selectedShopId.value = snap.selectedShopId
+    if (snap.mobileDetailShopId != null) mobileDetailShopId.value = snap.mobileDetailShopId
+    pendingBookingPayload.value = snap.pendingBookingPayload ?? null
+    const p = getLatestBookingPayloadFromMessages(messages.value)
+    const lastBookingAssist = [...messages.value].reverse().find(m => m.role === 'assistant' && m.intent === 'booking' && m.shopName)
+    const sid = selectedShopId.value || p?.shopId || lastBookingAssist?.shopId
+    const shopName = lastBookingAssist?.shopName || 'Dive shop'
+    if (sid && p) {
+      messages.value.push({
+        role: 'assistant',
+        content: 'Welcome back — you\'re signed in. Tap Send booking request to email the dive shop.',
+        shops: [],
+        totalResults: 0,
+        hasMoreResults: false,
+        intent: 'booking',
+        bookingReady: true,
+        payload: { ...p, shopId: sid, preSendReviewAck: true, preSendSignupSkipped: true },
+        shopId: sid,
+        shopName,
+        selectableOptions: [{ label: 'Send booking request', value: BOOKING_PRESEND_CONFIRM_SEND }]
+      })
+    }
+    persistCache()
+    return true
+  } catch (e) {
+    console.warn('[booking resume] restore failed', e)
+    return false
+  }
+}
+
 // Send message to AI. Optional displayText: show this in the chat bubble while sending messageText to the API (e.g. chip label vs value).
 const sendMessage = async (messageText, displayText) => {
   const message = messageText ?? userInput.value.trim()
   
   if (!message) return
-  
+
+  const rawTrim = String(message).trim()
+
   // Cancel any in-progress request
   if (abortController.value) {
     abortController.value.abort()
@@ -1018,6 +1117,26 @@ const sendMessage = async (messageText, displayText) => {
   }
 
   const textToShow = displayText ?? message
+
+  if (rawTrim === BOOKING_PRESEND_OPEN_FORM) {
+    messages.value.push({ role: 'user', content: textToShow })
+    userInput.value = ''
+    await scrollToBottom()
+    openBookingFormDrawerFromPreSend()
+    persistCache()
+    return
+  }
+
+  if (rawTrim === BOOKING_PRESEND_CREATE_ACCOUNT) {
+    messages.value.push({ role: 'user', content: textToShow })
+    userInput.value = ''
+    await scrollToBottom()
+    persistBookingResumeSnapshot()
+    const redirect = encodeURIComponent('/?bookingResume=1')
+    await navigateTo({ path: '/auth/signup', query: { signup: '1', redirect } })
+    persistCache()
+    return
+  }
 
   // Add user message to chat (show label in bubble when provided, e.g. "Load next 5" instead of "Show more")
   messages.value.push({
@@ -1082,6 +1201,10 @@ const sendMessage = async (messageText, displayText) => {
     const maxAiAttempts = 3
     const baseAiRetryMs = 350
     let response = null
+    const aiHeaders = {}
+    const bearer =
+      accessToken.value || (await client.auth.getSession()).data.session?.access_token || null
+    if (bearer) aiHeaders.Authorization = `Bearer ${bearer}`
     for (let attempt = 1; attempt <= maxAiAttempts; attempt++) {
       if (currentAbortController.signal.aborted) {
         return
@@ -1090,7 +1213,8 @@ const sendMessage = async (messageText, displayText) => {
         response = await $fetch('/api/ai-search', {
           method: 'POST',
           signal: currentAbortController.signal,
-          body: aiSearchBody
+          body: aiSearchBody,
+          ...(Object.keys(aiHeaders).length ? { headers: aiHeaders } : {})
         })
       } catch (fetchErr) {
         if (fetchErr?.name === 'AbortError' || currentAbortController.signal.aborted) {
@@ -1158,7 +1282,9 @@ const sendMessage = async (messageText, displayText) => {
 
       const storedPayload = response.bookingPayload ?? response.payload
       const trimmedMessage = String(message).trim()
-      const userSaidConfirmSend = /^(yes|yeah|yep|ok|okay|sure|send|submit|confirm|go ahead|do it|please send|ready)$/i.test(trimmedMessage) ||
+      const structuredConfirmSend = trimmedMessage === BOOKING_PRESEND_CONFIRM_SEND
+      const userSaidConfirmSend = structuredConfirmSend ||
+        /^(yes|yeah|yep|ok|okay|sure|send|submit|confirm|go ahead|do it|please send|ready)$/i.test(trimmedMessage) ||
         /^(send|submit)\s+(booking\s+)?(request)?$/i.test(trimmedMessage) ||
         /^(just\s+)?send(?:\s+it)?$/i.test(trimmedMessage) ||
         /^(send anyway|still send|send it anyway|yes send anyway|confirm send anyway)$/i.test(trimmedMessage)
@@ -1206,6 +1332,20 @@ const sendMessage = async (messageText, displayText) => {
               shopName: response.shopName
             })
             void syncProfileAfterChatBookingSent(body)
+            if (runtimeConfig.public.bookingSignupTiming === 'after_send' && !isSignedIn.value) {
+              messages.value.push({
+                role: 'assistant',
+                content: 'Want to save your divers for next time? Create a free account — it only takes a minute.',
+                shops: [],
+                totalResults: 0,
+                hasMoreResults: false,
+                intent: response.intent,
+                bookingReady: false,
+                selectableOptions: [
+                  { label: 'Create account', value: BOOKING_PRESEND_CREATE_ACCOUNT }
+                ]
+              })
+            }
             return
           }
         } catch (bookErr) {

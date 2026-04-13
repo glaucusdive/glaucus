@@ -1,4 +1,13 @@
 import { defineEventHandler, readBody } from 'h3'
+import { getAuthUser } from '../utils/getAuthUser'
+import {
+  applyPreSendTokenToPayload,
+  clearBookingPreSendFlags,
+  lastAssistantWasPreSendReview,
+  parseBookingPreSendToken,
+  resolvePreSendWhenPayloadReady,
+  type BookingSignupTiming
+} from '../utils/bookingPreSend'
 import { buildDiveShopQuery, type SearchFilters } from '../utils/buildDiveShopQuery'
 import { getShopById } from '../utils/resolveShop'
 import { getDiveSitesForShop } from '../utils/getDiveSitesForShop'
@@ -217,6 +226,10 @@ export interface BookingPayload {
   desiredCourses?: string[]
   coursesSelectionComplete?: boolean
   desiredDiveSites?: string[]
+  /** Chat state only — not sent to /api/booking. */
+  preSendReviewAck?: boolean
+  /** Guest skipped before-send signup (not sent to /api/booking). */
+  preSendSignupSkipped?: boolean
 }
 
 function isConfirmSendMessage (msg: string): boolean {
@@ -234,6 +247,11 @@ function isSendAnywayMessage (msg: string): boolean {
 function isFinishRemainingTasksMessage (msg: string): boolean {
   const t = msg.trim()
   return /^(finish|finish tasks|finish remaining tasks|complete (the )?(form|tasks)|i('| a)?ll finish|let'?s finish)$/i.test(t)
+}
+
+function parseBookingSignupTimingFromConfig (raw: unknown): BookingSignupTiming {
+  if (raw === 'before_send' || raw === 'after_send' || raw === 'off') return raw
+  return 'off'
 }
 
 function listIncompleteBookingTasks (
@@ -491,6 +509,8 @@ The JSON must have this shape (use empty string "" for missing optional fields, 
 
 Do not output BOOKING_READY until every required field is present. If the user corrects something, update and continue.
 
+The app shows a mandatory review (and optional account prompt) on the server before any booking email is sent — do not say the request was already sent until the user completes those steps.
+
 After every reply you must output the current collected state so we can pre-fill the form. IMPORTANT: always write your full conversational reply first (ask the next question or confirm — e.g. "Thanks, got the gear. What's Diver 2's full name?"). Then on a new line, output only:
 COLLECTED: {"name":"...","email":"...","startDate":"...","endDate":"...","numberOfDivers":1,"divers":[...],"desiredCourses":[...],"coursesSelectionComplete":true,"desiredDiveSites":[...]}
 Never put COLLECTED in the middle of your reply — your message to the user must come first, then COLLECTED on its own line. Include every field you have collected so far (use empty string or [] for not yet collected). Use the exact same JSON shape as BOOKING_READY. Always proceed to the next empty field question (e.g. after dates ask for courses; after courses ask for dive sites; after dive sites ask for number of divers; after gear for last diver, output BOOKING_READY).`
@@ -544,6 +564,8 @@ export default defineEventHandler(async (event) => {
       throw new Error('OpenRouter API key not configured')
     }
     return await runWithRetries(async () => {
+      const authUser = await getAuthUser(event)
+      const bookingSignupTiming = parseBookingSignupTimingFromConfig(useRuntimeConfig().public.bookingSignupTiming)
       // --- Booking agent (per .cursor/rules/ai-agent-structure.mdc) ---
       // Tools: entity routing (extractReferredEntityPhrase, probeReferentPhrase, routeReferentFromProbe, handleForcedEntityClarify), getShopById, listShopsMatchingName, getDiveSitesForShop, getRentalEquipmentForShop, buildDiveShopQuery, tryFastPath, tryFastPathUnitOnly, LLM chat.
       // Tool selection: Orchestrator (this handler) chooses — intent (book vs search), then fast path vs LLM; no model-driven tool calls.
@@ -665,6 +687,20 @@ export default defineEventHandler(async (event) => {
             message,
             courses
           ) as BookingPayload
+          const msgTrimPreSend = message.trim()
+          const preTok = parseBookingPreSendToken(msgTrimPreSend)
+          let bpPre = bookingPayload as BookingPayload
+          if (preTok === 'confirm_send') {
+            bpPre = applyPreSendTokenToPayload('confirm_send', bpPre as BookingPayloadLocal, resolvedShop.id) as BookingPayload
+          }
+          if (preTok === 'skip_signup') {
+            bpPre = applyPreSendTokenToPayload('skip_signup', bpPre as BookingPayloadLocal, resolvedShop.id) as BookingPayload
+          }
+          const lastAssistPreSend = history?.filter(m => m.role === 'assistant').pop()?.content ?? ''
+          if (!bpPre.preSendReviewAck && lastAssistantWasPreSendReview(lastAssistPreSend) && isConfirmSendMessage(msgTrimPreSend)) {
+            bpPre = applyPreSendTokenToPayload('confirm_send', bpPre as BookingPayloadLocal, resolvedShop.id) as BookingPayload
+          }
+          bookingPayload = bpPre
         }
         const courseNames = courses.map(c => c.name)
         const diveSiteNames = diveSites.map(d => d.name)
@@ -868,23 +904,46 @@ export default defineEventHandler(async (event) => {
             sendIntent,
             sendAnywayIntent,
             nextStep: nextStepBeforeInput,
-            lastAssistantContent: lastAssistantForSendGate
+            lastAssistantContent: lastAssistantForSendGate,
+            preSendReviewAck: Boolean(payloadForSendCheck.preSendReviewAck)
           })
+
+          if (sendIntent && !sendAnywayIntent && nextStepBeforeInput?.step === 'ready' && !payloadForSendCheck.preSendReviewAck) {
+            const pRev = { ...payloadForSendCheck, shopId: resolvedShop.id }
+            const gatedRev = resolvePreSendWhenPayloadReady({
+              payload: pRev as BookingPayloadLocal,
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              hasAuthUser: !!authUser,
+              timing: bookingSignupTiming
+            })
+            if (gatedRev) return gatedRev
+          }
 
           // Explicit send intents: only short-circuit when canonical step is ready (or user said send anyway).
           if (sendIntent || sendAnywayIntent || finishTasksIntent) {
             if ((sendIntent || sendAnywayIntent) && canImmediateSendBooking) {
               const p = { ...payloadForSendCheck, shopId: resolvedShop.id }
-              return {
-                success: true,
-                intent: 'booking' as const,
-                bookingReady: true,
-                payload: p,
-                message: 'Understood — sending your booking request now.',
+              if (sendAnywayIntent) {
+                return {
+                  success: true,
+                  intent: 'booking' as const,
+                  bookingReady: true,
+                  payload: p,
+                  message: 'Understood — sending your booking request now.',
+                  shopId: resolvedShop.id,
+                  shopName: resolvedShop.business_name,
+                  selectableOptions: undefined
+                }
+              }
+              const gatedSend = resolvePreSendWhenPayloadReady({
+                payload: p as BookingPayloadLocal,
                 shopId: resolvedShop.id,
                 shopName: resolvedShop.business_name,
-                selectableOptions: undefined
-              }
+                hasAuthUser: !!authUser,
+                timing: bookingSignupTiming
+              })
+              if (gatedSend) return gatedSend
             }
 
             // User chose to continue form completion after seeing send options.
@@ -1054,20 +1113,18 @@ export default defineEventHandler(async (event) => {
             (lastWasReadyToSend && /^(yes|send|submit|confirm|ok)$/i.test(msgTrim))
           if (lastWasReadyToSend && confirmSend) {
             const p = { ...bookingPayload, shopId: resolvedShop.id }
-            return {
-              success: true,
-              intent: 'booking' as const,
-              bookingReady: true,
-              payload: p,
-              message: 'I have everything I need. Can I send the booking request?',
+            const gatedLast = resolvePreSendWhenPayloadReady({
+              payload: p as BookingPayloadLocal,
               shopId: resolvedShop.id,
               shopName: resolvedShop.business_name,
-              selectableOptions: undefined
-            }
+              hasAuthUser: !!authUser,
+              timing: bookingSignupTiming
+            })
+            if (gatedLast) return gatedLast
           }
           // "Pick a new diveshop" → return current form data so client can carry it over to the next shop
           if (/pick a new diveshop|choose another shop|different (shop|diveshop)/i.test(msgTrim)) {
-            const { shopId: _s, ...payloadWithoutShop } = bookingPayload
+            const { shopId: _s, ...payloadWithoutShop } = clearBookingPreSendFlags(bookingPayload as BookingPayloadLocal) as BookingPayload
             return {
               success: true,
               intent: 'booking' as const,
@@ -1095,7 +1152,12 @@ export default defineEventHandler(async (event) => {
           const addGearForNameMatch = msgTrim.match(/(?:add|need to add|want to add)\s+(?:some\s+)?(?:rental\s+)?gear\s+for\s+(.+?)(?:\.|$)/i)
           const addGearForName = addGearForNameMatch?.[1]?.trim()
           if (editEmail || editName || editDates || editGearDiver1 || editGearDiver2 || reviewBooking || addGearForName) {
-            const p = { ...bookingPayload, divers: [...(bookingPayload.divers || [])].map(d => ({ ...d })) }
+            const onlyReviewBooking =
+              reviewBooking && !editEmail && !editName && !editDates && !editGearDiver1 && !editGearDiver2 && !addGearForName
+            const baseForEdit = onlyReviewBooking
+              ? bookingPayload
+              : clearBookingPreSendFlags(bookingPayload as BookingPayloadLocal)
+            const p = { ...baseForEdit, divers: [...(bookingPayload.divers || [])].map(d => ({ ...d })) } as BookingPayload
             if (addGearForName && p.divers?.length) {
               const nameLower = addGearForName.toLowerCase()
               const diverIdx = p.divers.findIndex(d => d?.name && String(d.name).trim().toLowerCase().includes(nameLower))
@@ -1251,7 +1313,7 @@ export default defineEventHandler(async (event) => {
             if (diversEdit[di]) {
               const prevVal = snapshotDiverField(diversEdit[di], diverFieldEdit.field)
               diversEdit[di] = clearDiverFieldOnCopy(diversEdit[di], diverFieldEdit.field)
-              let pEdit = { ...bookingPayload, divers: diversEdit } as BookingPayload
+              let pEdit = { ...clearBookingPreSendFlags(bookingPayload as BookingPayloadLocal), divers: diversEdit } as BookingPayload
               pEdit = clampBookingPayloadToNextStep(pEdit as BookingPayloadLocal, {
                 shopCourseCount: courses.length,
                 shopDiveSiteCount: diveSites.length
@@ -1468,16 +1530,14 @@ export default defineEventHandler(async (event) => {
             const noMore = /^(no|nope|nah|that's all|just (these|two|them)|no other|no more|there's no|there are only|only two|just the two)$/i.test(msgTrim) || /no other diver|just (the )?two divers/i.test(msgTrim)
             if (noMore) {
               const p = { ...bookingPayload, shopId: resolvedShop.id }
-              return {
-                success: true,
-                intent: 'booking' as const,
-                bookingReady: true,
-                payload: p,
-                message: 'I have everything I need. Can I send the booking request?',
+              const gatedNoMore = resolvePreSendWhenPayloadReady({
+                payload: p as BookingPayloadLocal,
                 shopId: resolvedShop.id,
                 shopName: resolvedShop.business_name,
-                selectableOptions: undefined
-              }
+                hasAuthUser: !!authUser,
+                timing: bookingSignupTiming
+              })
+              if (gatedNoMore) return gatedNoMore
             }
             const yesMore = /^(yes|yeah|yep|add one|add another|yes please|sure)$/i.test(msgTrim)
             if (yesMore) {
@@ -1533,16 +1593,14 @@ export default defineEventHandler(async (event) => {
             const confirmSend = isConfirmSendMessage(msgTrim)
             if (confirmSend) {
               const p = { ...bookingPayload, shopId: resolvedShop.id }
-              return {
-                success: true,
-                intent: 'booking' as const,
-                bookingReady: true,
-                payload: p,
-                message: 'I have everything I need. Can I send the booking request?',
+              const gatedConfirm = resolvePreSendWhenPayloadReady({
+                payload: p as BookingPayloadLocal,
                 shopId: resolvedShop.id,
                 shopName: resolvedShop.business_name,
-                selectableOptions: undefined
-              }
+                hasAuthUser: !!authUser,
+                timing: bookingSignupTiming
+              })
+              if (gatedConfirm) return gatedConfirm
             }
           }
           if (nextStep) {
@@ -1558,16 +1616,14 @@ export default defineEventHandler(async (event) => {
               const nextAfterFast = getNextBookingStep(fp)?.step
               if (nextAfterFast === 'ready') {
                 const p = { ...fp, shopId: resolvedShop.id }
-                return {
-                  success: true,
-                  intent: 'booking' as const,
-                  bookingReady: true,
-                  payload: p,
-                  message: 'I have everything I need. Can I send the booking request?',
+                const gatedFast = resolvePreSendWhenPayloadReady({
+                  payload: p as BookingPayloadLocal,
                   shopId: resolvedShop.id,
                   shopName: resolvedShop.business_name,
-                  selectableOptions: undefined
-                }
+                  hasAuthUser: !!authUser,
+                  timing: bookingSignupTiming
+                })
+                if (gatedFast) return gatedFast
               }
               // No blanket "no rental gear" here: height/weight → gear is handled inside tryFastPath (followUpAfterDiverMeasurementAck).
               const gearChipsForFast = rentalEquipment.length > 0 ? rentalEquipment : undefined
@@ -1651,16 +1707,14 @@ export default defineEventHandler(async (event) => {
                 }
               ) as BookingPayload
               payload.shopId = payload.shopId || resolvedShop.id
-              return {
-                success: true,
-                intent: 'booking' as const,
-                bookingReady: true,
-                payload,
-                message: 'I have everything I need. Can I send the booking request?',
+              const gatedLlm = resolvePreSendWhenPayloadReady({
+                payload: payload as BookingPayloadLocal,
                 shopId: resolvedShop.id,
                 shopName: resolvedShop.business_name,
-                selectableOptions: undefined
-              }
+                hasAuthUser: !!authUser,
+                timing: bookingSignupTiming
+              })
+              if (gatedLlm) return gatedLlm
             } catch (e) {
               console.error('[AI Search] BOOKING_READY parse error:', e)
             }

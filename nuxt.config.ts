@@ -24,7 +24,9 @@ export default defineNuxtConfig({
     // Public keys - available both client and server-side
     public: {
       supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,
-      supabaseKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY
+      supabaseKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY,
+      /** before_send | after_send | off — when to prompt account creation in chat booking flow */
+      bookingSignupTiming: process.env.NUXT_PUBLIC_BOOKING_SIGNUP_TIMING || 'off'
     }
   }
 })

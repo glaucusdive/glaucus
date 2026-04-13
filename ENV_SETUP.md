@@ -34,6 +34,9 @@ Create a `.env` file in the root directory with the following variables:
 NUXT_PUBLIC_SUPABASE_URL=your_supabase_url_here
 NUXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 
+# Optional: chat booking flow — when to prompt account creation (before_send | after_send | off)
+# NUXT_PUBLIC_BOOKING_SIGNUP_TIMING=off
+
 # OpenRouter API Configuration
 # Get your API key from: https://openrouter.ai/keys
 NUXT_OPENROUTER_API_KEY=your_openrouter_api_key_here

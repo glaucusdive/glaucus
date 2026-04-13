@@ -13,6 +13,8 @@ export interface BookingDiverLocal {
 }
 
 export interface BookingPayloadLocal {
+  /** Set when booking is tied to a shop (chat/orchestrator; same as top-level BookingPayload). */
+  shopId?: string
   name?: string
   email?: string
   startDate?: string
@@ -25,6 +27,10 @@ export interface BookingPayloadLocal {
   /** When false, user is still adding courses (multi-select); when true, advance past courses. Omit = legacy (desiredCourses alone completes the step). */
   coursesSelectionComplete?: boolean
   desiredDiveSites?: string[]
+  /** Chat/orchestrator only: user saw pre-send review and confirmed (not sent to /api/booking). */
+  preSendReviewAck?: boolean
+  /** Guest skipped before-send signup prompt (not sent to /api/booking). */
+  preSendSignupSkipped?: boolean
 }
 
 export type BookingStep =
