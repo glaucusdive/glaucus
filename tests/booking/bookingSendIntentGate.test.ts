@@ -24,15 +24,39 @@ describe('canImmediateSendBookingReply', () => {
     ).toBe(false)
   })
 
-  it('returns true for sendIntent when ready and not add-another prompt', () => {
+  it('returns true for sendIntent when ready, ack set, and not add-another prompt', () => {
     expect(
       canImmediateSendBookingReply({
         sendIntent: true,
         sendAnywayIntent: false,
         nextStep: { step: 'ready' },
-        lastAssistantContent: 'All set — ready to send your booking request.'
+        lastAssistantContent: 'All set — ready to send your booking request.',
+        preSendReviewAck: true
       })
     ).toBe(true)
+  })
+
+  it('returns false for sendIntent when ready but pre-send review not acknowledged', () => {
+    expect(
+      canImmediateSendBookingReply({
+        sendIntent: true,
+        sendAnywayIntent: false,
+        nextStep: { step: 'ready' },
+        lastAssistantContent: 'All set — ready to send your booking request.',
+        preSendReviewAck: false
+      })
+    ).toBe(false)
+  })
+
+  it('returns false when preSendReviewAck omitted (same as not acknowledged)', () => {
+    expect(
+      canImmediateSendBookingReply({
+        sendIntent: true,
+        sendAnywayIntent: false,
+        nextStep: { step: 'ready' },
+        lastAssistantContent: 'Can I send the booking request?'
+      })
+    ).toBe(false)
   })
 
   it('returns true for sendAnywayIntent even when not ready', () => {

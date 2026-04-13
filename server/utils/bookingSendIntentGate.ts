@@ -10,10 +10,13 @@ export function canImmediateSendBookingReply (opts: {
   sendAnywayIntent: boolean
   nextStep: NextStepResult | null | undefined
   lastAssistantContent: string
+  /** When false, plain "send" must not jump to bookingReady — orchestrator shows pre-send review first. */
+  preSendReviewAck?: boolean
 }): boolean {
   if (opts.sendAnywayIntent) return true
   if (!opts.sendIntent) return false
   if (opts.nextStep?.step !== 'ready') return false
+  if (!opts.preSendReviewAck) return false
   if (/add another diver/i.test(opts.lastAssistantContent)) return false
   return true
 }
