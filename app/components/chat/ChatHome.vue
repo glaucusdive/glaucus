@@ -59,6 +59,19 @@
               <!-- Assistant message -->
               <div v-else-if="msg.role === 'assistant'" class="flex justify-start">
                 <div class="md:max-w-[90%] flex-1 min-w-0 flex flex-col gap-2">
+                  <!-- Search stream progress (Applying filters…, Found N shops…) — kept in history -->
+                  <div
+                    v-if="msg.searchProgressLog && msg.searchProgressLog.length > 0"
+                    class="bg-zinc-100/80 dark:bg-zinc-800/80 rounded-lg p-2 border border-zinc-200/80 dark:border-zinc-600/80"
+                  >
+                    <p
+                      v-for="(line, pi) in msg.searchProgressLog"
+                      :key="pi"
+                      class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed"
+                    >
+                      {{ line }}
+                    </p>
+                  </div>
                   <!-- Prior-topic ack only (e.g. dates); next bubble holds the question + chevron -->
                   <div
                     v-if="msg.preamble"
@@ -91,10 +104,19 @@
                       <span class="font-medium">Top Results:</span>
                     </div>
                     <div class="grid grid-cols-1 gap-3">
-                      <CardSearchResult v-for="shop in msg.shops" :key="shop.id" :shop="shop"
-                        :active="selectedShopId === shop.id"
-                        @shop-selected="handleShopSelected"
-                        @view-details="handleViewDetails" />
+                      <div
+                        v-for="(shop, si) in msg.shops"
+                        :key="shop.id"
+                        class="chat-shop-card-stagger min-w-0"
+                        :style="{ animationDelay: `${msg.streamingShopsPending ? 0 : si * 80}ms` }"
+                      >
+                        <CardSearchResult
+                          :shop="shop"
+                          :active="selectedShopId === shop.id"
+                          @shop-selected="handleShopSelected"
+                          @view-details="handleViewDetails"
+                        />
+                      </div>
                     </div>
 
                     <!-- Results summary: show which range we're on (e.g. results 11–15 of 16) -->
@@ -234,14 +256,17 @@
               </div>
             </div>
 
-            <!-- Loading indicator (+ optional search stream status / MESSAGE preview) -->
+            <!-- Loading: stream shows status + MESSAGE preview + spinner only (no duplicate “thinking” label) -->
             <div v-if="isLoading" class="flex justify-start">
               <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3 flex flex-col gap-2 max-w-[min(90%,42rem)] min-w-0">
                 <p v-if="searchStreamStatus" class="text-xs text-zinc-500 dark:text-zinc-400">{{ searchStreamStatus }}</p>
                 <p v-if="searchStreamPreview" class="text-sm text-zinc-800 dark:text-white whitespace-pre-wrap min-w-0">{{ searchStreamPreview }}</p>
                 <div class="flex items-center gap-2">
-                  <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-zinc-600"></div>
-                  <span class="text-sm text-zinc-900 dark:text-zinc-200">thinking...</span>
+                  <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-zinc-600 dark:border-zinc-300 shrink-0"></div>
+                  <span
+                    v-if="!searchStreamStatus && !searchStreamPreview"
+                    class="text-sm text-zinc-900 dark:text-zinc-200"
+                  >Thinking…</span>
                 </div>
               </div>
             </div>
@@ -423,9 +448,11 @@ async function syncProfileAfterChatBookingSent (body) {
 const userInput = ref('')
 const chatComposerRef = ref(null)
 const isLoading = ref(false)
-/** Shown under “thinking…” while POST /api/ai-search-stream is in progress */
+/** Shown while POST /api/ai-search-stream is in progress */
 const searchStreamStatus = ref('')
 const searchStreamPreview = ref('')
+/** Cumulative status lines from the stream (copied onto the assistant message when the turn completes) */
+const searchStreamProgressLines = ref([])
 const messages = ref([])
 const messagesContainer = ref(null)
 const isRestoringCache = ref(true)
@@ -1048,7 +1075,7 @@ function tryRestoreBookingSessionAfterAuth () {
 }
 
 /** NDJSON from POST /api/ai-search-stream — final `result` payload, or null to use /api/ai-search JSON. */
-async function consumeAiSearchNdjsonStream ({ body, headers, signal, onStatus, onAssistantDelta }) {
+async function consumeAiSearchNdjsonStream ({ body, headers, signal, onStatus, onAssistantDelta, onShop }) {
   const hdrs = { 'Content-Type': 'application/json', ...(headers || {}) }
   const res = await fetch('/api/ai-search-stream', {
     method: 'POST',
@@ -1087,6 +1114,9 @@ async function consumeAiSearchNdjsonStream ({ body, headers, signal, onStatus, o
         if (ev.type === 'assistant_delta' && typeof ev.text === 'string' && ev.text) {
           onAssistantDelta(ev.text)
         }
+        if (ev.type === 'shop' && ev.shop != null && typeof onShop === 'function') {
+          onShop(ev.shop)
+        }
         if (ev.type === 'result' && ev.payload) {
           finalPayload = ev.payload
         }
@@ -1116,6 +1146,9 @@ const sendMessage = async (messageText, displayText) => {
     abortController.value.abort()
     abortController.value = null
     isLoading.value = false
+    searchStreamStatus.value = ''
+    searchStreamPreview.value = ''
+    searchStreamProgressLines.value = []
   }
 
   const textToShow = displayText ?? message
@@ -1202,6 +1235,12 @@ const sendMessage = async (messageText, displayText) => {
 
     searchStreamStatus.value = ''
     searchStreamPreview.value = ''
+    searchStreamProgressLines.value = []
+
+    let streamProgressSnapshot = []
+    let streamPreviewSnapshot = ''
+    /** Index of assistant row created when first streamed `shop` arrives (merged on `result`). */
+    let streamShopAssistIndex = -1
 
     const streamEligible =
       !inBookingFlow &&
@@ -1221,21 +1260,60 @@ const sendMessage = async (messageText, displayText) => {
           body: aiSearchBody,
           headers: aiHeaders,
           signal: currentAbortController.signal,
-          onStatus: (t) => { searchStreamStatus.value = t },
-          onAssistantDelta: (t) => { searchStreamPreview.value += t }
+          onStatus: (t) => {
+            searchStreamStatus.value = t
+            const lines = searchStreamProgressLines.value
+            if (t && lines[lines.length - 1] !== t) {
+              searchStreamProgressLines.value = [...lines, t]
+            }
+          },
+          onAssistantDelta: (t) => { searchStreamPreview.value += t },
+          onShop: (shop) => {
+            if (streamShopAssistIndex < 0) {
+              messages.value.push({
+                role: 'assistant',
+                content: '',
+                shops: [shop],
+                totalResults: 0,
+                hasMoreResults: false,
+                intent: 'search',
+                streamingShopsPending: true
+              })
+              streamShopAssistIndex = messages.value.length - 1
+            } else {
+              const row = messages.value[streamShopAssistIndex]
+              if (row) {
+                row.shops = [...(row.shops || []), shop]
+              }
+            }
+            void nextTick(() => scrollToBottom())
+          }
         })
       } catch (fetchErr) {
         if (fetchErr?.name === 'AbortError' || currentAbortController.signal.aborted) {
           searchStreamStatus.value = ''
           searchStreamPreview.value = ''
+          searchStreamProgressLines.value = []
+          if (streamShopAssistIndex >= 0) {
+            messages.value.splice(streamShopAssistIndex, 1)
+            streamShopAssistIndex = -1
+          }
           return
         }
         response = null
       }
     }
 
+    if (!response && streamShopAssistIndex >= 0) {
+      messages.value.splice(streamShopAssistIndex, 1)
+      streamShopAssistIndex = -1
+    }
+
+    streamProgressSnapshot = [...searchStreamProgressLines.value]
+    streamPreviewSnapshot = searchStreamPreview.value
     searchStreamStatus.value = ''
     searchStreamPreview.value = ''
+    searchStreamProgressLines.value = []
 
     for (let attempt = 1; attempt <= maxAiAttempts && !response; attempt++) {
       if (currentAbortController.signal.aborted) {
@@ -1303,7 +1381,8 @@ const sendMessage = async (messageText, displayText) => {
             courseOptions: response.courseOptions || undefined,
             diveSiteOptions: response.diveSiteOptions || undefined,
             ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {}),
-            ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {})
+            ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {}),
+            ...(streamProgressSnapshot.length ? { searchProgressLog: streamProgressSnapshot } : {})
           }
         ]
         isLoading.value = false
@@ -1400,26 +1479,82 @@ const sendMessage = async (messageText, displayText) => {
         }
       }
       const content = (response.message && String(response.message).trim()) ? response.message : 'Got it — what would you like to tell me next?'
-      messages.value.push({
-        role: 'assistant',
-        content,
-        ...(response.messagePreamble ? { preamble: response.messagePreamble } : {}),
-        shops: response.shops || [],
-        totalResults: response.totalResults,
-        hasMoreResults: response.hasMoreResults,
-        intent: response.intent,
-        bookingReady: response.bookingReady,
-        payload: storedPayload,
-        shopId: response.shopId,
-        shopName: response.shopName,
-        selectableOptions: response.selectableOptions,
-        rentalEquipmentOptions: response.rentalEquipmentOptions || undefined,
-        hideNoneForGear: response.hideNoneForGear ?? false,
-        courseOptions: response.courseOptions || undefined,
-        diveSiteOptions: response.diveSiteOptions || undefined,
-        ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {}),
-        ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {})
-      })
+      const preambleFromStream =
+        !response.messagePreamble && streamPreviewSnapshot?.trim()
+          ? streamPreviewSnapshot.trim()
+          : undefined
+
+      const mergeIntoStreamSlot =
+        streamShopAssistIndex >= 0 &&
+        messages.value[streamShopAssistIndex]?.streamingShopsPending
+
+      if (mergeIntoStreamSlot) {
+        const m = messages.value[streamShopAssistIndex]
+        m.content = content
+        if (response.messagePreamble) {
+          m.preamble = response.messagePreamble
+        } else if (preambleFromStream) {
+          m.preamble = preambleFromStream
+        } else {
+          delete m.preamble
+        }
+        if (streamProgressSnapshot.length) {
+          m.searchProgressLog = streamProgressSnapshot
+        } else {
+          delete m.searchProgressLog
+        }
+        m.shops = response.shops || []
+        m.totalResults = response.totalResults
+        m.hasMoreResults = response.hasMoreResults
+        m.intent = response.intent
+        m.bookingReady = response.bookingReady
+        m.payload = storedPayload
+        m.shopId = response.shopId
+        m.shopName = response.shopName
+        m.selectableOptions = response.selectableOptions
+        m.rentalEquipmentOptions = response.rentalEquipmentOptions || undefined
+        m.hideNoneForGear = response.hideNoneForGear ?? false
+        m.courseOptions = response.courseOptions || undefined
+        m.diveSiteOptions = response.diveSiteOptions || undefined
+        if (response.filters && typeof response.filters === 'object') {
+          m.filters = response.filters
+        } else {
+          delete m.filters
+        }
+        if (response.entityClarifyPending) {
+          m.entityClarifyPending = response.entityClarifyPending
+        } else {
+          delete m.entityClarifyPending
+        }
+        delete m.streamingShopsPending
+        streamShopAssistIndex = -1
+      } else {
+        if (streamShopAssistIndex >= 0) {
+          messages.value.splice(streamShopAssistIndex, 1)
+          streamShopAssistIndex = -1
+        }
+        messages.value.push({
+          role: 'assistant',
+          content,
+          ...(response.messagePreamble ? { preamble: response.messagePreamble } : preambleFromStream ? { preamble: preambleFromStream } : {}),
+          ...(streamProgressSnapshot.length ? { searchProgressLog: streamProgressSnapshot } : {}),
+          shops: response.shops || [],
+          totalResults: response.totalResults,
+          hasMoreResults: response.hasMoreResults,
+          intent: response.intent,
+          bookingReady: response.bookingReady,
+          payload: storedPayload,
+          shopId: response.shopId,
+          shopName: response.shopName,
+          selectableOptions: response.selectableOptions,
+          rentalEquipmentOptions: response.rentalEquipmentOptions || undefined,
+          hideNoneForGear: response.hideNoneForGear ?? false,
+          courseOptions: response.courseOptions || undefined,
+          diveSiteOptions: response.diveSiteOptions || undefined,
+          ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {}),
+          ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {})
+        })
+      }
       if (response.intent === 'booking' && storedPayload) {
         updateBookingPayloadIfOpen(storedPayload)
         if (isSignedIn.value) {
@@ -1472,6 +1607,7 @@ const sendMessage = async (messageText, displayText) => {
     if (abortController.value === currentAbortController) {
       searchStreamStatus.value = ''
       searchStreamPreview.value = ''
+      searchStreamProgressLines.value = []
       isLoading.value = false
       abortController.value = null
       await scrollToBottom()

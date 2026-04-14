@@ -154,9 +154,9 @@ export default defineEventHandler(async (event) => {
           return
         }
 
-        const resultPayload = await runWithRetries(async () => {
-          push({ type: 'status', text: 'Thinking…' })
+        const SHOP_STREAM_GAP_MS = 90
 
+        const resultPayload = await runWithRetries(async () => {
           const messages = [
             { role: 'system', content: SEARCH_DIVE_SYSTEM_PROMPT },
             ...history,
@@ -192,7 +192,16 @@ export default defineEventHandler(async (event) => {
           }
         })
 
-        push({ type: 'result', payload: resultPayload })
+        const shopsToStream = Array.isArray(resultPayload.shops) ? resultPayload.shops : []
+        for (const shop of shopsToStream) {
+          if (upstreamSignal?.aborted) break
+          push({ type: 'shop', shop })
+          await new Promise<void>((resolve) => setTimeout(resolve, SHOP_STREAM_GAP_MS))
+        }
+
+        if (!upstreamSignal?.aborted) {
+          push({ type: 'result', payload: resultPayload })
+        }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'An error occurred while searching'
         if ((err as { name?: string })?.name === 'AbortError') {

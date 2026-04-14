@@ -27,7 +27,24 @@
   }
 }
 
+@keyframes chat-shop-card-stagger-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @layer utilities {
+  /* Staggered reveal for search result cards (delay set inline per index) */
+  .chat-shop-card-stagger {
+    opacity: 0;
+    animation: chat-shop-card-stagger-in 0.42s ease forwards;
+  }
+
   /* Isolate so ::before (z-index: -1) stacks predictably above the canvas, not behind an opaque parent bg */
   .gradient-container {
     isolation: isolate;
