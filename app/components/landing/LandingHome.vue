@@ -2,13 +2,13 @@
   <main>
     <header class="sticky top-0 z-10 lg:px-20 lg:py-5">
       <div class="grid gap-4 lg:grid-cols-12 lg:items-center">
-        <div class="lg:col-span-3">
+        <div class="lg:col-span-2">
           <NuxtLink to="/" class="flex h-auto w-[120px] flex-row items-center justify-center gap-2">
             <img src="/images/glaucus-logo-emblem.svg" alt="Logo" class="h-full w-[40px] -rotate-45" />
             <Logo class="*:fill-black *:dark:fill-white" />
           </NuxtLink>
         </div>
-        <div class="lg:col-span-6">
+        <div class="lg:col-span-8">
           <div class="hidden lg:flex lg:items-center lg:justify-center">
             <div class="inline-flex items-center gap-1 rounded-full bg-zinc-800 p-1 text-zinc-100 max-w-xl" :class="searchOpen ? 'w-full' : 'w-fit'">
               <template v-if="!searchOpen">
@@ -78,7 +78,7 @@
             </div>
           </div>
         </div>
-        <div class="lg:col-span-3">
+        <div class="lg:col-span-2">
           <div class="flex lg:items-center lg:justify-end">
             <button
               type="button"
