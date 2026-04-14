@@ -234,9 +234,11 @@
               </div>
             </div>
 
-            <!-- Loading indicator -->
+            <!-- Loading indicator (+ optional search stream status / MESSAGE preview) -->
             <div v-if="isLoading" class="flex justify-start">
-              <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3">
+              <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3 flex flex-col gap-2 max-w-[min(90%,42rem)] min-w-0">
+                <p v-if="searchStreamStatus" class="text-xs text-zinc-500 dark:text-zinc-400">{{ searchStreamStatus }}</p>
+                <p v-if="searchStreamPreview" class="text-sm text-zinc-800 dark:text-white whitespace-pre-wrap min-w-0">{{ searchStreamPreview }}</p>
                 <div class="flex items-center gap-2">
                   <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-zinc-600"></div>
                   <span class="text-sm text-zinc-900 dark:text-zinc-200">thinking...</span>
@@ -421,6 +423,9 @@ async function syncProfileAfterChatBookingSent (body) {
 const userInput = ref('')
 const chatComposerRef = ref(null)
 const isLoading = ref(false)
+/** Shown under “thinking…” while POST /api/ai-search-stream is in progress */
+const searchStreamStatus = ref('')
+const searchStreamPreview = ref('')
 const messages = ref([])
 const messagesContainer = ref(null)
 const isRestoringCache = ref(true)
@@ -1042,6 +1047,62 @@ function tryRestoreBookingSessionAfterAuth () {
   }
 }
 
+/** NDJSON from POST /api/ai-search-stream — final `result` payload, or null to use /api/ai-search JSON. */
+async function consumeAiSearchNdjsonStream ({ body, headers, signal, onStatus, onAssistantDelta }) {
+  const hdrs = { 'Content-Type': 'application/json', ...(headers || {}) }
+  const res = await fetch('/api/ai-search-stream', {
+    method: 'POST',
+    headers: hdrs,
+    body: JSON.stringify(body),
+    signal
+  })
+  if (!res.ok) return null
+  const reader = res.body?.getReader()
+  if (!reader) return null
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let finalPayload = null
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) {
+        if (!line.trim()) continue
+        let ev
+        try {
+          ev = JSON.parse(line)
+        } catch {
+          continue
+        }
+        if (ev.type === 'meta' && ev.fallbackToJson) {
+          await reader.cancel().catch(() => {})
+          return null
+        }
+        if (ev.type === 'status' && typeof ev.text === 'string') {
+          onStatus(ev.text)
+        }
+        if (ev.type === 'assistant_delta' && typeof ev.text === 'string' && ev.text) {
+          onAssistantDelta(ev.text)
+        }
+        if (ev.type === 'result' && ev.payload) {
+          finalPayload = ev.payload
+        }
+        if (ev.type === 'error') {
+          await reader.cancel().catch(() => {})
+          return null
+        }
+      }
+    }
+  } catch (e) {
+    if (e?.name === 'AbortError') throw e
+    return null
+  }
+  return finalPayload
+}
+
 // Send message to AI. Optional displayText: show this in the chat bubble while sending messageText to the API (e.g. chip label vs value).
 const sendMessage = async (messageText, displayText) => {
   const message = messageText ?? userInput.value.trim()
@@ -1139,6 +1200,13 @@ const sendMessage = async (messageText, displayText) => {
       ...(pendingEntityClarifyPhrase ? { pendingEntityClarifyPhrase } : {})
     }
 
+    searchStreamStatus.value = ''
+    searchStreamPreview.value = ''
+
+    const streamEligible =
+      !inBookingFlow &&
+      !pendingEntityClarifyPhrase?.trim()
+
     const maxAiAttempts = 3
     const baseAiRetryMs = 350
     let response = null
@@ -1146,7 +1214,30 @@ const sendMessage = async (messageText, displayText) => {
     const bearer =
       accessToken.value || (await client.auth.getSession()).data.session?.access_token || null
     if (bearer) aiHeaders.Authorization = `Bearer ${bearer}`
-    for (let attempt = 1; attempt <= maxAiAttempts; attempt++) {
+
+    if (streamEligible && !currentAbortController.signal.aborted) {
+      try {
+        response = await consumeAiSearchNdjsonStream({
+          body: aiSearchBody,
+          headers: aiHeaders,
+          signal: currentAbortController.signal,
+          onStatus: (t) => { searchStreamStatus.value = t },
+          onAssistantDelta: (t) => { searchStreamPreview.value += t }
+        })
+      } catch (fetchErr) {
+        if (fetchErr?.name === 'AbortError' || currentAbortController.signal.aborted) {
+          searchStreamStatus.value = ''
+          searchStreamPreview.value = ''
+          return
+        }
+        response = null
+      }
+    }
+
+    searchStreamStatus.value = ''
+    searchStreamPreview.value = ''
+
+    for (let attempt = 1; attempt <= maxAiAttempts && !response; attempt++) {
       if (currentAbortController.signal.aborted) {
         return
       }
@@ -1379,6 +1470,8 @@ const sendMessage = async (messageText, displayText) => {
   } finally {
     // Only clear loading state if this is still the current request
     if (abortController.value === currentAbortController) {
+      searchStreamStatus.value = ''
+      searchStreamPreview.value = ''
       isLoading.value = false
       abortController.value = null
       await scrollToBottom()
