@@ -109,8 +109,39 @@ Install: `npm i @iconoir/vue` — see the [iconoir-vue README](https://github.co
 
 ---
 
+## Design engineer strategy
+
+### Mindset (abstract)
+
+These are **whys**—how this differs from a default “make it work” implementation habit (e.g. duplicate mobile/desktop blocks, flex-first shells, or large refactors when a few classes would do).
+
+- **One tree, changing parameters.** Parallel layouts are tempting because each breakpoint reads like its own comp—but they **fork truth**: two logos, two CTAs, two spacing stories that will drift. A single structure with **spans and visibility** changes exists so **what the product *is* (which controls exist) stays invariant**; only **how much grid they occupy** changes. Maintenance tracks one DOM story.
+
+- **The grid is the contract, not flex.** Flex-first rows optimize **local** packing; a **column system** optimizes **relationship to the rest of the page**. Deferring to grid at the shell is choosing **predictable alignment to a shared spatial language** over ad-hoc distribution. Flex remains for **inside a cell**, where the job is alignment of siblings, not redefining page grammar.
+
+- **Small diffs over “clean” rewrites.** Large structural refactors feel satisfying to the implementer but cost **review time, risk, and revertability**. Prefer the smallest edit that satisfies the design because **the price of a change is operational**, not line count.
+
+- **Rhythm is part of the spec.** Controls that sit in one row but differ in height aren’t “wrong” functionally—they read as **unpolished** before anyone opens DevTools. Matching hit-target height is **optical accountability**: the bar communicates intention, not accident.
+
+- **Radius carries meaning.** One default radius is efficient; **different radii** cheaply distinguish **nav brand language** (pill) from **dense chrome** (icon control) without new components. Shape is a **semantic layer** next to color and weight.
+
+- **Constraints beat vague flexibility.** “More flexible” layout often means **weaker guarantees** about how this row relates to the next. A fixed column system trades some micro-freedom for **reviewable, repeatable alignment** across the surface.
+
+### Patterns (concrete)
+
+From landing header work ([LandingHeader.vue](app/components/landing/LandingHeader.vue)); prefer this when building or refactoring UI.
+
+- **Grid first, flex inside cells.** The shell is **`grid grid-cols-12`** (with `gap-*` and `items-center`) for the whole breakpoint range. Use **flex only where a cell needs it** (e.g. `justify-end` + `gap-2` for actions, or aligning the pill). Avoid a second parallel “mobile layout” block when **column spans + `hidden` / `lg:`** can express the same thing.
+- **One DOM for chrome.** **One logo, one CTA, one menu control**—vary **spans** (`col-span-6 lg:col-span-2`, etc.) and **visibility** (`hidden lg:flex`) instead of duplicating markup for small vs large screens.
+- **Minimal change surface.** Prefer adjusting spans, visibility, and inner alignment over rewriting structure or adding wrappers. Keep behavior/state in script stable when the visual layout changes.
+- **Rhythm across controls.** Match related hit targets in a row (e.g. **CTA `h-10`** next to **`size-10`** icon button) so the bar feels intentional, not accidentally misaligned.
+- **Radius as vocabulary.** Use shape to signal role: e.g. **pill / `rounded-full`** for nav chrome, **tighter radius (`rounded-sm`)** for a dense chrome icon next to a **rounded-md** button—subtle hierarchy without extra components.
+- **Utility order (house style).** Keep Tailwind class order consistent within the file (e.g. spacing/grid sizing grouped in a way that reads top-to-bottom: `gap-4 grid grid-cols-12 items-center`).
+
+---
+
 ## Related files
 
 - Global base styles: [app/assets/css/main.css](app/assets/css/main.css)
 - Tailwind entry: [tailwind.config.js](tailwind.config.js) (minimal; Nuxt UI supplies most tokens)
-- Example landing shell: [app/components/landing/LandingHome.vue](app/components/landing/LandingHome.vue)
+- Example landing shell: [app/components/landing/LandingHome.vue](app/components/landing/LandingHome.vue); header: [app/components/landing/LandingHeader.vue](app/components/landing/LandingHeader.vue)
