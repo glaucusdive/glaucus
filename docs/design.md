@@ -26,7 +26,7 @@ Semantic roles map to **Tailwind zinc** plus a few **documented literals** where
 | **Primary action (inverse on dark)** | — | `white` bg, `zinc-900` text | See landing CTA pattern in `LandingHome.vue`. |
 | **Accent (gradient utility)** | — | — | Special effects: cyan / magenta gradient (`#02C8FF`, `#FF00F6`) in `.gradient-container` / `.animate-ring-gradient` in `main.css`. Use sparingly. |
 
-**Landing nav pill (Figma reference):** fill `#222228`, pill radius ~30px, internal gap/padding 4px—express in Tailwind with arbitrary values where needed (`bg-[#222228]`, `rounded-[30px]`, `gap-1`, `p-1`).
+**Landing nav pill:** `bg-zinc-800`, `rounded-full`, internal spacing `gap-1` / `p-1` (see [LandingHome.vue](app/components/landing/LandingHome.vue)). Prefer these utilities over arbitrary hex/radius unless Figma diverges and the doc is updated.
 
 Add new brand colors here **before** scattering hex across components.
 
@@ -63,6 +63,12 @@ Add new brand colors here **before** scattering hex across components.
 - **Focus:** Always visible for interactive elements; never `outline-none` without a replacement ring.
 - **Disabled:** Lower contrast and `pointer-events-none` / `disabled:` attributes as appropriate; do not rely on color alone.
 
+### Cursors
+
+- **`cursor-pointer`** on every **clickable / primary-action** control: `<button>`, `<a href>`, `<summary>`, and custom elements with `role="button"` (unless `aria-disabled="true"`). Global defaults live in [app/assets/css/main.css](app/assets/css/main.css) (`@layer base`) for buttons, `a[href]`, and `summary`; add **`cursor-pointer`** explicitly when Tailwind utilities override base (e.g. a `class` that sets `cursor-default`).
+- **Do not** use `cursor-pointer` on plain **text inputs / textareas** (use default or `cursor-text` so the affordance matches editing).
+- **`@click` on `<div>`** (or other non-semantic wrappers): prefer a real `<button>` or add `role="button"` + keyboard handling + `cursor-pointer`.
+
 ---
 
 ## Spacing and layout
@@ -90,6 +96,7 @@ Install: `npm i @iconoir/vue` — see the [iconoir-vue README](https://github.co
 
 - Prefer **flexbox/grid + `gap`** for spacing between siblings; use padding for **inside** a control or container.
 - Keep **semantic HTML** (`header`, `nav`, `main`, `button` vs `div` clicks).
+- Use **`cursor-pointer`** on actionable controls (see **Cursors** above); rely on base CSS or add the utility where needed.
 - Match **dark/light** tokens to the active theme; test both.
 - Document **Figma literals** (hex, radius) here when they are part of the brand.
 
