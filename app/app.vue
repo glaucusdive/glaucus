@@ -1,6 +1,9 @@
 <template>
   <UApp>
-    <NuxtPage />
+    <!-- Required for definePageMeta({ layout: '...' }) on routes other than `/` (index uses layout: false + its own NuxtLayout). -->
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
   </UApp>
 </template>
 
