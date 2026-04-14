@@ -1,12 +1,4 @@
 <template>
-    <!-- Loading Screen -->
-    <Transition @enter="onLoadingEnter" @leave="onLoadingLeave" :css="false">
-      <div v-if="isPageLoading"
-        class="fixed inset-0 z-[200] bg-white dark:bg-zinc-900 flex items-center justify-center">
-        <img src="/images/glaucus-logo-emblem.svg" alt="Glaucus" class="w-24 h-24" />
-      </div>
-    </Transition>
-
     <div class="flex flex-col h-full w-full relative">
       <!-- Header: min-w-0 + shrink-0 so title truncates in narrow split view instead of clipping Step back -->
       <div
@@ -470,20 +462,6 @@ const selectedShopId = ref(null)
 const pendingBookingPayload = ref(null)
 /** On mobile, drawer opens only when user taps "View details"; card tap only selects for booking. */
 const mobileDetailShopId = ref(null)
-/** Pathname when this browser tab first loaded the app (set in `glaucus-session-entry` plugin). */
-const sessionEntryPath = useState('glaucus-session-entry-path', () => '')
-const chatIndexBootFinished = useState('glaucus-chat-index-boot-finished', () => false)
-function shouldShowChatBootLoader () {
-  if (import.meta.server) return true
-  const p = sessionEntryPath.value
-  const landedOnChatRoot = p === '/' || p === ''
-  return landedOnChatRoot && !chatIndexBootFinished.value
-}
-const isPageLoading = ref(shouldShowChatBootLoader())
-function finishChatIndexBoot () {
-  chatIndexBootFinished.value = true
-  isPageLoading.value = false
-}
 
 // Selected shop name for "Book for [name]" chip (from results list or booking message)
 const selectedShopName = computed(() => {
@@ -793,7 +771,6 @@ function applyPendingDraftResumeFromProfile () {
   void nextTick(() => {
     requestAnimationFrame(() => {
       setTimeout(() => {
-        finishChatIndexBoot()
         openDrawer('booking-form', {
           shopId,
           shopName,
@@ -811,10 +788,6 @@ onMounted(async () => {
   if (import.meta.client && tryRestoreBookingSessionAfterAuth()) {
     isRestoringCache.value = false
     notifyChatSidebarUpdated()
-    await nextTick()
-    requestAnimationFrame(() => {
-      setTimeout(() => finishChatIndexBoot(), 300)
-    })
     return
   }
   if (import.meta.client && sessionStorage.getItem(FORCE_NEW_CHAT_KEY) === '1') {
@@ -867,7 +840,6 @@ onMounted(async () => {
       await nextTick()
       requestAnimationFrame(() => {
         setTimeout(() => {
-          finishChatIndexBoot()
           if (cachedState.drawerOpen && cachedState.drawerShopId) {
             const payload = [...(cachedState.messages || [])].reverse().find((m) => {
               if (m?.role !== 'assistant' || m?.intent !== 'booking') return false
@@ -897,25 +869,11 @@ onMounted(async () => {
     isRestoringCache.value = false
     notifyChatSidebarUpdated()
     await sendMessage(initialQuery)
-    // Wait for hydration to complete before hiding loading screen
-    await nextTick()
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        finishChatIndexBoot()
-      }, 300)
-    })
     return
   }
 
   isRestoringCache.value = false
   notifyChatSidebarUpdated()
-  // Wait for hydration to complete before hiding loading screen
-  await nextTick()
-  requestAnimationFrame(() => {
-    setTimeout(() => {
-      finishChatIndexBoot()
-    }, 300)
-  })
 })
 
 // Persist cache when state changes
@@ -1573,25 +1531,6 @@ const onMobileDrawerLeave = (el, done) => {
     x: '100%',
     duration: 0.3,
     ease: 'power3.in',
-    onComplete: done
-  })
-}
-
-// GSAP animations for loading screen
-const onLoadingEnter = (el, done) => {
-  gsap.from(el, {
-    opacity: 0,
-    duration: 0.2,
-    ease: 'power2.out',
-    onComplete: done
-  })
-}
-
-const onLoadingLeave = (el, done) => {
-  gsap.to(el, {
-    opacity: 0,
-    duration: 0.4,
-    ease: 'power2.in',
     onComplete: done
   })
 }
