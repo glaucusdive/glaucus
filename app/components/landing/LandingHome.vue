@@ -9,6 +9,12 @@
               <h1 class="text-2xl font-medium">Your scuba life, simplified.</h1>
               <p class="text-sm text-zinc-400">An agentic assistant for novice & advance scuba divers.</p>
             </div>
+            <div class="w-full">
+              <ChatComposer
+                v-model="heroQuery"
+                @submit="onHeroComposerSubmit"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -20,3 +26,14 @@
     <section id="contact"></section>
   </main>
 </template>
+
+<script setup>
+import { ref } from 'vue'
+import ChatComposer from '~/components/chat/ChatComposer.vue'
+
+const heroQuery = ref('')
+
+function onHeroComposerSubmit (q) {
+  void navigateTo({ path: '/', query: { chat: '1', q } })
+}
+</script>

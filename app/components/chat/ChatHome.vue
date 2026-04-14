@@ -245,31 +245,15 @@
             </div>
           </div>
 
-          <!-- Input area -->
-          <div class="flex items-stretch justify-center z-1 overflow-hidden">
-            <div class="bg-transparent p-0.5 pt-0 backdrop-blur-sm 2xl:min-w-md max-w-4xl w-full rounded-full overflow-hidden">
-              <div :class="[
-                'p-0.5 shrink-0 transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-hidden gradient-container',
-                isLoading ? 'animate-ring-gradient !bg-[#02C8FF]' : 'bg-transparent'
-              ]">
-                <form class="w-full h-full bg-zinc-100 dark:bg-zinc-700 rounded-full p-1 z-10 overflow-hidden"
-                  @submit.prevent="handleSubmit">
-                  <div class="flex items-center gap-1.5 w-full min-w-0 overflow-hidden">
-                    <div class="flex-1 min-w-0 h-full overflow-hidden">
-                      <input ref="chatInputRef" v-model="userInput" type="text" :disabled="isLoading"
-                        placeholder="Ask me anything about dive shops..."
-                        class="w-full h-full outline-none text-zinc-900 dark:text-white font-medium text-sm tracking-none disabled:cursor-not-allowed indent-2 p-4" />
-                    </div>
-                    <div class="h-full shrink-0">
-                      <button type="submit" :disabled="isLoading || !userInput.trim()"
-                        class="p-2 flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-100 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-xl tracking-none cursor-pointer text-zinc-900 dark:text-zinc-900 disabled:bg-zinc-100 disabled:dark:bg-zinc-600 disabled:cursor-not-allowed font-medium disabled:*:opacity-20">
-                        <ArrowUp v-if="!isLoading" class="w-6 h-6" />
-                        <div v-else class="animate-spin rounded-full h-5 w-5 border-b-2 border-zinc-600 dark:border-white"></div>
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              </div>
+          <!-- Input area: max width lives on parent so ChatComposer fills available width -->
+          <div class="flex items-stretch justify-center z-1 w-full min-w-0 overflow-hidden">
+            <div class="w-full min-w-0 max-w-4xl 2xl:min-w-md">
+              <ChatComposer
+                ref="chatComposerRef"
+                v-model="userInput"
+                :loading="isLoading"
+                @submit="handleSubmit"
+              />
             </div>
           </div>
         </div>
@@ -313,8 +297,9 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted, watch, onUnmounted } from 'vue'
-import { Menu, ArrowUp, ChevronRight } from 'lucide-vue-next'
+import { Menu, ChevronRight } from 'lucide-vue-next'
 import gsap from 'gsap'
+import ChatComposer from '~/components/chat/ChatComposer.vue'
 import CardSearchResult from '~/components/CardSearchResult.vue'
 import ShopDetailPanel from '~/components/ShopDetailPanel.vue'
 import { useSearchCache, ensureChatsRoot, readChatsRoot, getActiveSession, persistActiveChatsRoot } from '~/composables/useSearchCache'
@@ -434,7 +419,7 @@ async function syncProfileAfterChatBookingSent (body) {
 
 // State
 const userInput = ref('')
-const chatInputRef = ref(null)
+const chatComposerRef = ref(null)
 const isLoading = ref(false)
 const messages = ref([])
 const messagesContainer = ref(null)
@@ -1399,7 +1384,7 @@ const sendMessage = async (messageText, displayText) => {
       await scrollToBottom()
       persistCache()
       await nextTick()
-      chatInputRef.value?.focus()
+      chatComposerRef.value?.focus()
     }
   }
 }
