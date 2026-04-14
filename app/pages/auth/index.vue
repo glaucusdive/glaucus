@@ -1,5 +1,4 @@
 <template>
-  <NuxtLayout name="default">
     <div class="min-h-screen bg-zinc-50 dark:bg-zinc-900 p-4 flex items-center justify-center">
       <div class="w-full max-w-md space-y-6">
         <h1 class="text-2xl font-bold text-zinc-900 dark:text-white text-center">
@@ -61,10 +60,11 @@
         </p>
       </div>
     </div>
-  </NuxtLayout>
 </template>
 
 <script setup lang="ts">
+definePageMeta({ layout: 'default' })
+
 const route = useRoute()
 const router = useRouter()
 const isSignUp = computed(() => route.path === '/auth/signup' || route.query.signup === '1')

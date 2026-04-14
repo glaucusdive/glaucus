@@ -14,20 +14,20 @@
       </button>
     </div>
   </div>
-  <NuxtLayout name="default">
-    <div class="h-full w-full">
-      <DiveShopDetail
-        v-if="shopLookup"
-        :shop-lookup="shopLookup"
-        :show-close-button="false"
-        @close="goBackToShops"
-      />
-    </div>
-  </NuxtLayout>
+  <div v-else class="h-full w-full">
+    <DiveShopDetail
+      v-if="shopLookup"
+      :shop-lookup="shopLookup"
+      :show-close-button="false"
+      @close="goBackToShops"
+    />
+  </div>
 </template>
 
 <script setup>
 import DiveShopDetail from '~/components/DiveShopDetail.vue'
+
+definePageMeta({ layout: 'default' })
 
 const route = useRoute()
 const router = useRouter()
