@@ -1,42 +1,18 @@
 <template>
   <header
     ref="headerRootRef"
-    class="sticky top-0 px-4 py-4 lg:px-20 lg:py-5"
+    class="sticky top-0 p-5 lg:px-20 lg:py-5"
     :class="mobileMenuOpen ? 'z-50' : 'z-10'"
   >
-    <!-- Mobile: logo + menu + CTA -->
-    <div class="flex items-center justify-between gap-4 lg:hidden">
-      <NuxtLink to="/" class="flex h-auto w-[120px] flex-row items-center justify-center gap-2">
-        <img src="/images/glaucus-logo-emblem.svg" alt="Logo" class="h-full w-[40px] -rotate-45" />
-        <Logo class="*:fill-black *:dark:fill-white" />
-      </NuxtLink>
-      <div class="flex items-center gap-2">
-        <button
-          type="button"
-          class="rounded-md bg-zinc-900 px-3 py-2 text-xs font-medium uppercase text-white transition-colors hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-          @click="goToApp"
-        >
-          Open Chat
-        </button>
-        <button type="button"
-          class="inline-flex size-10 items-center justify-center rounded-full text-zinc-100 transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-          :aria-expanded="mobileMenuOpen" aria-controls="landing-mobile-nav"
-          :aria-label="mobileMenuOpen ? 'Close menu' : 'Open menu'" @click="toggleMobileMenu">
-          <Menu v-if="!mobileMenuOpen" :width="22" :height="22" :stroke-width="1.5" aria-hidden="true" />
-          <Xmark v-else :width="22" :height="22" :stroke-width="1.5" aria-hidden="true" />
-        </button>
-      </div>
-    </div>
 
-    <!-- Desktop -->
-    <div class="hidden gap-4 lg:grid lg:grid-cols-12 lg:items-center">
-      <div class="lg:col-span-2">
+    <div class="grid grid-cols-12 gap-4 items-center">
+      <div class="col-span-6 lg:col-span-2">
         <NuxtLink to="/" class="flex h-auto w-[120px] flex-row items-center justify-center gap-2">
           <img src="/images/glaucus-logo-emblem.svg" alt="Logo" class="h-full w-[40px] -rotate-45" />
           <Logo class="*:fill-black *:dark:fill-white" />
         </NuxtLink>
       </div>
-      <div class="lg:col-span-8">
+      <div class="hidden lg:col-span-8 lg:flex lg:justify-center">
         <div class="flex items-center justify-center">
           <div
             class="inline-flex items-center gap-1 rounded-full bg-zinc-800 p-1 text-zinc-100"
@@ -71,7 +47,7 @@
                 </a>
               </nav>
             </template>
-            <div v-else role="search" class="flex min-w-0 w-full items-center gap-1">
+            <div v-else role="search" class="flex min-w-0 w-full items-center gap-2">
               <span :class="navSearchIconWrap" aria-hidden="true">
                 <Search :width="12" :height="12" :stroke-width="1.5" />
               </span>
@@ -109,14 +85,21 @@
           </div>
         </div>
       </div>
-      <div class="lg:col-span-2">
-        <div class="flex items-center justify-end">
+      <div class="col-span-6 lg:col-span-2">
+        <div class="flex gap-2 items-center justify-end">
           <button
             type="button"
-            class="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium uppercase text-white transition-colors hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+            class="rounded-md h-10 px-4 py-2 text-sm font-medium uppercase bg-white text-zinc-900 hover:bg-zinc-200 whitespace-nowrap"
             @click="goToApp"
           >
             Open Chat
+          </button>
+          <button type="button"
+            class="flex lg:hidden size-10 items-center justify-center rounded-md text-zinc-100 transition-colors hover:bg-zinc-800 focus-visible:outline-none"
+            :aria-expanded="mobileMenuOpen" aria-controls="landing-mobile-nav"
+            :aria-label="mobileMenuOpen ? 'Close menu' : 'Open menu'" @click="toggleMobileMenu">
+            <Menu v-if="!mobileMenuOpen" :width="22" :height="22" :stroke-width="1.5" aria-hidden="true" />
+            <Xmark v-else :width="22" :height="22" :stroke-width="1.5" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -177,7 +160,7 @@ const navLinkBase = [
 ].join(' ')
 
 const navSearchInput =
-  'h-6 min-h-0 min-w-0 flex-1 border-0 bg-transparent py-0 text-xs leading-6 text-white shadow-none placeholder:text-zinc-500 focus:outline-none focus:ring-0'
+  'h-6 min-h-0 min-w-md flex-1 border-0 bg-transparent py-0 text-xs leading-6 text-white shadow-none placeholder:text-zinc-500 focus:outline-none focus:ring-0'
 
 const route = useRoute()
 

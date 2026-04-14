@@ -4,7 +4,7 @@
       v-if="layerMounted"
       :id="drawerId"
       ref="layerRef"
-      class="fixed bottom-0 left-0 right-0 z-40 flex flex-col bg-zinc-950 px-6 pb-10 pt-8"
+      class="fixed bottom-0 left-0 right-0 z-40 flex flex-col justify-center bg-[#101214] px-6 pb-10 pt-8"
       :style="{ top: `${drawerTopPx}px` }"
       role="dialog"
       aria-modal="true"
