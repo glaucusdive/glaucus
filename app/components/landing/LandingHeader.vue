@@ -253,6 +253,6 @@ function onSearchSubmit (e) {
 }
 
 function goToApp () {
-  void navigateTo('/auth')
+  void navigateTo({ path: '/', query: { chat: '1' } })
 }
 </script>

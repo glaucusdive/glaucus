@@ -10,7 +10,7 @@
     >
       <img src="/images/glaucus-logo-emblem.svg" alt="" class="h-24 w-24 -rotate-45" />
     </div>
-    <LandingHome v-else-if="!isSignedIn" />
+    <LandingHome v-else-if="!showChatShell" />
     <LazyChatHome v-else />
   </NuxtLayout>
 </template>
@@ -22,15 +22,26 @@ definePageMeta({ layout: false })
 
 const LazyChatHome = defineAsyncComponent(() => import('~/components/chat/ChatHome.vue'))
 
+const route = useRoute()
 const { init, isSignedIn } = useAuth()
 
 /** False until client `init()` finishes. */
 const authResolved = ref(false)
 
-/** Minimal `landing` shell while resolving and when logged out; `default` only once signed in. */
-const layoutName = computed(() =>
-  authResolved.value && isSignedIn.value ? 'default' : 'landing'
+/** Guest dive search: `/?chat=1` (e.g. “Open Chat” from landing) without signing in. */
+const guestChat = computed(
+  () => authResolved.value && !isSignedIn.value && route.query.chat === '1'
 )
+
+const showChatShell = computed(() => isSignedIn.value || guestChat.value)
+
+/** Signed-in users, or guests who opened chat, use the app shell; marketing-only guests use `landing`. */
+const layoutName = computed(() => {
+  if (!authResolved.value) return 'landing'
+  if (isSignedIn.value) return 'default'
+  if (guestChat.value) return 'default'
+  return 'landing'
+})
 
 onMounted(async () => {
   await init()

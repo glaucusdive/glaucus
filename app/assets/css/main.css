@@ -28,6 +28,11 @@
 }
 
 @layer utilities {
+  /* Isolate so ::before (z-index: -1) stacks predictably above the canvas, not behind an opaque parent bg */
+  .gradient-container {
+    isolation: isolate;
+  }
+
   /* Base pseudo-element that's always present but hidden */
   .gradient-container::before {
     content: '';
