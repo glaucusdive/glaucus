@@ -249,8 +249,8 @@
           <div class="flex items-stretch justify-center z-1 overflow-hidden">
             <div class="bg-transparent p-0.5 pt-0 backdrop-blur-sm 2xl:min-w-md max-w-4xl w-full rounded-full overflow-hidden">
               <div :class="[
-                'p-0.5 shrink-0 bg-transparent transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-hidden gradient-container',
-                isLoading ? 'animate-ring-gradient' : ''
+                'p-0.5 shrink-0 transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-hidden gradient-container',
+                isLoading ? 'animate-ring-gradient !bg-[#02C8FF]' : 'bg-transparent'
               ]">
                 <form class="w-full h-full bg-zinc-100 dark:bg-zinc-700 rounded-full p-1 z-10 overflow-hidden"
                   @submit.prevent="handleSubmit">
@@ -264,7 +264,7 @@
                       <button type="submit" :disabled="isLoading || !userInput.trim()"
                         class="p-2 flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-100 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-xl tracking-none cursor-pointer text-zinc-900 dark:text-zinc-900 disabled:bg-zinc-100 disabled:dark:bg-zinc-600 disabled:cursor-not-allowed font-medium disabled:*:opacity-20">
                         <ArrowUp v-if="!isLoading" class="w-6 h-6" />
-                        <div v-else class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        <div v-else class="animate-spin rounded-full h-5 w-5 border-b-2 border-zinc-600 dark:border-white"></div>
                       </button>
                     </div>
                   </div>

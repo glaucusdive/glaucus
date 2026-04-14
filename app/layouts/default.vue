@@ -173,10 +173,17 @@ const showChatInSidebar = computed(() => {
   return p === '/' || p.startsWith('/auth') || p.startsWith('/profile')
 })
 const { sidebarChats, requestNewChat, requestSwitchSession } = useChatSessions()
+const { isSignedIn, signOut, onAuthStateChange, accessToken } = useAuth()
 
 async function runChatActionFromSidebar (action) {
-  if (route.path !== '/') {
-    await navigateTo('/')
+  const guest = !isSignedIn.value
+  const needNav =
+    route.path !== '/' ||
+    (guest && String(route.query.chat) !== '1')
+  if (needNav) {
+    await navigateTo(
+      guest ? { path: '/', query: { chat: '1' } } : { path: '/' }
+    )
     await nextTick()
   }
   action()
@@ -203,7 +210,6 @@ function formatChatUpdated (ts) {
 
 const { isDark, toggleTheme } = useTheme()
 const { client } = useSupabase()
-const { isSignedIn, signOut, onAuthStateChange, accessToken } = useAuth()
 const { saveDraftFromCacheIfNeeded } = useSaveDraftFromCache()
 
 async function handleSignOut () {
