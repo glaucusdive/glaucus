@@ -1,0 +1,275 @@
+<template>
+  <header
+    ref="headerRootRef"
+    class="sticky top-0 px-4 py-4 lg:px-20 lg:py-5"
+    :class="mobileMenuOpen ? 'z-50' : 'z-10'"
+  >
+    <!-- Mobile: logo + menu + CTA -->
+    <div class="flex items-center justify-between gap-4 lg:hidden">
+      <NuxtLink to="/" class="flex h-auto w-[120px] flex-row items-center justify-center gap-2">
+        <img src="/images/glaucus-logo-emblem.svg" alt="Logo" class="h-full w-[40px] -rotate-45" />
+        <Logo class="*:fill-black *:dark:fill-white" />
+      </NuxtLink>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="rounded-md bg-zinc-900 px-3 py-2 text-xs font-medium uppercase text-white transition-colors hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+          @click="goToApp"
+        >
+          Open Chat
+        </button>
+        <button type="button"
+          class="inline-flex size-10 items-center justify-center rounded-full text-zinc-100 transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          :aria-expanded="mobileMenuOpen" aria-controls="landing-mobile-nav"
+          :aria-label="mobileMenuOpen ? 'Close menu' : 'Open menu'" @click="toggleMobileMenu">
+          <Menu v-if="!mobileMenuOpen" :width="22" :height="22" :stroke-width="1.5" aria-hidden="true" />
+          <Xmark v-else :width="22" :height="22" :stroke-width="1.5" aria-hidden="true" />
+        </button>
+      </div>
+    </div>
+
+    <!-- Desktop -->
+    <div class="hidden gap-4 lg:grid lg:grid-cols-12 lg:items-center">
+      <div class="lg:col-span-2">
+        <NuxtLink to="/" class="flex h-auto w-[120px] flex-row items-center justify-center gap-2">
+          <img src="/images/glaucus-logo-emblem.svg" alt="Logo" class="h-full w-[40px] -rotate-45" />
+          <Logo class="*:fill-black *:dark:fill-white" />
+        </NuxtLink>
+      </div>
+      <div class="lg:col-span-8">
+        <div class="flex items-center justify-center">
+          <div
+            class="inline-flex items-center gap-1 rounded-full bg-zinc-800 p-1 text-zinc-100"
+            :class="searchOpen ? 'w-full' : 'w-fit'"
+          >
+            <template v-if="!searchOpen">
+              <button
+                type="button"
+                :class="[
+                  navIconBtn,
+                  searchChromeActive ? 'bg-white/10 hover:bg-white/15' : 'hover:bg-white/10'
+                ]"
+                :aria-expanded="searchOpen"
+                aria-label="Open search"
+                @click="openSearch"
+              >
+                <Search :width="12" :height="12" :stroke-width="1.5" aria-hidden="true" />
+              </button>
+              <nav class="flex w-fit items-center gap-1" aria-label="Landing sections">
+                <a
+                  v-for="item in resolvedNavItems"
+                  :key="item.id"
+                  :href="`#${item.id}`"
+                  :class="[
+                    navLinkBase,
+                    activeNavLinkId === item.id
+                      ? 'bg-white/10 text-white'
+                      : 'text-zinc-300 hover:text-white'
+                  ]"
+                >
+                  {{ item.label }}
+                </a>
+              </nav>
+            </template>
+            <div v-else role="search" class="flex min-w-0 w-full items-center gap-1">
+              <span :class="navSearchIconWrap" aria-hidden="true">
+                <Search :width="12" :height="12" :stroke-width="1.5" />
+              </span>
+              <input
+                v-model="searchQuery"
+                type="text"
+                inputmode="search"
+                enterkeyhint="search"
+                :class="navSearchInput"
+                placeholder="Find a dive shop in Bali"
+                aria-label="Search"
+              />
+              <button
+                v-if="!searchQuery.trim()"
+                type="button"
+                :class="[navIconBtn, 'text-zinc-400 hover:bg-white/10 hover:text-zinc-200']"
+                aria-label="Close search"
+                @click="closeSearch"
+              >
+                <Xmark :width="12" :height="12" :stroke-width="1.5" aria-hidden="true" />
+              </button>
+              <button
+                v-else
+                type="button"
+                :class="[
+                  navIconBtn,
+                  'bg-white text-zinc-950 transition-opacity hover:opacity-90'
+                ]"
+                aria-label="Submit search"
+                @click="onSearchSubmit"
+              >
+                <ArrowUp :width="12" :height="12" :stroke-width="1.5" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="lg:col-span-2">
+        <div class="flex items-center justify-end">
+          <button
+            type="button"
+            class="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium uppercase text-white transition-colors hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+            @click="goToApp"
+          >
+            Open Chat
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <LandingMobileNavDrawer
+      :open="mobileMenuOpen"
+      :header-offset-px="mobileDrawerTopPx"
+      :nav-items="resolvedNavItems"
+      :active-nav-link-id="activeNavLinkId"
+      drawer-id="landing-mobile-nav"
+      @close="closeMobileMenu"
+    />
+  </header>
+</template>
+
+<script setup>
+import { ArrowUp, Menu, Search, Xmark } from '@iconoir/vue'
+
+const defaultNavItems = [
+  { id: 'whatisglaucus', label: 'What is Glaucus?' },
+  { id: 'features', label: 'Features' },
+  { id: 'aboutus', label: 'About us' },
+  { id: 'logs', label: 'Logs' },
+  { id: 'contact', label: 'Contact' }
+]
+
+const props = defineProps({
+  navItems: {
+    type: Array,
+    default: null
+  }
+})
+
+const resolvedNavItems = computed(() =>
+  Array.isArray(props.navItems) && props.navItems.length > 0
+    ? props.navItems
+    : defaultNavItems
+)
+
+const navFocus =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40'
+
+const navIconBtn = [
+  'inline-flex size-6 shrink-0 items-center justify-center rounded-full',
+  'transition-colors',
+  navFocus
+].join(' ')
+
+const navSearchIconWrap =
+  'inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-white/10 text-zinc-100'
+
+const navLinkBase = [
+  'inline-flex shrink-0 items-center rounded-full px-2.5 py-1.5',
+  'text-xs font-medium uppercase leading-none tracking-wide',
+  'transition-colors',
+  navFocus
+].join(' ')
+
+const navSearchInput =
+  'h-6 min-h-0 min-w-0 flex-1 border-0 bg-transparent py-0 text-xs leading-6 text-white shadow-none placeholder:text-zinc-500 focus:outline-none focus:ring-0'
+
+const route = useRoute()
+
+const headerRootRef = ref(null)
+const mobileDrawerTopPx = ref(0)
+
+const mobileMenuOpen = ref(false)
+const searchOpen = ref(false)
+const searchQuery = ref('')
+
+const navSectionIds = computed(() => new Set(resolvedNavItems.value.map((item) => item.id)))
+
+const rawHash = computed(() => (route.hash || '').replace(/^#/, ''))
+
+const searchChromeActive = computed(() => {
+  if (searchOpen.value) {
+    return true
+  }
+  const h = rawHash.value
+  if (!h || h === 'hero') {
+    return true
+  }
+  if (navSectionIds.value.has(h)) {
+    return false
+  }
+  return true
+})
+
+const activeNavLinkId = computed(() => {
+  if (searchOpen.value) {
+    return null
+  }
+  const h = rawHash.value
+  if (!h || h === 'hero') {
+    return null
+  }
+  return navSectionIds.value.has(h) ? h : null
+})
+
+function measureMobileDrawerTop () {
+  if (!import.meta.client || !headerRootRef.value) {
+    return
+  }
+  mobileDrawerTopPx.value = headerRootRef.value.offsetHeight
+}
+
+function onWindowResize () {
+  if (mobileMenuOpen.value) {
+    measureMobileDrawerTop()
+  }
+}
+
+onMounted(() => {
+  if (import.meta.client) {
+    window.addEventListener('resize', onWindowResize)
+  }
+})
+
+onUnmounted(() => {
+  if (import.meta.client) {
+    window.removeEventListener('resize', onWindowResize)
+  }
+})
+
+async function toggleMobileMenu () {
+  if (!mobileMenuOpen.value) {
+    await nextTick()
+    measureMobileDrawerTop()
+    mobileMenuOpen.value = true
+  } else {
+    mobileMenuOpen.value = false
+  }
+}
+
+function closeMobileMenu () {
+  mobileMenuOpen.value = false
+}
+
+function openSearch () {
+  searchOpen.value = true
+}
+
+function closeSearch () {
+  searchOpen.value = false
+  searchQuery.value = ''
+}
+
+function onSearchSubmit (e) {
+  e?.preventDefault?.()
+}
+
+function goToApp () {
+  void navigateTo('/auth')
+}
+</script>
