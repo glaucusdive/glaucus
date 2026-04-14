@@ -1,5 +1,5 @@
 <template>
-  <main class="bg-zinc-950">
+  <main>
     <header class="sticky top-0 z-10 lg:px-20 lg:py-5">
       <div class="grid gap-4 lg:grid-cols-12 lg:items-center">
         <div class="lg:col-span-3">
