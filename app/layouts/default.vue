@@ -115,12 +115,14 @@
         </div>
       </Transition>
 
-      <!-- Main Content -->
-      <div class="p-2 lg:pl-0 grow h-dvh w-dvw min-w-0 flex flex-row gap-2 relative">
+      <!-- Main Content: flex-1 + min-w-0 only — never w-dvw here or the pane claims full viewport width and hides the sidebar -->
+      <div class="relative flex h-full min-h-0 min-w-0 flex-1 flex-row gap-2 p-2 lg:pl-0">
         <div
-          class="bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-sm lg:rounded-xl h-full flex-1 min-w-0 relative overflow-hidden">
+          class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-sm border border-zinc-300 bg-white lg:rounded-xl dark:border-zinc-700 dark:bg-zinc-900">
 
-          <slot />
+          <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+            <slot />
+          </div>
 
         </div>
         <!-- Drawer Sidebar -->

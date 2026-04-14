@@ -1,5 +1,4 @@
 <template>
-  <NuxtLayout name="default">
     <div class="min-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4">
       <h1 class="text-xl font-bold text-zinc-900 dark:text-white mb-6">Profile</h1>
 
@@ -16,9 +15,8 @@
         </NuxtLink>
       </nav>
     </div>
-  </NuxtLayout>
 </template>
 
 <script setup lang="ts">
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'default', middleware: 'auth' })
 </script>

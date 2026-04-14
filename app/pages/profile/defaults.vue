@@ -1,5 +1,4 @@
 <template>
-  <NuxtLayout name="default">
     <div class="max-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4 overflow-y-auto">
       <NuxtLink to="/profile" class="inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white mb-4 cursor-pointer">
         ← Profile
@@ -99,7 +98,6 @@
         </button>
       </form>
     </div>
-  </NuxtLayout>
 </template>
 
 <script setup lang="ts">
@@ -107,7 +105,7 @@ import { readChatsRoot, getActiveSession } from '~/composables/useSearchCache'
 import { getLatestBookingPayloadFromMessages, bookingPayloadHasNamedDiver } from '~/utils/chatBookingPayload'
 import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst, type BookingDiverLike } from '~/utils/mergeProfileDefaultDivers'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'default', middleware: 'auth' })
 
 const { user } = useAuth()
 const { client } = useSupabase()

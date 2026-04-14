@@ -1,5 +1,4 @@
 <template>
-  <NuxtLayout name="default">
     <!-- Header -->
     <!-- <template #header>
       <div class="flex flex-col justify-center z-50 w-full divide-y divide-zinc-300">
@@ -117,12 +116,13 @@
       <h3 class="text-lg font-medium text-zinc-900 dark:text-white mb-2">Loading...</h3>
       <p class="text-zinc-500 dark:text-zinc-400">Please wait while we load the dive shops data.</p>
     </div>
-  </NuxtLayout>
 </template>
 
 <script setup>
 import { Menu } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
+
+definePageMeta({ layout: 'default' })
 
 useSeoMeta({
   robots: 'noindex, follow'
