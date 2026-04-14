@@ -5,6 +5,17 @@
   html, body {
     @apply text-black bg-zinc-50 dark:text-white dark:bg-black;
   }
+
+  /* Actionable controls: native <button> defaults to arrow cursor in many resets. */
+  button:enabled,
+  [role='button']:not([aria-disabled='true']) {
+    @apply cursor-pointer;
+  }
+
+  a[href],
+  summary {
+    @apply cursor-pointer;
+  }
 }
 
 @keyframes ring-gradient-rotate {
