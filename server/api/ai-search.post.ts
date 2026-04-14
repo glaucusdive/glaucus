@@ -31,6 +31,8 @@ import { resolveBookingTargetFromPhrase } from '../utils/resolveBookingTarget'
 import { tryShopInfoResponse } from '../utils/shopInfoForChat'
 import { applyInferredCoursesToPayloadIfEligible } from '../utils/inferCoursesFromConversation'
 import { runWithRetries } from '../utils/retryWithBackoff'
+import { SEARCH_DIVE_SYSTEM_PROMPT } from '../utils/searchDiveSystemPrompt'
+import { runTripTypeSearchAfterLlm, tripTypeFirstQuestionResponse } from '../utils/tripTypeSearchPipeline'
 import {
   buildDiverFieldEditPrompt,
   clearDiverFieldOnCopy,
@@ -173,33 +175,6 @@ function orchestratorSplitBookingCopyForStep (
   return null
 }
 
-/** When the AI omits country but user clearly said a location (e.g. trip-type-only reply), infer country from conversation. */
-function inferCountryFromConversation (conversationText: string): string | null {
-  // Match "in Thailand", "Thailand", "dive shops in Thailand", etc. Use word boundary so "Thailand-based" matches.
-  const countryPatterns: { pattern: RegExp; country: string }[] = [
-    { pattern: /\bthailand\b/i, country: 'Thailand' },
-    { pattern: /\bindonesia\b/i, country: 'Indonesia' },
-    { pattern: /\bmaldives\b/i, country: 'Maldives' },
-    { pattern: /\bphilippines\b/i, country: 'Philippines' },
-    { pattern: /\bmexico\b/i, country: 'Mexico' },
-    { pattern: /\begypt\b/i, country: 'Egypt' },
-    { pattern: /\bbali\b/i, country: 'Indonesia' },
-    { pattern: /\bunited states\b|\busa\b|\bu\.s\./i, country: 'United States' },
-    { pattern: /\baustralia\b/i, country: 'Australia' },
-    { pattern: /\bmalaysia\b/i, country: 'Malaysia' },
-    { pattern: /\bbelize\b/i, country: 'Belize' },
-    { pattern: /\bhonduras\b/i, country: 'Honduras' },
-    { pattern: /\bcuba\b/i, country: 'Cuba' },
-    { pattern: /\bsouth africa\b/i, country: 'South Africa' },
-    { pattern: /\bgreece\b/i, country: 'Greece' },
-    { pattern: /\bcroatia\b/i, country: 'Croatia' }
-  ]
-  for (const { pattern, country } of countryPatterns) {
-    if (pattern.test(conversationText)) return country
-  }
-  return null
-}
-
 /** Booking payload shape (frontend sends accumulated state; backend returns updated payload when in booking flow). */
 export interface BookingDiver {
   name: string
@@ -334,68 +309,7 @@ interface RequestBody {
   pendingEntityClarifyPhrase?: string
 }
 
-const SYSTEM_PROMPT = `You are an AI assistant helping users find the perfect dive shop for their needs. 
-
-Your task is to:
-1. Understand what the user is looking for in their diving experience
-2. Extract relevant search filters from the conversation
-3. Help narrow down options when there are too many results
-
-Available dive shop data fields you can filter on:
-- country: The country where the shop is located
-- locale: The city/town where the shop is located
-- region: The specific region within a country
-- google_rating: The Google rating (0-5)
-- languages: Array of languages spoken at the shop
-- diveTypes: Trip/shop type — set when user says they want a liveaboard, resort, dive shops, or day trips. Use exactly: ["Liveaboard"] for liveaboard, ["Dive Resort"] for resort, ["Dive Shop"] for dive shops / day trips. Only one type per search.
-- operating_hours: Shop operating hours
-- website_url, phone, email: Contact information
-
-When the user asks about diving, analyze their request and respond with a JSON object followed by a conversational message.
-
-Your response MUST be in this exact format:
-FILTERS: {
-  "country": "string or null",
-  "locale": "string or null", 
-  "region": "string or null",
-  "minRating": number or null,
-  "languages": ["array", "of", "languages"] or null,
-  "diveTypes": ["Liveaboard"] or ["Dive Resort"] or ["Dive Shop"] or null
-}
-MESSAGE: Your conversational response to the user
-
-Rules:
-- Extract location information carefully (e.g., "Bali" -> locale: "Bali", country: "Indonesia")
-- If user mentions quality/rating requirements, set minRating appropriately
-- If user says they prefer a liveaboard (or "I prefer a liveaboard"), set diveTypes to ["Liveaboard"]. If they prefer a resort, set diveTypes to ["Dive Resort"]. If they prefer dive shops or day trips, set diveTypes to ["Dive Shop"]. If no trip type mentioned, leave diveTypes null.
-- CRITICAL — Preserve location from the full conversation: If the user already said where they want to dive (e.g. "in Thailand", "dive shops in Thailand", "Bali", "Maldives") in ANY earlier message in this chat, you MUST include that in FILTERS (country and optionally locale). Do NOT set country or locale to null when the user has already stated a location. When they then answer a follow-up (e.g. "I prefer a liveaboard"), keep their stated country in FILTERS.
-- Be conversational and friendly in your MESSAGE
-- Keep your MESSAGE SHORT and concise (1-2 sentences max)
-- Do NOT ask multiple questions - keep responses simple
-- Let the conversation flow naturally without overwhelming the user
-- IMPORTANT: If the user says "any", "doesn't matter", "no preference", "all types", or similar phrases indicating no preference for a topic, do NOT set filters for that topic. Treat it as "no filter needed" for that aspect.
-
-Examples:
-
-User: "I want to dive in Bali"
-FILTERS: {"country": "Indonesia", "locale": "Bali", "region": null, "minRating": null, "languages": null, "diveTypes": null}
-MESSAGE: I'll help you find dive shops in Bali! Let me search for options.
-
-User: "Looking for highly rated shops"
-FILTERS: {"country": null, "locale": null, "region": null, "minRating": 4.5, "languages": null, "diveTypes": null}
-MESSAGE: I'll find highly-rated dive shops for you.
-
-User: "Highly rated dive shops in Thailand" then user says "I prefer a liveaboard"
-FILTERS: {"country": "Thailand", "locale": null, "region": null, "minRating": 4, "languages": null, "diveTypes": ["Liveaboard"]}
-MESSAGE: I'll find highly-rated liveaboards in Thailand.
-
-User: "Shops that speak English and Spanish"
-FILTERS: {"country": null, "locale": null, "region": null, "minRating": null, "languages": ["English", "Spanish"], "diveTypes": null}
-MESSAGE: Looking for shops where staff speaks English and Spanish.
-
-User: "any type of diving"
-FILTERS: {"country": null, "locale": null, "region": null, "minRating": null, "languages": null, "diveTypes": null}
-MESSAGE: Got it! I'll search for all dive shops without filtering by activity type.`
+const SYSTEM_PROMPT = SEARCH_DIVE_SYSTEM_PROMPT
 
 const BOOKING_INTENT_PATTERN = /\b(book|reserve|booking|reservation|i want to book|i'd like to book|send my request|submit my request)\b/i
 
@@ -413,24 +327,6 @@ function wantsSearchFlowReset (trimmed: string): boolean {
   if (/\breset\s+(?:my\s+)?search\b/i.test(t)) return true
   if (/\bclear\s+(?:this|it|everything)\s+and\s+start\b/i.test(t)) return true
   return false
-}
-
-function tripTypeFirstQuestionResponse (opts?: { searchFlowReset?: boolean }) {
-  return {
-    success: true as const,
-    intent: 'search' as const,
-    message: 'What type of trip are you looking for?',
-    shops: [],
-    totalResults: 0,
-    hasMoreResults: false,
-    filters: {} as SearchFilters,
-    selectableOptions: [
-      { label: 'Dive Shop', value: 'I prefer dive shops' },
-      { label: 'Liveaboard', value: 'I prefer a liveaboard' },
-      { label: 'Resort', value: 'I prefer a resort' }
-    ],
-    ...(opts?.searchFlowReset ? { searchFlowReset: true as const } : {})
-  }
 }
 
 function buildBookingSystemPrompt (
@@ -2127,8 +2023,7 @@ export default defineEventHandler(async (event) => {
         ...(history || []),
         { role: 'user', content: message }
       ]
-    
-      // Call OpenRouter API
+
       const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -2139,278 +2034,31 @@ export default defineEventHandler(async (event) => {
         },
         body: JSON.stringify({
           model: 'openai/gpt-5-mini',
-          messages: messages,
+          messages,
           temperature: 0.7,
           max_tokens: 1000
         })
       })
-    
+
       if (!aiResponse.ok) {
         const errorText = await aiResponse.text()
         console.error('OpenRouter API error:', errorText)
         throw new Error(`OpenRouter API error: ${aiResponse.statusText}`)
       }
-    
+
       const aiData = await aiResponse.json()
       const aiMessage = aiData.choices[0]?.message?.content || ''
-    
       console.log(`[AI Search] Raw AI response:`, aiMessage)
-    
-      // Parse the AI response to extract filters and message
-      let filters: SearchFilters = {}
-      let conversationalMessage = aiMessage
-    
-      try {
-        // Extract FILTERS and MESSAGE from the response
-        const filtersMatch = aiMessage.match(/FILTERS:\s*(\{[^}]+\})/s)
-        const messageMatch = aiMessage.match(/MESSAGE:\s*(.+)/s)
-      
-        if (filtersMatch) {
-          filters = JSON.parse(filtersMatch[1])
-          console.log(`[AI Search] Extracted filters:`, filters)
-        } else {
-          console.log(`[AI Search] No filters found in AI response`)
-        }
-      
-        if (messageMatch) {
-          conversationalMessage = messageMatch[1].trim()
-        }
-      } catch (parseError) {
-        console.error('[AI Search] Error parsing AI response:', parseError)
-        console.error('[AI Search] Problematic response:', aiMessage)
-        // If parsing fails, use the entire message and empty filters
-        conversationalMessage = aiMessage
-        filters = {}
-      }
 
-      // Fallback: if AI omitted country but user said a location in the conversation, infer it (e.g. "Thailand" in first message, then "I prefer a liveaboard")
-      const conversationText = [...(history || []).map(h => h.content), message].join(' ')
-      if (!filters.country?.trim()) {
-        const inferred = inferCountryFromConversation(conversationText)
-        if (inferred) {
-          filters.country = inferred
-          console.log('[AI Search] Inferred country from conversation:', inferred)
-        }
-      }
-    
-      // Run DB query and both possible second AI calls in parallel (total time ≈ max(DB, AI) instead of DB + AI)
-      const conversationContext = history.map(h => h.content).join(' ')
-      const wantsMoreOptions = /\b(more|other|additional|different|expand|broader|widen)\s+(options?|choices?|shops?|results?)\b/i.test(message) ||
-                              /\b(show|find|see)\s+more\b/i.test(message) ||
-                              /\bwiden\s+(the\s+)?search\b/i.test(message)
-
-      const broadeningPrompt = (placeholderCount: number) => `The search returned only ${placeholderCount} dive shop(s) based on these filters: ${JSON.stringify(filters)}
-
-  Previous conversation: ${conversationContext}
-
-  ${wantsMoreOptions ? 'The user is asking to see more options.' : 'There are very few results.'}
-
-  Suggest ONE of these approaches (choose the most appropriate):
-
-  1. If a specific locale/city was searched (e.g., "Bali"), suggest broadening to the parent region/country (e.g., "Would you like me to search all of Indonesia instead?")
-
-  2. If already at country level or user wants alternatives, suggest 2-3 nearby popular dive destinations in the same region
-
-  Be helpful and specific. Use your geographic knowledge. Keep it SHORT (one sentence + the suggestion). When you state how many shops were found, use the number ${placeholderCount} (we will replace it with the actual count).
-
-  On a new line after your message, also output exactly 1-3 selectable suggestion phrases as JSON array for the user to tap (e.g. ["Search all of Indonesia", "Search Southeast Asia"]):
-  SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
-
-      const followUpPrompt = `The search returned many dive shops (we show max 5). Ask ONE short follow-up question to narrow down.
-
-  Conversation so far: ${conversationContext}
-
-  RULES:
-  - Do NOT repeat or rephrase any question that already appears in the conversation above.
-  - Pick ONE topic that has NOT been asked yet: location (city/area), trip type (liveaboard/resort/dive shops), minimum rating, or language.
-  - One short question only.`
-
-      const [dbResult, broadeningResult, followUpAiMessage] = await Promise.all([
-        buildDiveShopQuery(supabaseUrl, supabaseKey, filters),
-        fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openrouterApiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://glaucus.app',
-            'X-Title': 'Glaucus Dive Shop Search'
-          },
-          body: JSON.stringify({
-            model: 'openai/gpt-5-mini',
-            messages: [
-              { role: 'system', content: 'You are a helpful dive shop search assistant with knowledge of global dive destinations. Be concise and helpful.' },
-              { role: 'user', content: broadeningPrompt(1) }
-            ],
-            temperature: 0.7,
-            max_tokens: 150
-          })
-        }).then(async (res) => {
-          if (!res.ok) return { content: '', suggestions: null as string[] | null }
-          const data = await res.json()
-          let content = data.choices[0]?.message?.content || ''
-          const suggestionsMatch = content.match(/SUGGESTIONS:\s*(\[[\s\S]*?\])\s*$/m)
-          let suggestions: string[] | null = null
-          if (suggestionsMatch) {
-            try {
-              const arr = JSON.parse(suggestionsMatch[1]) as string[]
-              if (Array.isArray(arr) && arr.length > 0) suggestions = arr.map(s => String(s).slice(0, 60))
-            } catch (_) { /* ignore */ }
-            content = content.replace(/\nSUGGESTIONS:\s*\[[\s\S]*?\]\s*$/, '').trim()
-          }
-          return { content, suggestions }
-        }).catch(() => ({ content: '', suggestions: null as string[] | null })),
-        fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openrouterApiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://glaucus.app',
-            'X-Title': 'Glaucus Dive Shop Search'
-          },
-          body: JSON.stringify({
-            model: 'openai/gpt-5-mini',
-            messages: [
-              { role: 'system', content: 'You ask ONE short question at a time. Never repeat a question that was already asked in the conversation.' },
-              { role: 'user', content: followUpPrompt }
-            ],
-            temperature: 0.6,
-            max_tokens: 100
-          })
-        }).then(async (res) => {
-          if (!res.ok) return ''
-          const data = await res.json()
-          return (data.choices[0]?.message?.content?.trim() || '') as string
-        }).catch(() => '')
-      ])
-
-      const { data: shops, error: dbError } = dbResult as { data: unknown[] | null; error: unknown }
-      if (dbError) {
-        console.error('Database error:', dbError)
-        throw new Error('Failed to search dive shops')
-      }
-
-      const resultCount = shops?.length || 0
-      let shouldAskFollowUp = false
-      let userAlreadyAnsweredLastQuestion = false
-      let followUpMessage = ''
-      let selectableOptions: { label: string; value: string }[] | undefined
-
-      console.log(`[AI Search] Found ${resultCount} results`)
-      console.log(`[AI Search] Filters applied:`, JSON.stringify(filters, null, 2))
-      console.log(`[AI Search] User wants more options:`, wantsMoreOptions)
-
-      if (resultCount <= 2 || wantsMoreOptions) {
-        shouldAskFollowUp = true
-        console.log(`[AI Search] Low results (${resultCount}) or user wants more options, suggesting to broaden search...`)
-        followUpMessage = broadeningResult.content
-          ? broadeningResult.content.replace(/\b1\s+dive shop(s?)\b/gi, `${resultCount} dive shop${resultCount === 1 ? '' : 's'}`).replace(/\bonly 1\b/gi, `only ${resultCount}`)
-          : ''
-        if (broadeningResult.suggestions?.length) {
-          selectableOptions = broadeningResult.suggestions.map(s => ({ label: s, value: s }))
-        }
-        if (!followUpMessage?.trim()) {
-          followUpMessage = filters.locale
-            ? `I found only ${resultCount} shop(s) in ${filters.locale}. Would you like me to search ${filters.country || 'the broader region'} instead?`
-            : 'Would you like me to expand the search to include more locations?'
-          if (!selectableOptions?.length && filters.country) selectableOptions = [{ label: `Search all of ${filters.country}`, value: `Search all of ${filters.country}` }]
-        }
-      } else if (resultCount > 5) {
-        const lastAssistantMessage = history.filter(h => h.role === 'assistant').pop()?.content || ''
-        const lastWasAQuestion = lastAssistantMessage.includes('?')
-        const noPreference = /\b(any|all|doesn't matter|don't care|no preference|whatever|either)\b/i.test(message)
-        const looksLikeNewSearch = /\b(want to|find|search|looking for|dive in|diving in)\b/i.test(message) && message.trim().length > 25
-        const userGaveDirectAnswer = lastWasAQuestion && !noPreference && !looksLikeNewSearch && message.trim().length > 0 && message.trim().length < 120
-
-        if (userGaveDirectAnswer) {
-          console.log(`[AI Search] User answered the last question ("${message.slice(0, 40)}..."), showing results (no repeat)`)
-          shouldAskFollowUp = false
-          userAlreadyAnsweredLastQuestion = true
-          selectableOptions = []
-        } else if (noPreference && lastWasAQuestion) {
-          console.log(`[AI Search] User said no preference, showing results`)
-          shouldAskFollowUp = false
-        } else {
-          shouldAskFollowUp = true
-          console.log(`[AI Search] Too many results (${resultCount}), asking follow-up question...`)
-          // Session memory: don't re-ask trip type if user already specified it this session
-          const alreadyHasTripType = tripTypeChoiceInMessage || userAlreadySpecifiedTripType
-          if (alreadyHasTripType) {
-            followUpMessage = followUpAiMessage || 'Would you like to narrow by location, rating, or something else?'
-            selectableOptions = followUpAiMessage ? [] : []
-          } else {
-            followUpMessage = followUpAiMessage || 'Would you prefer dive shops, a liveaboard, or a resort?'
-            selectableOptions = followUpAiMessage ? [] : [
-              { label: 'Dive Shop', value: 'I prefer dive shops' },
-              { label: 'Liveaboard', value: 'I prefer a liveaboard' },
-              { label: 'Resort', value: 'I prefer a resort' }
-            ]
-          }
-        }
-      } else {
-        console.log(`[AI Search] Result count (${resultCount}) is within limit, showing results`)
-      }
-
-      // Prepare response
-      let responseShops: unknown[] = []
-      let finalMessage = ''
-    
-      if (resultCount <= 2 || wantsMoreOptions) {
-        // Show the few results we have + suggestion to broaden. When many results, paginate so we never return 16 in one go.
-        if (resultCount > 5) {
-          const alreadyShown = Math.min(Math.max(0, shopsAlreadyShownCount ?? 0), resultCount)
-          responseShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
-          const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
-          if (alreadyShown === 0) {
-            finalMessage = `Here are the first 5 of ${resultCount} dive shops I found. ${followUpMessage}`
-          } else {
-            finalMessage = remaining > 0
-              ? `Here are the next ${responseShops.length} results. ${remaining} more available.`
-              : `Here are the next ${responseShops.length} results.`
-          }
-          if (remaining > 0) {
-            selectableOptions = [{ label: 'Load next 5', value: 'Show more' }]
-          }
-        } else {
-          responseShops = shops || []
-          if (resultCount > 0) {
-            finalMessage = `Here ${resultCount === 1 ? 'is' : 'are'} the ${resultCount} dive shop${resultCount === 1 ? '' : 's'} I found. ${followUpMessage}`
-          } else {
-            finalMessage = `I didn't find any dive shops matching those criteria. ${followUpMessage}`
-          }
-        }
-      } else if (shouldAskFollowUp && resultCount > 5) {
-        responseShops = []
-        finalMessage = `I found ${resultCount} dive shops that match your criteria. ${followUpMessage}`
-      } else if (userAlreadyAnsweredLastQuestion) {
-        responseShops = (shops || []).slice(0, 5)
-        finalMessage = `Here are some top options based on what you said. You can confirm details with the shop or ask to narrow by location, rating, or trip type.`
-        if (resultCount > 5) {
-          selectableOptions = [{ label: 'Load next 5', value: 'Show more' }]
-        }
-      } else {
-        // Perfect amount (3-5 results) OR user said "any" to a follow-up - show them
-        responseShops = (shops || []).slice(0, 5)
-        if (resultCount > 5) {
-          // User said "any" - show results with a message
-          finalMessage = `I found ${resultCount} dive shops. Here are the top results:`
-          selectableOptions = [{ label: 'Load next 5', value: 'Show more' }]
-        } else {
-          finalMessage = conversationalMessage
-        }
-      }
-    
-      console.log(`[AI Search] Sending response - hasMoreResults: ${shouldAskFollowUp}, shops count: ${responseShops.length}`)
-      console.log(`[AI Search] Final message:`, finalMessage)
-    
-      return {
-        success: true,
-        message: finalMessage,
-        shops: responseShops,
-        totalResults: resultCount,
-        hasMoreResults: shouldAskFollowUp,
-        filters: filters,
-        selectableOptions
-      }
+      return await runTripTypeSearchAfterLlm({
+        message,
+        history: history || [],
+        aiMessage,
+        openrouterApiKey,
+        supabaseUrl,
+        supabaseKey,
+        shopsAlreadyShownCount
+      })
     }, {
       maxAttempts: 4,
       baseDelayMs: 280,
