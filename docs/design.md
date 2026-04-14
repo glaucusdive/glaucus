@@ -1,0 +1,109 @@
+# Glaucus design system
+
+Living reference for visual and interaction patterns in this repo. Prefer these rules over one-off styling unless a screen has an explicit exception (document the exception in code comments or a short PR note).
+
+---
+
+## Visual theme
+
+- **Atmosphere:** Calm, product-focused, and readable. Favor clarity over ornament.
+- **Modes:** **Class-based dark mode** (`dark` on `<html>`). Light and dark are both first-class; default shell in [app/assets/css/main.css](app/assets/css/main.css) uses light page background with dark text, and dark mode uses white on near-black.
+- **Landing / marketing:** Deep charcoal backgrounds (`zinc-950`) with light foreground and restrained accent (see Color palette). Hero and nav specs may introduce peach/pink or purple accents as defined in Figma—when implementing, add tokens here and in Tailwind usage so names stay semantic (e.g. `accent`, `surface-pill`), not only raw hex in components.
+
+---
+
+## Color palette
+
+Semantic roles map to **Tailwind zinc** plus a few **documented literals** where the product already depends on them.
+
+| Role | Light (typical) | Dark (typical) | Notes |
+|------|-----------------|----------------|--------|
+| **Page background** | `zinc-50` | `black` / `zinc-950` | Base from `main.css`; landing may force `zinc-950`. |
+| **Surface / elevated** | `white`, `zinc-100` | `zinc-900`, `zinc-950` | Cards, panels, modals. |
+| **Primary text** | `black`, `zinc-900` | `white`, `zinc-50` | |
+| **Muted text** | `zinc-500`, `zinc-600` | `zinc-400`, `zinc-500` | Labels, placeholders, secondary copy. |
+| **Border / divider** | `zinc-200`, `zinc-300` | `zinc-700`, `zinc-800` | Prefer opacity dividers on dark pills, e.g. `bg-white/10`. |
+| **Primary action (inverse on dark)** | — | `white` bg, `zinc-900` text | See landing CTA pattern in `LandingHome.vue`. |
+| **Accent (gradient utility)** | — | — | Special effects: cyan / magenta gradient (`#02C8FF`, `#FF00F6`) in `.gradient-container` / `.animate-ring-gradient` in `main.css`. Use sparingly. |
+
+**Landing nav pill (Figma reference):** fill `#222228`, pill radius ~30px, internal gap/padding 4px—express in Tailwind with arbitrary values where needed (`bg-[#222228]`, `rounded-[30px]`, `gap-1`, `p-1`).
+
+Add new brand colors here **before** scattering hex across components.
+
+---
+
+## Typography
+
+- **Stack:** Inherited from **Nuxt UI** and Tailwind defaults unless a global font is configured later. Do not introduce a second body font family without updating this doc.
+- **Weights:** `font-medium` for UI chrome and buttons; `font-semibold` / `font-bold` for headings and emphasis.
+- **Scale:** Use Tailwind type scale (`text-sm`, `text-base`, `text-lg`, …). Landing nav labels: uppercase, tight line-height, small size per Figma (e.g. `text-xs` with `uppercase` / `tracking-wide` as needed).
+- **Product copy:** Avoid the `§` character in user-facing strings (rendering issues).
+
+---
+
+## Component styling
+
+### Buttons
+
+- Use **Nuxt UI** `UButton` (or project primitives) where the app already does; for bespoke landing CTAs, keep **rounded corners**, clear **hover** (`transition-colors`), and **focus-visible** ring (Tailwind `focus-visible:outline-none focus-visible:ring-2` pattern) so keyboard users get a visible target.
+- **Primary on dark:** Light-filled button with dark label is the current landing pattern; mirror for other high-contrast CTAs.
+
+### Inputs
+
+- Align with Nuxt UI form controls when inside the app shell. For custom inputs (e.g. landing nav search), use **transparent or subtle fill**, **muted placeholder**, **full focus ring**, and **min-width 0** on flex children so truncation works.
+
+### Cards and surfaces
+
+- Prefer **border** and **background** steps on the zinc scale over heavy shadows.
+- **Do not** add ad-hoc drop shadows on cards unless this doc is updated with a shadow token.
+
+### States (hover, focus, disabled)
+
+- **Hover:** Slightly shift background or opacity; keep transitions short (`transition-colors`).
+- **Focus:** Always visible for interactive elements; never `outline-none` without a replacement ring.
+- **Disabled:** Lower contrast and `pointer-events-none` / `disabled:` attributes as appropriate; do not rely on color alone.
+
+---
+
+## Spacing and layout
+
+- **Scale:** Tailwind spacing scale (`gap-2`, `p-4`, etc.). Prefer **`gap`** on flex/grid over margin hacks when laying out siblings.
+- **Edge padding:** Landing header uses horizontal padding at `lg` (e.g. `lg:px-20`); keep page edges consistent within each template.
+- **Grid:** Landing header uses a **12-column grid** at `lg` with `gap-4` (`lg:grid-cols-12`). Reuse this rhythm for other full-width marketing sections unless design specifies otherwise.
+- **Responsive:** Default mobile-first; add `lg:` (and up) breakpoints for dense nav and multi-column layouts. **Hide or simplify** complex controls below `lg` when they do not fit (e.g. pill nav).
+
+---
+
+## Icons
+
+- Use **[Iconoir Vue](https://github.com/iconoir-icons/iconoir/tree/main/packages/iconoir-vue)** (`@iconoir/vue`) for **new** iconography: named PascalCase components, standard SVG props (`width`, `height`, `color`, `stroke-width`).
+- Optional: wrap subtrees with **`IconoirProvider`** for shared defaults.
+- **Existing** `UIcon` / Heroicons usage may remain until migrated; avoid adding **additional** icon libraries for UI icons.
+
+Install: `npm i @iconoir/vue` — see the [iconoir-vue README](https://github.com/iconoir-icons/iconoir/blob/main/packages/iconoir-vue/README.md).
+
+---
+
+## Design guardrails
+
+**Do**
+
+- Prefer **flexbox/grid + `gap`** for spacing between siblings; use padding for **inside** a control or container.
+- Keep **semantic HTML** (`header`, `nav`, `main`, `button` vs `div` clicks).
+- Match **dark/light** tokens to the active theme; test both.
+- Document **Figma literals** (hex, radius) here when they are part of the brand.
+
+**Don’t**
+
+- Don’t use **`§`** in UI copy.
+- Don’t introduce **extra icon packs** for routine UI (stick to Iconoir for new work).
+- Don’t rely on **color alone** for state (pair with weight, icon, or label).
+- Don’t add **heavy box shadows** on cards without a documented token.
+
+---
+
+## Related files
+
+- Global base styles: [app/assets/css/main.css](app/assets/css/main.css)
+- Tailwind entry: [tailwind.config.js](tailwind.config.js) (minimal; Nuxt UI supplies most tokens)
+- Example landing shell: [app/components/landing/LandingHome.vue](app/components/landing/LandingHome.vue)
