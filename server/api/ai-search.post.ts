@@ -307,6 +307,88 @@ interface RequestBody {
   }
   /** Phrase from last assistant entityClarifyPending (user is answering with a clarification chip). */
   pendingEntityClarifyPhrase?: string
+  /** Echo of last search filters (client) so pagination can skip OpenRouter filter extraction. */
+  lastSearchFilters?: SearchFilters
+  /** Echo of last search totalResults (client); with lastSearchFilters enables a single DB range page. */
+  lastSearchTotalResults?: number
+}
+
+function normalizeClientSearchFilters (raw: unknown): SearchFilters | null {
+  if (raw === undefined || raw === null) return null
+  if (typeof raw !== 'object' || Array.isArray(raw)) return null
+  const o = raw as Record<string, unknown>
+  const out: SearchFilters = {}
+  if (typeof o.country === 'string') out.country = o.country
+  if (typeof o.locale === 'string') out.locale = o.locale
+  if (typeof o.region === 'string') out.region = o.region
+  if (typeof o.minRating === 'number' && Number.isFinite(o.minRating)) out.minRating = o.minRating
+  if (Array.isArray(o.languages) && o.languages.every(x => typeof x === 'string')) out.languages = o.languages as string[]
+  if (Array.isArray(o.diveTypes) && o.diveTypes.every(x => typeof x === 'string')) out.diveTypes = o.diveTypes as string[]
+  if (o.dates != null && typeof o.dates === 'object' && !Array.isArray(o.dates)) {
+    const d = o.dates as Record<string, unknown>
+    const start = typeof d.start === 'string' ? d.start : undefined
+    const end = typeof d.end === 'string' ? d.end : undefined
+    if (start || end) out.dates = { start, end }
+  }
+  return out
+}
+
+function inferAlreadyShownForPagination (history: Message[], shopsAlreadyShownCount: number | undefined): number {
+  let alreadyShown = typeof shopsAlreadyShownCount === 'number' && shopsAlreadyShownCount >= 0 ? shopsAlreadyShownCount : 0
+  if (alreadyShown === 0 && history?.length) {
+    for (let i = 0; i < history.length; i++) {
+      const msg = history[i]
+      if (msg.role === 'assistant') {
+        const hasResultsPhrase = msg.content?.includes('Here are') ||
+          msg.content?.includes('top results') ||
+          msg.content?.includes('Here are the')
+        const isAskingQuestion = msg.content?.includes('What type') ||
+          msg.content?.includes('Would you') ||
+          (msg.content?.trim().endsWith('?'))
+        if (hasResultsPhrase && !isAskingQuestion) {
+          const nextN = msg.content?.match(/next (\d+)\s+results?/i)?.[1]
+          const shown = nextN ? parseInt(nextN, 10) : 5
+          alreadyShown += Number.isNaN(shown) ? 5 : shown
+          console.log(`[AI Search] Found result message at index ${i}, shown: ${shown}, total shown: ${alreadyShown}`)
+        }
+      }
+    }
+  }
+  return alreadyShown
+}
+
+function buildSearchPaginationApiResponse (
+  lastFilters: SearchFilters,
+  nextShops: unknown[],
+  resultCount: number,
+  alreadyShown: number
+) {
+  const remaining = Math.max(0, resultCount - alreadyShown - nextShops.length)
+  if (nextShops.length > 0) {
+    const messageText = remaining > 0
+      ? `Here are the next ${nextShops.length} results. ${remaining} more available.`
+      : `Here are the next ${nextShops.length} results.`
+    return {
+      success: true as const,
+      message: messageText,
+      shops: nextShops,
+      totalResults: resultCount,
+      hasMoreResults: remaining > 0,
+      filters: lastFilters,
+      selectableOptions: remaining > 0
+        ? [{ label: 'Load next 5', value: 'Show more' }]
+        : undefined
+    }
+  }
+  return {
+    success: true as const,
+    message: 'No more results available.',
+    shops: [],
+    totalResults: resultCount,
+    hasMoreResults: false,
+    filters: lastFilters,
+    selectableOptions: undefined
+  }
 }
 
 const SYSTEM_PROMPT = SEARCH_DIVE_SYSTEM_PROMPT
@@ -415,7 +497,7 @@ Never put COLLECTED in the middle of your reply — your message to the user mus
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody<RequestBody>(event)
-    const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill, pendingEntityClarifyPhrase } = body
+    const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill, pendingEntityClarifyPhrase, lastSearchFilters: bodyLastSearchFilters, lastSearchTotalResults: bodyLastSearchTotalResults } = body
 
     if (!message || typeof message !== 'string') {
       throw new Error('Message is required')
@@ -1851,21 +1933,59 @@ export default defineEventHandler(async (event) => {
       const paginationPageSize = next20Pattern.test(message) ? 20 : 5
     
       if (isPaginationRequest && history && history.length > 0) {
-        // Find the last assistant message that had shops and filters
-        // We need to reconstruct the filters from the conversation history
-        // Look for the last message that had shops shown
-        let lastFilters: SearchFilters = {}
-        let lastShopsCount = 0
-      
-        // Try to extract filters from the last search by looking at conversation context
-        // We'll need to re-run the AI to get filters, but skip the question-asking logic
-        const conversationContext = history.map(h => h.content).join(' ')
-      
-        // Quick check: if we can find a previous search context, use it
-        // Otherwise, we'll need to extract filters from the conversation
         console.log(`[AI Search] Pagination request detected: "${message}"`)
-      
-        // Extract filters from conversation history using AI (but don't ask questions)
+        const alreadyShown = inferAlreadyShownForPagination(history, shopsAlreadyShownCount)
+        const normalizedFromClient = normalizeClientSearchFilters(bodyLastSearchFilters)
+
+        if (supabaseUrl && supabaseKey && normalizedFromClient != null) {
+          try {
+            const clientTotal =
+              typeof bodyLastSearchTotalResults === 'number' &&
+              Number.isFinite(bodyLastSearchTotalResults) &&
+              bodyLastSearchTotalResults >= 1
+                ? Math.floor(bodyLastSearchTotalResults)
+                : null
+
+            if (clientTotal != null) {
+              console.log('[AI Search] Pagination fast path: client filters + total, OpenRouter skipped')
+              if (alreadyShown >= clientTotal) {
+                return buildSearchPaginationApiResponse(normalizedFromClient, [], clientTotal, alreadyShown)
+              }
+              const queryResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, normalizedFromClient, {
+                offset: alreadyShown,
+                limit: paginationPageSize
+              })
+              const { data: pageShops, error: dbErr } = queryResult
+              if (dbErr) {
+                console.error('[AI Search] Pagination fast path DB error:', dbErr)
+              } else {
+                const nextShops = pageShops || []
+                console.log(`[AI Search] Pagination fast path: offset=${alreadyShown} limit=${paginationPageSize} rows=${nextShops.length} total=${clientTotal}`)
+                return buildSearchPaginationApiResponse(normalizedFromClient, nextShops, clientTotal, alreadyShown)
+              }
+            } else {
+              console.log('[AI Search] Pagination: client filters only (no total) — DB full page, OpenRouter skipped')
+              const queryResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, normalizedFromClient)
+              const { data: shops, error: dbErr } = queryResult
+              if (dbErr) {
+                console.error('[AI Search] Pagination filters-only path DB error:', dbErr)
+              } else {
+                const full = shops || []
+                const resultCount = full.length
+                const nextShops = full.slice(alreadyShown, alreadyShown + paginationPageSize)
+                console.log(`[AI Search] Pagination filters-only: alreadyShown=${alreadyShown} pageSize=${paginationPageSize} resultCount=${resultCount}`)
+                return buildSearchPaginationApiResponse(normalizedFromClient, nextShops, resultCount, alreadyShown)
+              }
+            }
+          } catch (fastPathErr) {
+            console.error('[AI Search] Pagination client-filters path error:', fastPathErr)
+          }
+        }
+
+        // Reconstruct filters via LLM when the client did not echo last search state (older clients / edge cases).
+        let lastFilters: SearchFilters = {}
+        const conversationContext = history.map(h => h.content).join(' ')
+
         const filterExtractionPrompt = `Extract search filters from this conversation history. The user is asking to see dive shops from the same search (more results, next page, or listing shops from the last search), so just return the filters that were used in the previous search.
 
   Conversation history: ${conversationContext}
@@ -1881,7 +2001,7 @@ export default defineEventHandler(async (event) => {
   }
 
   Do not include a MESSAGE. Just return the FILTERS.`
-      
+
         try {
           const filterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
@@ -1901,83 +2021,29 @@ export default defineEventHandler(async (event) => {
               max_tokens: 200
             })
           })
-        
+
           if (filterResponse.ok) {
             const filterData = await filterResponse.json()
             const filterMessage = filterData.choices[0]?.message?.content || ''
             const filtersMatch = filterMessage.match(/FILTERS:\s*(\{[^}]+\})/s)
-          
+
             if (filtersMatch) {
               lastFilters = JSON.parse(filtersMatch[1])
-              console.log(`[AI Search] Extracted filters for pagination:`, lastFilters)
-            
-              // Query with same filters
+              console.log('[AI Search] Extracted filters for pagination (LLM):', lastFilters)
+
               const queryResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, lastFilters)
               const { data: shops, error: dbError } = queryResult
-            
+
               if (dbError) {
                 console.error('Database error during pagination:', dbError)
                 throw new Error('Failed to fetch more results')
               }
-            
+
               const resultCount = shops?.length || 0
+              console.log(`[AI Search] Pagination (LLM): already shown ${alreadyShown} shops, total results: ${resultCount}, pageSize: ${paginationPageSize}`)
 
-              // Use client-provided count when available (reliable); otherwise infer from message content
-              let alreadyShown = typeof shopsAlreadyShownCount === 'number' && shopsAlreadyShownCount >= 0
-                ? shopsAlreadyShownCount
-                : 0
-              if (alreadyShown === 0 && history?.length) {
-                for (let i = 0; i < history.length; i++) {
-                  const msg = history[i]
-                  if (msg.role === 'assistant') {
-                    const hasResultsPhrase = msg.content?.includes('Here are') ||
-                                            msg.content?.includes('top results') ||
-                                            msg.content?.includes('Here are the')
-                    const isAskingQuestion = msg.content?.includes('What type') ||
-                                             msg.content?.includes('Would you') ||
-                                             (msg.content?.trim().endsWith('?'))
-                    if (hasResultsPhrase && !isAskingQuestion) {
-                      const nextN = msg.content?.match(/next (\d+)\s+results?/i)?.[1]
-                      const shown = nextN ? parseInt(nextN, 10) : 5
-                      alreadyShown += Number.isNaN(shown) ? 5 : shown
-                      console.log(`[AI Search] Found result message at index ${i}, shown: ${shown}, total shown: ${alreadyShown}`)
-                    }
-                  }
-                }
-              }
-
-              console.log(`[AI Search] Pagination: already shown ${alreadyShown} shops, total results: ${resultCount}, pageSize: ${paginationPageSize}`)
-
-              // Get next N shops (5 or 20)
               const nextShops = (shops || []).slice(alreadyShown, alreadyShown + paginationPageSize)
-              const remaining = Math.max(0, resultCount - alreadyShown - nextShops.length)
-            
-              if (nextShops.length > 0) {
-                const messageText = remaining > 0
-                  ? `Here are the next ${nextShops.length} results. ${remaining} more available.`
-                  : `Here are the next ${nextShops.length} results.`
-                return {
-                  success: true,
-                  message: messageText,
-                  shops: nextShops,
-                  totalResults: resultCount,
-                  hasMoreResults: remaining > 0,
-                  filters: lastFilters,
-                  selectableOptions: remaining > 0
-                    ? [{ label: 'Load next 5', value: 'Show more' }]
-                    : undefined
-                }
-              } else {
-                return {
-                  success: true,
-                  message: 'No more results available.',
-                  shops: [],
-                  totalResults: resultCount,
-                  hasMoreResults: false,
-                  filters: lastFilters,
-                  selectableOptions: undefined
-                }
-              }
+              return buildSearchPaginationApiResponse(lastFilters, nextShops, resultCount, alreadyShown)
             }
           }
         } catch (paginationError) {

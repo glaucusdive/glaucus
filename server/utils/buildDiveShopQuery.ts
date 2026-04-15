@@ -26,14 +26,29 @@ export function diveshopLocaleOrConditions (term: string): string {
  * Filtering process:
  * 1. Resolve country/region names to IDs (so we filter on diveshops.country_id / region_id directly).
  * 2. Apply locale (city/state/locale/street_address), minRating, diveTypes, languages.
- * 3. Order by rating then name, limit 50.
+ * 3. Order by rating then name, limit 50 (or an optional offset/limit window for pagination).
  */
-export async function buildDiveShopQuery (supabaseUrl: string, supabaseKey: string, filters: SearchFilters) {
+export type DiveShopQueryRange = { offset: number; limit: number }
+
+export async function buildDiveShopQuery (
+  supabaseUrl: string,
+  supabaseKey: string,
+  filters: SearchFilters,
+  range?: DiveShopQueryRange | null
+) {
   const client = createClient(supabaseUrl, supabaseKey)
 
   let query = client
     .from('diveshops')
     .select('*, country:countries(name), region:regions(name)')
+
+  const applyWindow = (q: ReturnType<typeof client.from>) => {
+    if (range && range.limit > 0 && range.offset >= 0) {
+      const end = range.offset + range.limit - 1
+      return q.range(range.offset, end)
+    }
+    return q.limit(50)
+  }
 
   // Resolve country name to ID(s) and filter by country_id (reliable; join-filter on embedded table is not applied correctly in some clients)
   if (filters.country?.trim()) {
@@ -44,8 +59,8 @@ export async function buildDiveShopQuery (supabaseUrl: string, supabaseKey: stri
     const countryIds = (countries || []).map(c => c.id)
     if (countryIds.length === 0) {
       // No matching country — return empty result
-      const empty = await client.from('diveshops').select('*, country:countries(name), region:regions(name)').in('country_id', ['00000000-0000-0000-0000-000000000000']).limit(50)
-      return empty
+      const emptyBase = client.from('diveshops').select('*, country:countries(name), region:regions(name)').in('country_id', ['00000000-0000-0000-0000-000000000000'])
+      return await applyWindow(emptyBase)
     }
     query = query.in('country_id', countryIds)
   }
@@ -85,8 +100,7 @@ export async function buildDiveShopQuery (supabaseUrl: string, supabaseKey: stri
   query = query.order('google_rating', { ascending: false, nullsFirst: false })
   query = query.order('business_name', { ascending: true })
 
-  // Cap rows to avoid over-fetching; first page + "show more" only need a bounded set
-  query = query.limit(50)
+  query = applyWindow(query)
 
   return await query
 }
