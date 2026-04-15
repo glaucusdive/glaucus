@@ -1,7 +1,7 @@
 <template>
   <header
     ref="headerRootRef"
-    class="sticky top-0 p-5 lg:px-20 lg:py-5"
+    class="sticky top-0 p-5 lg:px-20 lg:py-5 bg-gradient-to-b from-black to-black/0"
     :class="mobileMenuOpen ? 'z-50' : 'z-10'"
   >
 
