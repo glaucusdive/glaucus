@@ -31,6 +31,12 @@ import { resolveBookingTargetFromPhrase } from '../utils/resolveBookingTarget'
 import { tryShopInfoResponse } from '../utils/shopInfoForChat'
 import { applyInferredCoursesToPayloadIfEligible } from '../utils/inferCoursesFromConversation'
 import { runWithRetries } from '../utils/retryWithBackoff'
+import { isBookingIntentMessage } from '../utils/bookingIntent'
+import {
+  shouldIncludeCourseOptions,
+  shouldIncludeDiveSiteOptions,
+  shouldIncludeRentalEquipmentOptions
+} from '../utils/bookingUiOptions'
 import {
   buildDiverFieldEditPrompt,
   clearDiverFieldOnCopy,
@@ -397,8 +403,6 @@ User: "any type of diving"
 FILTERS: {"country": null, "locale": null, "region": null, "minRating": null, "languages": null, "diveTypes": null}
 MESSAGE: Got it! I'll search for all dive shops without filtering by activity type.`
 
-const BOOKING_INTENT_PATTERN = /\b(book|reserve|booking|reservation|i want to book|i'd like to book|send my request|submit my request)\b/i
-
 /** Orchestrator: user wants to abandon the current thread and restart at the trip-type question (not model-inferred). */
 function wantsSearchFlowReset (trimmed: string): boolean {
   if (!trimmed) return false
@@ -574,7 +578,7 @@ export default defineEventHandler(async (event) => {
       // State: Frontend holds messages + selectedShopId + pendingBookingPayload; backend is stateless; agent returns updated bookingPayload; destructive (send email) only after explicit user confirm.
 
       // --- Intent: booking vs search ---
-      const wantsToBook = BOOKING_INTENT_PATTERN.test(message)
+      const wantsToBook = isBookingIntentMessage(message)
       const hasShopContext = !!selectedShopId || (lastShops && lastShops.length > 0)
 
       let resolvedShop: Awaited<ReturnType<typeof getShopById>> = null
@@ -800,11 +804,11 @@ export default defineEventHandler(async (event) => {
         }
 
         const addGearOptions = (payload: BookingPayload) =>
-          getNextBookingStep(payload)?.step === 'gear' ? rentalEquipment : undefined
+          shouldIncludeRentalEquipmentOptions(payload as BookingPayloadLocal, rentalEquipment.length) ? rentalEquipment : undefined
         const addCourseOptions = (payload: BookingPayload) =>
-          getNextBookingStep(payload)?.step === 'courses' && courses.length > 0 ? courses : undefined
+          shouldIncludeCourseOptions(payload as BookingPayloadLocal, courses.length) ? courses : undefined
         const addDiveSiteOptions = (payload: BookingPayload) =>
-          getNextBookingStep(payload)?.step === 'diveSites' && diveSites.length > 0 ? diveSites : undefined
+          shouldIncludeDiveSiteOptions(payload as BookingPayloadLocal, diveSites.length) ? diveSites : undefined
         /** When true, frontend hides "None" for gear step (user already selected at least one item). */
         const hideNoneForGear = (payload: BookingPayload | undefined): boolean => {
           if (!payload) return false
@@ -1873,8 +1877,7 @@ export default defineEventHandler(async (event) => {
             .trim()
         }
         const willShowCourseOptions = (collectedPayload ? addCourseOptions(collectedPayload) : undefined) ||
-          (messageAsksForCourses(replyMessage) && courseChips ? courseChips : undefined) ||
-          (bookingPayload && addCourseOptions(bookingPayload) ? courseChips : undefined)
+          (bookingPayload ? addCourseOptions(bookingPayload) : undefined)
         if (willShowCourseOptions && replyMessage === genericFallback) {
           const cp = collectedPayload ?? bookingPayload
           replyMessage = cp?.desiredCourses?.length && cp.coursesSelectionComplete === false
@@ -1883,8 +1886,7 @@ export default defineEventHandler(async (event) => {
         }
         // If we're showing dive site chips but the message is still the generic fallback (e.g. AI reply was stripped to empty), show context
         const willShowDiveSiteOptions = (collectedPayload ? addDiveSiteOptions(collectedPayload) : undefined) ||
-          (messageAsksForDiveSites(replyMessage) && diveSiteChips ? diveSiteChips : undefined) ||
-          (bookingPayload && addDiveSiteOptions(bookingPayload) ? diveSiteChips : undefined)
+          (bookingPayload ? addDiveSiteOptions(bookingPayload) : undefined)
         if (willShowDiveSiteOptions && replyMessage === genericFallback && !willShowCourseOptions) {
           replyMessage = 'Which dive sites would you like to dive?'
         }
@@ -1937,11 +1939,9 @@ export default defineEventHandler(async (event) => {
           rentalEquipmentOptions: finalGearOptions?.length ? finalGearOptions : undefined,
           hideNoneForGear: hideNoneForGear(collectedPayload ?? bookingPayload),
           courseOptions: (collectedPayload ? addCourseOptions(collectedPayload) : undefined) ||
-            (messageAsksForCourses(replyMessage) && courses.length > 0 ? courses : undefined) ||
-            (bookingPayload && addCourseOptions(bookingPayload) ? courses : undefined),
+            (bookingPayload ? addCourseOptions(bookingPayload) : undefined),
           diveSiteOptions: (collectedPayload ? addDiveSiteOptions(collectedPayload) : undefined) ||
-            (messageAsksForDiveSites(replyMessage) && diveSiteChips ? diveSiteChips : undefined) ||
-            (bookingPayload && addDiveSiteOptions(bookingPayload) ? diveSiteChips : undefined)
+            (bookingPayload ? addDiveSiteOptions(bookingPayload) : undefined)
         }
       }
 

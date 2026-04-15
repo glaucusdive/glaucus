@@ -20,6 +20,61 @@ yarn install
 bun install
 ```
 
+## Testing and evals
+
+Run automated checks locally:
+
+```bash
+# full test suite
+npm test
+
+# booking-agent eval suite only (KPI gates)
+npm run test:evals
+
+# booking regression + eval suite (used in CI)
+npm run test:booking-regression
+```
+
+### Booking-agent KPI gates (in `tests/evals`)
+
+The booking eval suite is designed to catch regressions from real chat phrasing and enforces these targets:
+
+- **Hallucinated structured-option rate**: near 0% (threshold: `<= 1%`)
+- **Correct intent routing (search vs booking)**: `> 90%` on the eval utterance set
+- **Entity phrase extraction accuracy**: `> 90%` on covered utterances
+- **Booking flow progression guard**: `0%` canonical-step skip violations in snapshot checks
+
+### Eval dataset
+
+- Seeded set size is kept between **20-40 utterances** for fast CI.
+- Includes edge coverage for:
+  - proximity phrasing (e.g. "close to bali", "around nusa penida")
+  - ambiguous/entity-style phrasing
+  - booking step-skip pressure via overfilled payload snapshots
+
+### CI behavior
+
+GitHub Actions runs:
+
+1. `npm test` (full suite)
+2. `npm run test:booking-regression` (booking + eval-focused guardrail suite)
+
+If KPI thresholds regress, CI fails so behavior changes are visible before merge.
+
+### Booking flow completion rate (week-over-week)
+
+This KPI needs production telemetry from chat sessions (not just unit tests). Recommended method:
+
+1. Log per-session events:
+   - booking started
+   - booking reached `BOOKING_READY`
+   - booking send confirmed
+2. Compute weekly completion rate:
+   - `completion_rate = completed_sessions / started_sessions`
+3. Track trend week-over-week in your dashboard.
+
+Unit/eval tests verify booking-step integrity; telemetry tracks real-user completion outcomes.
+
 ## Development Server
 
 Start the development server on `http://localhost:3000`:
