@@ -121,7 +121,7 @@ import { ArrowUp, Menu, Search, Xmark } from '@iconoir/vue'
 
 const defaultNavItems = [
   { id: 'whatisglaucus', label: 'What is Glaucus?' },
-  { id: 'features', label: 'Features' },
+  { id: 'feature1', label: 'Features' },
   { id: 'aboutus', label: 'About us' },
   { id: 'logs', label: 'Logs' },
   { id: 'contact', label: 'Contact' }
