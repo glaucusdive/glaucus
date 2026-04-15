@@ -22,8 +22,8 @@
     <section
       id="whatisglaucus"
       ref="whatisRunwayRef"
-      class="relative z-[1]"
-      :class="reduceMotion ? 'min-h-[calc(100dvh-80px)] px-20' : ''"
+      class="px-20 relative z-[1] border-b border-zinc-800"
+      :class="reduceMotion ? 'min-h-[calc(100dvh-80px)]' : ''"
       :style="runwayMinHeightStyle"
     >
       <div
@@ -32,7 +32,7 @@
           ? 'min-h-[calc(100dvh-80px)] bg-[url(/images/landing/glaucus-bg-whatisglaucus.jpg)] bg-no-repeat bg-top bg-cover'
           : 'sticky top-20 z-10 min-h-[calc(100dvh-80px)] bg-[url(/images/landing/glaucus-bg-whatisglaucus.jpg)] bg-no-repeat bg-top bg-cover px-20'"
       >
-        <div class="grid grid-cols-12 gap-4 items-center w-full min-w-0">
+        <div class="grid grid-cols-12 gap-4 items-center">
           <div class="col-span-8 col-start-3 min-w-0">
             <div class="flex min-w-0 w-full items-center py-8">
               <ClientOnly>
@@ -61,16 +61,157 @@
         </div>
       </div>
     </section>
-    <section id="feature1" class="px-20"></section>
-    <section id="feature2" class="px-20"></section>
-    <section id="aboutus"></section>
-    <section id="logs"></section>
+    <section id="feature1" class="px-20 pt-40 pb-20 border-b border-zinc-800">
+      <div class="grid grid-cols-12 gap-4">
+        <div class="col-span-5">
+          <h2 class="text-5xl">
+            Book the perfect dive in under five minutes
+          </h2>
+        </div>
+        <div class="col-start-7 col-span-4">
+          <p class="text-xl pt-1">
+            Search for the ideal dive location, include your friends and book your next dive with ease.
+          </p>
+        </div>
+        <div class="col-span-12">
+          <LandingPageVideo
+            class="my-10 aspect-video w-full"
+            src="/videos/landing/glaucus-video-fpo.mp4"
+          />
+        </div>
+      </div>
+    </section>
+    <section id="feature2" class="px-20 pt-40 pb-20 border-b border-zinc-800">
+      <div class="grid grid-cols-12 gap-4">
+        <div class="col-span-5">
+          <h2 class="text-5xl">
+            Improved discoverability for your dive shop
+          </h2>
+        </div>
+        <div class="col-start-7 col-span-4">
+          <p class="text-xl pt-1">
+            Glaucus helps your business stick out from the crowd. Divers can find your shop based on dive sites, rental
+            gear or certification needs.
+          </p>
+        </div>
+        <div class="col-span-12">
+          <LandingPageVideo
+            class="my-10 aspect-video w-full"
+            src="/videos/landing/glaucus-video-fpo.mp4"
+          />
+        </div>
+      </div>
+    </section>
+    <section id="aboutus" class="p-20">
+      <div class="grid grid-cols-12 gap-4 items-center">
+        <div class="lg:col-span-5">
+          <div class="flex flex-col gap-8">
+            <h2 class="text-5xl text-pretty">We’re Glaucus, an AI assistant for divers.</h2>
+            <p class="text-2xl text-pretty">This is the about section copy. I dont know what to put here, but we will figure it out soon. But we will want the content to be brief and tell a story on why we did what we did.</p>
+            <p class="text-2xl text-pretty">This is the about section copy. I dont know what to put here, but we will figure it out soon. But we will want the content to be brief and tell a story on why we did what we did.</p>
+          </div>
+        </div>
+        <div class="lg:col-start-7 lg:col-span-6">
+          <LandingPageVideo class="aspect-[3/4] w-full" />
+        </div>
+      </div>
+    </section>
+    <section id="logs">
+      <div class="flex overflow-y-auto border-y border-zinc-800">
+        <div class="flex flex-row gap-0 px-20 w-fit *:first:border-l">
+          <div class="flex flex-col gap-0 w-lg border-r border-zinc-800 group">
+            <div class="relative flex items-center justify-center">
+              <img class="block z-0" src="/images/landing/glaucus-blog-fpo-1.jpg"
+                alt="How to obtain your first dive certification" />
+              <div class="pointer-events-none absolute inset-0 bg-linear-to-b from-[#101214]/0 to-[#101214] z-10"
+                aria-hidden="true" />
+            </div>
+            <div class="p-20 flex flex-col gap-8">
+              <div class="flex flex-col gap-4">
+                <h2 class="text-2xl text-pretty">
+                  How to obtain your first dive certification
+                </h2>
+                <p class="text-base text-zinc-400">Learn what it takes to earn your first dive certification so you can start your
+                  dive journey.</p>
+              </div>
+              <NuxtLink to="#" class="flex justify-end">
+                <ArrowRight :width="48" :height="48" :stroke-width="1.5" class="text-white group-hover:text-blue-500" aria-hidden="true" />
+              </NuxtLink>
+            </div>
+          </div>
+          <div class="flex flex-col gap-0 w-lg border-r border-zinc-800">
+            <div class="relative flex items-center justify-center">
+              <img class="block z-0" src="/images/landing/glaucus-blog-fpo-1.jpg"
+                alt="How to obtain your first dive certification" />
+              <div class="pointer-events-none absolute inset-0 bg-linear-to-b from-[#101214]/0 to-[#101214] z-10"
+                aria-hidden="true" />
+            </div>
+            <div class="p-20 flex flex-col gap-8">
+              <div class="flex flex-col gap-4">
+                <h2 class="text-2xl text-pretty">
+                  How to obtain your first dive certification
+                </h2>
+                <p class="text-base text-zinc-400">Learn what it takes to earn your first dive certification so you can
+                  start your
+                  dive journey.</p>
+              </div>
+              <div class="flex justify-end">
+                <ArrowRight :width="48" :height="48" :stroke-width="1.5" class="text-white" aria-hidden="true" />
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-col gap-0 w-lg border-r border-zinc-800">
+            <div class="relative flex items-center justify-center">
+              <img class="block z-0" src="/images/landing/glaucus-blog-fpo-1.jpg"
+                alt="How to obtain your first dive certification" />
+              <div class="pointer-events-none absolute inset-0 bg-linear-to-b from-[#101214]/0 to-[#101214] z-10"
+                aria-hidden="true" />
+            </div>
+            <div class="p-20 flex flex-col gap-8">
+              <div class="flex flex-col gap-4">
+                <h2 class="text-2xl text-pretty">
+                  How to obtain your first dive certification
+                </h2>
+                <p class="text-base text-zinc-400">Learn what it takes to earn your first dive certification so you can
+                  start your
+                  dive journey.</p>
+              </div>
+              <div class="flex justify-end">
+                <ArrowRight :width="48" :height="48" :stroke-width="1.5" class="text-white" aria-hidden="true" />
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-col gap-0 w-lg border-r border-zinc-800">
+            <div class="relative flex items-center justify-center">
+              <img class="block z-0" src="/images/landing/glaucus-blog-fpo-1.jpg"
+                alt="How to obtain your first dive certification" />
+              <div class="pointer-events-none absolute inset-0 bg-linear-to-b from-[#101214]/0 to-[#101214] z-10"
+                aria-hidden="true" />
+            </div>
+            <div class="p-20 flex flex-col gap-8">
+              <div class="flex flex-col gap-4">
+                <h2 class="text-2xl text-pretty">
+                  How to obtain your first dive certification
+                </h2>
+                <p class="text-base text-zinc-400">Learn what it takes to earn your first dive certification so you can
+                  start your
+                  dive journey.</p>
+              </div>
+              <div class="flex justify-end">
+                <ArrowRight :width="48" :height="48" :stroke-width="1.5" class="text-white" aria-hidden="true" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
     <section id="contact"></section>
   </main>
 </template>
 
 <script setup>
 import { computed, nextTick, onBeforeMount, onMounted, onUnmounted, ref, shallowRef } from 'vue'
+import { ArrowRight } from '@iconoir/vue'
 import ChatComposer from '~/components/chat/ChatComposer.vue'
 
 /** Extra viewport heights added below the sticky panel — scroll distance for word reveal (tune feel). */
