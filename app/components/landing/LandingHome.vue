@@ -61,7 +61,8 @@
         </div>
       </div>
     </section>
-    <section id="features"></section>
+    <section id="feature1" class="px-20"></section>
+    <section id="feature2" class="px-20"></section>
     <section id="aboutus"></section>
     <section id="logs"></section>
     <section id="contact"></section>
