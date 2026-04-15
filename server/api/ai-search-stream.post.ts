@@ -12,6 +12,9 @@ interface StreamRequestBody {
   selectedShopId?: string
   lastShops?: { id: string; business_name: string }[]
   shopsAlreadyShownCount?: number
+  /** Echo from client for JSON fallback pagination (same as /api/ai-search). */
+  lastSearchFilters?: Record<string, unknown>
+  lastSearchTotalResults?: number
   lastIntent?: 'booking' | 'search'
   lastBookingShopId?: string
   pendingEntityClarifyPhrase?: string

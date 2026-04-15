@@ -174,7 +174,10 @@
           <div class="h-full">
             <div class="flex flex-col gap-2">
               <!-- Book Now / Show form Button -->
-              <div class="flex flex-col gap-2 cq:lg:p-4 bg-zinc-100 dark:bg-zinc-800 rounded-md cq:lg:order-1">
+              <div
+                ref="bookingCtaAnchor"
+                class="flex flex-col gap-2 cq:lg:p-4 bg-zinc-100 dark:bg-zinc-800 rounded-md cq:lg:order-1 scroll-mt-4"
+              >
                 <h2 class="hidden cq:lg:block cq:lg:text-2xl font-semibold text-zinc-900 dark:text-white">Book Now</h2>
                 <p class="hidden cq:lg:block text-sm text-zinc-600 dark:text-zinc-400">
                   {{ isInBookingFlow ? (isFormOpen ? 'Booking form is open. Click to hide it.' : 'View or edit your booking details in the form.') : 'Ready to dive? Click below to start your booking.' }}
@@ -231,7 +234,7 @@ import { MapPin, Phone, Mail, Globe, ChevronLeft, X } from 'lucide-vue-next'
 import CardInfo from '~/components/CardInfo.vue'
 import CardReview from '~/components/CardReview.vue'
 import CardReviewEmpty from '~/components/CardReviewEmpty.vue'
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useDrawer } from '~/composables/useDrawer'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/composables/useSupabase'
@@ -269,6 +272,14 @@ const props = defineProps({
   onHideForm: {
     type: Function,
     default: null
+  },
+  /**
+   * When > 0, after shop data loads the panel scrolls so the booking CTA is visible (smooth; respects reduced motion).
+   * Use ~400 when the panel animates in (e.g. chat). Default 0 disables autoscroll (e.g. full shop page).
+   */
+  bookingCtaScrollDelayMs: {
+    type: Number,
+    default: 0
   }
 })
 
@@ -312,6 +323,34 @@ const tabs = [
 
 // Fetch dive shop (by public slug or legacy UUID)
 const { shopData, nearbyShops, pending, error } = useShopDetail(props.shopLookup)
+
+const bookingCtaAnchor = ref(null)
+
+function scrollBookingCtaIntoView () {
+  const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+  const behavior = reduce ? 'auto' : 'smooth'
+  const delay = reduce ? 0 : (props.bookingCtaScrollDelayMs || 0)
+  const run = () => {
+    const el = bookingCtaAnchor.value
+    if (!el || typeof el.scrollIntoView !== 'function') return
+    el.scrollIntoView({ behavior, block: 'end', inline: 'nearest' })
+  }
+  nextTick(() => {
+    const schedule = () => requestAnimationFrame(() => requestAnimationFrame(run))
+    if (delay > 0) setTimeout(schedule, delay)
+    else schedule()
+  })
+}
+
+watch(
+  () => [props.shopLookup, pending.value, shopData.value?.id, props.bookingCtaScrollDelayMs],
+  ([lookup, isPending, id, delayMs]) => {
+    if (!lookup || isPending || !id) return
+    if (typeof delayMs !== 'number' || delayMs <= 0) return
+    scrollBookingCtaIntoView()
+  },
+  { flush: 'post', immediate: true }
+)
 
 const shopRowId = computed(() => shopData.value?.id ?? '')
 

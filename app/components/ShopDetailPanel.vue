@@ -7,6 +7,7 @@
     :on-start-booking="onStartBooking"
     :on-show-form="onShowForm"
     :on-hide-form="onHideForm"
+    :booking-cta-scroll-delay-ms="bookingCtaScrollDelayMs"
     @close="$emit('close')"
   />
 </template>
@@ -38,6 +39,10 @@ defineProps({
   onHideForm: {
     type: Function,
     default: null
+  },
+  bookingCtaScrollDelayMs: {
+    type: Number,
+    default: 0
   }
 })
 

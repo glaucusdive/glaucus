@@ -6,7 +6,7 @@
         loading ? 'animate-ring-gradient !bg-[#02C8FF]' : 'bg-transparent'
       ]">
         <form
-          class="w-full h-full bg-zinc-100 dark:bg-zinc-700 rounded-full p-1 z-10 overflow-hidden"
+          class="w-full h-full bg-zinc-100 dark:bg-zinc-700 rounded-full p-1 pr-2 z-10 overflow-hidden"
           @submit.prevent="onSubmit"
         >
           <div class="flex items-center gap-1.5 w-full min-w-0 overflow-hidden">

@@ -290,6 +290,7 @@
           <div v-if="selectedShopId && isDesktop"
             class="w-1/2 h-full border-l border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
             <ShopDetailPanel :key="selectedShopId" :shop-lookup="selectedShopId"
+              :booking-cta-scroll-delay-ms="400"
               :is-in-booking-flow="isInBookingFlowForShop(selectedShopId)"
               :is-form-open="isBookingFormOpen"
               :on-start-booking="handleStartBookingFromPanel"
@@ -309,6 +310,7 @@
               @click.stop
               class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-zinc-900 h-full overflow-hidden">
               <ShopDetailPanel :key="mobileDetailShopId" :shop-lookup="mobileDetailShopId"
+              :booking-cta-scroll-delay-ms="400"
               :is-in-booking-flow="isInBookingFlowForShop(mobileDetailShopId)"
               :is-form-open="isBookingFormOpen"
               :on-start-booking="handleStartBookingFromPanel"
@@ -1211,6 +1213,16 @@ const sendMessage = async (messageText, displayText) => {
       .filter(m => m.role === 'assistant' && m.shops?.length)
       .reduce((sum, m) => sum + (m.shops?.length ?? 0), 0)
 
+    /** Echo for server pagination fast path (skip OpenRouter filter extraction; optional single-page DB range). */
+    const lastSearchContext = [...messages.value].reverse().find(
+      m => m.role === 'assistant' &&
+        m.intent !== 'booking' &&
+        (m.totalResults ?? 0) > 0 &&
+        m.filters != null &&
+        typeof m.filters === 'object' &&
+        !Array.isArray(m.filters)
+    )
+
     const pendingEntityClarifyPhrase = getPendingEntityClarifyPhraseForOutgoing(message)
 
     const aiSearchBody = {
@@ -1224,6 +1236,12 @@ const sendMessage = async (messageText, displayText) => {
       selectedShopId: selectedShopId.value || undefined,
       lastShops,
       shopsAlreadyShownCount,
+      ...(lastSearchContext
+        ? {
+            lastSearchFilters: lastSearchContext.filters,
+            lastSearchTotalResults: lastSearchContext.totalResults
+          }
+        : {}),
       lastIntent,
       lastBookingShopId,
       ...(inBookingFlow && lastBookingShopName ? { lastBookingShopName } : {}),
@@ -1644,6 +1662,8 @@ const handleShopSelected = (shop) => {
   // Defer until after this click finishes so the new panel/backdrop never receives the same pointer gesture.
   nextTick(() => {
     selectedShopId.value = shop.id
+    // Selection does not push a new message — scroll the chat column so chips / bottom of results stay in view.
+    void scrollToBottom()
   })
 }
 
@@ -1653,6 +1673,7 @@ const handleViewDetails = (shop) => {
   nextTick(() => {
     selectedShopId.value = shop.id
     mobileDetailShopId.value = shop.id
+    void scrollToBottom()
   })
 }
 
