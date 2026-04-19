@@ -8,7 +8,7 @@
       aria-busy="true"
       aria-label="Loading"
     >
-      <img src="/images/glaucus-logo-emblem.svg" alt="" class="h-24 w-24 -rotate-45" />
+      <LogoEmblem img-class="h-24 w-24" />
     </div>
     <LandingHome v-else-if="!showChatShell" />
     <LazyChatHome v-else />

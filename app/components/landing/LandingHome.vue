@@ -1,7 +1,7 @@
 <template>
-  <main class="bg-[#101214]">
+  <main class="bg-[#101214] mb-[930px] relative z-10">
     <LandingHeader />
-    <section id="hero" class="relative z-0 bg-[url(/images/landing/glaucus-bg-hero-waves.jpg)] bg-no-repeat bg-top bg-cover h-[calc(100dvh-80px)] px-20">
+    <section id="hero" class="relative bg-[url(/images/landing/glaucus-bg-hero-waves.jpg)] bg-no-repeat bg-top bg-cover h-[calc(100dvh-80px)] px-20">
       <div class="grid grid-cols-12 gap-4 items-center h-full">
         <div class="col-span-8 col-start-3">
           <div class="flex flex-col gap-2">
@@ -22,7 +22,7 @@
     <section
       id="whatisglaucus"
       ref="whatisRunwayRef"
-      class="px-20 relative z-[1] border-b border-zinc-800"
+      class="relative z-[1] border-b border-zinc-800"
       :class="reduceMotion ? 'min-h-[calc(100dvh-80px)]' : ''"
       :style="runwayMinHeightStyle"
     >
@@ -30,10 +30,10 @@
         class="flex flex-col justify-center"
         :class="reduceMotion
           ? 'min-h-[calc(100dvh-80px)] bg-[url(/images/landing/glaucus-bg-whatisglaucus.jpg)] bg-no-repeat bg-top bg-cover'
-          : 'sticky top-20 z-10 min-h-[calc(100dvh-80px)] bg-[url(/images/landing/glaucus-bg-whatisglaucus.jpg)] bg-no-repeat bg-top bg-cover px-20'"
+          : 'sticky top-20 z-10 min-h-[calc(100dvh-80px)] bg-[url(/images/landing/glaucus-bg-whatisglaucus.jpg)] bg-no-repeat bg-top bg-cover p-20'"
       >
         <div class="grid grid-cols-12 gap-4 items-center">
-          <div class="col-span-8 col-start-3 min-w-0">
+          <div class="col-span-6 col-start-4 min-w-0">
             <div class="flex min-w-0 w-full items-center py-8">
               <ClientOnly>
                 <h2
@@ -151,9 +151,24 @@
       </div>
     </section>
   </main>
-  <footer class="px-20 h-dvh bg-[url(/images/landing/glaucus-bg-footer.jpg)] bg-cover">
+  <footer class="fixed top-0 w-full p-20 h-[930px] bg-[url(/images/landing/glaucus-bg-footer.jpg)] bg-cover z-0">
     <div class="grid grid-cols-12 gap-4 h-full">
-
+      <div class="col-span-4">
+        <div class="flex flex-col gap-8">
+          <div class="h-11 w-fit">
+            <LogoText />
+          </div>
+          <nav class="flex flex-row gap-x-4 gap-y-2 flex-wrap">
+            <NuxtLink to="/#whatisglaucus">What is Glaucus?</NuxtLink>
+            <NuxtLink to="/#feature1">Features</NuxtLink>
+            <NuxtLink to="/#aboutus">About Us</NuxtLink>
+            <NuxtLink to="/#logs">Logs</NuxtLink>
+            <NuxtLink to="/#contact">Contact</NuxtLink>
+            <NuxtLink to="/privacy">Privacy Policy</NuxtLink>
+            <NuxtLink to="/legal">Legal Notice</NuxtLink>
+          </nav>
+        </div>
+      </div>
     </div>
   </footer>
 </template>
