@@ -1,12 +1,12 @@
 <template>
   <footer class="fixed top-0 w-full p-6 lg:p-20 h-[950px] z-0">
     <div class="grid grid-cols-12 gap-4 h-full">
-      <div class="col-span-12 lg:col-span-4">
+      <div class="col-span-12 md:col-span-6 xl:col-span-4">
         <div class="flex flex-col gap-8">
           <div class="h-11 w-fit">
             <LogoText />
           </div>
-          <nav class="flex flex-col gap-x-4 gap-y-2 lg:flex-row lg:flex-wrap">
+          <nav class="flex flex-col gap-x-4 gap-y-2 md:flex-row md:flex-wrap">
             <NuxtLink to="/#whatisglaucus">What is Glaucus?</NuxtLink>
             <NuxtLink to="/#feature1">Features</NuxtLink>
             <NuxtLink to="/#aboutus">About Us</NuxtLink>
@@ -20,7 +20,7 @@
     </div>
     <div
       id="footer-bg"
-      class="pointer-events-none absolute top-0 left-0 bottom-0 -z-10 h-full w-full bg-[url(/images/landing/glaucus-bg-footer.jpg)] bg-cover bg-bottom opacity-0"
+      class="pointer-events-none absolute top-0 left-0 bottom-0 -z-10 h-full w-full bg-[url(/images/landing/glaucus-bg-footer.jpg)] bg-bottom-right lg:bg-top bg-cover bg-no-repeat opacity-0"
     />
   </footer>
 </template>
