@@ -90,6 +90,40 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.68.3** — Refactor LandingHome and LandingFooter components for improved layout and responsiveness (2026-04-19).
+- **0.68.2** — Refactor LandingHome and landing layouts for improved structure and functionality (2026-04-19).
+- **0.68.1** — Refactor Logo component and update landing pages for improved structure and styling (2026-04-19).
+- **0.68.0** — Enhance LandingHome.vue with new contact section and footer (2026-04-19).
+- **0.67.4** — Refactor LandingHeader and LandingHome components for improved styling and functionality (2026-04-19).
+- **0.67.3** — Refactor LandingHeader and LandingHome components for improved structure and content (2026-04-15).
+- **0.67.2** — Update LandingHeader and LandingHome components for improved styling and structure (2026-04-14).
+- **0.67.1** — Enhance LandingHome.vue with improved layout and interactivity (2026-04-14).
+- **0.67.0** — Enhance DiveShopDetail and ShopDetailPanel components with booking CTA scroll functionality (2026-04-14).
+- **0.66.0** — Enhance ChatHome component with staggered reveal for search results (2026-04-14).
+- **0.65.0** — Implement AI search stream functionality in ChatHome component (2026-04-14).
+- **0.64.16** — Refactor ChatHome and LandingHome components to utilize ChatComposer (2026-04-14).
+- **0.64.15** — Enhance ChatHome and default layout functionality (2026-04-14).
+- **0.64.14** — Enhance chat and landing page functionality (2026-04-14).
+- **0.64.13** — Refactor landing page components for improved layout and responsiveness (2026-04-14).
+- **0.64.12** — Remove unnecessary whitespace in the hero section of LandingHome.vue for cleaner code (2026-04-14).
+- **0.64.11** — Enhance landing page layout in LandingHome.vue and landing.vue (2026-04-14).
+- **0.64.10** — Refactor LandingHome.vue to utilize LandingHeader component (2026-04-14).
+- **0.64.9** — Adjust layout in LandingHome.vue for improved responsiveness (2026-04-14).
+- **0.64.8** — Refactor landing page main structure in LandingHome.vue (2026-04-14).
+- **0.64.7** — Update dependencies and enhance landing page layout (2026-04-14).
+- **0.64.6** — Refactor booking email test mode implementation and enhance layout responsiveness (2026-04-14).
+- **0.64.5** — Refactor landing page layout in LandingHome.vue for improved structure and navigation (2026-04-14).
+- **0.64.4** — Update layout structure in app.vue to support page meta definitions (2026-04-14).
+- **0.64.3** — Refactor chat loading logic and remove obsolete session entry plugin (2026-04-14).
+- **0.64.2** — Enhance loading experience and layout logic in index.vue (2026-04-14).
+- **0.64.1** — Refactor layout structure and enhance page meta definitions (2026-04-14).
+- **0.64.0** — Enhance booking flow with pre-send review and signup prompt (2026-04-13).
+- **0.63.0** — Add immediate booking reply capability based on user intent (2026-04-12).
+- **0.62.2** — Refactor entity phrase handling and add referent noise stripping (2026-04-12).
+- **0.62.1** — Update logo orientation in default layout for improved aesthetics (2026-04-12).
+- **0.62.0** — Implement booking email test mode functionality and enhance layout responsiveness (2026-04-12).
+- **0.61.3** — Update configuration and API handling for improved security and flexibility (2026-04-02).
+- **0.61.2** — Remove obsolete server files and clean up the build structure (2026-04-02).
 - **0.61.1** — Update feedback terminology and improve placeholder text (2026-04-02).
 - **0.61.0** — Enhance feedback handling and extend feedback types (2026-04-02).
 - **0.60.3** — Update FeedbackFlyout component to enhance user feedback experience (2026-04-02).
