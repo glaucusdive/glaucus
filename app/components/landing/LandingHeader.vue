@@ -2,7 +2,7 @@
   <header
     ref="headerRootRef"
     class="sticky top-0 p-5 lg:px-20 lg:py-5 bg-gradient-to-b from-black to-black/0"
-    :class="mobileMenuOpen ? 'z-50' : 'z-10'"
+    :class="mobileMenuOpen ? 'z-50 bg-[#101214]' : 'z-40'"
   >
 
     <div class="grid grid-cols-12 gap-4 items-center">

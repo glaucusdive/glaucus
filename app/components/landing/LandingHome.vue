@@ -117,91 +117,15 @@
       </div>
     </section>
     <section id="logs">
-      <div class="flex overflow-y-auto border-y border-zinc-800">
-        <div class="flex flex-row gap-0 px-20 w-fit *:first:border-l">
-          <div class="flex flex-col gap-0 w-lg border-r border-zinc-800 group">
-            <div class="relative flex items-center justify-center">
-              <img class="block z-0" src="/images/landing/glaucus-blog-fpo-1.jpg"
-                alt="How to obtain your first dive certification" />
-              <div class="pointer-events-none absolute inset-0 bg-linear-to-b from-[#101214]/0 to-[#101214] z-10"
-                aria-hidden="true" />
-            </div>
-            <div class="p-20 flex flex-col gap-8">
-              <div class="flex flex-col gap-4">
-                <h2 class="text-2xl text-pretty">
-                  How to obtain your first dive certification
-                </h2>
-                <p class="text-base text-zinc-400">Learn what it takes to earn your first dive certification so you can start your
-                  dive journey.</p>
-              </div>
-              <NuxtLink to="#" class="flex justify-end">
-                <ArrowRight :width="48" :height="48" :stroke-width="1.5" class="text-white group-hover:text-blue-500" aria-hidden="true" />
-              </NuxtLink>
-            </div>
-          </div>
-          <div class="flex flex-col gap-0 w-lg border-r border-zinc-800">
-            <div class="relative flex items-center justify-center">
-              <img class="block z-0" src="/images/landing/glaucus-blog-fpo-1.jpg"
-                alt="How to obtain your first dive certification" />
-              <div class="pointer-events-none absolute inset-0 bg-linear-to-b from-[#101214]/0 to-[#101214] z-10"
-                aria-hidden="true" />
-            </div>
-            <div class="p-20 flex flex-col gap-8">
-              <div class="flex flex-col gap-4">
-                <h2 class="text-2xl text-pretty">
-                  How to obtain your first dive certification
-                </h2>
-                <p class="text-base text-zinc-400">Learn what it takes to earn your first dive certification so you can
-                  start your
-                  dive journey.</p>
-              </div>
-              <div class="flex justify-end">
-                <ArrowRight :width="48" :height="48" :stroke-width="1.5" class="text-white" aria-hidden="true" />
-              </div>
-            </div>
-          </div>
-          <div class="flex flex-col gap-0 w-lg border-r border-zinc-800">
-            <div class="relative flex items-center justify-center">
-              <img class="block z-0" src="/images/landing/glaucus-blog-fpo-1.jpg"
-                alt="How to obtain your first dive certification" />
-              <div class="pointer-events-none absolute inset-0 bg-linear-to-b from-[#101214]/0 to-[#101214] z-10"
-                aria-hidden="true" />
-            </div>
-            <div class="p-20 flex flex-col gap-8">
-              <div class="flex flex-col gap-4">
-                <h2 class="text-2xl text-pretty">
-                  How to obtain your first dive certification
-                </h2>
-                <p class="text-base text-zinc-400">Learn what it takes to earn your first dive certification so you can
-                  start your
-                  dive journey.</p>
-              </div>
-              <div class="flex justify-end">
-                <ArrowRight :width="48" :height="48" :stroke-width="1.5" class="text-white" aria-hidden="true" />
-              </div>
-            </div>
-          </div>
-          <div class="flex flex-col gap-0 w-lg border-r border-zinc-800">
-            <div class="relative flex items-center justify-center">
-              <img class="block z-0" src="/images/landing/glaucus-blog-fpo-1.jpg"
-                alt="How to obtain your first dive certification" />
-              <div class="pointer-events-none absolute inset-0 bg-linear-to-b from-[#101214]/0 to-[#101214] z-10"
-                aria-hidden="true" />
-            </div>
-            <div class="p-20 flex flex-col gap-8">
-              <div class="flex flex-col gap-4">
-                <h2 class="text-2xl text-pretty">
-                  How to obtain your first dive certification
-                </h2>
-                <p class="text-base text-zinc-400">Learn what it takes to earn your first dive certification so you can
-                  start your
-                  dive journey.</p>
-              </div>
-              <div class="flex justify-end">
-                <ArrowRight :width="48" :height="48" :stroke-width="1.5" class="text-white" aria-hidden="true" />
-              </div>
-            </div>
-          </div>
+      <div
+        class="overflow-x-auto overflow-y-hidden scroll-smooth border-y border-zinc-800 snap-x snap-proximity"
+      >
+        <div class="flex w-fit flex-row gap-0 px-20 *:first:border-l">
+          <LandingContentSlide
+            v-for="(article, i) in LANDING_BLOG_ARTICLES"
+            :key="i"
+            v-bind="article"
+          />
         </div>
       </div>
     </section>
@@ -211,8 +135,8 @@
 
 <script setup>
 import { computed, nextTick, onBeforeMount, onMounted, onUnmounted, ref, shallowRef } from 'vue'
-import { ArrowRight } from '@iconoir/vue'
 import ChatComposer from '~/components/chat/ChatComposer.vue'
+import { LANDING_BLOG_ARTICLES } from '~/data/landingBlogArticles'
 
 /** Extra viewport heights added below the sticky panel — scroll distance for word reveal (tune feel). */
 const WHATIS_RUNWAY_EXTRA_VH = 240
