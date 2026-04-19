@@ -121,7 +121,7 @@
         class="overflow-x-auto overflow-y-hidden scroll-smooth border-y border-zinc-800 snap-x snap-proximity"
       >
         <!-- Intentionally flex-row at all breakpoints: horizontal snap scroll for article cards -->
-        <div class="flex w-fit flex-row gap-0 px-4 sm:px-8 lg:px-20 *:first:border-l">
+        <div class="flex w-fit flex-row gap-0 *:first:border-l">
           <LandingContentSlide
             v-for="(article, i) in LANDING_BLOG_ARTICLES"
             :key="i"

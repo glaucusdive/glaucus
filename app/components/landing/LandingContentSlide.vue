@@ -1,5 +1,5 @@
 <template>
-  <div class="flex w-lg shrink-0 snap-start flex-col gap-0 border-r border-zinc-800 group justify-between">
+  <div class="flex w-sm md:w-md lg:w-lg shrink-0 snap-start flex-col gap-0 border-r border-zinc-800 group justify-between">
     <div class="relative flex items-center justify-center">
       <img class="z-0 block" :src="image" :alt="imageAlt" />
       <div
