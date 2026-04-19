@@ -9,7 +9,7 @@ import {
 import { tryShopInfoResponse } from '../utils/shopInfoForChat'
 import { SEARCH_DIVE_SYSTEM_PROMPT } from '../utils/searchDiveSystemPrompt'
 import { streamOpenRouterSearchFirstCompletion } from '../utils/openRouterStreamSearchFirst'
-import { runTripTypeSearchAfterLlm, tripTypeFirstQuestionResponse } from '../utils/tripTypeSearchPipeline'
+import { runTripTypeSearchAfterLlm, searchFlowResetResponse, tripTypeFirstQuestionResponse } from '../utils/tripTypeSearchPipeline'
 import { runWithRetries } from '../utils/retryWithBackoff'
 
 interface StreamRequestBody {
@@ -110,7 +110,7 @@ export default defineEventHandler(async (event) => {
 
       try {
         if (wantsSearchFlowReset(message.trim())) {
-          push({ type: 'result', payload: tripTypeFirstQuestionResponse({ searchFlowReset: true }) })
+          push({ type: 'result', payload: searchFlowResetResponse() })
           controller.close()
           return
         }

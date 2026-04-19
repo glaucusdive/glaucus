@@ -1451,7 +1451,7 @@ const sendMessage = async (messageText, displayText) => {
         mobileDetailShopId.value = null
         const resetContent = (response.message && String(response.message).trim())
           ? response.message
-          : 'What type of trip are you looking for?'
+          : 'How can I help?'
         messages.value = [
           { role: 'user', content: textToShow },
           {
