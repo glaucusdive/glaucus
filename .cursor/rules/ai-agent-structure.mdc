@@ -49,10 +49,13 @@ When designing or implementing AI agents in this project, ensure each capability
 
 Concrete instance: `server/api/ai-search.post.ts` plus utilities under `server/utils/`. **Tool selection for top-level routing (search vs booking vs entity clarify) is done by the orchestrator** because outcomes must match Supabase data; the model is not asked to pick tools for that step. The model is still used for search filter extraction (`FILTERS:` / `MESSAGE:`) and booking-field conversation when already in the booking branch.
 
+**NLU pre-step (`interpretUserTurn` in `server/utils/interpretUserTurn.ts`):** Before `probeReferentPhrase`, when `shouldRunInterpretNlu` passes, the orchestrator calls OpenRouter once with **JSON output** to extract `goal`, `destination_text` (clean place name, not regex junk like “a dive in bali”), optional `shop_name_hint`, and optional `reasoning_summary`. `pickReferentPhraseForProbe` prefers NLU place hints over regex capture, then existing **probe / route** logic runs unchanged. **Search:** `runTripTypeSearchAfterLlm` receives `interpretTurn` and merges hints via `mergeNluHintsIntoFilters`; the user message to the search LLM may include a short `[System hint for FILTERS: …]` suffix. **Activity UX:** The orchestrator records milestones (`interpret`, `probe`, `search_llm`, `booking_llm`) and returns `activityLog` + optional `reasoningSummary` on API responses; `app/components/chat/ChatHome.vue` shows them as progress lines and a collapsible “How we understood this”. **`/api/ai-search-stream`:** emits NDJSON `type: 'activity'` during the same phases and attaches `activityLog` / `reasoningSummary` on the final `result` payload.
+
 ### Tools (contract)
 
 | Tool / read | Input | Side effects | Triggered by |
 |-------------|--------|--------------|--------------|
+| `interpretUserTurn` | user message + short history | OpenRouter JSON | Orchestrator when `shouldRunInterpretNlu` (not booking continuation; clarify chips use `handleForcedEntityClarify` without NLU on that branch) |
 | `extractReferredEntityPhrase` | user message text | none | Orchestrator when not in booking continuation |
 | `probeReferentPhrase` | phrase string | read: diveshops, dive_sites, countries, country_aliases, regions, diveshops locale/city/state | Orchestrator |
 | `routeReferentFromProbe` | probe result | may call `buildDiveShopQuery` and junction reads for dive-site-linked shops (reads only, in `entityRouting.ts`) | Orchestrator |

@@ -1,5 +1,11 @@
-import { defineEventHandler, readBody, setHeader } from 'h3'
+import { defineEventHandler, readBody, setHeader, type H3Event } from 'h3'
 import { extractBookingTargetFallback, extractReferredEntityPhrase } from '../utils/extractReferredEntityPhrase'
+import {
+  interpretUserTurn,
+  normalizeActivityTerms,
+  shouldRunInterpretNlu,
+  type InterpretedTurn
+} from '../utils/interpretUserTurn'
 import { tryShopInfoResponse } from '../utils/shopInfoForChat'
 import { SEARCH_DIVE_SYSTEM_PROMPT } from '../utils/searchDiveSystemPrompt'
 import { streamOpenRouterSearchFirstCompletion } from '../utils/openRouterStreamSearchFirst'
@@ -36,6 +42,20 @@ function wantsSearchFlowReset (trimmed: string): boolean {
 }
 
 const BOOKING_INTENT_PATTERN = /\b(book|reserve|booking|reservation|i want to book|i'd like to book|send my request|submit my request)\b/i
+
+function abortSignalFromEvent (event: H3Event): AbortSignal | undefined {
+  const req = event.node.req
+  if (!req) return undefined
+  const ac = new AbortController()
+  const onAbort = () => {
+    try {
+      ac.abort()
+    } catch { /* ignore */ }
+  }
+  req.once('close', onAbort)
+  req.once('aborted', onAbort)
+  return ac.signal
+}
 
 function writeNdjson (controller: ReadableStreamDefaultController<Uint8Array>, encoder: TextEncoder, obj: object) {
   controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`))
@@ -146,26 +166,57 @@ export default defineEventHandler(async (event) => {
           return
         }
 
+        const SHOP_STREAM_GAP_MS = 90
+        const streamActivity: { stage: string; label: string; at: number }[] = []
+        const pushAct = (stage: string, label: string) => {
+          streamActivity.push({ stage, label, at: Date.now() })
+          push({ type: 'activity', stage, label })
+        }
+
+        const wantsToBook = BOOKING_INTENT_PATTERN.test(message)
+        const referredPhraseRegex = extractReferredEntityPhrase(message) ?? extractBookingTargetFallback(message)
+        let interpretTurn: InterpretedTurn | null = null
+        if (shouldRunInterpretNlu(message, wantsToBook, referredPhraseRegex)) {
+          pushAct('interpret', 'Understanding your request')
+          const ir = await interpretUserTurn({
+            message,
+            history,
+            openrouterApiKey,
+            signal: upstreamSignal ?? abortSignalFromEvent(event)
+          })
+          if (ir.ok) interpretTurn = ir.data
+        }
+
         const tripTypePattern = /\b(liveaboard|resort|day trips?|dive shops?|i prefer a liveaboard|i prefer a resort|i prefer dive shops|just day trips?)\b/i
         const tripTypeChoiceInMessage = tripTypePattern.test(message)
         const userAlreadySpecifiedTripType = history.some(
           m => m.role === 'user' && tripTypePattern.test(String(m.content || ''))
         )
-        if (!userAlreadySpecifiedTripType && !tripTypeChoiceInMessage) {
+        const nluActivityForHint = normalizeActivityTerms(interpretTurn?.activity_terms)
+        const userSpecifiedActivityNlu = nluActivityForHint.length > 0
+        if (!userAlreadySpecifiedTripType && !tripTypeChoiceInMessage && !userSpecifiedActivityNlu) {
           push({ type: 'result', payload: tripTypeFirstQuestionResponse() })
           controller.close()
           return
         }
 
-        const SHOP_STREAM_GAP_MS = 90
+        let nluHint = ''
+        if (interpretTurn?.destination_text?.trim()) {
+          nluHint += `\n\n[System hint for FILTERS: the user mentioned this place — ${interpretTurn.destination_text.trim()}]`
+        }
+        if (nluActivityForHint.length > 0) {
+          nluHint += `\n\n[System hint for FILTERS: match dive style / environment — ${nluActivityForHint.join(', ')}]`
+        }
+        const userMessageForSearch = message + nluHint
 
         const resultPayload = await runWithRetries(async () => {
           const messages = [
             { role: 'system', content: SEARCH_DIVE_SYSTEM_PROMPT },
             ...history,
-            { role: 'user', content: message }
+            { role: 'user', content: userMessageForSearch }
           ]
 
+          pushAct('search_llm', 'Drafting your answer')
           const aiMessage = await streamOpenRouterSearchFirstCompletion({
             apiKey: openrouterApiKey,
             messages,
@@ -185,6 +236,7 @@ export default defineEventHandler(async (event) => {
             supabaseUrl,
             supabaseKey,
             shopsAlreadyShownCount,
+            interpretTurn,
             onStatus: (text) => push({ type: 'status', text })
           })
         }, {
@@ -203,7 +255,14 @@ export default defineEventHandler(async (event) => {
         }
 
         if (!upstreamSignal?.aborted) {
-          push({ type: 'result', payload: resultPayload })
+          const enriched = {
+            ...resultPayload,
+            ...(streamActivity.length ? { activityLog: streamActivity } : {}),
+            ...(interpretTurn?.reasoning_summary?.trim()
+              ? { reasoningSummary: interpretTurn.reasoning_summary.trim() }
+              : {})
+          }
+          push({ type: 'result', payload: enriched })
         }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'An error occurred while searching'

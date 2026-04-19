@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { collectShopIdsForActivityTokens } from './collectShopIdsForActivityTokens'
 
 export interface SearchFilters {
   country?: string
@@ -7,6 +8,8 @@ export interface SearchFilters {
   minRating?: number
   languages?: string[]
   diveTypes?: string[] // e.g. ["Liveaboard"], ["Dive Resort"], ["Dive Shop"] — matches diveshops.type (contains)
+  /** Short tokens (e.g. cave, wreck) — AND together; matched on notes, name, type text, linked dive sites / site types. */
+  activityTokens?: string[]
   dates?: {
     start?: string
     end?: string
@@ -25,8 +28,9 @@ export function diveshopLocaleOrConditions (term: string): string {
  * Build and execute the dive shop search query.
  * Filtering process:
  * 1. Resolve country/region names to IDs (so we filter on diveshops.country_id / region_id directly).
- * 2. Apply locale (city/state/locale/street_address), minRating, diveTypes, languages.
- * 3. Order by rating then name, limit 50 (or an optional offset/limit window for pagination).
+ * 2. Apply activity token constraint (intersect shop IDs) when present.
+ * 3. Apply locale (city/state/locale/street_address), minRating, diveTypes, languages.
+ * 4. Order by rating then name, limit 50 (or an optional offset/limit window for pagination).
  */
 export type DiveShopQueryRange = { offset: number; limit: number }
 
@@ -38,16 +42,29 @@ export async function buildDiveShopQuery (
 ) {
   const client = createClient(supabaseUrl, supabaseKey)
 
-  let query = client
-    .from('diveshops')
-    .select('*, country:countries(name), region:regions(name)')
-
   const applyWindow = (q: ReturnType<typeof client.from>) => {
     if (range && range.limit > 0 && range.offset >= 0) {
       const end = range.offset + range.limit - 1
       return q.range(range.offset, end)
     }
     return q.limit(50)
+  }
+
+  let activityIdFilter: string[] | null = null
+  if (filters.activityTokens && filters.activityTokens.length > 0) {
+    activityIdFilter = await collectShopIdsForActivityTokens(client, filters.activityTokens)
+    if (activityIdFilter.length === 0) {
+      const emptyBase = client.from('diveshops').select('*, country:countries(name), region:regions(name)').in('country_id', ['00000000-0000-0000-0000-000000000000'])
+      return await applyWindow(emptyBase)
+    }
+  }
+
+  let query = client
+    .from('diveshops')
+    .select('*, country:countries(name), region:regions(name)')
+
+  if (activityIdFilter) {
+    query = query.in('id', activityIdFilter)
   }
 
   // Resolve country name to ID(s) and filter by country_id (reliable; join-filter on embedded table is not applied correctly in some clients)
