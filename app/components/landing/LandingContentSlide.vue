@@ -1,5 +1,5 @@
 <template>
-  <div class="flex w-sm md:w-md lg:w-lg shrink-0 snap-start flex-col gap-0 border-r border-zinc-800 group justify-between">
+  <div class="flex w-xs sm:w-sm md:w-md lg:w-lg shrink-0 snap-start flex-col gap-0 border-r border-zinc-800 group justify-between">
     <div class="relative flex items-center justify-center">
       <img class="z-0 block" :src="image" :alt="imageAlt" />
       <div
@@ -7,7 +7,7 @@
         aria-hidden="true"
       />
     </div>
-    <div class="flex flex-col gap-8 p-20">
+    <div class="flex flex-col gap-8 p-8 md:p-10 xl:p-20">
       <div class="flex flex-col gap-4">
         <h2 class="text-2xl text-pretty">
           {{ title }}
@@ -18,10 +18,8 @@
       </div>
       <NuxtLink :to="to" class="flex justify-end" :aria-label="readLabel">
         <ArrowRight
-          :width="48"
-          :height="48"
           :stroke-width="1.5"
-          class="text-white group-hover:text-blue-500"
+          class="size-6 md:size-10 lg:size-12 text-white group-hover:text-blue-500"
           aria-hidden="true"
         />
       </NuxtLink>
