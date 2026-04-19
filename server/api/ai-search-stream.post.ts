@@ -9,6 +9,8 @@ import {
 import { tryShopInfoResponse } from '../utils/shopInfoForChat'
 import { SEARCH_DIVE_SYSTEM_PROMPT } from '../utils/searchDiveSystemPrompt'
 import { streamOpenRouterSearchFirstCompletion } from '../utils/openRouterStreamSearchFirst'
+import { isCourseDiscoveryFollowUpMessage, tryBuildCourseDiscoverySearchResponse } from '../utils/courseDiscoveryFromSearch'
+import { normalizeClientSearchFilters } from '../utils/normalizeClientSearchFilters'
 import { runTripTypeSearchAfterLlm, searchFlowResetResponse, tripTypeFirstQuestionResponse } from '../utils/tripTypeSearchPipeline'
 import { runWithRetries } from '../utils/retryWithBackoff'
 
@@ -75,7 +77,8 @@ export default defineEventHandler(async (event) => {
     shopsAlreadyShownCount,
     lastIntent,
     lastBookingShopId,
-    pendingEntityClarifyPhrase
+    pendingEntityClarifyPhrase,
+    lastSearchFilters: bodyLastSearchFilters
   } = body
 
   if (!message || typeof message !== 'string') {
@@ -138,6 +141,16 @@ export default defineEventHandler(async (event) => {
           const shopInfoTurn = await tryShopInfoResponse(message, selectedShopId, lastShops, supabaseUrl, supabaseKey)
           if (shopInfoTurn) {
             push({ type: 'result', payload: shopInfoTurn })
+            controller.close()
+            return
+          }
+        }
+
+        if (!continuingBooking && supabaseUrl && supabaseKey && isCourseDiscoveryFollowUpMessage(message.trim())) {
+          const n = normalizeClientSearchFilters(bodyLastSearchFilters ?? null)
+          if (n && (n.country?.trim() || n.locale?.trim() || n.region?.trim())) {
+            const coursePayload = await tryBuildCourseDiscoverySearchResponse(message, n, supabaseUrl, supabaseKey)
+            push({ type: 'result', payload: { ...coursePayload, intent: 'search' as const } })
             controller.close()
             return
           }

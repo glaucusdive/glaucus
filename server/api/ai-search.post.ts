@@ -28,7 +28,12 @@ import {
   routeReferentFromProbe,
   shopDisambiguationResponsePayload
 } from '../utils/entityRouting'
+import {
+  isCourseDiscoveryFollowUpMessage,
+  tryBuildCourseDiscoverySearchResponse
+} from '../utils/courseDiscoveryFromSearch'
 import { inferSearchFiltersFromDestination } from '../utils/destinationToSearchFilters'
+import { normalizeClientSearchFilters } from '../utils/normalizeClientSearchFilters'
 import { resolveBookingTargetFromPhrase } from '../utils/resolveBookingTarget'
 import { tryShopInfoResponse } from '../utils/shopInfoForChat'
 import { applyInferredCoursesToPayloadIfEligible } from '../utils/inferCoursesFromConversation'
@@ -336,26 +341,6 @@ interface RequestBody {
   lastSearchFilters?: SearchFilters
   /** Echo of last search totalResults (client); with lastSearchFilters enables a single DB range page. */
   lastSearchTotalResults?: number
-}
-
-function normalizeClientSearchFilters (raw: unknown): SearchFilters | null {
-  if (raw === undefined || raw === null) return null
-  if (typeof raw !== 'object' || Array.isArray(raw)) return null
-  const o = raw as Record<string, unknown>
-  const out: SearchFilters = {}
-  if (typeof o.country === 'string') out.country = o.country
-  if (typeof o.locale === 'string') out.locale = o.locale
-  if (typeof o.region === 'string') out.region = o.region
-  if (typeof o.minRating === 'number' && Number.isFinite(o.minRating)) out.minRating = o.minRating
-  if (Array.isArray(o.languages) && o.languages.every(x => typeof x === 'string')) out.languages = o.languages as string[]
-  if (Array.isArray(o.diveTypes) && o.diveTypes.every(x => typeof x === 'string')) out.diveTypes = o.diveTypes as string[]
-  if (o.dates != null && typeof o.dates === 'object' && !Array.isArray(o.dates)) {
-    const d = o.dates as Record<string, unknown>
-    const start = typeof d.start === 'string' ? d.start : undefined
-    const end = typeof d.end === 'string' ? d.end : undefined
-    if (start || end) out.dates = { start, end }
-  }
-  return out
 }
 
 function inferAlreadyShownForPagination (history: Message[], shopsAlreadyShownCount: number | undefined): number {
@@ -2097,6 +2082,25 @@ export default defineEventHandler(async (event) => {
       }
 
       // --- Search flow (existing) ---
+      // Course / certification follow-up: show aggregated course chips for the current search area (not another shop page).
+      if (supabaseUrl && supabaseKey && isCourseDiscoveryFollowUpMessage(message.trim())) {
+        const normalizedForCourses = normalizeClientSearchFilters(bodyLastSearchFilters)
+        if (
+          normalizedForCourses &&
+          (normalizedForCourses.country?.trim() ||
+            normalizedForCourses.locale?.trim() ||
+            normalizedForCourses.region?.trim())
+        ) {
+          const coursePayload = await tryBuildCourseDiscoverySearchResponse(
+            message,
+            normalizedForCourses,
+            supabaseUrl,
+            supabaseKey
+          )
+          return withAgentMeta({ ...coursePayload, intent: 'search' as const })
+        }
+      }
+
       // Check if user is asking for more results (pagination) or first page after a count-only reply
       const paginationPattern = /\b(next|more|show more|next 5|next results|show next|load more|another|additional)\s*(5|results?|shops?|ones?)?\b/i
       const next20Pattern = /\b(show next 20|load next 20|next 20)\b/i
