@@ -37,14 +37,14 @@
             <div class="flex min-w-0 w-full items-center py-8">
               <ClientOnly>
                 <h2
-                  class="min-w-0 max-w-full text-5xl xl:text-6xl font-light text-pretty leading-[1.1] text-white break-words"
+                  class="min-w-0 max-w-full text-4xl xl:text-6xl font-light text-pretty leading-[1.2] text-white break-words"
                 >
                   <template v-if="reduceMotion">{{ WHATIS_INTRO_COPY }}</template>
                   <template v-else>
                     <!-- Normal spaces between spans — &nbsp; would prevent wrapping -->
                     <template v-for="(word, i) in introWords" :key="i">
                       <span
-                        :class="i < litWordCount ? 'opacity-100' : 'opacity-20'"
+                        :class="i < litWordCount ? 'opacity-100' : 'opacity-10'"
                         class="transition-opacity duration-150"
                       >{{ word }}</span>{{ i < introWords.length - 1 ? ' ' : '' }}
                     </template>
@@ -130,12 +130,12 @@
         </div>
       </div>
     </section>
-    <section id="contact" class="px-4 sm:px-8 lg:px-20">
-      <div class="grid grid-cols-12 gap-4">
+    <section id="contact" class="h-[80dvh] px-4 sm:px-8 lg:px-20">
+      <div class="grid grid-cols-12 gap-4 h-full">
         <div class="col-span-12 lg:col-start-4 lg:col-span-6">
-          <div class="py-24 lg:py-60 flex flex-col gap-8 items-center">
+          <div class="py-24 lg:py-60 flex flex-col gap-8 justify-center items-center h-full">
             <h2 class="text-5xl text-balance text-center max-w-[24ch]">Book your next trip with Glaucus today</h2>
-            <div class="flex w-full max-w-sm flex-col gap-4 justify-center lg:max-w-none lg:flex-row">
+            <div class="flex w-full max-w-sm flex-col gap-4 justify-center md:flex-row">
               <button type="button"
                 class="w-full rounded-md h-10 px-4 py-2 text-sm font-medium uppercase bg-white text-zinc-900 hover:bg-zinc-200 whitespace-nowrap sm:w-auto"
                 @click="goToApp">
