@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isQuerySpecificEnoughForDirectShopCards } from '../../server/utils/tripTypeSearchPipeline'
+import { buildRelaxFilterChips, isQuerySpecificEnoughForDirectShopCards } from '../../server/utils/tripTypeSearchPipeline'
 
 describe('isQuerySpecificEnoughForDirectShopCards', () => {
   it('is true for country + beginner phrasing', () => {
@@ -30,5 +30,23 @@ describe('isQuerySpecificEnoughForDirectShopCards', () => {
     expect(
       isQuerySpecificEnoughForDirectShopCards('highly rated in Bali', { country: 'Indonesia', locale: 'Bali', minRating: 4.5 }, null, false, false)
     ).toBe(true)
+  })
+})
+
+describe('buildRelaxFilterChips', () => {
+  it('prioritizes removing dive type and locale when both set', () => {
+    const chips = buildRelaxFilterChips({
+      country: 'Maldives',
+      locale: 'Malé',
+      diveTypes: ['Dive Resort']
+    })
+    expect(chips.some(c => /any trip type/i.test(c.label))).toBe(true)
+    expect(chips.some(c => /all of maldives/i.test(c.label))).toBe(true)
+  })
+
+  it('falls back to generic options when no structured filters', () => {
+    const chips = buildRelaxFilterChips({})
+    expect(chips.length).toBeGreaterThan(0)
+    expect(chips[0]).toMatchObject({ label: expect.any(String), value: expect.any(String) })
   })
 })
