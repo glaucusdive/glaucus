@@ -115,6 +115,110 @@ export function searchReplyMessagePreamble (conversationalMessage: string, final
   return conv
 }
 
+/** Short chip answers that relax the current filter stack when a search returns no rows. */
+export function buildRelaxFilterChips (filters: SearchFilters): { label: string; value: string }[] {
+  const chips: { label: string; value: string }[] = []
+  const country = filters.country?.trim()
+  const locale = filters.locale?.trim()
+  const region = filters.region?.trim()
+  if (filters.diveTypes?.length) {
+    chips.push(
+      country
+        ? {
+            label: 'Any trip type',
+            value: `List all dive shops in ${country} (do not filter by resort, liveaboard, or dive shop only)`
+          }
+        : {
+            label: 'Any trip type',
+            value: 'Show dive shops without filtering by trip type (resort, liveaboard, or dive shop)'
+          }
+    )
+  }
+  if (filters.activityTokens?.length) {
+    chips.push(
+      country
+        ? {
+            label: 'Skip activity filters',
+            value: `Search dive shops in ${country} without filtering by activity or dive site type`
+          }
+        : {
+            label: 'Skip activity filters',
+            value: 'Search dive shops without activity or site-type filters'
+          }
+    )
+  }
+  if (locale && country) {
+    chips.push({
+      label: `All of ${country}`,
+      value: `Show dive shops across all areas of ${country}, not only ${locale}`
+    })
+  } else if (region && country) {
+    chips.push({
+      label: `All of ${country}`,
+      value: `Show dive shops across ${country}, not only the ${region} region`
+    })
+  }
+  if (filters.minRating != null && filters.minRating > 0) {
+    chips.push(
+      country
+        ? {
+            label: 'Any rating',
+            value: `Show dive shops in ${country} with any Google rating (or unrated)`
+          }
+        : {
+            label: 'Any rating',
+            value: 'Show dive shops without a minimum rating filter'
+          }
+    )
+  }
+  if (filters.languages?.length) {
+    chips.push(
+      country
+        ? {
+            label: 'Any language',
+            value: `Show dive shops in ${country} regardless of language`
+          }
+        : {
+            label: 'Any language',
+            value: 'Show dive shops without a language filter'
+          }
+    )
+  }
+
+  if (chips.length === 0 && country) {
+    chips.push({
+      label: `Search all of ${country}`,
+      value: `List all dive shops in ${country}`
+    })
+  }
+  if (chips.length === 0) {
+    chips.push(
+      { label: 'Try another destination', value: 'I want to search for dive shops in a different country or region' },
+      { label: 'Any trip type', value: 'Show dive shops without filtering by trip type' }
+    )
+  }
+
+  return chips.slice(0, 6)
+}
+
+function mergeSelectableOptions (
+  ...groups: ({ label: string; value: string }[] | undefined)[]
+): { label: string; value: string }[] {
+  const seen = new Set<string>()
+  const out: { label: string; value: string }[] = []
+  for (const g of groups) {
+    if (!g?.length) continue
+    for (const o of g) {
+      const k = o.value.trim().toLowerCase()
+      if (seen.has(k)) continue
+      seen.add(k)
+      out.push(o)
+      if (out.length >= 8) return out
+    }
+  }
+  return out
+}
+
 export interface RunTripTypeSearchAfterLlmInput {
   message: string
   history: { role: string; content: string }[]
@@ -166,22 +270,34 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
     /\b(show|find|see)\s+more\b/i.test(message) ||
     /\bwiden\s+(the\s+)?search\b/i.test(message)
 
-  const broadeningPrompt = (placeholderCount: number) => `The search returned only ${placeholderCount} dive shop(s) based on these filters: ${JSON.stringify(filters)}
+  const broadeningPrompt = (count: number) => {
+    if (count === 0) {
+      return `The search returned NO dive shops matching these filters: ${JSON.stringify(filters)}
 
-  Previous conversation: ${conversationContext}
+Previous conversation: ${conversationContext}
 
-  ${wantsMoreOptions ? 'The user is asking to see more options.' : 'There are very few results.'}
+Acknowledge there are no matches in one short sentence. Suggest the most likely next step (e.g. remove trip-type filter, search the whole country, try a nearby area).
 
-  Suggest ONE of these approaches (choose the most appropriate):
+On a new line after your message, output exactly 1-3 selectable suggestion phrases as JSON array for the user to tap:
+SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
+    }
+    return `The search returned ${count} dive shop(s) based on these filters: ${JSON.stringify(filters)}
 
-  1. If a specific locale/city was searched (e.g., "Bali"), suggest broadening to the parent region/country (e.g., "Would you like me to search all of Indonesia instead?")
+Previous conversation: ${conversationContext}
 
-  2. If already at country level or user wants alternatives, suggest 2-3 nearby popular dive destinations in the same region
+${wantsMoreOptions ? 'The user is asking to see more options.' : 'There are very few results.'}
 
-  Be helpful and specific. Use your geographic knowledge. Keep it SHORT (one sentence + the suggestion). When you state how many shops were found, use the number ${placeholderCount} (we will replace it with the actual count).
+Suggest ONE of these approaches (choose the most appropriate):
 
-  On a new line after your message, also output exactly 1-3 selectable suggestion phrases as JSON array for the user to tap (e.g. ["Search all of Indonesia", "Search Southeast Asia"]):
-  SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
+1. If a specific locale/city was searched (e.g., "Bali"), suggest broadening to the parent region/country (e.g., "Would you like me to search all of Indonesia instead?")
+
+2. If already at country level or user wants alternatives, suggest 2-3 nearby popular dive destinations in the same region
+
+Be helpful and specific. Use your geographic knowledge. Keep it SHORT (one sentence + the suggestion). When you state how many shops were found, use the number ${count}.
+
+On a new line after your message, also output exactly 1-3 selectable suggestion phrases as JSON array for the user to tap (e.g. ["Search all of Indonesia", "Search Southeast Asia"]):
+SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
+  }
 
   const followUpPrompt = `The search returned many dive shops (we show max 5). Ask ONE short follow-up question to narrow down.
 
@@ -194,63 +310,7 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
 
   onStatus?.('Searching dive shops…')
 
-  const [dbResult, broadeningResult, followUpAiMessage] = await Promise.all([
-    buildDiveShopQuery(supabaseUrl, supabaseKey, filters),
-    fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openrouterApiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://glaucus.app',
-        'X-Title': 'Glaucus Dive Shop Search'
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-5-mini',
-        messages: [
-          { role: 'system', content: 'You are a helpful dive shop search assistant with knowledge of global dive destinations. Be concise and helpful.' },
-          { role: 'user', content: broadeningPrompt(1) }
-        ],
-        temperature: 0.7,
-        max_tokens: 150
-      })
-    }).then(async (res) => {
-      if (!res.ok) return { content: '', suggestions: null as string[] | null }
-      const data = await res.json() as { choices?: { message?: { content?: string } }[] }
-      let content = data.choices?.[0]?.message?.content || ''
-      const suggestionsMatch = content.match(/SUGGESTIONS:\s*(\[[\s\S]*?\])\s*$/m)
-      let suggestions: string[] | null = null
-      if (suggestionsMatch) {
-        try {
-          const arr = JSON.parse(suggestionsMatch[1]) as string[]
-          if (Array.isArray(arr) && arr.length > 0) suggestions = arr.map(s => String(s).slice(0, 60))
-        } catch { /* ignore */ }
-        content = content.replace(/\nSUGGESTIONS:\s*\[[\s\S]*?\]\s*$/, '').trim()
-      }
-      return { content, suggestions }
-    }).catch(() => ({ content: '', suggestions: null as string[] | null })),
-    fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openrouterApiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://glaucus.app',
-        'X-Title': 'Glaucus Dive Shop Search'
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-5-mini',
-        messages: [
-          { role: 'system', content: 'You ask ONE short question at a time. Never repeat a question that was already asked in the conversation.' },
-          { role: 'user', content: followUpPrompt }
-        ],
-        temperature: 0.6,
-        max_tokens: 100
-      })
-    }).then(async (res) => {
-      if (!res.ok) return ''
-      const data = await res.json() as { choices?: { message?: { content?: string } }[] }
-      return (data.choices?.[0]?.message?.content?.trim() || '') as string
-    }).catch(() => '')
-  ])
+  const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, filters)
 
   const { data: shops, error: dbError } = dbResult as { data: unknown[] | null; error: unknown }
   if (dbError) {
@@ -267,6 +327,72 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
   } else {
     onStatus?.(`Found ${resultCount} shop${resultCount === 1 ? '' : 's'}.`)
   }
+
+  let broadeningResult = { content: '', suggestions: null as string[] | null }
+  let followUpAiMessage = ''
+
+  const parseBroadeningBody = async (res: Response) => {
+    if (!res.ok) return { content: '', suggestions: null as string[] | null }
+    const data = await res.json() as { choices?: { message?: { content?: string } }[] }
+    let content = data.choices?.[0]?.message?.content || ''
+    const suggestionsMatch = content.match(/SUGGESTIONS:\s*(\[[\s\S]*?\])\s*$/m)
+    let suggestions: string[] | null = null
+    if (suggestionsMatch) {
+      try {
+        const arr = JSON.parse(suggestionsMatch[1]) as string[]
+        if (Array.isArray(arr) && arr.length > 0) suggestions = arr.map(s => String(s).slice(0, 60))
+      } catch { /* ignore */ }
+      content = content.replace(/\nSUGGESTIONS:\s*\[[\s\S]*?\]\s*$/, '').trim()
+    }
+    return { content, suggestions }
+  }
+
+  await Promise.all([
+    (resultCount <= 2 || wantsMoreOptions)
+      ? fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${openrouterApiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://glaucus.app',
+          'X-Title': 'Glaucus Dive Shop Search'
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-5-mini',
+          messages: [
+            { role: 'system', content: 'You are a helpful dive shop search assistant with knowledge of global dive destinations. Be concise and helpful.' },
+            { role: 'user', content: broadeningPrompt(resultCount) }
+          ],
+          temperature: 0.7,
+          max_tokens: 150
+        })
+      }).then(parseBroadeningBody).then(r => { broadeningResult = r }).catch(() => {})
+      : Promise.resolve(),
+    resultCount > 5
+      ? fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${openrouterApiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://glaucus.app',
+          'X-Title': 'Glaucus Dive Shop Search'
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-5-mini',
+          messages: [
+            { role: 'system', content: 'You ask ONE short question at a time. Never repeat a question that was already asked in the conversation.' },
+            { role: 'user', content: followUpPrompt }
+          ],
+          temperature: 0.6,
+          max_tokens: 100
+        })
+      }).then(async (res) => {
+        if (!res.ok) return
+        const data = await res.json() as { choices?: { message?: { content?: string } }[] }
+        followUpAiMessage = (data.choices?.[0]?.message?.content?.trim() || '') as string
+      }).catch(() => {})
+      : Promise.resolve()
+  ])
 
   let shouldAskFollowUp = false
   let userAlreadyAnsweredLastQuestion = false
@@ -285,16 +411,26 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
     shouldAskFollowUp = true
     console.log(`[AI Search] Low results (${resultCount}) or user wants more options, suggesting to broaden search...`)
     followUpMessage = broadeningResult.content
-      ? broadeningResult.content.replace(/\b1\s+dive shop(s?)\b/gi, `${resultCount} dive shop${resultCount === 1 ? '' : 's'}`).replace(/\bonly 1\b/gi, `only ${resultCount}`)
+      ? broadeningResult.content
+        .replace(/\b\d+\s+dive shop(s?)\b/gi, `${resultCount} dive shop${resultCount === 1 ? '' : 's'}`)
+        .replace(/\bonly \d+\b/gi, `only ${resultCount}`)
       : ''
-    if (broadeningResult.suggestions?.length) {
-      selectableOptions = broadeningResult.suggestions.map(s => ({ label: s, value: s }))
-    }
+    const fromBroadening = broadeningResult.suggestions?.map(s => ({ label: s, value: s })) ?? []
+    selectableOptions = mergeSelectableOptions(buildRelaxFilterChips(filters), fromBroadening)
     if (!followUpMessage?.trim()) {
-      followUpMessage = filters.locale
-        ? `I found only ${resultCount} shop(s) in ${filters.locale}. Would you like me to search ${filters.country || 'the broader region'} instead?`
-        : 'Would you like me to expand the search to include more locations?'
-      if (!selectableOptions?.length && filters.country) selectableOptions = [{ label: `Search all of ${filters.country}`, value: `Search all of ${filters.country}` }]
+      if (resultCount === 0) {
+        followUpMessage =
+          'No dive shops matched these filters. Tap an option to widen the search, or say what you want to change.'
+      } else {
+        followUpMessage = filters.locale
+          ? `I found only ${resultCount} shop(s) in ${filters.locale}. Would you like me to search ${filters.country || 'the broader region'} instead?`
+          : 'Would you like me to expand the search to include more locations?'
+      }
+      if (!selectableOptions?.length && filters.country) {
+        selectableOptions = mergeSelectableOptions(selectableOptions, [
+          { label: `Search all of ${filters.country}`, value: `Search all of ${filters.country}` }
+        ])
+      }
     }
   } else if (resultCount > 5) {
     const lastAssistantMessage = history.filter(h => h.role === 'assistant').pop()?.content || ''
@@ -400,6 +536,12 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
     } else {
       finalMessage = conversationalMessage
     }
+  }
+
+  if (responseShops.length === 0 && resultCount > 0) {
+    finalMessage =
+      `You've seen all ${resultCount} shop${resultCount === 1 ? '' : 's'} in this search. Try widening a filter or searching another area.`
+    selectableOptions = mergeSelectableOptions(buildRelaxFilterChips(filters), selectableOptions)
   }
 
   const messagePreamble = searchReplyMessagePreamble(conversationalMessage, finalMessage)
