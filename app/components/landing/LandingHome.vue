@@ -1,5 +1,5 @@
 <template>
-  <main class="bg-[#101214] mb-[930px] relative z-10">
+  <main ref="mainRef" class="bg-[#101214] relative z-10">
     <LandingHeader />
     <section id="hero" class="relative bg-[url(/images/landing/glaucus-bg-hero-waves.jpg)] bg-no-repeat bg-top bg-cover h-[calc(100dvh-80px)] px-20">
       <div class="grid grid-cols-12 gap-4 items-center h-full">
@@ -151,26 +151,7 @@
       </div>
     </section>
   </main>
-  <footer class="fixed top-0 w-full p-20 h-[930px] bg-[url(/images/landing/glaucus-bg-footer.jpg)] bg-cover z-0">
-    <div class="grid grid-cols-12 gap-4 h-full">
-      <div class="col-span-4">
-        <div class="flex flex-col gap-8">
-          <div class="h-11 w-fit">
-            <LogoText />
-          </div>
-          <nav class="flex flex-row gap-x-4 gap-y-2 flex-wrap">
-            <NuxtLink to="/#whatisglaucus">What is Glaucus?</NuxtLink>
-            <NuxtLink to="/#feature1">Features</NuxtLink>
-            <NuxtLink to="/#aboutus">About Us</NuxtLink>
-            <NuxtLink to="/#logs">Logs</NuxtLink>
-            <NuxtLink to="/#contact">Contact</NuxtLink>
-            <NuxtLink to="/privacy">Privacy Policy</NuxtLink>
-            <NuxtLink to="/legal">Legal Notice</NuxtLink>
-          </nav>
-        </div>
-      </div>
-    </div>
-  </footer>
+  <LandingFooter />
 </template>
 
 <script setup>
@@ -184,6 +165,7 @@ const WHATIS_RUNWAY_EXTRA_VH = 240
 const WHATIS_INTRO_COPY = 'Introducing Ada, your AI diving assistant by Glaucus, that’s made for divers and dive businesses. The goal is to help divers get information faster, book faster, connect with diveshops faster, easier to pay and easier to record your latest dive. Diveshops can easily connect with their customers and improve their business processes.'
 
 const heroQuery = ref('')
+const mainRef = ref(null)
 const whatisRunwayRef = ref(null)
 const litWordCount = shallowRef(0)
 const reduceMotion = ref(false)
