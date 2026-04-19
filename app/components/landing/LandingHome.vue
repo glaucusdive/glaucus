@@ -1,11 +1,11 @@
 <template>
   <main ref="mainRef" class="bg-[#101214] relative z-10">
     <LandingHeader />
-    <section id="hero" class="relative bg-[url(/images/landing/glaucus-bg-hero-waves.jpg)] bg-no-repeat bg-top bg-cover h-[calc(100dvh-80px)] px-20">
-      <div class="grid grid-cols-12 gap-4 items-center h-full">
-        <div class="col-span-8 col-start-3">
+    <section id="hero" class="relative bg-[url(/images/landing/glaucus-bg-hero-waves.jpg)] bg-no-repeat bg-top bg-cover min-h-[50dvh] lg:min-h-0 lg:h-[calc(100dvh-80px)] px-4 sm:px-8 lg:px-20">
+      <div class="grid grid-cols-12 gap-4 items-center min-h-[50dvh] lg:h-full">
+        <div class="col-span-12 lg:col-span-8 lg:col-start-3">
           <div class="flex flex-col gap-2">
-            <div class="flex flex-row items-baseline gap-1">
+            <div class="flex flex-col gap-2 lg:flex-row lg:items-baseline lg:gap-1">
               <h1 class="text-2xl font-medium">Your scuba life, simplified.</h1>
               <p class="text-sm text-zinc-400">An agentic assistant for novice & advance scuba divers.</p>
             </div>
@@ -29,11 +29,11 @@
       <div
         class="flex flex-col justify-center"
         :class="reduceMotion
-          ? 'min-h-[calc(100dvh-80px)] bg-[url(/images/landing/glaucus-bg-whatisglaucus.jpg)] bg-no-repeat bg-top bg-cover'
-          : 'sticky top-20 z-10 min-h-[calc(100dvh-80px)] bg-[url(/images/landing/glaucus-bg-whatisglaucus.jpg)] bg-no-repeat bg-top bg-cover p-20'"
+          ? 'min-h-[calc(100dvh-80px)] bg-[url(/images/landing/glaucus-bg-whatisglaucus.jpg)] bg-no-repeat bg-top bg-cover p-6 lg:p-20'
+          : 'sticky top-20 z-10 min-h-[calc(100dvh-80px)] bg-[url(/images/landing/glaucus-bg-whatisglaucus.jpg)] bg-no-repeat bg-top bg-cover p-6 lg:p-20'"
       >
         <div class="grid grid-cols-12 gap-4 items-center">
-          <div class="col-span-6 col-start-4 min-w-0">
+          <div class="col-span-12 lg:col-span-6 lg:col-start-4 min-w-0">
             <div class="flex min-w-0 w-full items-center py-8">
               <ClientOnly>
                 <h2
@@ -61,14 +61,14 @@
         </div>
       </div>
     </section>
-    <section id="feature1" class="px-20 pt-40 pb-20 border-b border-zinc-800">
+    <section id="feature1" class="px-4 sm:px-8 lg:px-20 pt-20 lg:pt-40 pb-12 lg:pb-20 border-b border-zinc-800">
       <div class="grid grid-cols-12 gap-4">
-        <div class="col-span-5">
+        <div class="col-span-12 lg:col-span-5">
           <h2 class="text-5xl">
             Book the perfect dive in under five minutes
           </h2>
         </div>
-        <div class="col-start-7 col-span-4">
+        <div class="col-span-12 lg:col-start-7 lg:col-span-4">
           <p class="text-xl pt-1">
             Search for the ideal dive location, include your friends and book your next dive with ease.
           </p>
@@ -81,14 +81,14 @@
         </div>
       </div>
     </section>
-    <section id="feature2" class="px-20 pt-40 pb-20 border-b border-zinc-800">
+    <section id="feature2" class="px-4 sm:px-8 lg:px-20 pt-20 lg:pt-40 pb-12 lg:pb-20 border-b border-zinc-800">
       <div class="grid grid-cols-12 gap-4">
-        <div class="col-span-5">
+        <div class="col-span-12 lg:col-span-5">
           <h2 class="text-5xl">
             Improved discoverability for your dive shop
           </h2>
         </div>
-        <div class="col-start-7 col-span-4">
+        <div class="col-span-12 lg:col-start-7 lg:col-span-4">
           <p class="text-xl pt-1">
             Glaucus helps your business stick out from the crowd. Divers can find your shop based on dive sites, rental
             gear or certification needs.
@@ -102,16 +102,16 @@
         </div>
       </div>
     </section>
-    <section id="aboutus" class="p-20">
+    <section id="aboutus" class="p-6 lg:p-20">
       <div class="grid grid-cols-12 gap-4 items-center">
-        <div class="lg:col-span-5">
+        <div class="col-span-12 lg:col-span-5">
           <div class="flex flex-col gap-8">
             <h2 class="text-5xl text-pretty">We’re Glaucus, an AI assistant for divers.</h2>
             <p class="text-2xl text-pretty">This is the about section copy. I dont know what to put here, but we will figure it out soon. But we will want the content to be brief and tell a story on why we did what we did.</p>
             <p class="text-2xl text-pretty">This is the about section copy. I dont know what to put here, but we will figure it out soon. But we will want the content to be brief and tell a story on why we did what we did.</p>
           </div>
         </div>
-        <div class="lg:col-start-7 lg:col-span-6">
+        <div class="col-span-12 lg:col-start-7 lg:col-span-6">
           <LandingPageVideo class="aspect-[3/4] w-full" />
         </div>
       </div>
@@ -120,7 +120,8 @@
       <div
         class="overflow-x-auto overflow-y-hidden scroll-smooth border-y border-zinc-800 snap-x snap-proximity"
       >
-        <div class="flex w-fit flex-row gap-0 px-20 *:first:border-l">
+        <!-- Intentionally flex-row at all breakpoints: horizontal snap scroll for article cards -->
+        <div class="flex w-fit flex-row gap-0 px-4 sm:px-8 lg:px-20 *:first:border-l">
           <LandingContentSlide
             v-for="(article, i) in LANDING_BLOG_ARTICLES"
             :key="i"
@@ -129,19 +130,19 @@
         </div>
       </div>
     </section>
-    <section id="contact" class="px-20">
+    <section id="contact" class="px-4 sm:px-8 lg:px-20">
       <div class="grid grid-cols-12 gap-4">
-        <div class="col-start-4 col-span-6">
-          <div class="py-60 flex flex-col gap-8 items-center">
+        <div class="col-span-12 lg:col-start-4 lg:col-span-6">
+          <div class="py-24 lg:py-60 flex flex-col gap-8 items-center">
             <h2 class="text-5xl text-balance text-center max-w-[24ch]">Book your next trip with Glaucus today</h2>
-            <div class="flex flex-row gap-4 justify-center">
+            <div class="flex w-full max-w-sm flex-col gap-4 justify-center lg:max-w-none lg:flex-row">
               <button type="button"
-                class="rounded-md h-10 px-4 py-2 text-sm font-medium uppercase bg-white text-zinc-900 hover:bg-zinc-200 whitespace-nowrap"
+                class="w-full rounded-md h-10 px-4 py-2 text-sm font-medium uppercase bg-white text-zinc-900 hover:bg-zinc-200 whitespace-nowrap sm:w-auto"
                 @click="goToApp">
                 Open App
               </button>
               <NuxtLink to="contact"
-                class="flex items-center rounded-md h-10 px-4 py-2 text-sm font-medium uppercase bg-zinc-600 text-zinc-100 hover:bg-zinc-500 whitespace-nowrap"
+                class="flex w-full items-center justify-center rounded-md h-10 px-4 py-2 text-sm font-medium uppercase bg-zinc-600 text-zinc-100 hover:bg-zinc-500 whitespace-nowrap sm:w-auto"
                 @click="goToApp">
                 Contact Us
               </NuxtLink>
