@@ -7,9 +7,8 @@
 
     <div class="grid grid-cols-12 gap-4 items-center">
       <div class="col-span-6 lg:col-span-2">
-        <NuxtLink to="/" class="flex h-auto w-[120px] flex-row items-center justify-center gap-2">
-          <img src="/images/glaucus-logo-emblem.svg" alt="Logo" class="h-full w-[40px] -rotate-45" />
-          <Logo class="*:fill-black *:dark:fill-white" />
+        <NuxtLink to="/">
+          <Logo />
         </NuxtLink>
       </div>
       <div class="hidden lg:col-span-8 lg:flex lg:justify-center">

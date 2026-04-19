@@ -16,9 +16,8 @@
           class="w-full lg:w-56 h-full shrink-0 flex flex-col justify-between p-2 absolute lg:relative z-50">
           <div>
             <div class="h-fit flex flex-row justify-between items-center p-2 lg:p-4">
-              <NuxtLink to="/" @click="handleCloseMobileMenu" class="w-[120px] h-auto flex flex-row items-center justify-center gap-2">
-                <img src="/images/glaucus-logo-emblem.svg" alt="Logo" class="w-[40px] h-full -rotate-45" />
-                <Logo class="*:fill-black *:dark:fill-white" />
+              <NuxtLink to="/" @click="handleCloseMobileMenu">
+                <Logo />
               </NuxtLink>
               <button @click="handleCloseMobileMenu"
                 class="w-6 h-6 lg:hidden flex items-center justify-center cursor-pointer text-zinc-900 dark:text-white">
