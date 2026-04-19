@@ -129,8 +129,33 @@
         </div>
       </div>
     </section>
-    <section id="contact"></section>
+    <section id="contact" class="px-20">
+      <div class="grid grid-cols-12 gap-4">
+        <div class="col-start-4 col-span-6">
+          <div class="py-60 flex flex-col gap-8 items-center">
+            <h2 class="text-5xl text-balance text-center max-w-[24ch]">Book your next trip with Glaucus today</h2>
+            <div class="flex flex-row gap-4 justify-center">
+              <button type="button"
+                class="rounded-md h-10 px-4 py-2 text-sm font-medium uppercase bg-white text-zinc-900 hover:bg-zinc-200 whitespace-nowrap"
+                @click="goToApp">
+                Open App
+              </button>
+              <NuxtLink to="contact"
+                class="flex items-center rounded-md h-10 px-4 py-2 text-sm font-medium uppercase bg-zinc-600 text-zinc-100 hover:bg-zinc-500 whitespace-nowrap"
+                @click="goToApp">
+                Contact Us
+              </NuxtLink>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
+  <footer class="px-20 h-dvh bg-[url(/images/landing/glaucus-bg-footer.jpg)] bg-cover">
+    <div class="grid grid-cols-12 gap-4 h-full">
+
+    </div>
+  </footer>
 </template>
 
 <script setup>
