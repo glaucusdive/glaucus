@@ -72,6 +72,15 @@
                       {{ line }}
                     </p>
                   </div>
+                  <details
+                    v-if="msg.reasoningSummary"
+                    class="bg-zinc-100/80 dark:bg-zinc-800/80 rounded-lg border border-zinc-200/80 dark:border-zinc-600/80 text-xs text-zinc-600 dark:text-zinc-400"
+                  >
+                    <summary class="cursor-pointer px-2 py-1.5 select-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 rounded-lg">
+                      How we understood this
+                    </summary>
+                    <p class="px-2 pb-2 pt-0 leading-relaxed whitespace-pre-wrap">{{ msg.reasoningSummary }}</p>
+                  </details>
                   <!-- Prior-topic ack only (e.g. dates); next bubble holds the question + chevron -->
                   <div
                     v-if="msg.preamble"
@@ -259,14 +268,31 @@
             <!-- Loading: stream shows status + MESSAGE preview + spinner only (no duplicate “thinking” label) -->
             <div v-if="isLoading" class="flex justify-start">
               <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3 flex flex-col gap-2 max-w-[min(90%,42rem)] min-w-0">
+                <div
+                  v-if="loadingProgressLines.length > 0"
+                  class="flex flex-col gap-1 border-b border-zinc-200/80 dark:border-zinc-600/80 pb-2 mb-1"
+                >
+                  <p
+                    v-for="(line, li) in loadingProgressLines"
+                    :key="'lp-' + li"
+                    class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed chat-loading-progress-line"
+                    :style="{ animationDelay: `${li * 90}ms` }"
+                  >
+                    {{ line }}
+                  </p>
+                </div>
                 <p v-if="searchStreamStatus" class="text-xs text-zinc-500 dark:text-zinc-400">{{ searchStreamStatus }}</p>
                 <p v-if="searchStreamPreview" class="text-sm text-zinc-800 dark:text-white whitespace-pre-wrap min-w-0">{{ searchStreamPreview }}</p>
                 <div class="flex items-center gap-2">
                   <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-zinc-600 dark:border-zinc-300 shrink-0"></div>
                   <span
-                    v-if="!searchStreamStatus && !searchStreamPreview"
+                    v-if="!searchStreamStatus && !searchStreamPreview && loadingProgressLines.length === 0"
                     class="text-sm text-zinc-900 dark:text-zinc-200"
                   >Thinking…</span>
+                  <span
+                    v-else-if="!searchStreamStatus && !searchStreamPreview && loadingProgressLines.length > 0"
+                    class="text-sm text-zinc-600 dark:text-zinc-400"
+                  >Working…</span>
                 </div>
               </div>
             </div>
@@ -455,6 +481,9 @@ const searchStreamStatus = ref('')
 const searchStreamPreview = ref('')
 /** Cumulative status lines from the stream (copied onto the assistant message when the turn completes) */
 const searchStreamProgressLines = ref([])
+/** Staged activity lines while waiting on non-streaming /api/ai-search (booking, clarify chips, etc.) */
+const loadingProgressLines = ref([])
+let loadingProgressTimer = null
 const messages = ref([])
 const messagesContainer = ref(null)
 const isRestoringCache = ref(true)
@@ -1110,6 +1139,9 @@ async function consumeAiSearchNdjsonStream ({ body, headers, signal, onStatus, o
           await reader.cancel().catch(() => {})
           return null
         }
+        if (ev.type === 'activity' && typeof ev.label === 'string') {
+          onStatus(ev.label)
+        }
         if (ev.type === 'status' && typeof ev.text === 'string') {
           onStatus(ev.text)
         }
@@ -1254,6 +1286,32 @@ const sendMessage = async (messageText, displayText) => {
     searchStreamStatus.value = ''
     searchStreamPreview.value = ''
     searchStreamProgressLines.value = []
+    const clearLoadingProgress = () => {
+      if (loadingProgressTimer != null) {
+        clearInterval(loadingProgressTimer)
+        loadingProgressTimer = null
+      }
+      loadingProgressLines.value = []
+    }
+    const startLoadingProgressHint = () => {
+      clearLoadingProgress()
+      const steps = [
+        'Understanding your request',
+        'Searching location data (city, state, country)',
+        'Finding dive shops…'
+      ]
+      let i = 0
+      loadingProgressLines.value = [steps[0]]
+      loadingProgressTimer = setInterval(() => {
+        i++
+        if (i < steps.length) {
+          loadingProgressLines.value = steps.slice(0, i + 1)
+        } else {
+          clearInterval(loadingProgressTimer)
+          loadingProgressTimer = null
+        }
+      }, 480)
+    }
 
     let streamProgressSnapshot = []
     let streamPreviewSnapshot = ''
@@ -1263,6 +1321,10 @@ const sendMessage = async (messageText, displayText) => {
     const streamEligible =
       !inBookingFlow &&
       !pendingEntityClarifyPhrase?.trim()
+
+    if (!streamEligible) {
+      startLoadingProgressHint()
+    }
 
     const maxAiAttempts = 3
     const baseAiRetryMs = 350
@@ -1327,6 +1389,10 @@ const sendMessage = async (messageText, displayText) => {
       streamShopAssistIndex = -1
     }
 
+    if (streamEligible && !response) {
+      startLoadingProgressHint()
+    }
+
     streamProgressSnapshot = [...searchStreamProgressLines.value]
     streamPreviewSnapshot = searchStreamPreview.value
     searchStreamStatus.value = ''
@@ -1371,6 +1437,13 @@ const sendMessage = async (messageText, displayText) => {
     }
     
     if (response.success) {
+      const combinedProgressLog =
+        streamProgressSnapshot.length > 0
+          ? streamProgressSnapshot
+          : (Array.isArray(response.activityLog) ? response.activityLog.map((a) => a.label) : [])
+      const progressForAssistant = combinedProgressLog.length > 0 ? combinedProgressLog : undefined
+      const reasoningForAssistant = response.reasoningSummary?.trim() || undefined
+
       if (response.searchFlowReset) {
         closeDrawer()
         selectedShopId.value = null
@@ -1400,7 +1473,8 @@ const sendMessage = async (messageText, displayText) => {
             diveSiteOptions: response.diveSiteOptions || undefined,
             ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {}),
             ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {}),
-            ...(streamProgressSnapshot.length ? { searchProgressLog: streamProgressSnapshot } : {})
+            ...(progressForAssistant ? { searchProgressLog: progressForAssistant } : {}),
+            ...(reasoningForAssistant ? { reasoningSummary: reasoningForAssistant } : {})
           }
         ]
         isLoading.value = false
@@ -1516,10 +1590,15 @@ const sendMessage = async (messageText, displayText) => {
         } else {
           delete m.preamble
         }
-        if (streamProgressSnapshot.length) {
-          m.searchProgressLog = streamProgressSnapshot
+        if (progressForAssistant?.length) {
+          m.searchProgressLog = progressForAssistant
         } else {
           delete m.searchProgressLog
+        }
+        if (reasoningForAssistant) {
+          m.reasoningSummary = reasoningForAssistant
+        } else {
+          delete m.reasoningSummary
         }
         m.shops = response.shops || []
         m.totalResults = response.totalResults
@@ -1555,7 +1634,8 @@ const sendMessage = async (messageText, displayText) => {
           role: 'assistant',
           content,
           ...(response.messagePreamble ? { preamble: response.messagePreamble } : preambleFromStream ? { preamble: preambleFromStream } : {}),
-          ...(streamProgressSnapshot.length ? { searchProgressLog: streamProgressSnapshot } : {}),
+          ...(progressForAssistant?.length ? { searchProgressLog: progressForAssistant } : {}),
+          ...(reasoningForAssistant ? { reasoningSummary: reasoningForAssistant } : {}),
           shops: response.shops || [],
           totalResults: response.totalResults,
           hasMoreResults: response.hasMoreResults,
@@ -1626,6 +1706,11 @@ const sendMessage = async (messageText, displayText) => {
       searchStreamStatus.value = ''
       searchStreamPreview.value = ''
       searchStreamProgressLines.value = []
+      if (loadingProgressTimer != null) {
+        clearInterval(loadingProgressTimer)
+        loadingProgressTimer = null
+      }
+      loadingProgressLines.value = []
       isLoading.value = false
       abortController.value = null
       await scrollToBottom()
@@ -1800,6 +1885,30 @@ useHead({
 @media (prefers-reduced-motion: reduce) {
   .chat-bubble-pop-first,
   .chat-bubble-pop-follow {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes chat-loading-line-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-loading-progress-line {
+  opacity: 0;
+  animation: chat-loading-line-in 0.35s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-loading-progress-line {
     animation: none;
     opacity: 1;
     transform: none;

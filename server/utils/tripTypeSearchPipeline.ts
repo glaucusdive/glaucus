@@ -1,4 +1,5 @@
 import { buildDiveShopQuery, type SearchFilters } from './buildDiveShopQuery'
+import { mergeActivityIntoFilters, mergeNluHintsIntoFilters, type InterpretedTurn } from './interpretUserTurn'
 
 export function tripTypeFirstQuestionResponse (opts?: { searchFlowReset?: boolean }) {
   return {
@@ -82,10 +83,13 @@ export interface RunTripTypeSearchAfterLlmInput {
   shopsAlreadyShownCount?: number
   /** Status lines for streaming UI (optional on JSON path). */
   onStatus?: (text: string) => void
+  /** Optional NLU extraction from interpretUserTurn (orchestrator). */
+  interpretTurn?: InterpretedTurn | null
 }
 
 export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLlmInput): Promise<{
   success: true
+  intent: 'search'
   message: string
   messagePreamble?: string
   shops: unknown[]
@@ -94,9 +98,13 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
   filters: SearchFilters
   selectableOptions: { label: string; value: string }[] | undefined
 }> {
-  const { message, history, aiMessage, openrouterApiKey, supabaseUrl, supabaseKey, shopsAlreadyShownCount, onStatus } = input
+  const { message, history, aiMessage, openrouterApiKey, supabaseUrl, supabaseKey, shopsAlreadyShownCount, onStatus, interpretTurn } = input
 
   let { filters, conversationalMessage } = parseSearchFiltersAndMessageFromLlm(aiMessage)
+  if (interpretTurn) {
+    filters = mergeNluHintsIntoFilters(filters, interpretTurn)
+    filters = mergeActivityIntoFilters(filters, interpretTurn)
+  }
   console.log('[AI Search] Extracted filters:', filters)
 
   const conversationText = [...(history || []).map(h => h.content), message].join(' ')

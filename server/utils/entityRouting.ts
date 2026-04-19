@@ -130,7 +130,7 @@ async function fetchShopsByDiveSiteIds (
   return { data: res.data as ShopRow[] | null, error: res.error }
 }
 
-function formatEntitySearchResponse (
+export function formatEntitySearchResponse (
   filters: SearchFilters,
   shops: ShopRow[] | null | undefined,
   message: string

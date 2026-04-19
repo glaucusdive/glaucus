@@ -1,4 +1,4 @@
-import { defineEventHandler, readBody } from 'h3'
+import { defineEventHandler, readBody, type H3Event } from 'h3'
 import { getAuthUser } from '../utils/getAuthUser'
 import {
   applyPreSendTokenToPayload,
@@ -22,11 +22,13 @@ import { extractBookingTargetFallback, extractReferredEntityPhrase } from '../ut
 import { parseEntityClarifyMessage } from '../utils/entityClarify'
 import {
   clarifyResponsePayload,
+  formatEntitySearchResponse,
   handleForcedEntityClarify,
   probeReferentPhrase,
   routeReferentFromProbe,
   shopDisambiguationResponsePayload
 } from '../utils/entityRouting'
+import { inferSearchFiltersFromDestination } from '../utils/destinationToSearchFilters'
 import { resolveBookingTargetFromPhrase } from '../utils/resolveBookingTarget'
 import { tryShopInfoResponse } from '../utils/shopInfoForChat'
 import { applyInferredCoursesToPayloadIfEligible } from '../utils/inferCoursesFromConversation'
@@ -39,6 +41,29 @@ import {
   snapshotDiverField,
   tryParseDiverFieldEditIntent
 } from '../utils/bookingDiverEditIntent'
+import {
+  interpretUserTurn,
+  mergeActivityIntoFilters,
+  mergeNluHintsIntoFilters,
+  normalizeActivityTerms,
+  pickReferentPhraseForProbe,
+  shouldRunInterpretNlu,
+  type InterpretedTurn
+} from '../utils/interpretUserTurn'
+
+function abortSignalFromH3Event (event: H3Event): AbortSignal | undefined {
+  const req = event.node.req
+  if (!req) return undefined
+  const ac = new AbortController()
+  const onAbort = () => {
+    try {
+      ac.abort()
+    } catch { /* ignore */ }
+  }
+  req.once('close', onAbort)
+  req.once('aborted', onAbort)
+  return ac.signal
+}
 
 interface Message {
   role: 'user' | 'assistant'
@@ -544,6 +569,26 @@ export default defineEventHandler(async (event) => {
     return await runWithRetries(async () => {
       const authUser = await getAuthUser(event)
       const bookingSignupTiming = parseBookingSignupTimingFromConfig(useRuntimeConfig().public.bookingSignupTiming)
+
+      const agentMeta = {
+        activityLog: [] as { stage: string; label: string; at: number }[],
+        reasoningSummary: undefined as string | undefined
+      }
+      let interpretTurn: InterpretedTurn | null = null
+      const pushActivity = (stage: string, label: string) => {
+        agentMeta.activityLog.push({ stage, label, at: Date.now() })
+      }
+      const withAgentMeta = <T extends Record<string, unknown>>(payload: T): T => {
+        const out = { ...payload } as T & { activityLog?: typeof agentMeta.activityLog; reasoningSummary?: string }
+        if (agentMeta.activityLog.length > 0) {
+          (out as { activityLog: typeof agentMeta.activityLog }).activityLog = [...agentMeta.activityLog]
+        }
+        if (agentMeta.reasoningSummary?.trim()) {
+          (out as { reasoningSummary: string }).reasoningSummary = agentMeta.reasoningSummary.trim()
+        }
+        return out as T
+      }
+
       // --- Booking agent (per .cursor/rules/ai-agent-structure.mdc) ---
       // Tools: entity routing (extractReferredEntityPhrase, probeReferentPhrase, routeReferentFromProbe, handleForcedEntityClarify), getShopById, listShopsMatchingName, getDiveSitesForShop, getRentalEquipmentForShop, buildDiveShopQuery, tryFastPath, tryFastPathUnitOnly, LLM chat.
       // Tool selection: Orchestrator (this handler) chooses — intent (book vs search), then fast path vs LLM; no model-driven tool calls.
@@ -564,13 +609,13 @@ export default defineEventHandler(async (event) => {
         const phraseCtx = pendingEntityClarifyPhrase.trim()
         const forced = await handleForcedEntityClarify(clarifyChoice, phraseCtx, supabaseUrl, supabaseKey)
         if (forced.kind === 'search') {
-          return { ...forced.response, intent: 'search' as const }
+          return withAgentMeta({ ...forced.response, intent: 'search' as const })
         }
         if (forced.kind === 'clarify') {
-          return { ...clarifyResponsePayload(forced.phrase), intent: 'search' as const }
+          return withAgentMeta({ ...clarifyResponsePayload(forced.phrase), intent: 'search' as const })
         }
         if (forced.kind === 'shop_disambiguation') {
-          return { ...shopDisambiguationResponsePayload(forced.phrase, forced.shops), intent: 'search' as const }
+          return withAgentMeta({ ...shopDisambiguationResponsePayload(forced.phrase, forced.shops), intent: 'search' as const })
         }
         if (forced.kind === 'booking') {
           resolvedShop = forced.shop
@@ -578,8 +623,133 @@ export default defineEventHandler(async (event) => {
         }
         // forced.kind === 'browse': fall through to normal search flow (trip-type / LLM)
       } else if (!continuingBooking && !clarifyChoice && supabaseUrl && supabaseKey) {
-        const referredPhrase = extractReferredEntityPhrase(message) ?? extractBookingTargetFallback(message)
-        if (referredPhrase) {
+        const referredPhraseRegex = extractReferredEntityPhrase(message) ?? extractBookingTargetFallback(message)
+        if (shouldRunInterpretNlu(message, wantsToBook, referredPhraseRegex)) {
+          pushActivity('interpret', 'Understanding your request')
+          const ir = await interpretUserTurn({
+            message,
+            history: history || [],
+            openrouterApiKey,
+            signal: abortSignalFromH3Event(event)
+          })
+          if (ir.ok) {
+            interpretTurn = ir.data
+            if (interpretTurn.reasoning_summary?.trim()) {
+              agentMeta.reasoningSummary = interpretTurn.reasoning_summary.trim()
+            }
+            console.log('[NLU]', {
+              regexReferent: referredPhraseRegex,
+              destination_text: interpretTurn.destination_text,
+              activity_terms: interpretTurn.activity_terms,
+              goal: interpretTurn.goal
+            })
+          }
+        }
+        const referredPhrase = pickReferentPhraseForProbe(interpretTurn, referredPhraseRegex)
+        const destText = interpretTurn?.destination_text?.trim()
+        const shopHint = interpretTurn?.shop_name_hint?.trim()
+        const tryLocationFirst =
+          !!destText &&
+          !shopHint &&
+          (wantsToBook ||
+            interpretTurn?.goal === 'start_booking' ||
+            interpretTurn?.goal === 'search_shops')
+
+        let skipEntityProbeFromGeo = false
+        let skipEntityProbeFromActivity = false
+        if (tryLocationFirst) {
+          pushActivity('probe', 'Searching by location (city, state, country)')
+          const geoFilters = mergeActivityIntoFilters(
+            mergeNluHintsIntoFilters(
+              inferSearchFiltersFromDestination(destText),
+              interpretTurn
+            ),
+            interpretTurn
+          )
+          const geoQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, geoFilters)
+          const geoList = (geoQuery.data || []) as Array<{ id: string; business_name?: string }>
+          if (!geoQuery.error && geoList.length > 0) {
+            const placeLabel = destText
+            if (wantsToBook && geoList.length === 1) {
+              const only = geoList[0]!
+              resolvedShop = await getShopById(supabaseUrl, supabaseKey, only.id)
+              resolvedByNamedShop = !!resolvedShop
+              skipEntityProbeFromGeo = !!resolvedShop
+            } else if (wantsToBook && geoList.length > 1) {
+              return withAgentMeta({
+                ...formatEntitySearchResponse(
+                  geoFilters,
+                  geoList as unknown[],
+                  `Here are dive shops in ${placeLabel} (matched by location, not just name). Which one would you like to book?`
+                ),
+                intent: 'search' as const
+              })
+            } else if (!wantsToBook) {
+              return withAgentMeta({
+                ...formatEntitySearchResponse(
+                  geoFilters,
+                  geoList as unknown[],
+                  `Here are dive shops in ${placeLabel} (from our location data).`
+                ),
+                intent: 'search' as const
+              })
+            }
+          }
+        }
+
+        const nluActivityTerms = normalizeActivityTerms(interpretTurn?.activity_terms)
+        const tryActivityOnlySearch =
+          nluActivityTerms.length > 0 &&
+          !shopHint &&
+          !destText &&
+          (interpretTurn?.goal === 'search_shops' || interpretTurn?.goal === 'start_booking')
+
+        if (tryActivityOnlySearch) {
+          pushActivity('probe', 'Matching dive style and linked sites')
+          const actFilters = mergeActivityIntoFilters({}, interpretTurn)
+          const actQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, actFilters)
+          const actList = (actQuery.data || []) as Array<{ id: string; business_name?: string }>
+          if (!actQuery.error && actList.length === 0) {
+            return withAgentMeta({
+              success: true,
+              intent: 'search' as const,
+              message: `We didn't find dive shops in our directory that match "${nluActivityTerms.join(', ')}" in listings, linked dive sites, or site types. Try adding a country or region, or rephrase.`,
+              shops: [],
+              totalResults: 0,
+              hasMoreResults: false,
+              filters: actFilters
+            })
+          }
+          if (!actQuery.error && actList.length > 0) {
+            const label = nluActivityTerms.join(', ')
+            if (wantsToBook && actList.length === 1) {
+              const only = actList[0]!
+              resolvedShop = await getShopById(supabaseUrl, supabaseKey, only.id)
+              resolvedByNamedShop = !!resolvedShop
+              skipEntityProbeFromActivity = !!resolvedShop
+            } else if (wantsToBook && actList.length > 1) {
+              return withAgentMeta({
+                ...formatEntitySearchResponse(
+                  actFilters,
+                  actList as unknown[],
+                  `Here are shops that match “${label}” in our data (notes, site types, or linked sites). Which one would you like to book?`
+                ),
+                intent: 'search' as const
+              })
+            } else if (!wantsToBook) {
+              return withAgentMeta({
+                ...formatEntitySearchResponse(
+                  actFilters,
+                  actList as unknown[],
+                  `Here are shops that match “${label}” in our listings, dive site types, or linked sites. Say a region if you want to narrow down.`
+                ),
+                intent: 'search' as const
+              })
+            }
+          }
+        }
+
+        if (referredPhrase && !skipEntityProbeFromGeo && !skipEntityProbeFromActivity) {
           let skipEntityProbe = false
           if (wantsToBook) {
             const target = await resolveBookingTargetFromPhrase(referredPhrase, lastShops, supabaseUrl, supabaseKey)
@@ -588,14 +758,16 @@ export default defineEventHandler(async (event) => {
               resolvedByNamedShop = !!resolvedShop
               skipEntityProbe = true
             } else if (target.kind === 'ambiguous') {
-              return { ...shopDisambiguationResponsePayload(target.phrase, target.shops), intent: 'search' as const }
+              pushActivity('probe', 'Checking our dive shop directory')
+              return withAgentMeta({ ...shopDisambiguationResponsePayload(target.phrase, target.shops), intent: 'search' as const })
             }
           }
           if (!skipEntityProbe) {
+            pushActivity('probe', 'Checking our dive shop directory')
             const probe = await probeReferentPhrase(supabaseUrl, supabaseKey, referredPhrase)
             const routed = await routeReferentFromProbe(supabaseUrl, supabaseKey, probe)
             if (routed.type === 'clarify') {
-              return { ...clarifyResponsePayload(routed.phrase), intent: 'search' as const }
+              return withAgentMeta({ ...clarifyResponsePayload(routed.phrase), intent: 'search' as const })
             }
             if (routed.type === 'search') {
               if (wantsToBook) {
@@ -603,7 +775,7 @@ export default defineEventHandler(async (event) => {
                   label: s.business_name,
                   value: `Let's book ${s.business_name}`
                 }))
-                return {
+                return withAgentMeta({
                   success: true,
                   intent: 'search' as const,
                   message: pickFromRecent.length
@@ -614,12 +786,12 @@ export default defineEventHandler(async (event) => {
                   hasMoreResults: false,
                   filters: {} as SearchFilters,
                   selectableOptions: pickFromRecent.length ? pickFromRecent : undefined
-                }
+                })
               }
-              return { ...routed.response, intent: 'search' as const }
+              return withAgentMeta({ ...routed.response, intent: 'search' as const })
             }
             if (routed.type === 'shop_disambiguation') {
-              return { ...shopDisambiguationResponsePayload(routed.phrase, routed.shops), intent: 'search' as const }
+              return withAgentMeta({ ...shopDisambiguationResponsePayload(routed.phrase, routed.shops), intent: 'search' as const })
             }
             resolvedShop = routed.shop
             resolvedByNamedShop = true
@@ -703,7 +875,7 @@ export default defineEventHandler(async (event) => {
 
         // If shop has no rental gear and user is just starting booking, tell them and offer to continue or pick another shop
         if (startingFreshBooking && noPayloadYet && rentalEquipment.length === 0) {
-          return {
+          return withAgentMeta({
             success: true,
             intent: 'booking' as const,
             bookingReady: false,
@@ -718,7 +890,7 @@ export default defineEventHandler(async (event) => {
             rentalEquipmentOptions: undefined,
             courseOptions: undefined,
             diveSiteOptions: undefined
-          }
+          })
         }
 
         if (startingFreshBooking && noPayloadYet) {
@@ -762,7 +934,7 @@ export default defineEventHandler(async (event) => {
                       ? `Great — I'll help you book with ${resolvedShop.business_name}. I noted ${initialPayload.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive?`
                       : `Great — I'll help you book with ${resolvedShop.business_name}. Which dive sites would you like to dive?`)
                     : `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`
-          return {
+          return withAgentMeta({
             success: true,
             intent: 'booking' as const,
             bookingReady: false,
@@ -774,7 +946,7 @@ export default defineEventHandler(async (event) => {
             rentalEquipmentOptions: undefined,
             courseOptions: getNextBookingStep(initialPayload)?.step === 'courses' && courses.length > 0 ? courses : undefined,
             diveSiteOptions: getNextBookingStep(initialPayload)?.step === 'diveSites' && diveSites.length > 0 ? diveSites : undefined
-          }
+          })
         }
 
         const addGearOptions = (payload: BookingPayload) =>
@@ -798,7 +970,7 @@ export default defineEventHandler(async (event) => {
         if (continuingBooking && !bookingPayload) {
           const msgTrim = message.trim()
           if (/pick a new diveshop|choose another shop|different (shop|diveshop)/i.test(msgTrim)) {
-            return {
+            return withAgentMeta({
               success: true,
               intent: 'booking' as const,
               bookingReady: false,
@@ -812,7 +984,7 @@ export default defineEventHandler(async (event) => {
               courseOptions: undefined,
 
               diveSiteOptions: undefined
-            }
+            })
           }
           if (/continue with this shop|continue booking|proceed with this shop/i.test(msgTrim)) {
             const base: BookingPayload = { shopId: resolvedShop.id }
@@ -853,7 +1025,7 @@ export default defineEventHandler(async (event) => {
                         ? `Great — I'll help you book with ${resolvedShop.business_name}. I noted ${initialPayload.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive?`
                         : `Great — I'll help you book with ${resolvedShop.business_name}. Which dive sites would you like to dive?`)
                       : `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`
-            return {
+            return withAgentMeta({
               success: true,
               intent: 'booking' as const,
               bookingReady: false,
@@ -865,7 +1037,7 @@ export default defineEventHandler(async (event) => {
               rentalEquipmentOptions: undefined,
               courseOptions: getNextBookingStep(initialPayload)?.step === 'courses' && courses.length > 0 ? courses : undefined,
               diveSiteOptions: getNextBookingStep(initialPayload)?.step === 'diveSites' && diveSites.length > 0 ? diveSites : undefined
-            }
+            })
           }
         }
 
@@ -903,7 +1075,7 @@ export default defineEventHandler(async (event) => {
             if ((sendIntent || sendAnywayIntent) && canImmediateSendBooking) {
               const p = { ...payloadForSendCheck, shopId: resolvedShop.id }
               if (sendAnywayIntent) {
-                return {
+                return withAgentMeta({
                   success: true,
                   intent: 'booking' as const,
                   bookingReady: true,
@@ -912,7 +1084,7 @@ export default defineEventHandler(async (event) => {
                   shopId: resolvedShop.id,
                   shopName: resolvedShop.business_name,
                   selectableOptions: undefined
-                }
+                })
               }
               const gatedSend = resolvePreSendWhenPayloadReady({
                 payload: p as BookingPayloadLocal,
@@ -932,7 +1104,7 @@ export default defineEventHandler(async (event) => {
                 coursesLine: COURSES_LINE,
                 diveSitesLine: DIVE_SITES_LINE
               })
-              return {
+              return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
@@ -946,7 +1118,7 @@ export default defineEventHandler(async (event) => {
                 hideNoneForGear: hideNoneForGear(payloadForSendCheck),
                 courseOptions: addCourseOptions(payloadForSendCheck),
                 diveSiteOptions: addDiveSiteOptions(payloadForSendCheck)
-              }
+              })
             }
 
           }
@@ -978,7 +1150,7 @@ export default defineEventHandler(async (event) => {
                   coursesDateAckParts,
                   DIVE_SITES_LINE
                 )
-                return {
+                return withAgentMeta({
                   success: true,
                   intent: 'booking' as const,
                   bookingReady: false,
@@ -992,14 +1164,14 @@ export default defineEventHandler(async (event) => {
                   hideNoneForGear: hideNoneForGear(p),
                   courseOptions: addCourseOptions(p),
                   diveSiteOptions: addDiveSiteOptions(p)
-                }
+                })
               }
               if (isLongTripRejectMessage(msgTrim)) {
                 const cleared = clampBookingPayloadToNextStep(
                   { ...bp, pendingLongTripConfirmation: undefined } as BookingPayloadLocal,
                   { shopCourseCount: courses.length, shopDiveSiteCount: diveSites.length }
                 ) as BookingPayload
-                return {
+                return withAgentMeta({
                   success: true,
                   intent: 'booking' as const,
                   bookingReady: false,
@@ -1012,12 +1184,12 @@ export default defineEventHandler(async (event) => {
                   hideNoneForGear: hideNoneForGear(cleared),
                   courseOptions: undefined,
                   diveSiteOptions: undefined
-                }
+                })
               }
               const altParsed = tryParseTripDatesFromMessage(msgTrim)
               if (!altParsed) {
                 const days = inclusiveTripDays(pend.startDate, pend.endDate)
-                return {
+                return withAgentMeta({
                   success: true,
                   intent: 'booking' as const,
                   bookingReady: false,
@@ -1030,7 +1202,7 @@ export default defineEventHandler(async (event) => {
                   hideNoneForGear: hideNoneForGear(bp),
                   courseOptions: undefined,
                   diveSiteOptions: undefined
-                }
+                })
               }
               bp = { ...bp, pendingLongTripConfirmation: undefined }
             }
@@ -1043,7 +1215,7 @@ export default defineEventHandler(async (event) => {
                   ...bp,
                   pendingLongTripConfirmation: { startDate: parsedDates.startDate, endDate: parsedDates.endDate }
                 }
-                return {
+                return withAgentMeta({
                   success: true,
                   intent: 'booking' as const,
                   bookingReady: false,
@@ -1056,7 +1228,7 @@ export default defineEventHandler(async (event) => {
                   hideNoneForGear: hideNoneForGear(pendingPayload),
                   courseOptions: undefined,
                   diveSiteOptions: undefined
-                }
+                })
               }
               const p = applyParsedTripDatesToBookingPayload(bp as BookingPayloadLocal, parsedDates, applyTripDatesCtx) as BookingPayload
               const copy = formatReplyAfterAppliedTripDates(
@@ -1067,7 +1239,7 @@ export default defineEventHandler(async (event) => {
                 coursesDateAckParts,
                 DIVE_SITES_LINE
               )
-              return {
+              return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
@@ -1081,7 +1253,7 @@ export default defineEventHandler(async (event) => {
                 hideNoneForGear: hideNoneForGear(p),
                 courseOptions: addCourseOptions(p),
                 diveSiteOptions: addDiveSiteOptions(p)
-              }
+              })
             }
           }
           // User already saw the booking-ready prompt and is confirming — never re-ask for gear; return ready so client can submit
@@ -1103,7 +1275,7 @@ export default defineEventHandler(async (event) => {
           // "Pick a new diveshop" → return current form data so client can carry it over to the next shop
           if (/pick a new diveshop|choose another shop|different (shop|diveshop)/i.test(msgTrim)) {
             const { shopId: _s, ...payloadWithoutShop } = clearBookingPreSendFlags(bookingPayload as BookingPayloadLocal) as BookingPayload
-            return {
+            return withAgentMeta({
               success: true,
               intent: 'booking' as const,
               bookingReady: false,
@@ -1117,7 +1289,7 @@ export default defineEventHandler(async (event) => {
               courseOptions: undefined,
 
               diveSiteOptions: undefined
-            }
+            })
           }
           // Edit/review intents: user asks to change a specific form item — clear it and re-ask
           const editEmail = /(?:change|update|edit|fix)\s+(?:my\s+)?(?:email|e-?mail)/i.test(msgTrim) || /(?:update|change)\s+email/i.test(msgTrim)
@@ -1142,7 +1314,7 @@ export default defineEventHandler(async (event) => {
               if (diverIdx >= 0 && p.divers[diverIdx]) {
                 p.divers[diverIdx] = { ...p.divers[diverIdx], gearAsked: false }
                 const name = p.divers[diverIdx].name || 'Diver ' + (diverIdx + 1)
-                return {
+                return withAgentMeta({
                   success: true,
                   intent: 'booking' as const,
                   bookingReady: false,
@@ -1155,12 +1327,12 @@ export default defineEventHandler(async (event) => {
                   hideNoneForGear: hideNoneForGear(p),
                   courseOptions: undefined,
                   diveSiteOptions: undefined
-                }
+                })
               }
             }
             if (editEmail) {
               p.email = ''
-              return {
+              return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
@@ -1173,11 +1345,11 @@ export default defineEventHandler(async (event) => {
                 courseOptions: undefined,
 
                 diveSiteOptions: undefined
-              }
+              })
             }
             if (editName) {
               p.name = ''
-              return {
+              return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
@@ -1190,13 +1362,13 @@ export default defineEventHandler(async (event) => {
                 courseOptions: undefined,
 
                 diveSiteOptions: undefined
-              }
+              })
             }
             if (editDates) {
               p.startDate = undefined
               p.endDate = undefined
               delete p.pendingLongTripConfirmation
-              return {
+              return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
@@ -1209,13 +1381,13 @@ export default defineEventHandler(async (event) => {
                 courseOptions: undefined,
 
                 diveSiteOptions: undefined
-              }
+              })
             }
             const numDivers = Math.max(1, p.numberOfDivers ?? 1)
             if (editGearDiver1 && p.divers?.[0]) {
               p.divers[0] = { ...p.divers[0], gear: [], gearAsked: false }
               const name = p.divers[0].name || 'Diver 1'
-              return {
+              return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
@@ -1228,12 +1400,12 @@ export default defineEventHandler(async (event) => {
                 hideNoneForGear: hideNoneForGear(p),
                 courseOptions: undefined,
                 diveSiteOptions: undefined
-              }
+              })
             }
             if (editGearDiver2 && numDivers >= 2 && p.divers?.[1]) {
               p.divers[1] = { ...p.divers[1], gear: [], gearAsked: false }
               const name = p.divers[1].name || 'Diver 2'
-              return {
+              return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
@@ -1246,7 +1418,7 @@ export default defineEventHandler(async (event) => {
                 hideNoneForGear: hideNoneForGear(p),
                 courseOptions: undefined,
                 diveSiteOptions: undefined
-              }
+              })
             }
             if (reviewBooking) {
               const parts: string[] = []
@@ -1260,7 +1432,7 @@ export default defineEventHandler(async (event) => {
               })
               if (diverLines.length) parts.push(diverLines.join('; '))
               const summary = parts.length ? parts.join('. ') : "You haven't filled anything yet."
-              return {
+              return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
@@ -1273,7 +1445,7 @@ export default defineEventHandler(async (event) => {
                 courseOptions: undefined,
 
                 diveSiteOptions: undefined
-              }
+              })
             }
           }
           // User asked to change a diver's weight/height/cert/dives (e.g. during gear) — clear field, show current value, re-ask
@@ -1297,7 +1469,7 @@ export default defineEventHandler(async (event) => {
                 shopDiveSiteCount: diveSites.length
               }) as BookingPayload
               const editMsg = buildDiverFieldEditPrompt(diverFieldEdit.field, diverFieldEdit.displayName, prevVal)
-              return {
+              return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
@@ -1310,7 +1482,7 @@ export default defineEventHandler(async (event) => {
                 hideNoneForGear: hideNoneForGear(pEdit),
                 courseOptions: addCourseOptions(pEdit),
                 diveSiteOptions: addDiveSiteOptions(pEdit)
-              }
+              })
             }
           }
           // Equipment-name tap (e.g. "Regulator", "Fins"): add to the diver we're currently asking for (gear step), not always the last diver
@@ -1330,7 +1502,7 @@ export default defineEventHandler(async (event) => {
                 p.divers[targetIdx] = { ...targetDiver, gear: [...(targetDiver.gear || []), { gearType: matched }] }
                 const name = p.divers[targetIdx].name || 'They'
                 const gearChipsForFast = rentalEquipment.length > 0 ? rentalEquipment : undefined
-                return {
+                return withAgentMeta({
                   success: true,
                   intent: 'booking' as const,
                   bookingReady: false,
@@ -1343,7 +1515,7 @@ export default defineEventHandler(async (event) => {
                   hideNoneForGear: hideNoneForGear(p),
                   courseOptions: undefined,
                   diveSiteOptions: undefined
-                }
+                })
               }
             }
           }
@@ -1359,7 +1531,7 @@ export default defineEventHandler(async (event) => {
               const list = [...(workingPayload.desiredCourses || [])]
               if (!list.includes(matchedCourse.name)) list.push(matchedCourse.name)
               const p = { ...workingPayload, desiredCourses: list, coursesSelectionComplete: false }
-              return {
+              return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
@@ -1371,7 +1543,7 @@ export default defineEventHandler(async (event) => {
                 rentalEquipmentOptions: undefined,
                 courseOptions: courses,
                 diveSiteOptions: undefined
-              }
+              })
             }
             const isDoneCourse = /^(done|that's all|finish|that's it|no more)$/i.test(msgTrim)
             const isAnyCourse = /^any$/i.test(msgTrim)
@@ -1385,7 +1557,7 @@ export default defineEventHandler(async (event) => {
               if (nextAfterCourses?.step === 'diveSites') {
                 if (diveSites.length === 0) {
                   const p2 = { ...p, desiredDiveSites: [] }
-                  return {
+                  return withAgentMeta({
                     success: true,
                     intent: 'booking' as const,
                     bookingReady: false,
@@ -1398,9 +1570,9 @@ export default defineEventHandler(async (event) => {
                     rentalEquipmentOptions: undefined,
                     courseOptions: undefined,
                     diveSiteOptions: undefined
-                  }
+                  })
                 }
-                return {
+                return withAgentMeta({
                   success: true,
                   intent: 'booking' as const,
                   bookingReady: false,
@@ -1412,7 +1584,7 @@ export default defineEventHandler(async (event) => {
                   rentalEquipmentOptions: undefined,
                   courseOptions: undefined,
                   diveSiteOptions: diveSites
-                }
+                })
               }
             }
           }
@@ -1421,7 +1593,7 @@ export default defineEventHandler(async (event) => {
           if (nextStepForDive?.step === 'diveSites') {
             if (diveSites.length === 0) {
               const p = { ...workingPayload, desiredDiveSites: [] }
-              return {
+              return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
@@ -1434,7 +1606,7 @@ export default defineEventHandler(async (event) => {
                 rentalEquipmentOptions: undefined,
                 courseOptions: undefined,
                 diveSiteOptions: undefined
-              }
+              })
             }
           }
           if (nextStepForDive?.step === 'diveSites' && diveSites.length > 0) {
@@ -1443,7 +1615,7 @@ export default defineEventHandler(async (event) => {
               const sites = [...(workingPayload.desiredDiveSites || [])]
               if (!sites.includes(matchedSite)) sites.push(matchedSite)
               const p = { ...workingPayload, desiredDiveSites: sites }
-              return {
+              return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
@@ -1455,13 +1627,13 @@ export default defineEventHandler(async (event) => {
                 rentalEquipmentOptions: undefined,
                 courseOptions: undefined,
                 diveSiteOptions: diveSites
-              }
+              })
             }
             const isDone = /^(done|that's all|finish|that's it|no more)$/i.test(msgTrim)
             const isAny = /^any$/i.test(msgTrim)
             if (isDone || isAny) {
               const p = { ...workingPayload, desiredDiveSites: isAny ? [] : (workingPayload.desiredDiveSites || []) }
-              return {
+              return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
@@ -1473,7 +1645,7 @@ export default defineEventHandler(async (event) => {
                 rentalEquipmentOptions: undefined,
                 courseOptions: undefined,
                 diveSiteOptions: undefined
-              }
+              })
             }
           }
           // "Done" (or "none") when last diver has gear: ask if they want to add another diver (don't assume Diver 3)
@@ -1486,7 +1658,7 @@ export default defineEventHandler(async (event) => {
             if (payloadWithGearAsked.divers && payloadWithGearAsked.divers[lastIdx]) {
               payloadWithGearAsked.divers[lastIdx] = { ...payloadWithGearAsked.divers[lastIdx], gearAsked: true }
             }
-            return {
+            return withAgentMeta({
               success: true,
               intent: 'booking' as const,
               bookingReady: false,
@@ -1500,7 +1672,7 @@ export default defineEventHandler(async (event) => {
               courseOptions: undefined,
 
               diveSiteOptions: undefined
-            }
+            })
           }
           // Reply to "Do you want to add another diver?" — no → booking ready (dive sites already asked earlier); yes → add diver and ask for name
           if (lastAssistantContent && /add another diver/i.test(lastAssistantContent) && continuingBooking && bookingPayload) {
@@ -1527,7 +1699,7 @@ export default defineEventHandler(async (event) => {
               }
               p.divers = divers
               const selectableOptions = profileDiverSelectableChipsFromPrefill(profilePrefill, { bookingPayload: p })
-              return {
+              return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
@@ -1542,13 +1714,13 @@ export default defineEventHandler(async (event) => {
                 courseOptions: undefined,
 
                 diveSiteOptions: undefined
-              }
+              })
             }
           }
           if (/^(lbs?|kg|pounds)$/i.test(msgTrim)) {
             const fastUnit = tryFastPathUnitOnly(message, bookingPayload, resolvedShop.business_name)
             if (fastUnit) {
-              return {
+              return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
@@ -1562,7 +1734,7 @@ export default defineEventHandler(async (event) => {
                 hideNoneForGear: hideNoneForGear(fastUnit.payload),
                 courseOptions: addCourseOptions(fastUnit.payload),
                 diveSiteOptions: addDiveSiteOptions(fastUnit.payload)
-              }
+              })
             }
           }
           const nextStep = getNextBookingStep(bookingPayload)
@@ -1613,7 +1785,7 @@ export default defineEventHandler(async (event) => {
                   : getNextBookingStep(fp as BookingPayloadLocal)?.step === 'gear'
                     ? gearChipsForFast
                     : undefined
-              return {
+              return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
@@ -1627,7 +1799,7 @@ export default defineEventHandler(async (event) => {
                 hideNoneForGear: hideNoneForGear(fp),
                 courseOptions: addCourseOptions(fp),
                 diveSiteOptions: addDiveSiteOptions(fp)
-              }
+              })
             }
           }
         }
@@ -1639,6 +1811,7 @@ export default defineEventHandler(async (event) => {
           ...(history || []),
           { role: 'user' as const, content: message }
         ]
+        pushActivity('booking_llm', 'Drafting your answer')
         const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -1902,7 +2075,7 @@ export default defineEventHandler(async (event) => {
             : null
         const messageForClient = orchestratorBubbles ? orchestratorBubbles.message : replyMessage
         const messagePreambleForClient = orchestratorBubbles?.messagePreamble
-        return {
+        return withAgentMeta({
           success: true,
           intent: 'booking' as const,
           bookingReady: false,
@@ -1920,7 +2093,7 @@ export default defineEventHandler(async (event) => {
           diveSiteOptions: (collectedPayload ? addDiveSiteOptions(collectedPayload) : undefined) ||
             (messageAsksForDiveSites(replyMessage) && diveSiteChips ? diveSiteChips : undefined) ||
             (bookingPayload && addDiveSiteOptions(bookingPayload) ? diveSiteChips : undefined)
-        }
+        })
       }
 
       // --- Search flow (existing) ---
@@ -2058,7 +2231,7 @@ export default defineEventHandler(async (event) => {
           label: s.business_name,
           value: `Let's book ${s.business_name}`
         }))
-        return {
+        return withAgentMeta({
           success: true,
           intent: 'search' as const,
           message: pickFromRecent.length
@@ -2069,7 +2242,7 @@ export default defineEventHandler(async (event) => {
           hasMoreResults: false,
           filters: {} as SearchFilters,
           selectableOptions: pickFromRecent.length ? pickFromRecent : undefined
-        }
+        })
       }
 
       // Trip-type first: show chips immediately (no AI call) so user doesn't see "typing..."
@@ -2079,17 +2252,29 @@ export default defineEventHandler(async (event) => {
       const userAlreadySpecifiedTripType = (history || []).some(
         m => m.role === 'user' && tripTypePattern.test(String(m.content || ''))
       )
-      if (!userAlreadySpecifiedTripType && !tripTypeChoiceInMessage) {
-        return tripTypeFirstQuestionResponse()
+      const nluActivityForHint = normalizeActivityTerms(interpretTurn?.activity_terms)
+      const userSpecifiedActivityNlu = nluActivityForHint.length > 0
+      if (!userAlreadySpecifiedTripType && !tripTypeChoiceInMessage && !userSpecifiedActivityNlu) {
+        return withAgentMeta(tripTypeFirstQuestionResponse())
       }
-    
+
+      let nluHint = ''
+      if (interpretTurn?.destination_text?.trim()) {
+        nluHint += `\n\n[System hint for FILTERS: the user mentioned this place — ${interpretTurn.destination_text.trim()}]`
+      }
+      if (nluActivityForHint.length > 0) {
+        nluHint += `\n\n[System hint for FILTERS: match dive style / environment — ${nluActivityForHint.join(', ')}]`
+      }
+      const userMessageForSearch = message + nluHint
+
       // Build conversation history for the AI
       const messages = [
         { role: 'system', content: SYSTEM_PROMPT },
         ...(history || []),
-        { role: 'user', content: message }
+        { role: 'user', content: userMessageForSearch }
       ]
 
+      pushActivity('search_llm', 'Drafting your answer')
       const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -2116,15 +2301,18 @@ export default defineEventHandler(async (event) => {
       const aiMessage = aiData.choices[0]?.message?.content || ''
       console.log(`[AI Search] Raw AI response:`, aiMessage)
 
-      return await runTripTypeSearchAfterLlm({
-        message,
-        history: history || [],
-        aiMessage,
-        openrouterApiKey,
-        supabaseUrl,
-        supabaseKey,
-        shopsAlreadyShownCount
-      })
+      return withAgentMeta(
+        await runTripTypeSearchAfterLlm({
+          message,
+          history: history || [],
+          aiMessage,
+          openrouterApiKey,
+          supabaseUrl,
+          supabaseKey,
+          shopsAlreadyShownCount,
+          interpretTurn
+        })
+      )
     }, {
       maxAttempts: 4,
       baseDelayMs: 280,
