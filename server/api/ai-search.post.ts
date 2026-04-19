@@ -34,7 +34,7 @@ import { tryShopInfoResponse } from '../utils/shopInfoForChat'
 import { applyInferredCoursesToPayloadIfEligible } from '../utils/inferCoursesFromConversation'
 import { runWithRetries } from '../utils/retryWithBackoff'
 import { SEARCH_DIVE_SYSTEM_PROMPT } from '../utils/searchDiveSystemPrompt'
-import { runTripTypeSearchAfterLlm, tripTypeFirstQuestionResponse } from '../utils/tripTypeSearchPipeline'
+import { runTripTypeSearchAfterLlm, searchFlowResetResponse, tripTypeFirstQuestionResponse } from '../utils/tripTypeSearchPipeline'
 import {
   buildDiverFieldEditPrompt,
   clearDiverFieldOnCopy,
@@ -529,7 +529,7 @@ export default defineEventHandler(async (event) => {
     }
 
     if (wantsSearchFlowReset(message.trim())) {
-      return tripTypeFirstQuestionResponse({ searchFlowReset: true })
+      return searchFlowResetResponse()
     }
 
     // Unit-only "lbs"/"kg" fast path: instant reply. Skip early return when next step is gear so we can attach rentalEquipmentOptions (chips) to the first "Does X need any rental gear?" message.

@@ -19,6 +19,21 @@ export function tripTypeFirstQuestionResponse (opts?: { searchFlowReset?: boolea
   }
 }
 
+/** User asked to start over / reset search — fresh greeting, no trip-type chips. */
+export function searchFlowResetResponse () {
+  return {
+    success: true as const,
+    intent: 'search' as const,
+    message: 'How can I help?',
+    shops: [],
+    totalResults: 0,
+    hasMoreResults: false,
+    filters: {} as SearchFilters,
+    selectableOptions: undefined,
+    searchFlowReset: true as const
+  }
+}
+
 /** When the AI omits country but user clearly said a location (e.g. trip-type-only reply), infer country from conversation. */
 export function inferCountryFromConversation (conversationText: string): string | null {
   const countryPatterns: { pattern: RegExp; country: string }[] = [
@@ -62,6 +77,34 @@ export function parseSearchFiltersAndMessageFromLlm (aiMessage: string): { filte
     filters = {}
   }
   return { filters, conversationalMessage }
+}
+
+/**
+ * User already gave enough axes (place + something else) — show shop cards immediately
+ * instead of an empty reply that only asks to narrow down.
+ */
+export function isQuerySpecificEnoughForDirectShopCards (
+  message: string,
+  filters: SearchFilters,
+  interpretTurn: InterpretedTurn | null | undefined,
+  tripTypeInMessage: boolean,
+  userAlreadySpecifiedTripType: boolean
+): boolean {
+  const geo =
+    !!(filters.country?.trim() || filters.locale?.trim() || filters.region?.trim()) ||
+    !!(interpretTurn?.destination_text?.trim())
+  if (!geo) return false
+
+  const skillOrAudience =
+    /\b(beginner|beginners|beginner-friendly|beginner friendly|intro|discovery|open water|owi|learn to dive|first time|never dived|novice|new diver|discover scuba|course|courses|certification|checkout|family[- ]friendly|kids|non[- ]?diver)\b/i.test(
+      message
+    )
+  const hasActivity = (interpretTurn?.activity_terms?.length ?? 0) > 0
+  const hasRating = filters.minRating != null && filters.minRating > 0
+  const hasDiveTypes = (filters.diveTypes?.length ?? 0) > 0
+  const tripPinned = tripTypeInMessage || userAlreadySpecifiedTripType
+
+  return skillOrAudience || hasActivity || hasRating || hasDiveTypes || tripPinned
 }
 
 /** User-visible preamble when templated final copy replaces the model MESSAGE. */
@@ -268,6 +311,17 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
     } else if (noPreference && lastWasAQuestion) {
       console.log('[AI Search] User said no preference, showing results')
       shouldAskFollowUp = false
+    } else if (
+      isQuerySpecificEnoughForDirectShopCards(
+        message,
+        filters,
+        interpretTurn,
+        tripTypeChoiceInMessage,
+        userAlreadySpecifiedTripType
+      )
+    ) {
+      shouldAskFollowUp = false
+      console.log('[AI Search] Query already has place + narrowing signals — show shop cards (no empty follow-up).')
     } else {
       shouldAskFollowUp = true
       console.log(`[AI Search] Too many results (${resultCount}), asking follow-up question...`)
@@ -313,20 +367,36 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
       }
     }
   } else if (shouldAskFollowUp && resultCount > 5) {
-    responseShops = []
-    finalMessage = `I found ${resultCount} dive shops that match your criteria. ${followUpMessage}`
+    const alreadyShown = Math.min(Math.max(0, shopsAlreadyShownCount ?? 0), resultCount)
+    responseShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
+    const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
+    finalMessage = `I found ${resultCount} dive shops that match your criteria. Here are ${responseShops.length} top results.${followUpMessage?.trim() ? ` ${followUpMessage}` : ''}`
+    if (remaining > 0) {
+      selectableOptions = [{ label: 'Load next 5', value: 'Show more' }]
+    }
   } else if (userAlreadyAnsweredLastQuestion) {
-    responseShops = (shops || []).slice(0, 5)
+    const alreadyShown = Math.min(Math.max(0, shopsAlreadyShownCount ?? 0), resultCount)
+    responseShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
+    const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
     finalMessage = 'Here are some top options based on what you said. You can confirm details with the shop or ask to narrow by location, rating, or trip type.'
-    if (resultCount > 5) {
+    if (remaining > 0) {
       selectableOptions = [{ label: 'Load next 5', value: 'Show more' }]
     }
   } else {
-    console.log(`[AI Search] Result count (${resultCount}) is within limit, showing results`)
-    responseShops = (shops || []).slice(0, 5)
-    if (resultCount > 5) {
-      finalMessage = `I found ${resultCount} dive shops. Here are the top results:`
-      selectableOptions = [{ label: 'Load next 5', value: 'Show more' }]
+    const alreadyShown = Math.min(Math.max(0, shopsAlreadyShownCount ?? 0), resultCount)
+    console.log(`[AI Search] Showing shop cards (total ${resultCount}, offset ${alreadyShown})`)
+    responseShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
+    const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
+    if (resultCount > 5 || alreadyShown > 0) {
+      finalMessage =
+        alreadyShown === 0
+          ? `I found ${resultCount} dive shop${resultCount === 1 ? '' : 's'}. Here are the top results:`
+          : remaining > 0
+            ? `Here are the next ${responseShops.length} results (${remaining} more in this search).`
+            : `Here are the last ${responseShops.length} results.`
+      if (remaining > 0) {
+        selectableOptions = [{ label: 'Load next 5', value: 'Show more' }]
+      }
     } else {
       finalMessage = conversationalMessage
     }
@@ -334,7 +404,10 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
 
   const messagePreamble = searchReplyMessagePreamble(conversationalMessage, finalMessage)
 
-  console.log(`[AI Search] Sending response - hasMoreResults: ${shouldAskFollowUp}, shops count: ${responseShops.length}`)
+  const pageOffset = Math.min(Math.max(0, shopsAlreadyShownCount ?? 0), resultCount)
+  const hasMorePages = resultCount > pageOffset + responseShops.length
+
+  console.log(`[AI Search] Sending response - hasMorePages: ${hasMorePages}, shops count: ${responseShops.length}`)
   console.log('[AI Search] Final message:', finalMessage)
 
   return {
@@ -344,7 +417,7 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
     ...(messagePreamble ? { messagePreamble } : {}),
     shops: responseShops,
     totalResults: resultCount,
-    hasMoreResults: shouldAskFollowUp,
+    hasMoreResults: hasMorePages,
     filters,
     selectableOptions
   }
