@@ -34,6 +34,7 @@ import {
 } from '../utils/courseDiscoveryFromSearch'
 import { inferSearchFiltersFromDestination } from '../utils/destinationToSearchFilters'
 import { normalizeClientSearchFilters } from '../utils/normalizeClientSearchFilters'
+import { tryApplySearchFilterRelax } from '../utils/searchFilterRelaxFromFollowUp'
 import { resolveBookingTargetFromPhrase } from '../utils/resolveBookingTarget'
 import { tryShopInfoResponse } from '../utils/shopInfoForChat'
 import { applyInferredCoursesToPayloadIfEligible } from '../utils/inferCoursesFromConversation'
@@ -590,6 +591,39 @@ export default defineEventHandler(async (event) => {
 
       // --- Entity-aware routing: "dive with X", clarification chips (orchestrator; see .cursor/rules/ai-agent-structure.mdc) ---
       const clarifyChoice = parseEntityClarifyMessage(message)
+
+      // Widen-search chip (e.g. "Any trip type"): last FILTERS + DB only — run before NLU / entity probe.
+      if (!continuingBooking && !clarifyChoice && supabaseUrl && supabaseKey) {
+        const normalizedLast = normalizeClientSearchFilters(bodyLastSearchFilters)
+        const relaxed =
+          normalizedLast && tryApplySearchFilterRelax(message.trim(), normalizedLast)
+        if (relaxed) {
+          console.log('[AI Search] Filter relax fast path — NLU + OpenRouter search skipped')
+          pushActivity('search_relax', 'Widening filters from your last search')
+          try {
+            const queryResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, relaxed)
+            const { data: shops, error: dbErr } = queryResult
+            if (!dbErr) {
+              const place =
+                relaxed.locale?.trim() ||
+                relaxed.country?.trim() ||
+                relaxed.region?.trim() ||
+                'that area'
+              return withAgentMeta({
+                ...formatEntitySearchResponse(
+                  relaxed,
+                  shops as unknown[],
+                  `Showing dive shops for a broader search in ${place}.`
+                ),
+                intent: 'search' as const
+              })
+            }
+          } catch (e) {
+            console.error('[AI Search] Filter relax fast path error:', e)
+          }
+        }
+      }
+
       if (clarifyChoice && pendingEntityClarifyPhrase?.trim()) {
         const phraseCtx = pendingEntityClarifyPhrase.trim()
         const forced = await handleForcedEntityClarify(clarifyChoice, phraseCtx, supabaseUrl, supabaseKey)

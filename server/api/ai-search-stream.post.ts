@@ -11,6 +11,9 @@ import { SEARCH_DIVE_SYSTEM_PROMPT } from '../utils/searchDiveSystemPrompt'
 import { streamOpenRouterSearchFirstCompletion } from '../utils/openRouterStreamSearchFirst'
 import { isCourseDiscoveryFollowUpMessage, tryBuildCourseDiscoverySearchResponse } from '../utils/courseDiscoveryFromSearch'
 import { normalizeClientSearchFilters } from '../utils/normalizeClientSearchFilters'
+import { buildDiveShopQuery } from '../utils/buildDiveShopQuery'
+import { formatEntitySearchResponse } from '../utils/entityRouting'
+import { tryApplySearchFilterRelax } from '../utils/searchFilterRelaxFromFollowUp'
 import { runTripTypeSearchAfterLlm, searchFlowResetResponse, tripTypeFirstQuestionResponse } from '../utils/tripTypeSearchPipeline'
 import { runWithRetries } from '../utils/retryWithBackoff'
 
@@ -128,6 +131,42 @@ export default defineEventHandler(async (event) => {
           push({ type: 'meta', fallbackToJson: true })
           controller.close()
           return
+        }
+
+        if (!continuingBooking && supabaseUrl && supabaseKey) {
+          const n = normalizeClientSearchFilters(bodyLastSearchFilters ?? null)
+          const relaxed = n && tryApplySearchFilterRelax(message.trim(), n)
+          if (relaxed) {
+            try {
+              const queryResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, relaxed)
+              const { data: shops, error: dbErr } = queryResult
+              if (!dbErr) {
+                const place =
+                  relaxed.locale?.trim() ||
+                  relaxed.country?.trim() ||
+                  relaxed.region?.trim() ||
+                  'that area'
+                push({
+                  type: 'result',
+                  payload: {
+                    ...formatEntitySearchResponse(
+                      relaxed,
+                      shops as unknown[],
+                      `Showing dive shops for a broader search in ${place}.`
+                    ),
+                    intent: 'search' as const,
+                    activityLog: [
+                      { stage: 'search_relax', label: 'Widening filters from your last search', at: Date.now() }
+                    ]
+                  }
+                })
+                controller.close()
+                return
+              }
+            } catch (e) {
+              console.error('[AI Search stream] Filter relax fast path error:', e)
+            }
+          }
         }
 
         const referred = extractReferredEntityPhrase(message) ?? extractBookingTargetFallback(message)
