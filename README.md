@@ -90,6 +90,14 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.72.0** — Enhance AI search functionality with filter relaxation support (2026-04-22).
+- **0.71.0** — Add relax filter chips functionality to tripTypeSearchPipeline (2026-04-19).
+- **0.70.0** — Integrate course discovery functionality into AI search flow (2026-04-19).
+- **0.69.1** — Update chat and AI search functionality for improved user experience (2026-04-19).
+- **0.69.0** — Update dependencies and enhance AI agent functionality (2026-04-19).
+- **0.68.6** — Enhance styling and layout in LandingHome and LandingContentSlide components (2026-04-19).
+- **0.68.5** — Update LandingContentSlide and LandingHome components for improved responsiveness (2026-04-19).
+- **0.68.4** — Refactor LandingHome and LandingFooter components for enhanced responsiveness and layout (2026-04-19).
 - **0.68.3** — Refactor LandingHome and LandingFooter components for improved layout and responsiveness (2026-04-19).
 - **0.68.2** — Refactor LandingHome and landing layouts for improved structure and functionality (2026-04-19).
 - **0.68.1** — Refactor Logo component and update landing pages for improved structure and styling (2026-04-19).
