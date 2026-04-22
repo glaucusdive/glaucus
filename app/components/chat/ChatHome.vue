@@ -1245,15 +1245,13 @@ const sendMessage = async (messageText, displayText) => {
       .filter(m => m.role === 'assistant' && m.shops?.length)
       .reduce((sum, m) => sum + (m.shops?.length ?? 0), 0)
 
-    /** Echo for server pagination fast path (skip OpenRouter filter extraction; optional single-page DB range). */
-    const lastSearchContext = [...messages.value].reverse().find(
-      m => m.role === 'assistant' &&
-        m.intent !== 'booking' &&
-        (m.totalResults ?? 0) > 0 &&
-        m.filters != null &&
-        typeof m.filters === 'object' &&
-        !Array.isArray(m.filters)
-    )
+    /** Echo for server pagination + filter-relax fast path (needs filters even when totalResults is 0). */
+    const lastSearchContext = [...messages.value].reverse().find((m) => {
+      if (m.role !== 'assistant' || m.intent === 'booking') return false
+      const f = m.filters
+      if (f == null || typeof f !== 'object' || Array.isArray(f)) return false
+      return Object.keys(f).length > 0
+    })
 
     const pendingEntityClarifyPhrase = getPendingEntityClarifyPhraseForOutgoing(message)
 
