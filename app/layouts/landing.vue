@@ -11,7 +11,7 @@
  */
 useHead({
   bodyAttrs: {
-    class: 'pb-[950px]'
+    class: 'pb-[100dvh]'
   }
 })
 </script>
