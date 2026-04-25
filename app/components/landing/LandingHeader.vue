@@ -46,7 +46,12 @@
                 </a>
               </nav>
             </template>
-            <div v-else role="search" class="flex min-w-0 w-full items-center gap-2">
+            <form
+              v-else
+              role="search"
+              class="flex min-w-0 w-full items-center gap-2"
+              @submit.prevent="onSearchSubmit"
+            >
               <span :class="navSearchIconWrap" aria-hidden="true">
                 <Search :width="12" :height="12" :stroke-width="1.5" />
               </span>
@@ -70,17 +75,16 @@
               </button>
               <button
                 v-else
-                type="button"
+                type="submit"
                 :class="[
                   navIconBtn,
                   'bg-white text-zinc-950 transition-opacity hover:opacity-90'
                 ]"
                 aria-label="Submit search"
-                @click="onSearchSubmit"
               >
                 <ArrowUp :width="12" :height="12" :stroke-width="1.5" aria-hidden="true" />
               </button>
-            </div>
+            </form>
           </div>
         </div>
       </div>
@@ -247,8 +251,10 @@ function closeSearch () {
   searchQuery.value = ''
 }
 
-function onSearchSubmit (e) {
-  e?.preventDefault?.()
+function onSearchSubmit () {
+  const q = String(searchQuery.value ?? '').trim()
+  if (!q) return
+  void navigateTo({ path: '/', query: { chat: '1', q } })
 }
 
 function goToApp () {
