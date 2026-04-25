@@ -83,7 +83,7 @@
                   </details>
                   <!-- Prior-topic ack only (e.g. dates); next bubble holds the question + chevron -->
                   <div
-                    v-if="msg.preamble"
+                    v-if="msg.preamble && !(msg.shops && msg.shops.length > 0)"
                     class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 chat-bubble-pop-first"
                   >
                     <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap">{{ msg.preamble }}</p>
@@ -93,7 +93,10 @@
                     :class="{ 'chat-bubble-pop-follow': msg.preamble }"
                   >
                   <!-- AI text response (chevron inside bubble when shown) -->
-                  <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 flex items-stretch gap-2">
+                  <div
+                    v-if="msg.content && !(msg.shops && msg.shops.length > 0)"
+                    class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 flex items-stretch gap-2"
+                  >
                     <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis">{{ msg.content }}
                     </p>
                     <button
@@ -132,6 +135,21 @@
                     <div v-if="msg.totalResults && msg.totalResults > msg.shops.length" class="text-sm text-zinc-500">
                       {{ getResultsRangeLabel(index) }}
                     </div>
+                  </div>
+
+                  <div
+                    v-if="msg.preamble && msg.shops && msg.shops.length > 0"
+                    class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 chat-bubble-pop-first"
+                  >
+                    <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap">{{ msg.preamble }}</p>
+                  </div>
+
+                  <div
+                    v-if="msg.content && msg.shops && msg.shops.length > 0"
+                    class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 flex items-stretch gap-2"
+                  >
+                    <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis">{{ msg.content }}
+                    </p>
                   </div>
 
                   <!-- Selectable options: Book chip (white) first, then Load next 5; past messages = faded, not clickable -->
@@ -1313,6 +1331,7 @@ const sendMessage = async (messageText, displayText) => {
 
     let streamProgressSnapshot = []
     let streamPreviewSnapshot = ''
+    let streamedAssistantDraft = ''
     /** Index of assistant row created when first streamed `shop` arrives (merged on `result`). */
     let streamShopAssistIndex = -1
 
@@ -1345,7 +1364,7 @@ const sendMessage = async (messageText, displayText) => {
               searchStreamProgressLines.value = [...lines, t]
             }
           },
-          onAssistantDelta: (t) => { searchStreamPreview.value += t },
+          onAssistantDelta: (t) => { streamedAssistantDraft += t },
           onShop: (shop) => {
             if (streamShopAssistIndex < 0) {
               messages.value.push({
@@ -1392,7 +1411,7 @@ const sendMessage = async (messageText, displayText) => {
     }
 
     streamProgressSnapshot = [...searchStreamProgressLines.value]
-    streamPreviewSnapshot = searchStreamPreview.value
+    streamPreviewSnapshot = streamedAssistantDraft
     searchStreamStatus.value = ''
     searchStreamPreview.value = ''
     searchStreamProgressLines.value = []
