@@ -1,7 +1,7 @@
 <template>
   <main ref="mainRef" class="bg-[#101214] relative z-10">
     <LandingHeader />
-    <section id="hero" class="relative bg-[url(/images/landing/glaucus-bg-hero-waves.jpg)] bg-no-repeat bg-top bg-cover min-h-[50dvh] h-[calc(100dvh-80px)] px-4 sm:px-8 lg:px-20">
+    <section id="hero" class="relative bg-[url(/images/landing/glaucus-bg-hero-waves.jpg)] bg-no-repeat bg-top bg-cover min-h-[50dvh] h-[calc(85dvh-80px)] px-4 sm:px-8 lg:px-20 after:h-20 after:w-full after:bottom-0 after:left-0 after:absolute after:pointer-events-none after:bg-gradient-to-b after:from-[#101214]/0 after:to-[#101214] after:content-['']">
       <div class="grid grid-cols-12 gap-4 items-center h-full">
         <div class="col-span-12 lg:col-span-8 lg:col-start-3">
           <div class="flex flex-col gap-2">
@@ -31,7 +31,7 @@
           : 'sticky top-20 z-10 min-h-[calc(100dvh-80px)] p-6 lg:p-20'"
       >
         <div class="grid grid-cols-12 gap-4 items-center">
-          <div class="col-span-12 lg:col-span-6 lg:col-start-4 min-w-0">
+          <div class="col-span-12 lg:col-start-3 lg:col-span-8 2xl:col-start-4 2xl:col-span-6 min-w-0">
             <div class="flex min-w-0 w-full items-center py-8">
               <ClientOnly>
                 <div
@@ -79,8 +79,12 @@
         </div>
       </div>
 
-      <div id="intro-bg"
-        class="pointer-events-none absolute top-0 left-0 bottom-0 -z-10 h-full w-full bg-[url(/images/landing/glaucus-bg-whatisglaucus.jpg)] bg-no-repeat bg-top-right sm:bg-top bg-cover opacity-0" />
+      <div class="pointer-events-none absolute inset-0 -z-10">
+        <div
+          id="intro-bg"
+          ref="introBgRef"
+          class="sticky top-0 h-dvh w-full bg-[url(/images/landing/glaucus-bg-whatisglaucus.jpg)] bg-no-repeat bg-top-right sm:bg-top bg-cover opacity-0" />
+      </div>
     </section>
     <section id="feature1" class="px-4 pt-20 pb-10 sm:px-8 lg:px-20 lg:pt-40 lg:pb-20 border-b border-zinc-800">
       <div class="grid grid-cols-12 gap-4">
@@ -177,12 +181,14 @@
 </template>
 
 <script setup>
+import gsap from 'gsap'
 import { computed, nextTick, onBeforeMount, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import ChatComposer from '~/components/chat/ChatComposer.vue'
 import { LANDING_BLOG_ARTICLES } from '~/data/landingBlogArticles'
 
 /** Extra viewport heights added below the sticky panel — scroll distance for word reveal (tune feel). */
 const WHATIS_RUNWAY_EXTRA_VH = 240
+const INTRO_BG_FADE_SCROLL_MULTIPLIER = 1
 
 const WHATIS_INTRO_PARAGRAPHS = [
   'Introducing Ada, your AI diving assistant by Glaucus, that’s made for divers and dive businesses.',
@@ -193,6 +199,7 @@ const WHATIS_INTRO_PARAGRAPHS = [
 const heroQuery = ref('')
 const mainRef = ref(null)
 const whatisRunwayRef = ref(null)
+const introBgRef = ref(null)
 const litWordCount = shallowRef(0)
 const reduceMotion = ref(false)
 
@@ -223,13 +230,35 @@ function getDocumentTop (el) {
   return rect.top + window.scrollY
 }
 
+function updateIntroBgFromScroll (runway = whatisRunwayRef.value) {
+  const introBg = introBgRef.value
+  if (!introBg || !runway) return
+
+  if (reduceMotion.value) {
+    gsap.set(introBg, { opacity: 1 })
+    return
+  }
+
+  const docTop = getDocumentTop(runway)
+  const fadeStart = docTop - window.innerHeight
+  const fadeEnd = fadeStart + window.innerHeight * INTRO_BG_FADE_SCROLL_MULTIPLIER
+  const range = Math.max(1, fadeEnd - fadeStart)
+  const progress = Math.min(1, Math.max(0, (window.scrollY - fadeStart) / range))
+
+  gsap.set(introBg, { opacity: progress })
+}
+
 function updateLitFromScroll () {
   rafScheduled = false
   const runway = whatisRunwayRef.value
   if (!runway || reduceMotion.value) {
     litWordCount.value = introWords.value.length
+    updateIntroBgFromScroll(runway)
     return
   }
+
+  updateIntroBgFromScroll(runway)
+
   const stickyTop = 80
   const docTop = getDocumentTop(runway)
   const scrollStart = docTop - stickyTop
@@ -258,7 +287,10 @@ onBeforeMount(() => {
 
 onMounted(() => {
   if (reduceMotion.value) {
-    litWordCount.value = introWords.value.length
+    void nextTick(() => {
+      litWordCount.value = introWords.value.length
+      updateIntroBgFromScroll()
+    })
     return
   }
 
