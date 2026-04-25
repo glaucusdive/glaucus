@@ -1,8 +1,8 @@
 <template>
-  <footer class="fixed top-0 w-full p-6 lg:p-20 h-[950px] z-0">
+  <footer class="fixed top-0 w-full px-4 pt-20 pb-10 sm:px-8 lg:px-20 lg:pt-40 lg:pb-20 h-[950px] z-0">
     <div class="grid grid-cols-12 gap-4 h-full">
       <div class="col-span-12 md:col-span-6 xl:col-span-4">
-        <div class="flex flex-col gap-8">
+        <div class="flex flex-col gap-8 items-end text-right md:items-start md:text-left">
           <div class="h-11 w-fit">
             <LogoText />
           </div>

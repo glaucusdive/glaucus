@@ -1,5 +1,5 @@
 <template>
-  <div class="relative rounded-md overflow-hidden border border-zinc-800 bg-zinc-800">
+  <div class="relative rounded-md overflow-hidden border border-zinc-800 bg-zinc-800 my-10">
     <template v-if="hasSrc">
       <video
         ref="videoEl"
