@@ -93,10 +93,17 @@
             Book the perfect dive in under five minutes
           </h2>
         </div>
-        <div class="col-span-12 lg:col-start-7 lg:col-span-4">
-          <p class="text-lg xl:text-2xl pt-1">
-            Search for the ideal dive location, include your friends and book your next dive with ease.
-          </p>
+        <div class="col-span-12 lg:col-start-7 lg:col-span-5">
+          <div class="flex flex-col gap-4">
+            <p class="text-lg xl:text-2xl pt-1">
+              Ada will find your perfect dive by location, dive type (dive shop for day trips, resort, liveaboard), dive
+              site, certification needs, or availability of rental equipment. Create a profile that saves your dive info
+              and Ada includes it in your booking to streamline your diving like never before.</p>
+            <p class="text-lg xl:text-2xl pt-1">
+              Ada can find you the perfect dive booking based on dive site, certification needs, dive sites, rental needs, or location.
+              Coming soon, be able to connect with your favorite dive master, fellow diver, dive shop/resort, or liveaboard.
+            </p>
+          </div>
         </div>
         <div class="col-span-12">
           <LandingPageVideo
@@ -113,11 +120,17 @@
             Improved discoverability for your dive shop
           </h2>
         </div>
-        <div class="col-span-12 lg:col-start-7 lg:col-span-4">
-          <p class="text-lg xl:text-2xl pt-1">
-            Glaucus helps your business stick out from the crowd. Divers can find your shop based on dive sites, rental
-            gear or certification needs.
-          </p>
+        <div class="col-span-12 lg:col-start-7 lg:col-span-5">
+          <div class="flex flex-col gap-4">
+            <p class="text-lg xl:text-2xl pt-1">
+              Glaucus solves the problem of information diffusion. Divers have to go through multiple websites, and
+              searching within websites to find the information they need about your business.</p>
+            <p class="text-lg xl:text-2xl pt-1">
+              Many miss it and move on.
+              Not with Ada. Our AI immediately answers any questions a potential customer has about your business's
+              offerings such as certifications, rental gear, dive sites, and location.
+            </p>
+          </div>
         </div>
         <div class="col-span-12">
           <LandingPageVideo
