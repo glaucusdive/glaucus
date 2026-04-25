@@ -26,42 +26,63 @@
       :class="reduceMotion ? 'min-h-[calc(100dvh-80px)]' : ''"
       :style="runwayMinHeightStyle"
     >
-      <div
-        class="flex flex-col justify-center"
-        :class="reduceMotion
-          ? 'min-h-[calc(100dvh-80px)] bg-[url(/images/landing/glaucus-bg-whatisglaucus.jpg)] bg-no-repeat bg-top bg-cover p-6 lg:p-20'
-          : 'sticky top-20 z-10 min-h-[calc(100dvh-80px)] bg-[url(/images/landing/glaucus-bg-whatisglaucus.jpg)] bg-no-repeat bg-top bg-cover p-6 lg:p-20'"
+      <div class="flex flex-col justify-center" :class="reduceMotion
+          ? 'min-h-[calc(100dvh-80px)] p-6 lg:p-20'
+          : 'sticky top-20 z-10 min-h-[calc(100dvh-80px)] p-6 lg:p-20'"
       >
         <div class="grid grid-cols-12 gap-4 items-center">
           <div class="col-span-12 lg:col-span-6 lg:col-start-4 min-w-0">
             <div class="flex min-w-0 w-full items-center py-8">
               <ClientOnly>
-                <h2
-                  class="min-w-0 max-w-full text-4xl xl:text-6xl font-light text-pretty leading-[1.2] text-white break-words"
+                <div
+                  class="min-w-0 max-w-full text-2xl sm:text-3xl md:text-4xl xl:text-5xl font-light text-pretty leading-[1.3] text-white break-words flex flex-col gap-4"
                 >
-                  <template v-if="reduceMotion">{{ WHATIS_INTRO_COPY }}</template>
+                  <template v-if="reduceMotion">
+                    <p
+                      v-for="paragraph in WHATIS_INTRO_PARAGRAPHS"
+                      :key="paragraph"
+                      class="text-pretty"
+                    >
+                      {{ paragraph }}
+                    </p>
+                  </template>
                   <template v-else>
                     <!-- Normal spaces between spans — &nbsp; would prevent wrapping -->
-                    <template v-for="(word, i) in introWords" :key="i">
-                      <span
-                        :class="i < litWordCount ? 'opacity-100' : 'opacity-10'"
-                        class="transition-opacity duration-150"
-                      >{{ word }}</span>{{ i < introWords.length - 1 ? ' ' : '' }}
-                    </template>
+                    <p
+                      v-for="(words, paragraphIndex) in introParagraphWords"
+                      :key="paragraphIndex"
+                      class="text-pretty"
+                    >
+                      <template v-for="({ word, index }, wordIndex) in words" :key="`${paragraphIndex}-${wordIndex}`">
+                        <span
+                          :class="index < litWordCount ? 'opacity-100' : 'opacity-10'"
+                          class="transition-opacity duration-300"
+                        >{{ word }}</span>{{ wordIndex < words.length - 1 ? ' ' : '' }}
+                      </template>
+                    </p>
                   </template>
-                </h2>
+                </div>
                 <template #fallback>
-                  <h2 class="min-w-0 max-w-full text-5xl xl:text-6xl font-light text-pretty leading-[1.1] text-white break-words">
-                    {{ WHATIS_INTRO_COPY }}
-                  </h2>
+                  <div class="min-w-0 max-w-full text-5xl xl:text-6xl font-light text-pretty leading-[1.1] text-white break-words">
+                    <p
+                      v-for="paragraph in WHATIS_INTRO_PARAGRAPHS"
+                      :key="paragraph"
+                      class="mb-6 last:mb-0"
+                    >
+                      {{ paragraph }}
+                    </p>
+                  </div>
                 </template>
               </ClientOnly>
             </div>
           </div>
         </div>
       </div>
+
+      <div id="intro-bg"
+        class="pointer-events-none absolute top-0 left-0 bottom-0 -z-10 h-full w-full bg-[url(/images/landing/glaucus-bg-whatisglaucus.jpg)] bg-no-repeat bg-top-right sm:bg-top bg-cover opacity-0" />
     </section>
-    <section id="feature1" class="px-4 sm:px-8 lg:px-20 pt-20 lg:pt-40 pb-12 lg:pb-20 border-b border-zinc-800">
+    <section id="feature1" class="px-4 pt-20 pb-10 sm:px-8 lg:px-20 lg:pt-40 lg:pb-20 border-b border-zinc-800">
       <div class="grid grid-cols-12 gap-4">
         <div class="col-span-12 lg:col-span-5">
           <h2 class="text-3xl xl:text-5xl">
@@ -75,13 +96,13 @@
         </div>
         <div class="col-span-12">
           <LandingPageVideo
-            class="my-10 aspect-video w-full"
+            class="aspect-video w-full"
             src="/videos/landing/glaucus-video-fpo.mp4"
           />
         </div>
       </div>
     </section>
-    <section id="feature2" class="px-4 sm:px-8 lg:px-20 pt-20 lg:pt-40 pb-12 lg:pb-20 border-b border-zinc-800">
+    <section id="feature2" class="px-4 pt-20 pb-10 sm:px-8 lg:px-20 lg:pt-40 lg:pb-20 border-b border-zinc-800">
       <div class="grid grid-cols-12 gap-4">
         <div class="col-span-12 lg:col-span-5">
           <h2 class="text-3xl xl:text-5xl">
@@ -96,13 +117,13 @@
         </div>
         <div class="col-span-12">
           <LandingPageVideo
-            class="my-10 aspect-video w-full"
+            class="aspect-video w-full"
             src="/videos/landing/glaucus-video-fpo.mp4"
           />
         </div>
       </div>
     </section>
-    <section id="aboutus" class="p-6 lg:p-20">
+    <section id="aboutus" class="px-4 pt-20 pb-10 sm:px-8 lg:px-20 lg:pt-40 lg:pb-20 border-b border-zinc-800">
       <div class="grid grid-cols-12 gap-4 items-center">
         <div class="col-span-12 lg:col-span-5">
           <div class="flex flex-col gap-8">
@@ -130,11 +151,11 @@
         </div>
       </div>
     </section>
-    <section id="contact" class="h-[80dvh] px-4 sm:px-8 lg:px-20">
+    <section id="contact" class="border-b border-zinc-800 h-[80dvh] px-4 sm:px-8 lg:px-20">
       <div class="grid grid-cols-12 gap-4 h-full">
         <div class="col-span-12 lg:col-start-4 lg:col-span-6">
           <div class="py-24 lg:py-60 flex flex-col gap-8 justify-center items-center h-full">
-            <h2 class="text-5xl text-balance text-center max-w-[24ch]">Book your next trip with Glaucus today</h2>
+            <h2 class="text-3xl xl:text-5xl text-pretty text-center max-w-[24ch]">Book your next trip with Glaucus today</h2>
             <div class="flex w-full max-w-sm flex-col gap-4 justify-center md:flex-row">
               <button type="button"
                 class="w-full rounded-md h-10 px-4 py-2 text-sm font-medium uppercase bg-white text-zinc-900 hover:bg-zinc-200 whitespace-nowrap sm:w-auto"
@@ -163,7 +184,11 @@ import { LANDING_BLOG_ARTICLES } from '~/data/landingBlogArticles'
 /** Extra viewport heights added below the sticky panel — scroll distance for word reveal (tune feel). */
 const WHATIS_RUNWAY_EXTRA_VH = 240
 
-const WHATIS_INTRO_COPY = 'Introducing Ada, your AI diving assistant by Glaucus, that’s made for divers and dive businesses. The goal is to help divers get information faster, book faster, connect with diveshops faster, easier to pay and easier to record your latest dive. Diveshops can easily connect with their customers and improve their business processes.'
+const WHATIS_INTRO_PARAGRAPHS = [
+  'Introducing Ada, your AI diving assistant by Glaucus, that’s made for divers and dive businesses.',
+  'The goal is to help divers get information faster, book faster, connect with diveshops faster, easier to pay and easier to record your latest dive.',
+  'Diveshops can easily connect with their customers and improve their business processes.'
+]
 
 const heroQuery = ref('')
 const mainRef = ref(null)
@@ -171,7 +196,17 @@ const whatisRunwayRef = ref(null)
 const litWordCount = shallowRef(0)
 const reduceMotion = ref(false)
 
-const introWords = computed(() => WHATIS_INTRO_COPY.trim().split(/\s+/).filter(Boolean))
+const introWords = computed(() => WHATIS_INTRO_PARAGRAPHS.flatMap(paragraph => paragraph.trim().split(/\s+/).filter(Boolean)))
+const introParagraphWords = computed(() => {
+  let index = 0
+
+  return WHATIS_INTRO_PARAGRAPHS.map(paragraph =>
+    paragraph.trim().split(/\s+/).filter(Boolean).map(word => ({
+      word,
+      index: index++
+    }))
+  )
+})
 
 const runwayMinHeightStyle = computed(() => {
   if (reduceMotion.value) return undefined
