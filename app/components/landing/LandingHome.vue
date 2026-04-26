@@ -96,9 +96,7 @@
         <div class="col-span-12 lg:col-start-7 lg:col-span-5">
           <div class="flex flex-col gap-4">
             <p class="text-lg xl:text-2xl pt-1">
-              Ada will find your perfect dive by location, dive type (dive shop for day trips, resort, liveaboard), dive
-              site, certification needs, or availability of rental equipment. Create a profile that saves your dive info
-              and Ada includes it in your booking to streamline your diving like never before.</p>
+              Ada will find your perfect dive by location, dive type (dive shop for day trips, resort, liveaboard), dive site, certification needs, or availability of rental equipment. Create a profile that saves your dive info and Ada includes it in your booking to streamline your diving like never before.</p>
             <p class="text-lg xl:text-2xl pt-1">
               Ada can find you the perfect dive booking based on dive site, certification needs, dive sites, rental needs, or location.
               Coming soon, be able to connect with your favorite dive master, fellow diver, dive shop/resort, or liveaboard.
