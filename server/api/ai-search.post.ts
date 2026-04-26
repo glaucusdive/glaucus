@@ -56,6 +56,7 @@ import {
   shouldRunInterpretNlu,
   type InterpretedTurn
 } from '../utils/interpretUserTurn'
+import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
 
 function abortSignalFromH3Event (event: H3Event): AbortSignal | undefined {
   const req = event.node.req
@@ -2136,12 +2137,8 @@ export default defineEventHandler(async (event) => {
       }
 
       // Check if user is asking for more results (pagination) or first page after a count-only reply
-      const paginationPattern = /\b(next|more|show more|next 5|next results|show next|load more|another|additional)\s*(5|results?|shops?|ones?)?\b/i
-      const next20Pattern = /\b(show next 20|load next 20|next 20)\b/i
-      const listOrShowShopsPattern = /\b(list|show)\s+(me\s+)?(the\s+|all\s+)?(?:\d+\s+)?(?:dive\s+)?shops?\b/i
-      const isPaginationRequest =
-        paginationPattern.test(message) || next20Pattern.test(message) || listOrShowShopsPattern.test(message)
-      const paginationPageSize = next20Pattern.test(message) ? 20 : 5
+      const isPaginationRequest = isSearchPaginationUserMessage(message)
+      const paginationPageSize = /\b(show next 20|load next 20|next 20)\b/i.test(message) ? 20 : 5
     
       if (isPaginationRequest && history && history.length > 0) {
         console.log(`[AI Search] Pagination request detected: "${message}"`)

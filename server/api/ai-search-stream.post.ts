@@ -2,10 +2,13 @@ import { defineEventHandler, readBody, setHeader, type H3Event } from 'h3'
 import { extractBookingTargetFallback, extractReferredEntityPhrase } from '../utils/extractReferredEntityPhrase'
 import {
   interpretUserTurn,
+  mergeActivityIntoFilters,
+  mergeNluHintsIntoFilters,
   normalizeActivityTerms,
   shouldRunInterpretNlu,
   type InterpretedTurn
 } from '../utils/interpretUserTurn'
+import { inferSearchFiltersFromDestination } from '../utils/destinationToSearchFilters'
 import { tryShopInfoResponse } from '../utils/shopInfoForChat'
 import { SEARCH_DIVE_SYSTEM_PROMPT } from '../utils/searchDiveSystemPrompt'
 import { streamOpenRouterSearchFirstCompletion } from '../utils/openRouterStreamSearchFirst'
@@ -16,6 +19,7 @@ import { formatEntitySearchResponse } from '../utils/entityRouting'
 import { tryApplySearchFilterRelax } from '../utils/searchFilterRelaxFromFollowUp'
 import { runTripTypeSearchAfterLlm, searchFlowResetResponse, tripTypeFirstQuestionResponse } from '../utils/tripTypeSearchPipeline'
 import { runWithRetries } from '../utils/retryWithBackoff'
+import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
 
 interface StreamRequestBody {
   message: string
@@ -195,11 +199,8 @@ export default defineEventHandler(async (event) => {
           }
         }
 
-        const paginationPattern = /\b(next|more|show more|next 5|next results|show next|load more|another|additional)\s*(5|results?|shops?|ones?)?\b/i
-        const next20Pattern = /\b(show next 20|load next 20|next 20)\b/i
-        const listOrShowShopsPattern = /\b(list|show)\s+(me\s+)?(the\s+|all\s+)?(?:\d+\s+)?(?:dive\s+)?shops?\b/i
         const isPaginationRequest =
-          paginationPattern.test(message) || next20Pattern.test(message) || listOrShowShopsPattern.test(message)
+          isSearchPaginationUserMessage(message) && history.length > 0
         if (isPaginationRequest && history.length > 0) {
           push({ type: 'meta', fallbackToJson: true })
           controller.close()
@@ -237,6 +238,46 @@ export default defineEventHandler(async (event) => {
             signal: upstreamSignal ?? abortSignalFromEvent(event)
           })
           if (ir.ok) interpretTurn = ir.data
+        }
+
+        const destText = interpretTurn?.destination_text?.trim()
+        const shopHint = interpretTurn?.shop_name_hint?.trim()
+        const tryLocationFirst =
+          !!destText &&
+          !shopHint &&
+          (interpretTurn?.goal === 'start_booking' || interpretTurn?.goal === 'search_shops')
+
+        if (tryLocationFirst && supabaseUrl && supabaseKey) {
+          pushAct('probe', 'Searching by location (city, state, country)')
+          const geoFilters = mergeActivityIntoFilters(
+            mergeNluHintsIntoFilters(
+              inferSearchFiltersFromDestination(destText),
+              interpretTurn
+            ),
+            interpretTurn
+          )
+          const geoQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, geoFilters)
+          const geoList = (geoQuery.data || []) as unknown[]
+          if (!geoQuery.error && geoList.length > 0) {
+            const placeLabel = destText
+            push({
+              type: 'result',
+              payload: {
+                ...formatEntitySearchResponse(
+                  geoFilters,
+                  geoList,
+                  `Here are dive shops in ${placeLabel} (from our location data).`
+                ),
+                intent: 'search' as const,
+                ...(streamActivity.length ? { activityLog: streamActivity } : {}),
+                ...(interpretTurn?.reasoning_summary?.trim()
+                  ? { reasoningSummary: interpretTurn.reasoning_summary.trim() }
+                  : {})
+              }
+            })
+            controller.close()
+            return
+          }
         }
 
         const tripTypePattern = /\b(liveaboard|resort|day trips?|dive shops?|i prefer a liveaboard|i prefer a resort|i prefer dive shops|just day trips?)\b/i
