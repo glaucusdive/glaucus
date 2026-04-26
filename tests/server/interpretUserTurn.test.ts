@@ -33,6 +33,30 @@ describe('pickReferentPhraseForProbe', () => {
   it('falls back to clean regex when NLU empty', () => {
     expect(pickReferentPhraseForProbe(null, 'Blue Corner Dive')).toBe('Blue Corner Dive')
   })
+  it('prefers shop hint or regex over NLU destination when picking a shop after search', () => {
+    const interpret = {
+      goal: 'start_booking' as const,
+      destination_text: 'Denpasar',
+      shop_name_hint: "Joe's Gone Diving",
+      reasoning_summary: null
+    }
+    expect(
+      pickReferentPhraseForProbe(interpret, "Joe's Gone Diving", {
+        preferShopOrRegexOverDestination: true
+      })
+    ).toBe(interpret.shop_name_hint)
+    const noShopHint = {
+      goal: 'start_booking' as const,
+      destination_text: 'Denpasar',
+      shop_name_hint: null,
+      reasoning_summary: null
+    }
+    expect(
+      pickReferentPhraseForProbe(noShopHint, "Joe's Gone Diving", {
+        preferShopOrRegexOverDestination: true
+      })
+    ).toBe("Joe's Gone Diving")
+  })
 })
 
 describe('parseInterpretedTurnFromModelText', () => {

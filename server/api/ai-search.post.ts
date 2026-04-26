@@ -18,7 +18,7 @@ import { canImmediateSendBookingReply } from '../utils/bookingSendIntentGate'
 import { inclusiveTripDays, tryParseTripDatesFromMessage } from '../utils/parseTripDates'
 import { applyParsedTripDatesToBookingPayload } from '../utils/bookingApplyParsedTripDates'
 import { mergeCollectedIntoBookingPayload } from '../utils/mergeBookingCollected'
-import { extractBookingTargetFallback, extractReferredEntityPhrase } from '../utils/extractReferredEntityPhrase'
+import { extractBookingTargetFallback, extractReferredEntityPhrase, extractShopSelectionPhrase } from '../utils/extractReferredEntityPhrase'
 import { parseEntityClarifyMessage } from '../utils/entityClarify'
 import {
   clarifyResponsePayload,
@@ -584,8 +584,10 @@ export default defineEventHandler(async (event) => {
       // State: Frontend holds messages + selectedShopId + pendingBookingPayload; backend is stateless; agent returns updated bookingPayload; destructive (send email) only after explicit user confirm.
 
       // --- Intent: booking vs search ---
-      const wantsToBook = BOOKING_INTENT_PATTERN.test(message)
-      const hasShopContext = !!selectedShopId || (lastShops && lastShops.length > 0)
+      const wantsToBookRegex = BOOKING_INTENT_PATTERN.test(message)
+      const shopSelectionPhrase = extractShopSelectionPhrase(message)
+      /** NLU may add start_booking / wants_booking inside entity-routing branch — updated there. */
+      let effectiveWantsToBook = wantsToBookRegex || !!shopSelectionPhrase
 
       let resolvedShop: Awaited<ReturnType<typeof getShopById>> = null
       let resolvedByNamedShop = false
@@ -644,7 +646,7 @@ export default defineEventHandler(async (event) => {
         // forced.kind === 'browse': fall through to normal search flow (trip-type / LLM)
       } else if (!continuingBooking && !clarifyChoice && supabaseUrl && supabaseKey) {
         const referredPhraseRegex = extractReferredEntityPhrase(message) ?? extractBookingTargetFallback(message)
-        if (shouldRunInterpretNlu(message, wantsToBook, referredPhraseRegex)) {
+        if (shouldRunInterpretNlu(message, wantsToBookRegex, referredPhraseRegex)) {
           pushActivity('interpret', 'Understanding your request')
           const ir = await interpretUserTurn({
             message,
@@ -665,13 +667,22 @@ export default defineEventHandler(async (event) => {
             })
           }
         }
-        const referredPhrase = pickReferentPhraseForProbe(interpretTurn, referredPhraseRegex)
+        effectiveWantsToBook =
+          wantsToBookRegex ||
+          !!shopSelectionPhrase ||
+          interpretTurn?.goal === 'start_booking' ||
+          interpretTurn?.wants_booking === true
+        const referredPhrase = pickReferentPhraseForProbe(interpretTurn, referredPhraseRegex, {
+          preferShopOrRegexOverDestination:
+            !!shopSelectionPhrase || !!interpretTurn?.shop_name_hint?.trim()
+        })
         const destText = interpretTurn?.destination_text?.trim()
         const shopHint = interpretTurn?.shop_name_hint?.trim()
         const tryLocationFirst =
           !!destText &&
           !shopHint &&
-          (wantsToBook ||
+          !shopSelectionPhrase &&
+          (wantsToBookRegex ||
             interpretTurn?.goal === 'start_booking' ||
             interpretTurn?.goal === 'search_shops')
 
@@ -690,12 +701,12 @@ export default defineEventHandler(async (event) => {
           const geoList = (geoQuery.data || []) as Array<{ id: string; business_name?: string }>
           if (!geoQuery.error && geoList.length > 0) {
             const placeLabel = destText
-            if (wantsToBook && geoList.length === 1) {
+            if (effectiveWantsToBook && geoList.length === 1) {
               const only = geoList[0]!
               resolvedShop = await getShopById(supabaseUrl, supabaseKey, only.id)
               resolvedByNamedShop = !!resolvedShop
               skipEntityProbeFromGeo = !!resolvedShop
-            } else if (wantsToBook && geoList.length > 1) {
+            } else if (effectiveWantsToBook && geoList.length > 1) {
               return withAgentMeta({
                 ...formatEntitySearchResponse(
                   geoFilters,
@@ -704,7 +715,7 @@ export default defineEventHandler(async (event) => {
                 ),
                 intent: 'search' as const
               })
-            } else if (!wantsToBook) {
+            } else if (!effectiveWantsToBook) {
               return withAgentMeta({
                 ...formatEntitySearchResponse(
                   geoFilters,
@@ -721,6 +732,7 @@ export default defineEventHandler(async (event) => {
         const tryActivityOnlySearch =
           nluActivityTerms.length > 0 &&
           !shopHint &&
+          !shopSelectionPhrase &&
           !destText &&
           (interpretTurn?.goal === 'search_shops' || interpretTurn?.goal === 'start_booking')
 
@@ -742,12 +754,12 @@ export default defineEventHandler(async (event) => {
           }
           if (!actQuery.error && actList.length > 0) {
             const label = nluActivityTerms.join(', ')
-            if (wantsToBook && actList.length === 1) {
+            if (effectiveWantsToBook && actList.length === 1) {
               const only = actList[0]!
               resolvedShop = await getShopById(supabaseUrl, supabaseKey, only.id)
               resolvedByNamedShop = !!resolvedShop
               skipEntityProbeFromActivity = !!resolvedShop
-            } else if (wantsToBook && actList.length > 1) {
+            } else if (effectiveWantsToBook && actList.length > 1) {
               return withAgentMeta({
                 ...formatEntitySearchResponse(
                   actFilters,
@@ -756,7 +768,7 @@ export default defineEventHandler(async (event) => {
                 ),
                 intent: 'search' as const
               })
-            } else if (!wantsToBook) {
+            } else if (!effectiveWantsToBook) {
               return withAgentMeta({
                 ...formatEntitySearchResponse(
                   actFilters,
@@ -771,7 +783,7 @@ export default defineEventHandler(async (event) => {
 
         if (referredPhrase && !skipEntityProbeFromGeo && !skipEntityProbeFromActivity) {
           let skipEntityProbe = false
-          if (wantsToBook) {
+          if (effectiveWantsToBook) {
             const target = await resolveBookingTargetFromPhrase(referredPhrase, lastShops, supabaseUrl, supabaseKey)
             if (target.kind === 'single') {
               resolvedShop = await getShopById(supabaseUrl, supabaseKey, target.shop.id)
@@ -790,7 +802,7 @@ export default defineEventHandler(async (event) => {
               return withAgentMeta({ ...clarifyResponsePayload(routed.phrase), intent: 'search' as const })
             }
             if (routed.type === 'search') {
-              if (wantsToBook) {
+              if (effectiveWantsToBook) {
                 const pickFromRecent = (lastShops || []).slice(0, 8).map(s => ({
                   label: s.business_name,
                   value: `Let's book ${s.business_name}`
@@ -818,7 +830,7 @@ export default defineEventHandler(async (event) => {
           }
         }
       }
-      if (wantsToBook && !resolvedShop) {
+      if (effectiveWantsToBook && !resolvedShop) {
         if (selectedShopId) {
           resolvedShop = await getShopById(supabaseUrl, supabaseKey, selectedShopId)
         }
@@ -835,11 +847,11 @@ export default defineEventHandler(async (event) => {
         resolvedShop = await getShopById(supabaseUrl, supabaseKey, lastBookingShopId)
       }
 
-      if (resolvedShop && (wantsToBook || continuingBooking || resolvedByNamedShop)) {
+      if (resolvedShop && (effectiveWantsToBook || continuingBooking || resolvedByNamedShop)) {
         // Use carried-over payload when starting a new booking after "Pick a new diveshop"
         let bookingPayload = continuingBooking
           ? bodyBookingPayload
-          : (wantsToBook && bodyPendingPayload ? { ...bodyPendingPayload, shopId: resolvedShop.id } : bodyBookingPayload)
+          : (effectiveWantsToBook && bodyPendingPayload ? { ...bodyPendingPayload, shopId: resolvedShop.id } : bodyBookingPayload)
 
         const [diveSites, rentalEquipment, courses] = await Promise.all([
           getDiveSitesForShop(supabaseUrl, supabaseKey, resolvedShop.id),
@@ -877,7 +889,7 @@ export default defineEventHandler(async (event) => {
         const rentalEquipmentNames = rentalEquipment.map(e => e.name)
 
         // When user explicitly named a shop and we resolved it: go straight to form details (first question: name)
-        const startingFreshBooking = (wantsToBook || resolvedByNamedShop) && !continuingBooking
+        const startingFreshBooking = (effectiveWantsToBook || resolvedByNamedShop) && !continuingBooking
         const noPayloadYet = !bookingPayload || !(bookingPayload.name && String(bookingPayload.name).trim())
 
         /** Copy for courses step (same UX as dive sites). */
@@ -2261,7 +2273,7 @@ export default defineEventHandler(async (event) => {
       }
 
       // Booking intent but no shop resolved — do not run trip-type or generic search
-      if (wantsToBook && !continuingBooking && !resolvedShop && !clarifyChoice) {
+      if (effectiveWantsToBook && !continuingBooking && !resolvedShop && !clarifyChoice) {
         const pickFromRecent = (lastShops || []).slice(0, 8).map(s => ({
           label: s.business_name,
           value: `Let's book ${s.business_name}`

@@ -88,6 +88,35 @@ export function extractReferredEntityPhrase (message: string): string | null {
   if (m?.[1]) return normalizePhrase(m[1])
   m = trimmed.match(/(?:diving|dive)\s+at\s+([^.?!]+)/i)
   if (m?.[1]) return normalizePhrase(m[1])
+  // Post-results selection: "let's do X", "go with X", "choose X" (bounded — not generic "do a dive")
+  const sel = extractShopSelectionPhrase(trimmed)
+  if (sel) return sel
+  return null
+}
+
+/**
+ * Phrases that mean "pick this operator from the list / results" (not geographic search).
+ * Used with `lastShops` / DB resolution for booking routing.
+ */
+export function extractShopSelectionPhrase (message: string): string | null {
+  const trimmed = message.trim()
+  const patterns: Array<RegExp> = [
+    // "Let's do Joe's Gone Diving" — exclude "let's do a dive …"
+    /^(?:let'?s\s+)?do\s+(?!a\s+dive\b)(?:the\s+)?([^.?!]+)$/i,
+    /^(?:let'?s\s+)?go\s+with\s+(?:the\s+)?([^.?!]+)$/i,
+    /^go\s+with\s+(?:the\s+)?([^.?!]+)$/i,
+    /^(?:let'?s\s+)?(?:pick|choose)\s+(?:the\s+)?([^.?!]+)$/i,
+    /^choose\s+(?:the\s+)?([^.?!]+)$/i,
+    /^(?:i\s*'?ll\s+)(?:take|pick)\s+(?:the\s+)?([^.?!]+)$/i,
+    /^(?:we\s*'?ll\s+)(?:take|go\s+with)\s+(?:the\s+)?([^.?!]+)$/i
+  ]
+  for (const re of patterns) {
+    const m = trimmed.match(re)
+    if (m?.[1]) {
+      const n = normalizePhrase(m[1])
+      if (n) return n
+    }
+  }
   return null
 }
 
