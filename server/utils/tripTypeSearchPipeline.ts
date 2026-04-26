@@ -61,6 +61,54 @@ export function inferCountryFromConversation (conversationText: string): string 
   return null
 }
 
+/**
+ * User message counts as having chosen a trip / business type (skip “What type of trip?” gate,
+ * follow-up logic, etc.). Includes plurals and “dive resort(s)” phrasing.
+ */
+export const TRIP_TYPE_GATE_PATTERN =
+  /\b(liveaboards?|resorts?|dive\s+resorts?|dive\s+shops?|day\s+trips?|i\s+prefer\s+a\s+liveaboard|i\s+prefer\s+a\s+resort|i\s+prefer\s+dive\s+shops?|just\s+day\s+trips?)\b/i
+
+export function userMessageIndicatesTripTypeChoice (text: string): boolean {
+  return TRIP_TYPE_GATE_PATTERN.test(String(text || ''))
+}
+
+export function historyContainsTripTypeChoice (
+  history: { role: string; content: string }[] | undefined
+): boolean {
+  return (history || []).some(
+    m => m.role === 'user' && userMessageIndicatesTripTypeChoice(String(m.content || ''))
+  )
+}
+
+/**
+ * Map explicit user wording to canonical `SearchFilters.diveTypes` (single-type searches).
+ * Returns null when the message does not clearly request one trip type.
+ */
+export function inferCanonicalDiveTypesFromUserMessage (message: string): string[] | null {
+  const t = String(message || '').trim()
+  if (!t) return null
+  if (/\bdive\s+resorts?\b/i.test(t)) return ['Dive Resort']
+  if (/\bliveaboards?\b/i.test(t)) return ['Liveaboard']
+  if (/\bday\s+trips?\b/i.test(t) || /\bdive\s+shops?\b/i.test(t)) return ['Dive Shop']
+  if (/\bi\s+prefer\s+a\s+liveaboard\b/i.test(t)) return ['Liveaboard']
+  if (/\bi\s+prefer\s+a\s+resort\b/i.test(t)) return ['Dive Resort']
+  if (/\bi\s+prefer\s+dive\s+shops?\b/i.test(t)) return ['Dive Shop']
+  if (/\bjust\s+day\s+trips?\b/i.test(t)) return ['Dive Shop']
+  if (/\bresorts?\b/i.test(t)) return ['Dive Resort']
+  return null
+}
+
+/** When the model omits `diveTypes`, pin filters from explicit user wording. */
+export function mergeInferredDiveTypesIntoFilters (
+  filters: SearchFilters,
+  message: string
+): SearchFilters {
+  if ((filters.diveTypes?.length ?? 0) > 0) return filters
+  const inferred = inferCanonicalDiveTypesFromUserMessage(message)
+  if (!inferred?.length) return filters
+  return { ...filters, diveTypes: inferred }
+}
+
 export function parseSearchFiltersAndMessageFromLlm (aiMessage: string): { filters: SearchFilters; conversationalMessage: string } {
   let filters: SearchFilters = {}
   let conversationalMessage = aiMessage
@@ -258,6 +306,7 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
     filters = mergeNluHintsIntoFilters(filters, interpretTurn)
     filters = mergeActivityIntoFilters(filters, interpretTurn)
   }
+  filters = mergeInferredDiveTypesIntoFilters(filters, message)
   console.log('[AI Search] Extracted filters:', filters)
 
   const conversationText = [...(history || []).map(h => h.content), message].join(' ')
@@ -405,11 +454,8 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
   let followUpMessage = ''
   let selectableOptions: { label: string; value: string }[] | undefined
 
-  const tripTypePattern = /\b(liveaboard|resort|day trips?|dive shops?|i prefer a liveaboard|i prefer a resort|i prefer dive shops|just day trips?)\b/i
-  const tripTypeChoiceInMessage = tripTypePattern.test(message)
-  const userAlreadySpecifiedTripType = (history || []).some(
-    m => m.role === 'user' && tripTypePattern.test(String(m.content || ''))
-  )
+  const tripTypeChoiceInMessage = userMessageIndicatesTripTypeChoice(message)
+  const userAlreadySpecifiedTripType = historyContainsTripTypeChoice(history)
 
   console.log('[AI Search] User wants more options:', wantsMoreOptions)
 

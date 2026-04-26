@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { buildRelaxFilterChips, isQuerySpecificEnoughForDirectShopCards } from '../../server/utils/tripTypeSearchPipeline'
+import {
+  buildRelaxFilterChips,
+  historyContainsTripTypeChoice,
+  inferCanonicalDiveTypesFromUserMessage,
+  isQuerySpecificEnoughForDirectShopCards,
+  mergeInferredDiveTypesIntoFilters,
+  userMessageIndicatesTripTypeChoice
+} from '../../server/utils/tripTypeSearchPipeline'
 
 describe('isQuerySpecificEnoughForDirectShopCards', () => {
   it('is true for country + beginner phrasing', () => {
@@ -48,5 +55,63 @@ describe('buildRelaxFilterChips', () => {
     const chips = buildRelaxFilterChips({})
     expect(chips.length).toBeGreaterThan(0)
     expect(chips[0]).toMatchObject({ label: expect.any(String), value: expect.any(String) })
+  })
+})
+
+describe('inferCanonicalDiveTypesFromUserMessage', () => {
+  it('maps plural dive resorts to Dive Resort', () => {
+    expect(inferCanonicalDiveTypesFromUserMessage('Actually I want dive resorts in Bali')).toEqual(['Dive Resort'])
+  })
+
+  it('maps singular dive resort', () => {
+    expect(inferCanonicalDiveTypesFromUserMessage('find a dive resort in Komodo')).toEqual(['Dive Resort'])
+  })
+
+  it('maps liveaboards plural', () => {
+    expect(inferCanonicalDiveTypesFromUserMessage('show me liveaboards in Egypt')).toEqual(['Liveaboard'])
+  })
+
+  it('returns null when no trip type signal', () => {
+    expect(inferCanonicalDiveTypesFromUserMessage('something about fish')).toBeNull()
+  })
+})
+
+describe('mergeInferredDiveTypesIntoFilters', () => {
+  it('adds diveTypes from message when filters omit them', () => {
+    expect(
+      mergeInferredDiveTypesIntoFilters(
+        { country: 'Indonesia', locale: 'Bali' },
+        'dive resorts in Bali'
+      )
+    ).toEqual({
+      country: 'Indonesia',
+      locale: 'Bali',
+      diveTypes: ['Dive Resort']
+    })
+  })
+
+  it('does not override LLM-provided diveTypes', () => {
+    expect(
+      mergeInferredDiveTypesIntoFilters(
+        { country: 'Indonesia', diveTypes: ['Liveaboard'] },
+        'dive resorts in Bali'
+      )
+    ).toEqual({ country: 'Indonesia', diveTypes: ['Liveaboard'] })
+  })
+})
+
+describe('userMessageIndicatesTripTypeChoice / historyContainsTripTypeChoice', () => {
+  it('detects plural resorts in gate pattern', () => {
+    expect(userMessageIndicatesTripTypeChoice('dive resorts in Bali')).toBe(true)
+  })
+
+  it('historyContainsTripTypeChoice reads prior user turns only', () => {
+    expect(
+      historyContainsTripTypeChoice([
+        { role: 'user', content: 'Thailand' },
+        { role: 'user', content: 'I prefer a liveaboard' }
+      ])
+    ).toBe(true)
+    expect(historyContainsTripTypeChoice([{ role: 'assistant', content: 'I prefer a liveaboard' }])).toBe(false)
   })
 })
