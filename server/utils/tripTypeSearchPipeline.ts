@@ -1,5 +1,6 @@
 import { buildDiveShopQuery, type SearchFilters } from './buildDiveShopQuery'
 import { mergeActivityIntoFilters, mergeNluHintsIntoFilters, type InterpretedTurn } from './interpretUserTurn'
+import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
 
 export function tripTypeFirstQuestionResponse (opts?: { searchFlowReset?: boolean }) {
   return {
@@ -247,6 +248,11 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
 }> {
   const { message, history, aiMessage, openrouterApiKey, supabaseUrl, supabaseKey, shopsAlreadyShownCount, onStatus, interpretTurn } = input
 
+  /** Pagination offset applies only to explicit "show more" / next page — not new searches or refinements. */
+  const paginationOffset = isSearchPaginationUserMessage(message)
+    ? Math.max(0, shopsAlreadyShownCount ?? 0)
+    : 0
+
   let { filters, conversationalMessage } = parseSearchFiltersAndMessageFromLlm(aiMessage)
   if (interpretTurn) {
     filters = mergeNluHintsIntoFilters(filters, interpretTurn)
@@ -481,7 +487,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
 
   if (resultCount <= 2 || wantsMoreOptions) {
     if (resultCount > 5) {
-      const alreadyShown = Math.min(Math.max(0, shopsAlreadyShownCount ?? 0), resultCount)
+      const alreadyShown = Math.min(Math.max(0, paginationOffset), resultCount)
       responseShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
       const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
       if (alreadyShown === 0) {
@@ -503,7 +509,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
       }
     }
   } else if (shouldAskFollowUp && resultCount > 5) {
-    const alreadyShown = Math.min(Math.max(0, shopsAlreadyShownCount ?? 0), resultCount)
+    const alreadyShown = Math.min(Math.max(0, paginationOffset), resultCount)
     responseShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
     const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
     finalMessage = `I found ${resultCount} dive shops that match your criteria. Here are ${responseShops.length} top results.${followUpMessage?.trim() ? ` ${followUpMessage}` : ''}`
@@ -511,7 +517,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
       selectableOptions = [{ label: 'Load next 5', value: 'Show more' }]
     }
   } else if (userAlreadyAnsweredLastQuestion) {
-    const alreadyShown = Math.min(Math.max(0, shopsAlreadyShownCount ?? 0), resultCount)
+    const alreadyShown = Math.min(Math.max(0, paginationOffset), resultCount)
     responseShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
     const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
     finalMessage = 'Here are some top options based on what you said. You can confirm details with the shop or ask to narrow by location, rating, or trip type.'
@@ -519,7 +525,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
       selectableOptions = [{ label: 'Load next 5', value: 'Show more' }]
     }
   } else {
-    const alreadyShown = Math.min(Math.max(0, shopsAlreadyShownCount ?? 0), resultCount)
+    const alreadyShown = Math.min(Math.max(0, paginationOffset), resultCount)
     console.log(`[AI Search] Showing shop cards (total ${resultCount}, offset ${alreadyShown})`)
     responseShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
     const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
@@ -546,7 +552,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
 
   const messagePreamble = searchReplyMessagePreamble(conversationalMessage, finalMessage)
 
-  const pageOffset = Math.min(Math.max(0, shopsAlreadyShownCount ?? 0), resultCount)
+  const pageOffset = Math.min(Math.max(0, paginationOffset), resultCount)
   const hasMorePages = resultCount > pageOffset + responseShops.length
 
   console.log(`[AI Search] Sending response - hasMorePages: ${hasMorePages}, shops count: ${responseShops.length}`)

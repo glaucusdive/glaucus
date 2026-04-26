@@ -382,6 +382,7 @@ import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/composables/useSupabase'
 import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst } from '~/utils/mergeProfileDefaultDivers'
 import { getLatestBookingPayloadFromMessages, bookingPayloadHasNamedDiver } from '~/utils/chatBookingPayload'
+import { isSearchPaginationUserMessage } from '~/utils/searchPaginationIntent'
 import { initSignedInChatsFromRemote, chatRemoteHydrateTick } from '~/composables/userChatsRemote'
 import {
   BOOKING_PRESEND_CONFIRM_SEND,
@@ -982,14 +983,37 @@ watch(() => messages.value.length, () => {
   scrollToBottom()
 })
 
-// Pagination status: which range this message's results represent (1-based). E.g. first page 1–5, second 6–10.
+/** Stable key for grouping assistant search rows (same search vs new search). */
+function searchFiltersFingerprint (filters) {
+  if (filters == null || typeof filters !== 'object' || Array.isArray(filters)) return ''
+  const keys = Object.keys(filters).filter((k) => {
+    const v = filters[k]
+    if (v == null) return false
+    if (typeof v === 'string') return v.trim().length > 0
+    if (Array.isArray(v)) return v.length > 0
+    if (typeof v === 'object') return Object.keys(v).length > 0
+    return true
+  }).sort()
+  const norm = {}
+  for (const k of keys) {
+    const v = filters[k]
+    if (Array.isArray(v)) norm[k] = [...v].map(String).sort()
+    else norm[k] = v
+  }
+  return JSON.stringify(norm)
+}
+
+// Pagination status: which range this message's results represent (1-based). Scoped to the same filter set.
 function getResultsRange (msgIndex) {
+  const msg = messages.value[msgIndex]
+  const fp = searchFiltersFingerprint(msg?.filters)
   let previous = 0
   for (let i = 0; i < msgIndex; i++) {
     const m = messages.value[i]
-    if (m?.role === 'assistant' && m.shops?.length) previous += m.shops.length
+    if (m?.role === 'assistant' && m.shops?.length && searchFiltersFingerprint(m.filters) === fp) {
+      previous += m.shops.length
+    }
   }
-  const msg = messages.value[msgIndex]
   const count = msg?.shops?.length ?? 0
   const total = msg?.totalResults ?? 0
   return { start: previous + 1, end: previous + count, total }
@@ -1259,17 +1283,33 @@ const sendMessage = async (messageText, displayText) => {
       : null
     const lastPayload = liveDrawerPayload || lastBookingPayload.value
 
-    const shopsAlreadyShownCount = messages.value
-      .filter(m => m.role === 'assistant' && m.shops?.length)
-      .reduce((sum, m) => sum + (m.shops?.length ?? 0), 0)
+    const arr = messages.value
+    const lastUserIndex = arr.length - 1
+
+    let lastSearchContextIndex = -1
+    for (let i = lastUserIndex - 1; i >= 0; i--) {
+      const m = arr[i]
+      if (m?.role !== 'assistant' || m.intent === 'booking') continue
+      const f = m.filters
+      if (f == null || typeof f !== 'object' || Array.isArray(f)) continue
+      if (Object.keys(f).length > 0) {
+        lastSearchContextIndex = i
+        break
+      }
+    }
 
     /** Echo for server pagination + filter-relax fast path (needs filters even when totalResults is 0). */
-    const lastSearchContext = [...messages.value].reverse().find((m) => {
-      if (m.role !== 'assistant' || m.intent === 'booking') return false
-      const f = m.filters
-      if (f == null || typeof f !== 'object' || Array.isArray(f)) return false
-      return Object.keys(f).length > 0
-    })
+    const lastSearchContext = lastSearchContextIndex >= 0 ? arr[lastSearchContextIndex] : undefined
+
+    let shopsAlreadyShownCount = 0
+    if (isSearchPaginationUserMessage(rawTrim) && lastSearchContextIndex >= 0) {
+      for (let i = lastSearchContextIndex; i < lastUserIndex; i++) {
+        const m = arr[i]
+        if (m?.role === 'assistant' && m.shops?.length) {
+          shopsAlreadyShownCount += m.shops.length
+        }
+      }
+    }
 
     const pendingEntityClarifyPhrase = getPendingEntityClarifyPhraseForOutgoing(message)
 
