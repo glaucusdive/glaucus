@@ -1,5 +1,5 @@
 import { defineEventHandler, readBody, setHeader, type H3Event } from 'h3'
-import { extractBookingTargetFallback, extractReferredEntityPhrase } from '../utils/extractReferredEntityPhrase'
+import { extractBookingTargetFallback, extractReferredEntityPhrase, extractShopSelectionPhrase } from '../utils/extractReferredEntityPhrase'
 import {
   interpretUserTurn,
   mergeActivityIntoFilters,
@@ -131,7 +131,11 @@ export default defineEventHandler(async (event) => {
           return
         }
 
-        if (BOOKING_INTENT_PATTERN.test(message)) {
+        if (
+          BOOKING_INTENT_PATTERN.test(message) ||
+          !!extractShopSelectionPhrase(message) ||
+          !!extractBookingTargetFallback(message)
+        ) {
           push({ type: 'meta', fallbackToJson: true })
           controller.close()
           return
@@ -173,7 +177,10 @@ export default defineEventHandler(async (event) => {
           }
         }
 
-        const referred = extractReferredEntityPhrase(message) ?? extractBookingTargetFallback(message)
+        const referred =
+          extractReferredEntityPhrase(message) ??
+          extractBookingTargetFallback(message) ??
+          extractShopSelectionPhrase(message)
         if (referred) {
           push({ type: 'meta', fallbackToJson: true })
           controller.close()
@@ -226,10 +233,16 @@ export default defineEventHandler(async (event) => {
           push({ type: 'activity', stage, label })
         }
 
-        const wantsToBook = BOOKING_INTENT_PATTERN.test(message)
-        const referredPhraseRegex = extractReferredEntityPhrase(message) ?? extractBookingTargetFallback(message)
+        const wantsToBookStream =
+          BOOKING_INTENT_PATTERN.test(message) ||
+          !!extractShopSelectionPhrase(message) ||
+          !!extractBookingTargetFallback(message)
+        const referredPhraseRegex =
+          extractReferredEntityPhrase(message) ??
+          extractBookingTargetFallback(message) ??
+          extractShopSelectionPhrase(message)
         let interpretTurn: InterpretedTurn | null = null
-        if (shouldRunInterpretNlu(message, wantsToBook, referredPhraseRegex)) {
+        if (shouldRunInterpretNlu(message, wantsToBookStream, referredPhraseRegex)) {
           pushAct('interpret', 'Understanding your request')
           const ir = await interpretUserTurn({
             message,

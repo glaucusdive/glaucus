@@ -3,6 +3,7 @@ import {
   cleanReferentPhraseForProbe,
   extractBookingTargetFallback,
   extractReferredEntityPhrase,
+  extractShopSelectionPhrase,
   stripTrailingReferentNoise
 } from '../../server/utils/extractReferredEntityPhrase'
 
@@ -49,5 +50,20 @@ describe('cleanReferentPhraseForProbe', () => {
 describe('extractBookingTargetFallback', () => {
   it('applies same tail cleanup', () => {
     expect(extractBookingTargetFallback("Let's book at dive porter instead")).toBe('dive porter')
+  })
+})
+
+describe('extractShopSelectionPhrase / post-search pick', () => {
+  it("extracts shop name from let's do …", () => {
+    expect(extractShopSelectionPhrase("Let's do Joe's Gone Diving")).toBe("Joe's Gone Diving")
+    expect(extractReferredEntityPhrase("Let's do Joe's Gone Diving")).toBe("Joe's Gone Diving")
+  })
+  it('extracts from go with / choose / I’ll take', () => {
+    expect(extractShopSelectionPhrase('go with Bali Scuba')).toBe('Bali Scuba')
+    expect(extractShopSelectionPhrase("Let's pick Zen Resort")).toBe('Zen Resort')
+    expect(extractShopSelectionPhrase("I'll take Diving Indo")).toBe('Diving Indo')
+  })
+  it('does not treat let\'s do a dive as a shop name', () => {
+    expect(extractShopSelectionPhrase("Let's do a dive in Bali")).toBe(null)
   })
 })

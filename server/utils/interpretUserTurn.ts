@@ -32,17 +32,19 @@ Return ONLY a JSON object (no markdown) with this shape:
 
 Rules:
 - goal "search_shops": user wants to find/browse dive shops, areas, or trips (including "lets dive in X", "looking for a shop in X").
-- goal "start_booking": user wants to book/reserve a dive trip (even if place is vague).
+- goal "start_booking": user wants to book/reserve a dive trip (even if place is vague). Also use when they are **choosing a dive operator** from results or by name to proceed (e.g. "Let's do Joe's Gone Diving", "go with Bali Scuba", "I'll take Zen Resort", "choose Diving Indo") — treat as starting/continuing booking with that shop, not a new area search.
 - goal "continue": small talk, thanks, or continues an obvious in-thread step without new place.
 - goal "shop_info": asking about a specific shop's hours, sites, courses, contact (not finding shops).
 - goal "unclear": cannot tell.
 
 - destination_text: the travel / dive DESTINATION (geographic) ONLY — city, island, state, or country (e.g. "Bali", "California", "Cozumel", "Mexico"). Use this when the user says "dive in …", "book in …", "trip to …", "going to …". No verbs or filler. If they said "book a dive in bali", destination_text must be "Bali", NOT "a dive in bali".
-- shop_name_hint: ONLY when the user names a specific dive business (e.g. "Zen Resort", "Atlantis Bali Diving"). Do NOT put a country or region here. If they are only expressing where they want to travel, keep shop_name_hint null even if a shop name contains that place word.
+- shop_name_hint: ONLY when the user names a specific dive business (e.g. "Zen Resort", "Atlantis Bali Diving", or the name after "let's do …" / "go with …" / "I'll take …"). Do NOT put a country or region here. If they are only expressing where they want to travel, keep shop_name_hint null even if a shop name contains that place word. When the message is clearly picking one operator (selection phrasing), set shop_name_hint to that business name and set destination_text to null unless they also introduced a **new** trip destination in the same message.
 - activity_terms: when the user cares about a KIND of diving or environment — NOT liveaboard vs resort (that is a separate product flow). Use 1–4 short lowercase tokens, e.g. ["cave"] for "cave diving", ["wreck"] for wreck diving, ["muck"] or ["macro"] for muck/macro, ["cenote"] for cenotes, ["ice"] for ice diving, ["drift"] for drift diving. If they mention BOTH a place and an activity (e.g. "cave diving in Mexico"), set destination_text to "Mexico" AND activity_terms to ["cave"]. If there is no activity signal, use null or omit.
 - reasoning_summary: ONE short user-safe sentence in first person ("I'm treating this as travel to Bali, then we'll pick a shop.") or null.
 
-When the user could mean either a place or a shop name containing that word (e.g. "Bali"), prefer destination_text for travel phrasing ("in Bali", "to Bali") and shop_name_hint only if they clearly ask for one operator by name.`
+When the user could mean either a place or a shop name containing that word (e.g. "Bali"), prefer destination_text for travel phrasing ("in Bali", "to Bali") and shop_name_hint only if they clearly ask for one operator by name.
+
+Selection vs browse: If the recent thread was about finding shops and the user now picks one by name with phrasing like "let's do [shop]", "go with [shop]", "I'll take [shop]", use goal "start_booking", fill shop_name_hint with the shop name, and do not re-fill destination_text from earlier messages unless the user states a new place in this message.`
 
 export function shouldRunInterpretNlu (message: string, wantsToBook: boolean, regexReferent: string | null): boolean {
   const t = message.trim()
@@ -74,14 +76,27 @@ function normalizePlace (s: string | null | undefined): string | null {
   return t
 }
 
+export interface PickReferentPhraseOptions {
+  /** When true, prefer NLU shop hint or regex capture over destination (e.g. shop pick after search). */
+  preferShopOrRegexOverDestination?: boolean
+}
+
 export function pickReferentPhraseForProbe (
   interpret: InterpretedTurn | null,
-  regexPhrase: string | null
+  regexPhrase: string | null,
+  opts?: PickReferentPhraseOptions
 ): string | null {
   const fromDest = normalizePlace(interpret?.destination_text ?? undefined)
   const fromShop = normalizePlace(interpret?.shop_name_hint ?? undefined)
   const reg = regexPhrase?.trim() ? regexPhrase.trim() : null
   const regOk = reg && !isGarbageReferentPhrase(reg) ? reg : null
+
+  if (opts?.preferShopOrRegexOverDestination) {
+    if (fromShop) return fromShop
+    if (regOk) return regOk
+    if (fromDest) return fromDest
+    return reg
+  }
 
   if (fromDest) return fromDest
   if (fromShop) return fromShop
