@@ -17,7 +17,14 @@ import { normalizeClientSearchFilters } from '../utils/normalizeClientSearchFilt
 import { buildDiveShopQuery } from '../utils/buildDiveShopQuery'
 import { formatEntitySearchResponse } from '../utils/entityRouting'
 import { tryApplySearchFilterRelax } from '../utils/searchFilterRelaxFromFollowUp'
-import { runTripTypeSearchAfterLlm, searchFlowResetResponse, tripTypeFirstQuestionResponse } from '../utils/tripTypeSearchPipeline'
+import {
+  historyContainsTripTypeChoice,
+  mergeInferredDiveTypesIntoFilters,
+  runTripTypeSearchAfterLlm,
+  searchFlowResetResponse,
+  tripTypeFirstQuestionResponse,
+  userMessageIndicatesTripTypeChoice
+} from '../utils/tripTypeSearchPipeline'
 import { runWithRetries } from '../utils/retryWithBackoff'
 import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
 
@@ -262,12 +269,15 @@ export default defineEventHandler(async (event) => {
 
         if (tryLocationFirst && supabaseUrl && supabaseKey) {
           pushAct('probe', 'Searching by location (city, state, country)')
-          const geoFilters = mergeActivityIntoFilters(
-            mergeNluHintsIntoFilters(
-              inferSearchFiltersFromDestination(destText),
+          const geoFilters = mergeInferredDiveTypesIntoFilters(
+            mergeActivityIntoFilters(
+              mergeNluHintsIntoFilters(
+                inferSearchFiltersFromDestination(destText),
+                interpretTurn
+              ),
               interpretTurn
             ),
-            interpretTurn
+            message
           )
           const geoQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, geoFilters)
           const geoList = (geoQuery.data || []) as unknown[]
@@ -293,11 +303,8 @@ export default defineEventHandler(async (event) => {
           }
         }
 
-        const tripTypePattern = /\b(liveaboard|resort|day trips?|dive shops?|i prefer a liveaboard|i prefer a resort|i prefer dive shops|just day trips?)\b/i
-        const tripTypeChoiceInMessage = tripTypePattern.test(message)
-        const userAlreadySpecifiedTripType = history.some(
-          m => m.role === 'user' && tripTypePattern.test(String(m.content || ''))
-        )
+        const tripTypeChoiceInMessage = userMessageIndicatesTripTypeChoice(message)
+        const userAlreadySpecifiedTripType = historyContainsTripTypeChoice(history)
         const nluActivityForHint = normalizeActivityTerms(interpretTurn?.activity_terms)
         const userSpecifiedActivityNlu = nluActivityForHint.length > 0
         if (!userAlreadySpecifiedTripType && !tripTypeChoiceInMessage && !userSpecifiedActivityNlu) {

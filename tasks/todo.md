@@ -8,3 +8,16 @@
 ## Review
 
 Streaming path now matches JSON for NLU + geo hits: city diving queries return shop cards immediately. Non-pagination turns ignore `shopsAlreadyShownCount` on the server; the client only sends a non-zero count when the user message matches pagination patterns, summed since the last assistant message that carried search `filters`.
+
+---
+
+# Bali resort / trip-type filtering — done
+
+- [x] Shared `TRIP_TYPE_GATE_PATTERN`, `inferCanonicalDiveTypesFromUserMessage`, `mergeInferredDiveTypesIntoFilters` in `tripTypeSearchPipeline.ts`
+- [x] Location-first paths merge inferred `diveTypes` (JSON + stream APIs)
+- [x] `runTripTypeSearchAfterLlm` merges inferred types after LLM parse when missing
+- [x] Vitest: `tests/server/tripTypeSearchPipeline.test.ts`
+
+## Review
+
+Explicit phrasing like “dive resorts in Bali” now applies `Dive Resort` before the location-first DB query and as a fallback after FILTERS parse. Plural `resorts` / `liveaboards` match the trip-type gate. Multi-type rows still come from `diveshops.type` + existing `CardSearchResult` display.

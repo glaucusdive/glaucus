@@ -40,7 +40,14 @@ import { tryShopInfoResponse } from '../utils/shopInfoForChat'
 import { applyInferredCoursesToPayloadIfEligible } from '../utils/inferCoursesFromConversation'
 import { runWithRetries } from '../utils/retryWithBackoff'
 import { SEARCH_DIVE_SYSTEM_PROMPT } from '../utils/searchDiveSystemPrompt'
-import { runTripTypeSearchAfterLlm, searchFlowResetResponse, tripTypeFirstQuestionResponse } from '../utils/tripTypeSearchPipeline'
+import {
+  historyContainsTripTypeChoice,
+  mergeInferredDiveTypesIntoFilters,
+  runTripTypeSearchAfterLlm,
+  searchFlowResetResponse,
+  tripTypeFirstQuestionResponse,
+  userMessageIndicatesTripTypeChoice
+} from '../utils/tripTypeSearchPipeline'
 import {
   buildDiverFieldEditPrompt,
   clearDiverFieldOnCopy,
@@ -690,12 +697,15 @@ export default defineEventHandler(async (event) => {
         let skipEntityProbeFromActivity = false
         if (tryLocationFirst) {
           pushActivity('probe', 'Searching by location (city, state, country)')
-          const geoFilters = mergeActivityIntoFilters(
-            mergeNluHintsIntoFilters(
-              inferSearchFiltersFromDestination(destText),
+          const geoFilters = mergeInferredDiveTypesIntoFilters(
+            mergeActivityIntoFilters(
+              mergeNluHintsIntoFilters(
+                inferSearchFiltersFromDestination(destText),
+                interpretTurn
+              ),
               interpretTurn
             ),
-            interpretTurn
+            message
           )
           const geoQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, geoFilters)
           const geoList = (geoQuery.data || []) as Array<{ id: string; business_name?: string }>
@@ -2293,12 +2303,9 @@ export default defineEventHandler(async (event) => {
       }
 
       // Trip-type first: show chips immediately (no AI call) so user doesn't see "typing..."
-      const tripTypePattern = /\b(liveaboard|resort|day trips?|dive shops?|i prefer a liveaboard|i prefer a resort|i prefer dive shops|just day trips?)\b/i
-      const tripTypeChoiceInMessage = tripTypePattern.test(message)
+      const tripTypeChoiceInMessage = userMessageIndicatesTripTypeChoice(message)
       // Session memory: if the user already specified a trip type in any earlier message, don't ask again
-      const userAlreadySpecifiedTripType = (history || []).some(
-        m => m.role === 'user' && tripTypePattern.test(String(m.content || ''))
-      )
+      const userAlreadySpecifiedTripType = historyContainsTripTypeChoice(history)
       const nluActivityForHint = normalizeActivityTerms(interpretTurn?.activity_terms)
       const userSpecifiedActivityNlu = nluActivityForHint.length > 0
       if (!userAlreadySpecifiedTripType && !tripTypeChoiceInMessage && !userSpecifiedActivityNlu) {
