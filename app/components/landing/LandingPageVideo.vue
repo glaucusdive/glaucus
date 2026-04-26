@@ -1,12 +1,14 @@
 <template>
-  <div class="relative rounded-md overflow-hidden border border-zinc-800 bg-zinc-800 my-10">
+  <div ref="rootRef" class="relative rounded-md overflow-hidden border border-zinc-800 bg-zinc-800 my-10">
     <template v-if="hasSrc">
       <video
         ref="videoEl"
         class="absolute inset-0 block h-full w-full object-cover"
         playsinline
+        muted
+        loop
         preload="metadata"
-        :controls="overlayDismissed"
+        :controls="isPlaying"
         :aria-label="ariaLabel"
       >
         <source :src="src" type="video/mp4" />
@@ -14,9 +16,9 @@
       <button
         type="button"
         class="absolute inset-0 z-20 flex cursor-pointer items-center justify-center border-0 bg-transparent p-0 transition-opacity duration-300 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900"
-        :class="overlayDismissed ? 'pointer-events-none opacity-0' : 'opacity-100'"
-        :tabindex="overlayDismissed ? -1 : 0"
-        :aria-hidden="overlayDismissed"
+        :class="isPlaying ? 'pointer-events-none opacity-0' : 'opacity-100'"
+        :tabindex="isPlaying ? -1 : 0"
+        :aria-hidden="isPlaying"
         :aria-label="playLabel"
         @click="onPlayClick"
       >
@@ -39,8 +41,13 @@
 /**
  * Pass layout Tailwind on the component (`class="…"`) — Vue merges it onto the outer wrapper div.
  * The inner `<video>` is only `absolute inset-0 object-cover`; parent `class` does not target it.
+ *
+ * Viewport: IntersectionObserver plays when ~50% visible, pauses when out of view.
+ * `loop` repeats while playing; pausing or leaving view stops playback (no loop until play again).
+ * Preview overlay follows real playback (hide on play, show on pause/ended).
+ * `muted` enables reliable autoplay; explicit play click unmutes (user gesture).
  */
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { PlaySolid } from '@iconoir/vue'
 
 const props = defineProps({
@@ -59,19 +66,77 @@ const props = defineProps({
   }
 })
 
+const rootRef = ref(null)
 const videoEl = ref(null)
-const overlayDismissed = ref(false)
+/** Synced with `play` / `pause` / `ended` so overlay and controls match actual playback. */
+const isPlaying = ref(false)
 
 const hasSrc = computed(() => Boolean(props.src?.trim()))
+
+function onVideoPlay () {
+  isPlaying.value = true
+}
+
+function onVideoPause () {
+  isPlaying.value = false
+}
+
+function onVideoEnded () {
+  isPlaying.value = false
+}
 
 async function onPlayClick () {
   const el = videoEl.value
   if (!el) return
-  overlayDismissed.value = true
   try {
+    el.muted = false
     await el.play()
   } catch {
-    overlayDismissed.value = false
+    isPlaying.value = false
   }
 }
+
+let intersectionObserver = null
+/** Captured in `onMounted` — template ref may be null by `onUnmounted`. */
+let mountedVideoEl = null
+
+onMounted(() => {
+  if (!hasSrc.value) return
+  const el = videoEl.value
+  const root = rootRef.value
+  if (!el || !root || typeof IntersectionObserver === 'undefined') return
+
+  mountedVideoEl = el
+  el.addEventListener('play', onVideoPlay)
+  el.addEventListener('pause', onVideoPause)
+  el.addEventListener('ended', onVideoEnded)
+
+  intersectionObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          void el.play().catch(() => {
+            isPlaying.value = false
+          })
+        } else {
+          el.pause()
+        }
+      }
+    },
+    { threshold: 0.5 }
+  )
+  intersectionObserver.observe(root)
+})
+
+onUnmounted(() => {
+  const el = mountedVideoEl
+  if (el) {
+    el.removeEventListener('play', onVideoPlay)
+    el.removeEventListener('pause', onVideoPause)
+    el.removeEventListener('ended', onVideoEnded)
+  }
+  mountedVideoEl = null
+  intersectionObserver?.disconnect()
+  intersectionObserver = null
+})
 </script>
