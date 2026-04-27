@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { canImmediateSendBookingReply } from '../../server/utils/bookingSendIntentGate'
+import { BOOKING_PRESEND_CONFIRM_SEND } from '../../shared/bookingPreSendTokens'
+import { canImmediateSendBookingReply, isConfirmSendMessage } from '../../server/utils/bookingSendIntentGate'
+
+describe('isConfirmSendMessage', () => {
+  it('treats pre-send chip token as confirm send', () => {
+    expect(isConfirmSendMessage(BOOKING_PRESEND_CONFIRM_SEND)).toBe(true)
+    expect(isConfirmSendMessage(`  ${BOOKING_PRESEND_CONFIRM_SEND}  `)).toBe(true)
+  })
+
+  it('still matches natural-language send phrases', () => {
+    expect(isConfirmSendMessage('send')).toBe(true)
+    expect(isConfirmSendMessage('yes')).toBe(true)
+  })
+
+  it('does not match unrelated text', () => {
+    expect(isConfirmSendMessage('booking_presend:open_form')).toBe(false)
+    expect(isConfirmSendMessage('change my email')).toBe(false)
+  })
+})
 
 describe('canImmediateSendBookingReply', () => {
   it('returns false for sendIntent yes when next step is diverName (chip collision)', () => {
@@ -79,5 +97,19 @@ describe('canImmediateSendBookingReply', () => {
         lastAssistantContent: 'Can I send the booking request?'
       })
     ).toBe(false)
+  })
+
+  it('returns true when sendIntent comes from chip token, ready, and pre-send ack', () => {
+    const sendIntent = isConfirmSendMessage(BOOKING_PRESEND_CONFIRM_SEND)
+    expect(sendIntent).toBe(true)
+    expect(
+      canImmediateSendBookingReply({
+        sendIntent,
+        sendAnywayIntent: false,
+        nextStep: { step: 'ready' },
+        lastAssistantContent: "Here's your booking summary for Dive Porter.",
+        preSendReviewAck: true
+      })
+    ).toBe(true)
   })
 })

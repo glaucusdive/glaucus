@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyPreSendTokenToPayload,
+  clearBookingPreSendFlags,
   resolvePreSendWhenPayloadReady,
   lastAssistantWasPreSendReview
 } from '../../server/utils/bookingPreSend'
@@ -87,5 +88,15 @@ describe('bookingPreSend', () => {
       timing: 'before_send'
     })
     expect(r!.bookingReady).toBe(true)
+  })
+
+  it('clearBookingPreSendFlags removes pendingReviewEdit', () => {
+    const p = {
+      ...readyPayload(),
+      pendingReviewEdit: { kind: 'awaiting_value' as const, target: 'contact_email' as const }
+    }
+    const cleared = clearBookingPreSendFlags(p)
+    expect(cleared.pendingReviewEdit).toBeUndefined()
+    expect(cleared.preSendReviewAck).toBeUndefined()
   })
 })

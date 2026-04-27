@@ -29,6 +29,7 @@ export function clearBookingPreSendFlags<T extends BookingPayloadLocal> (p: T): 
   const out = JSON.parse(JSON.stringify(p || {})) as T
   delete (out as { preSendReviewAck?: boolean }).preSendReviewAck
   delete (out as { preSendSignupSkipped?: boolean }).preSendSignupSkipped
+  delete (out as { pendingReviewEdit?: unknown }).pendingReviewEdit
   return out
 }
 
@@ -60,6 +61,21 @@ export function buildPreSendReviewAssistant (shopName: string, payload: BookingP
   }
 }
 
+/** First bubble = edit ack; second bubble = full pre-send review (intro + body + hints). */
+export function buildPreSendReviewAssistantAfterEdit (
+  shopName: string,
+  payload: BookingPayloadLocal,
+  editAck: string
+) {
+  const { messagePreamble: reviewIntro, message: reviewBody } = formatBookingReviewSummary(shopName, payload)
+  const { selectableOptions } = buildPreSendReviewAssistant(shopName, payload)
+  return {
+    messagePreamble: editAck.trim(),
+    message: `${reviewIntro}\n\n${reviewBody}`,
+    selectableOptions
+  }
+}
+
 export function buildPreSendSignupGateAssistant () {
   return {
     message: 'Create a free account to save your divers for next time, or skip and send without saving.',
@@ -88,6 +104,13 @@ const PRE_SEND_REVIEW_ASSISTANT_RE = /booking summary for/i
 /** True if the last assistant bubble was our pre-send review (so plain "yes"/"send" can count as ack). */
 export function lastAssistantWasPreSendReview (lastAssistantContent: string): boolean {
   return PRE_SEND_REVIEW_ASSISTANT_RE.test(lastAssistantContent)
+}
+
+const FINAL_SEND_PROMPT_RE = /can i send the booking request/i
+
+/** True if the last assistant asked the final send confirmation (after review + optional signup). */
+export function lastAssistantWasFinalSendPrompt (lastAssistantContent: string): boolean {
+  return FINAL_SEND_PROMPT_RE.test(lastAssistantContent)
 }
 
 export type PreSendGateResponse = {

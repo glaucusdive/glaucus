@@ -72,8 +72,10 @@ export function extractReferredEntityPhrase (message: string): string | null {
   if (m?.[1]) return normalizePhrase(m[1])
   m = trimmed.match(/(?:let'?s\s+)?reserve(?:\s+a\s+dive)?\s+at\s+(?:the\s+)?([^.?!]+)/i)
   if (m?.[1]) return normalizePhrase(m[1])
-  // "book with X", "reserve with X", "book a dive with X"
-  m = trimmed.match(/(?:book|reserve)(?:\s+(?:a\s+)?dive)?\s+with\s+([^.?!]+)/i)
+  // "book with X", "reserve with X", "book a dive/trip/dive trip/reservation with X"
+  m = trimmed.match(
+    /(?:let'?s\s+)?(?:book|reserve)(?:ing)?(?:\s+(?:(?:a\s+)?dive(?:\s+trip)?|a\s+trip|a\s+reservation))?\s+with\s+([^.?!]+)/i
+  )
   if (m?.[1]) return normalizePhrase(m[1])
   // "Let's book [full shop name]" — chip value from disambiguation (no "at" / "with")
   m = trimmed.match(/^(?:let'?s\s+)?book(?:ing)?\s+(?!with\b|at\b)([^.?!]+)$/i)
@@ -140,13 +142,14 @@ function looksLikeBookingIntent (message: string): boolean {
 export function extractBookingTargetFallback (message: string): string | null {
   if (!looksLikeBookingIntent(message)) return null
   const trimmed = message.trim()
+  // Specific at/with before generic "book <anything>" so "book a trip with X" does not capture "a trip with X".
   const patterns: RegExp[] = [
-    /^(?:let'?s\s+)?book(?:ing)?\s+(?!with\b|at\b)([^.?!]+)$/i,
     /^(?:let'?s\s+)?book(?:ing)?\s+at\s+(?:the\s+)?([^.?!]+)$/i,
     /^(?:let'?s\s+)?reserve(?:\s+a\s+dive)?\s+at\s+(?:the\s+)?([^.?!]+)$/i,
+    /^(?:let'?s\s+)?(?:book|reserve)(?:ing)?(?:\s+(?:(?:a\s+)?dive(?:\s+trip)?|a\s+trip|a\s+reservation))?\s+with\s+([^.?!]+)$/i,
     /^i\s+want\s+to\s+book\s+(?:at|with)\s+(?:the\s+)?([^.?!]+)$/i,
     /^i(?:'d|\s+would)\s+like\s+to\s+book\s+(?:at|with)\s+(?:the\s+)?([^.?!]+)$/i,
-    /^(?:book|reserve)(?:\s+(?:a\s+)?dive)?\s+with\s+([^.?!]+)$/i
+    /^(?:let'?s\s+)?book(?:ing)?\s+(?!with\b|at\b)([^.?!]+)$/i
   ]
   for (const re of patterns) {
     const m = trimmed.match(re)
