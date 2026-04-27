@@ -4,6 +4,7 @@
 
 - When asked for manual ship-test scenarios, make each scenario match the requested outcome boundary. If the user asks for end-to-end bookings, every item should start from a realistic search/use case and continue through a completed booking review/final-send gate, not isolate subfeatures as standalone tests.
 - Before recommending manual test scenarios that depend on marketplace data, verify the actual Supabase-backed data shape first. Do not suggest scenarios that depend on sparse/unpopulated fields like ratings or languages when current data is stronger for courses, dive sites, rental gear, gases, trip type, location, and named shops.
+- When the user asks for specific manual tests, avoid template language, alternatives, and "if needed" branches. Provide exact prompts, exact target records, exact booking inputs, and exact expected checkpoints for each scenario.
 
 ## 2026-04-01
 
