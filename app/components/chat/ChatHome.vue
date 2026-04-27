@@ -1351,11 +1351,16 @@ const sendMessage = async (messageText, displayText) => {
     }
     const startLoadingProgressHint = () => {
       clearLoadingProgress()
-      const steps = [
-        'Understanding your request',
-        'Searching location data (city, state, country)',
-        'Finding dive shops…'
-      ]
+      const steps = inBookingFlow
+        ? [
+            'Understanding your request',
+            'Updating your booking…'
+          ]
+        : [
+            'Understanding your request',
+            'Searching location data (city, state, country)',
+            'Finding dive shops…'
+          ]
       let i = 0
       loadingProgressLines.value = [steps[0]]
       loadingProgressTimer = setInterval(() => {
@@ -1545,6 +1550,8 @@ const sendMessage = async (messageText, displayText) => {
       const structuredConfirmSend = trimmedMessage === BOOKING_PRESEND_CONFIRM_SEND
       const userSaidConfirmSend = structuredConfirmSend ||
         /^(yes|yeah|yep|ok|okay|sure|send|submit|confirm|go ahead|do it|please send|ready)$/i.test(trimmedMessage) ||
+        /^(i\s*'?m\s+)?ready\s+to\s+send\b/i.test(trimmedMessage) ||
+        /\bsend\s+(the\s+)?(booking\s+)?form\b/i.test(trimmedMessage) ||
         /^(send|submit)\s+(booking\s+)?(request)?$/i.test(trimmedMessage) ||
         /^(just\s+)?send(?:\s+it)?$/i.test(trimmedMessage) ||
         /^(send anyway|still send|send it anyway|yes send anyway|confirm send anyway)$/i.test(trimmedMessage)

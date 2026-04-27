@@ -13,11 +13,13 @@ import { getShopById } from '../utils/resolveShop'
 import { getDiveSitesForShop } from '../utils/getDiveSitesForShop'
 import { getCoursesForShop } from '../utils/getCoursesForShop'
 import { getRentalEquipmentForShop } from '../utils/getRentalEquipmentForShop'
-import { clampBookingPayloadToNextStep, getNextBookingStep, tryFastPath, tryFastPathUnitOnly, profileDiverSelectableChipsFromPrefill, type BookingPayloadLocal, type NextStepResult } from '../utils/bookingFastPath'
-import { canImmediateSendBookingReply } from '../utils/bookingSendIntentGate'
+import { clampBookingPayloadToNextStep, getNextBookingStep, tryFastPath, tryFastPathUnitOnly, profileDiverSelectableChipsFromPrefill, type BookingPayloadLocal, type NextStepResult, type PendingReviewEdit } from '../utils/bookingFastPath'
+import { tryHandleBookingReviewEditTurn } from '../utils/bookingReviewEdit'
+import { canImmediateSendBookingReply, isConfirmSendMessage } from '../utils/bookingSendIntentGate'
 import { inclusiveTripDays, tryParseTripDatesFromMessage } from '../utils/parseTripDates'
 import { applyParsedTripDatesToBookingPayload } from '../utils/bookingApplyParsedTripDates'
 import { mergeCollectedIntoBookingPayload } from '../utils/mergeBookingCollected'
+import { formatBookingReviewSummary } from '../../shared/formatBookingReviewSummary'
 import { extractBookingTargetFallback, extractReferredEntityPhrase, extractShopSelectionPhrase } from '../utils/extractReferredEntityPhrase'
 import { parseEntityClarifyMessage } from '../utils/entityClarify'
 import {
@@ -244,13 +246,8 @@ export interface BookingPayload {
   preSendReviewAck?: boolean
   /** Guest skipped before-send signup (not sent to /api/booking). */
   preSendSignupSkipped?: boolean
-}
-
-function isConfirmSendMessage (msg: string): boolean {
-  const t = msg.trim()
-  return /^(yes|yeah|yep|ok|okay|sure|send|submit|confirm|go ahead|do it|please send|ready)$/i.test(t) ||
-    /^(send|submit)\s+(booking\s+)?(request)?$/i.test(t) ||
-    /^(just\s+)?send(?:\s+it)?$/i.test(t)
+  /** Chat-only: follow-up for vague review edits (not sent to /api/booking). */
+  pendingReviewEdit?: PendingReviewEdit
 }
 
 function isSendAnywayMessage (msg: string): boolean {
@@ -1088,10 +1085,26 @@ export default defineEventHandler(async (event) => {
           const msgTrim = message.trim()
           const payloadForSendCheck = normalizeBookingPayloadForSendCheck(bookingPayload)
           const nextStepBeforeInput = getNextBookingStep(payloadForSendCheck as BookingPayloadLocal)
+          const lastAssistantForSendGate = history?.filter(m => m.role === 'assistant').pop()?.content ?? ''
+          // Structured chip only: do not route this through NL `isConfirmSendMessage` (defense in depth).
+          if (
+            parseBookingPreSendToken(msgTrim) === 'confirm_send' &&
+            nextStepBeforeInput?.step === 'ready' &&
+            !/add another diver/i.test(lastAssistantForSendGate)
+          ) {
+            const pChip = { ...payloadForSendCheck, shopId: resolvedShop.id }
+            const gatedChip = resolvePreSendWhenPayloadReady({
+              payload: pChip as BookingPayloadLocal,
+              shopId: resolvedShop.id,
+              shopName: resolvedShop.business_name,
+              hasAuthUser: !!authUser,
+              timing: bookingSignupTiming
+            })
+            if (gatedChip) return gatedChip
+          }
           const sendIntent = isConfirmSendMessage(msgTrim)
           const sendAnywayIntent = isSendAnywayMessage(msgTrim)
           const finishTasksIntent = isFinishRemainingTasksMessage(msgTrim)
-          const lastAssistantForSendGate = history?.filter(m => m.role === 'assistant').pop()?.content ?? ''
           const canImmediateSendBooking = canImmediateSendBookingReply({
             sendIntent,
             sendAnywayIntent,
@@ -1117,6 +1130,16 @@ export default defineEventHandler(async (event) => {
             if ((sendIntent || sendAnywayIntent) && canImmediateSendBooking) {
               const p = { ...payloadForSendCheck, shopId: resolvedShop.id }
               if (sendAnywayIntent) {
+                if (nextStepBeforeInput?.step === 'ready') {
+                  const gatedAnyway = resolvePreSendWhenPayloadReady({
+                    payload: p as BookingPayloadLocal,
+                    shopId: resolvedShop.id,
+                    shopName: resolvedShop.business_name,
+                    hasAuthUser: !!authUser,
+                    timing: bookingSignupTiming
+                  })
+                  if (gatedAnyway) return gatedAnyway
+                }
                 return withAgentMeta({
                   success: true,
                   intent: 'booking' as const,
@@ -1300,6 +1323,35 @@ export default defineEventHandler(async (event) => {
           }
           // User already saw the booking-ready prompt and is confirming — never re-ask for gear; return ready so client can submit
           const lastAssistantContent = history?.filter(m => m.role === 'assistant').pop()?.content ?? ''
+          const reviewTurn = tryHandleBookingReviewEditTurn({
+            message: msgTrim,
+            bookingPayload: bookingPayload as BookingPayloadLocal,
+            shopId: resolvedShop.id,
+            shopName: resolvedShop.business_name,
+            hasAuthUser: !!authUser,
+            bookingSignupTiming,
+            shopCourseCount: courses.length,
+            shopDiveSiteCount: diveSites.length,
+            lastAssistantContent,
+            rentalEquipment,
+            courses,
+            diveSites
+          })
+          if (reviewTurn) {
+            const rt = reviewTurn as { bookingPayload?: BookingPayload; payload?: BookingPayload }
+            const bp = rt.bookingPayload ?? rt.payload
+            return withAgentMeta({
+              ...(reviewTurn as Record<string, unknown>),
+              ...(bp
+                ? {
+                    rentalEquipmentOptions: addGearOptions(bp),
+                    hideNoneForGear: hideNoneForGear(bp),
+                    courseOptions: addCourseOptions(bp),
+                    diveSiteOptions: addDiveSiteOptions(bp)
+                  }
+                : {})
+            } as Record<string, unknown>)
+          }
           const lastWasReadyToSend = /(?:ready to send your booking request|can i send the booking request)/i.test(lastAssistantContent)
           const confirmSend = isConfirmSendMessage(msgTrim) ||
             (lastWasReadyToSend && /^(yes|send|submit|confirm|ok)$/i.test(msgTrim))
@@ -1463,22 +1515,33 @@ export default defineEventHandler(async (event) => {
               })
             }
             if (reviewBooking) {
-              const parts: string[] = []
-              if (p.name) parts.push(`Name: ${p.name}`)
-              if (p.email) parts.push(`Email: ${p.email}`)
-              if (p.startDate && p.endDate) parts.push(`Dates: ${p.startDate} to ${p.endDate}`)
-              if (p.numberOfDivers) parts.push(`${p.numberOfDivers} diver(s)`)
-              const diverLines = (p.divers || []).slice(0, p.numberOfDivers ?? 0).map((d, i) => {
-                const gearList = (d.gear?.length ? d.gear.map(g => g.gearType).join(', ') : 'none') || 'none'
-                return `Diver ${i + 1}: ${d.name || '—'} — gear: ${gearList}`
-              })
-              if (diverLines.length) parts.push(diverLines.join('; '))
-              const summary = parts.length ? parts.join('. ') : "You haven't filled anything yet."
+              const nextRev = getNextBookingStep(p as BookingPayloadLocal)
+              if (nextRev?.step === 'ready') {
+                const pReady = { ...p, shopId: resolvedShop.id }
+                const gatedReview = resolvePreSendWhenPayloadReady({
+                  payload: pReady as BookingPayloadLocal,
+                  shopId: resolvedShop.id,
+                  shopName: resolvedShop.business_name,
+                  hasAuthUser: !!authUser,
+                  timing: bookingSignupTiming
+                })
+                if (gatedReview) {
+                  return withAgentMeta({
+                    ...(gatedReview as Record<string, unknown>),
+                    rentalEquipmentOptions: undefined,
+                    hideNoneForGear: false,
+                    courseOptions: undefined,
+                    diveSiteOptions: undefined
+                  } as Record<string, unknown>)
+                }
+              }
+              const { messagePreamble, message } = formatBookingReviewSummary(resolvedShop.business_name, p)
               return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
-                message: `${summary} You can say "change my email", "update diver 1's gear", or "edit dates" to change something.`,
+                message: `${message}\n\nYou can say "change my email", "update diver 1's gear", or "edit dates" to change something, or keep answering the questions above.`,
+                messagePreamble,
                 shopId: resolvedShop.id,
                 shopName: resolvedShop.business_name,
                 bookingPayload: p,

@@ -28,6 +28,19 @@ describe('extractReferredEntityPhrase', () => {
   it('drops leading the before tail strip', () => {
     expect(extractReferredEntityPhrase('book at the Dive Porter instead')).toBe('Dive Porter')
   })
+
+  it('extracts shop after book a trip / dive trip with (Dive Porter regression)', () => {
+    expect(extractReferredEntityPhrase("Let's book a trip with Dive Porter")).toBe('Dive Porter')
+    expect(extractReferredEntityPhrase('Lets book a trip with Dive Porter')).toBe('Dive Porter')
+    expect(extractReferredEntityPhrase('book a dive trip with Dive Porter')).toBe('Dive Porter')
+    expect(extractReferredEntityPhrase('book a reservation with Dive Porter')).toBe('Dive Porter')
+    expect(extractReferredEntityPhrase('reserve a trip with Dive Porter')).toBe('Dive Porter')
+  })
+
+  it('still extracts plain book with / book a dive with', () => {
+    expect(extractReferredEntityPhrase('book with Dive Porter')).toBe('Dive Porter')
+    expect(extractReferredEntityPhrase('book a dive with Dive Porter')).toBe('Dive Porter')
+  })
 })
 
 describe('stripTrailingReferentNoise', () => {
@@ -50,6 +63,11 @@ describe('cleanReferentPhraseForProbe', () => {
 describe('extractBookingTargetFallback', () => {
   it('applies same tail cleanup', () => {
     expect(extractBookingTargetFallback("Let's book at dive porter instead")).toBe('dive porter')
+  })
+
+  it('prefers trip-with operator over generic book capture', () => {
+    expect(extractBookingTargetFallback("Let's book a trip with Dive Porter")).toBe('Dive Porter')
+    expect(extractBookingTargetFallback('book a dive trip with Dive Porter')).toBe('Dive Porter')
   })
 })
 

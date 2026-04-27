@@ -31,7 +31,24 @@ export interface BookingPayloadLocal {
   preSendReviewAck?: boolean
   /** Guest skipped before-send signup prompt (not sent to /api/booking). */
   preSendSignupSkipped?: boolean
+  /**
+   * Chat-only: after a vague review edit ("can we change the name?") the next user message
+   * is treated as the replacement value. Cleared when applied or when pre-send flags reset.
+   */
+  pendingReviewEdit?: PendingReviewEdit
 }
+
+export type PendingReviewEdit =
+  | {
+      kind: 'awaiting_value'
+      target: 'contact_name' | 'contact_email' | 'trip_dates' | 'number_of_divers'
+    }
+  | {
+      kind: 'awaiting_value'
+      target: 'diver_field'
+      diverIndex: number
+      field: 'name' | 'certificationNumber' | 'numberOfDives' | 'height' | 'weight' | 'gear'
+    }
 
 export type BookingStep =
   | 'name'

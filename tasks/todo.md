@@ -21,3 +21,18 @@ Streaming path now matches JSON for NLU + geo hits: city diving queries return s
 ## Review
 
 Explicit phrasing like “dive resorts in Bali” now applies `Dive Resort` before the location-first DB query and as a fallback after FILTERS parse. Plural `resorts` / `liveaboards` match the trip-type gate. Multi-type rows still come from `diveshops.type` + existing `CardSearchResult` display.
+
+---
+
+# Booking review gate — done
+
+- [x] Confirm ready paths use `resolvePreSendWhenPayloadReady` (fix `send anyway` when payload already `ready`)
+- [x] Richer pre-send summary in `shared/formatBookingReviewSummary.ts`
+- [x] `server/utils/bookingReviewEdit.ts` + `shared/bookingReviewEditTokens.ts` for NL + chip follow-ups; `pendingReviewEdit` on `BookingPayloadLocal`
+- [x] Wire `tryHandleBookingReviewEditTurn` in `ai-search.post.ts`; `review my booking` when ready uses pre-send gate
+- [x] Client + server send phrases: “I’m ready to send”, “send form”; `ChatHome.vue` + `isConfirmSendMessage`
+- [x] Vitest: `tests/booking/bookingReviewEdit.test.ts`, formatter + `bookingPreSend` clear flags
+
+## Review
+
+Mandatory review remains `resolvePreSendWhenPayloadReady`. Edits during/after review clear presend ack via `clearBookingPreSendFlags`; re-open review after one-shot field updates when the step machine returns to `ready`.
