@@ -1,5 +1,9 @@
 # Lessons Learned
 
+## 2026-04-27
+
+- When asked for manual ship-test scenarios, make each scenario match the requested outcome boundary. If the user asks for end-to-end bookings, every item should start from a realistic search/use case and continue through a completed booking review/final-send gate, not isolate subfeatures as standalone tests.
+
 ## 2026-04-01
 
 - When chat actions (like "just send") depend on booking completeness, use the live booking form payload when the drawer is open, not only the last assistant message payload.
