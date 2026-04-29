@@ -8,3 +8,4 @@
 - For user-visible "incomplete vs sent" buckets, enforce state transition on send (e.g. clear matching draft) instead of relying only on passive readiness checks.
 - When "New Chat" can be triggered from non-chat routes, proactively clear one-time resume/session handoff keys (like `glaucus-pending-draft-resume`) before navigation to avoid unintended auto-resume on mount.
 - For cross-route "New Chat", use a durable one-time flag (sessionStorage) and consume it in index `onMounted`; watcher-only triggers can be missed during navigation timing.
+- When planning user-facing guided flows, avoid vague internal labels like "search mode"; name the exact user choice, e.g. "Search dive businesses by location, certification course, or business name."

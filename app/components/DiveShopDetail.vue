@@ -26,7 +26,7 @@
       </header>
       <!-- Tabs -->
       <div class="flex flex-row gap-1 items-center p-1 lg:p-2 overflow-x-auto font-medium">
-        <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id" :class="[
+        <button v-for="tab in visibleTabs" :key="tab.id" @click="activeTab = tab.id" :class="[
           'flex flex-row gap-2 rounded-sm p-2 px-3 w-fit text-xs cq:lg:text-base cursor-pointer transition-color whitespace-nowrap',
           activeTab === tab.id
             ? 'bg-zinc-200/50 dark:bg-zinc-800 text-zinc-900 dark:text-white'
@@ -143,7 +143,7 @@
               </div>
             </div>
             <!-- Nearby Dive Shops Tab -->
-            <div v-if="activeTab === 'nearby'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
+            <div v-if="showNearbyTab && activeTab === 'nearby'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
               <section class="flex flex-col gap-4">
                 <p v-if="nearbyShops.length === 0" class="text-zinc-500 dark:text-zinc-400 italic p-4">
                   No nearby dive shops in this region.
@@ -320,6 +320,8 @@ const tabs = [
   { id: 'information', label: 'More Information' },
   { id: 'nearby', label: 'Nearby Dive Shops' }
 ]
+const showNearbyTab = false
+const visibleTabs = computed(() => tabs.filter(tab => showNearbyTab || tab.id !== 'nearby'))
 
 // Fetch dive shop (by public slug or legacy UUID)
 const { shopData, nearbyShops, pending, error } = useShopDetail(props.shopLookup)
