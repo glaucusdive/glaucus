@@ -12,7 +12,7 @@ export function tripTypeFirstQuestionResponse (opts?: { searchFlowReset?: boolea
     hasMoreResults: false,
     filters: {} as SearchFilters,
     selectableOptions: [
-      { label: 'Dive Shop', value: 'I prefer dive shops' },
+      { label: 'Dive Shop / Day Trip', value: 'I prefer dive shops' },
       { label: 'Liveaboard', value: 'I prefer a liveaboard' },
       { label: 'Resort', value: 'I prefer a resort' }
     ],
@@ -520,7 +520,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
       } else {
         followUpMessage = followUpAiMessage || 'Would you prefer dive shops, a liveaboard, or a resort?'
         selectableOptions = followUpAiMessage ? [] : [
-          { label: 'Dive Shop', value: 'I prefer dive shops' },
+          { label: 'Dive Shop / Day Trip', value: 'I prefer dive shops' },
           { label: 'Liveaboard', value: 'I prefer a liveaboard' },
           { label: 'Resort', value: 'I prefer a resort' }
         ]
