@@ -513,7 +513,7 @@ const coursesList = computed(() => {
     .filter(Boolean)
     .map(c => ({
       title: c.certification_name,
-      items: [c.depth_limit, c.description].filter(Boolean).slice(0, 3)
+      items: [c.description].filter(Boolean).slice(0, 3)
     }))
 })
 
