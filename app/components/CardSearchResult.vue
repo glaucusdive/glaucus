@@ -21,7 +21,7 @@
       </div>
     </div>
 
-    <!-- Diveshop type(s): Dive Shop, Liveaboard, Dive Resort -->
+    <!-- Diveshop type(s): Dive Shop / Day Trip, Liveaboard, Dive Resort -->
     <p v-if="shopTypeDisplay" class="text-sm text-zinc-500 dark:text-zinc-400">
       {{ shopTypeDisplay }}
     </p>
@@ -100,11 +100,16 @@ const props = defineProps({
 
 const emit = defineEmits(['shop-selected', 'view-details'])
 
-// Format shop.type (e.g. "Dive Shop, Liveaboard" or "Dive Resort") as "Dive Shop | Liveaboard"
+// Format shop.type (e.g. "Dive Shop, Liveaboard" or "Dive Resort") with display labels
+function formatShopTypePart (part) {
+  if (part === 'Dive Shop') return 'Dive Shop / Day Trip'
+  return part
+}
+
 const shopTypeDisplay = computed(() => {
   const raw = props.shop?.type
   if (!raw || typeof raw !== 'string') return ''
-  const parts = raw.split(',').map(s => s.trim()).filter(Boolean)
+  const parts = raw.split(',').map(s => s.trim()).filter(Boolean).map(formatShopTypePart)
   return parts.length ? parts.join(' | ') : ''
 })
 </script>
