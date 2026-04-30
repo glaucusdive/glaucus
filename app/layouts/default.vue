@@ -6,7 +6,7 @@
     <div class="h-full w-full lg:flex lg:flex-row">
       <!-- Backdrop for mobile menu -->
       <Transition @enter="onBackdropEnter" @leave="onBackdropLeave" :css="false">
-        <div v-if="isMobileMenuOpen" @click="handleCloseMobileMenu" class="fixed inset-0 bg-black/50 z-40 lg:hidden">
+        <div v-if="isMobileMenuOpen" @click="handleCloseMobileMenu" class="fixed inset-0 bg-black z-40 lg:hidden">
         </div>
       </Transition>
 
