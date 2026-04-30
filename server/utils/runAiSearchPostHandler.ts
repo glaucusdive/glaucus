@@ -16,7 +16,8 @@ import { getRentalEquipmentForShop } from '../utils/getRentalEquipmentForShop'
 import { clampBookingPayloadToNextStep, getNextBookingStep, tryFastPath, tryFastPathUnitOnly, profileDiverSelectableChipsFromPrefill, type BookingPayloadLocal, type NextStepResult, type PendingReviewEdit } from '../utils/bookingFastPath'
 import { tryHandleBookingReviewEditTurn } from '../utils/bookingReviewEdit'
 import { canImmediateSendBookingReply, isConfirmSendMessage } from '../utils/bookingSendIntentGate'
-import { inclusiveTripDays, tryParseTripDatesFromMessage } from '../utils/parseTripDates'
+import { inclusiveTripDays } from '../utils/parseTripDates'
+import { resolveTripDatesUserMessage } from '../utils/tripDateUserInput'
 import { applyParsedTripDatesToBookingPayload } from '../utils/bookingApplyParsedTripDates'
 import { mergeCollectedIntoBookingPayload } from '../utils/mergeBookingCollected'
 import { formatBookingReviewSummary } from '../../shared/formatBookingReviewSummary'
@@ -1255,8 +1256,42 @@ export async function runAiSearchPostHandler (event: H3Event) {
                   diveSiteOptions: undefined
                 })
               }
-              const altParsed = tryParseTripDatesFromMessage(msgTrim)
-              if (!altParsed) {
+              const pendingDateRes = resolveTripDatesUserMessage(msgTrim)
+              if (pendingDateRes.status === 'clarify') {
+                return withAgentMeta({
+                  success: true,
+                  intent: 'booking' as const,
+                  bookingReady: false,
+                  message: pendingDateRes.message,
+                  ...(pendingDateRes.selectableOptions?.length
+                    ? { selectableOptions: pendingDateRes.selectableOptions }
+                    : {}),
+                  shopId: resolvedShop.id,
+                  shopName: resolvedShop.business_name,
+                  bookingPayload: bp,
+                  rentalEquipmentOptions: undefined,
+                  hideNoneForGear: hideNoneForGear(bp),
+                  courseOptions: undefined,
+                  diveSiteOptions: undefined
+                })
+              }
+              if (pendingDateRes.status === 'past') {
+                return withAgentMeta({
+                  success: true,
+                  intent: 'booking' as const,
+                  bookingReady: false,
+                  message: pendingDateRes.message,
+                  shopId: resolvedShop.id,
+                  shopName: resolvedShop.business_name,
+                  bookingPayload: bp,
+                  selectableOptions: undefined,
+                  rentalEquipmentOptions: undefined,
+                  hideNoneForGear: hideNoneForGear(bp),
+                  courseOptions: undefined,
+                  diveSiteOptions: undefined
+                })
+              }
+              if (pendingDateRes.status === 'noop') {
                 const days = inclusiveTripDays(pend.startDate, pend.endDate)
                 return withAgentMeta({
                   success: true,
@@ -1274,10 +1309,92 @@ export async function runAiSearchPostHandler (event: H3Event) {
                 })
               }
               bp = { ...bp, pendingLongTripConfirmation: undefined }
+              const parsedDatesFromPending = pendingDateRes.range
+              const daysFromPending = inclusiveTripDays(parsedDatesFromPending.startDate, parsedDatesFromPending.endDate)
+              if (daysFromPending > 21) {
+                const pendingPayload: BookingPayload = {
+                  ...bp,
+                  pendingLongTripConfirmation: {
+                    startDate: parsedDatesFromPending.startDate,
+                    endDate: parsedDatesFromPending.endDate
+                  }
+                }
+                return withAgentMeta({
+                  success: true,
+                  intent: 'booking' as const,
+                  bookingReady: false,
+                  message: `That's ${daysFromPending} days (${parsedDatesFromPending.startDate} to ${parsedDatesFromPending.endDate}). Most dive trips are a few days to a week or two — is that correct? Reply yes to confirm or no / new dates to adjust.`,
+                  shopId: resolvedShop.id,
+                  shopName: resolvedShop.business_name,
+                  bookingPayload: pendingPayload,
+                  selectableOptions: undefined,
+                  rentalEquipmentOptions: undefined,
+                  hideNoneForGear: hideNoneForGear(pendingPayload),
+                  courseOptions: undefined,
+                  diveSiteOptions: undefined
+                })
+              }
+              const pPending = applyParsedTripDatesToBookingPayload(bp as BookingPayloadLocal, parsedDatesFromPending, applyTripDatesCtx) as BookingPayload
+              const copyPending = formatReplyAfterAppliedTripDates(
+                pPending,
+                parsedDatesFromPending,
+                courses.length,
+                diveSites.length,
+                coursesDateAckParts,
+                DIVE_SITES_LINE
+              )
+              return withAgentMeta({
+                success: true,
+                intent: 'booking' as const,
+                bookingReady: false,
+                message: copyPending.message,
+                ...(copyPending.messagePreamble ? { messagePreamble: copyPending.messagePreamble } : {}),
+                shopId: resolvedShop.id,
+                shopName: resolvedShop.business_name,
+                bookingPayload: pPending,
+                selectableOptions: undefined,
+                rentalEquipmentOptions: addGearOptions(pPending),
+                hideNoneForGear: hideNoneForGear(pPending),
+                courseOptions: addCourseOptions(pPending),
+                diveSiteOptions: addDiveSiteOptions(pPending)
+              })
             }
 
-            const parsedDates = tryParseTripDatesFromMessage(msgTrim)
-            if (parsedDates) {
+            const dateRes = resolveTripDatesUserMessage(msgTrim)
+            if (dateRes.status === 'clarify') {
+              return withAgentMeta({
+                success: true,
+                intent: 'booking' as const,
+                bookingReady: false,
+                message: dateRes.message,
+                ...(dateRes.selectableOptions?.length ? { selectableOptions: dateRes.selectableOptions } : {}),
+                shopId: resolvedShop.id,
+                shopName: resolvedShop.business_name,
+                bookingPayload: bp,
+                rentalEquipmentOptions: undefined,
+                hideNoneForGear: hideNoneForGear(bp),
+                courseOptions: undefined,
+                diveSiteOptions: undefined
+              })
+            }
+            if (dateRes.status === 'past') {
+              return withAgentMeta({
+                success: true,
+                intent: 'booking' as const,
+                bookingReady: false,
+                message: dateRes.message,
+                shopId: resolvedShop.id,
+                shopName: resolvedShop.business_name,
+                bookingPayload: bp,
+                selectableOptions: undefined,
+                rentalEquipmentOptions: undefined,
+                hideNoneForGear: hideNoneForGear(bp),
+                courseOptions: undefined,
+                diveSiteOptions: undefined
+              })
+            }
+            if (dateRes.status === 'ok') {
+              const parsedDates = dateRes.range
               const days = inclusiveTripDays(parsedDates.startDate, parsedDates.endDate)
               if (days > 21) {
                 const pendingPayload: BookingPayload = {
@@ -2020,8 +2137,9 @@ export async function runAiSearchPostHandler (event: H3Event) {
               ) as BookingPayload
               collectedPayload.shopId = collectedPayload.shopId || resolvedShop.id
               if (collectedPayload && getNextBookingStep(collectedPayload as BookingPayloadLocal)?.step === 'dates') {
-                const reparsed = tryParseTripDatesFromMessage(message.trim())
-                if (reparsed) {
+                const dateResCollected = resolveTripDatesUserMessage(message.trim())
+                if (dateResCollected.status === 'ok') {
+                  const reparsed = dateResCollected.range
                   const days = inclusiveTripDays(reparsed.startDate, reparsed.endDate)
                   const base = { ...collectedPayload } as BookingPayload
                   delete base.pendingLongTripConfirmation
@@ -2044,6 +2162,14 @@ export async function runAiSearchPostHandler (event: H3Event) {
                         courses
                       }
                     ) as BookingPayload
+                  }
+                  collectedPayload.shopId = collectedPayload.shopId || resolvedShop.id
+                } else if (dateResCollected.status === 'clarify' || dateResCollected.status === 'past') {
+                  collectedPayload = {
+                    ...collectedPayload,
+                    startDate: undefined,
+                    endDate: undefined,
+                    pendingLongTripConfirmation: undefined
                   }
                   collectedPayload.shopId = collectedPayload.shopId || resolvedShop.id
                 }

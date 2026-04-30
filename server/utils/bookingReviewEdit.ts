@@ -22,7 +22,9 @@ import {
   type BookingSignupTiming,
   type PreSendGateResponse
 } from './bookingPreSend'
-import { inclusiveTripDays, tryParseTripDatesFromMessage } from './parseTripDates'
+import type { ParsedTripRange } from './parseTripDates'
+import { inclusiveTripDays } from './parseTripDates'
+import { resolveTripDatesUserMessage } from './tripDateUserInput'
 
 export type BookingReviewEditTurnInput = {
   message: string
@@ -143,13 +145,12 @@ function reopenPreSendIfReady (
   })
 }
 
-function applyTripDatesFromUserMessage (
+function applyParsedTripRangeToPayload (
   payload: BookingPayloadLocal,
-  msgTrim: string,
-  input: BookingReviewEditTurnInput
+  parsed: ParsedTripRange,
+  input: BookingReviewEditTurnInput,
+  userMessageForInference: string
 ): BookingPayloadLocal {
-  const parsed = tryParseTripDatesFromMessage(msgTrim)
-  if (!parsed) return payload
   const days = inclusiveTripDays(parsed.startDate, parsed.endDate)
   const base = { ...payload, pendingLongTripConfirmation: undefined } as BookingPayloadLocal
   if (days > 21) {
@@ -163,10 +164,20 @@ function applyTripDatesFromUserMessage (
   return applyParsedTripDatesToBookingPayload(base, parsed, {
     shopCourseCount: input.shopCourseCount,
     shopDiveSiteCount: input.shopDiveSiteCount,
-    userMessage: msgTrim,
+    userMessage: userMessageForInference,
     history: [],
     courses: input.courses
   }) as BookingPayloadLocal
+}
+
+function applyTripDatesFromUserMessage (
+  payload: BookingPayloadLocal,
+  msgTrim: string,
+  input: BookingReviewEditTurnInput
+): BookingPayloadLocal {
+  const r = resolveTripDatesUserMessage(msgTrim)
+  if (r.status !== 'ok') return payload
+  return applyParsedTripRangeToPayload(payload, r.range, input, msgTrim)
 }
 
 function parseDiverIndexFromMessage (msg: string): number | null {
@@ -305,7 +316,43 @@ export function tryHandleBookingReviewEditTurn (
     } else if (pending.target === 'contact_email') {
       p.email = raw
     } else if (pending.target === 'trip_dates') {
-      p = applyTripDatesFromUserMessage(p, raw, input)
+      const dr = resolveTripDatesUserMessage(raw)
+      if (dr.status === 'clarify') {
+        return {
+          success: true,
+          intent: 'booking' as const,
+          bookingReady: false,
+          message: dr.message,
+          ...(dr.selectableOptions?.length ? { selectableOptions: dr.selectableOptions } : {}),
+          shopId: input.shopId,
+          shopName: input.shopName,
+          bookingPayload: { ...p0, pendingReviewEdit: pending }
+        }
+      }
+      if (dr.status === 'past') {
+        return {
+          success: true,
+          intent: 'booking' as const,
+          bookingReady: false,
+          message: dr.message,
+          shopId: input.shopId,
+          shopName: input.shopName,
+          bookingPayload: { ...p0, pendingReviewEdit: pending }
+        }
+      }
+      if (dr.status === 'noop') {
+        return {
+          success: true,
+          intent: 'booking' as const,
+          bookingReady: false,
+          message:
+            'I didn’t catch valid trip dates. Use YYYY-MM-DD (e.g. 2026-05-01 to 2026-05-07) or say the month in words.',
+          shopId: input.shopId,
+          shopName: input.shopName,
+          bookingPayload: { ...p0, pendingReviewEdit: pending }
+        }
+      }
+      p = applyParsedTripRangeToPayload(p, dr.range, input, raw)
     } else if (pending.target === 'number_of_divers') {
       const nMatch = raw.match(/\b(\d+)\b/)
       const n = nMatch ? parseInt(nMatch[1], 10) : NaN
@@ -640,8 +687,48 @@ export function tryHandleBookingReviewEditTurn (
   if (/(?:trip\s+)?dates?|schedule/i.test(msgTrim) && wantsEditVerb(msgTrim)) {
     const toVal = extractToClause(msgTrim)
     const p = clearBookingPreSendFlags(p0) as BookingPayloadLocal
-    if (toVal && tryParseTripDatesFromMessage(toVal)) {
-      const updated = applyTripDatesFromUserMessage({ ...p, startDate: undefined, endDate: undefined }, toVal, input)
+    if (toVal) {
+      const dr = resolveTripDatesUserMessage(toVal.trim())
+      if (dr.status === 'clarify') {
+        return {
+          success: true,
+          intent: 'booking' as const,
+          bookingReady: false,
+          message: dr.message,
+          ...(dr.selectableOptions?.length ? { selectableOptions: dr.selectableOptions } : {}),
+          shopId: input.shopId,
+          shopName: input.shopName,
+          bookingPayload: p,
+          rentalEquipmentOptions: undefined,
+          hideNoneForGear: false,
+          courseOptions: undefined,
+          diveSiteOptions: undefined
+        }
+      }
+      if (dr.status === 'past') {
+        return {
+          success: true,
+          intent: 'booking' as const,
+          bookingReady: false,
+          message: dr.message,
+          shopId: input.shopId,
+          shopName: input.shopName,
+          bookingPayload: p,
+          rentalEquipmentOptions: undefined,
+          hideNoneForGear: false,
+          courseOptions: undefined,
+          diveSiteOptions: undefined
+        }
+      }
+      if (dr.status === 'noop') {
+        return null
+      }
+      const updated = applyParsedTripRangeToPayload(
+        { ...p, startDate: undefined, endDate: undefined },
+        dr.range,
+        input,
+        toVal.trim()
+      )
       delete updated.pendingReviewEdit
       const clamped = clampBookingPayloadToNextStep(updated, {
         shopCourseCount: input.shopCourseCount,
@@ -682,8 +769,6 @@ export function tryHandleBookingReviewEditTurn (
         shopName: input.shopName,
         bookingPayload: p
       }
-    } else {
-      return null
     }
   }
 
