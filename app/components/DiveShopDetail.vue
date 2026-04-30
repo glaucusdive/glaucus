@@ -118,28 +118,105 @@
               <div class="flex flex-row items-center justify-between gap-2 flex-wrap">
                 <h3 class="text-sm font-semibold text-zinc-900 dark:text-white">All reviews</h3>
                 <button
+                  v-if="isSignedIn && myReview && !reviewsInlineEdit"
                   type="button"
                   class="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer shrink-0"
-                  @click="openReviewDrawer"
+                  @click="reviewsInlineEdit = true"
                 >
-                  {{ myReview ? 'Edit your review' : 'Write a review' }}
+                  Edit your review
+                </button>
+                <button
+                  v-else-if="isSignedIn && myReview && reviewsInlineEdit"
+                  type="button"
+                  class="text-sm text-zinc-600 dark:text-zinc-400 hover:underline cursor-pointer shrink-0"
+                  @click="reviewsInlineEdit = false"
+                >
+                  Cancel
                 </button>
               </div>
               <div v-if="reviewsPending" class="text-sm text-zinc-500 dark:text-zinc-400 p-2">Loading reviews…</div>
-              <div v-else-if="reviews.length === 0" class="grid grid-cols-1 cq:grid-cols-2 gap-2 w-full">
-                <CardReviewEmpty @open="openReviewDrawer" />
-              </div>
-              <div v-else class="grid grid-cols-1 cq:grid-cols-2 gap-2 w-full">
-                <CardReview
-                  v-for="r in reviews"
+              <div v-else class="flex flex-wrap gap-2 w-full">
+                <!-- Lead: guest sign-in, compose (signed in, no review), my CardReview, or inline edit form -->
+                <div
+                  v-if="!isSignedIn"
+                  class="w-full max-w-full min-w-0 flex-[1_1_100%] sm:flex-[1_1_calc(50%-4px)] p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-3 border border-zinc-200/80 dark:border-zinc-600/80"
+                >
+                  <p class="text-sm text-zinc-600 dark:text-zinc-400">
+                    Sign in to leave a review for this dive shop.
+                  </p>
+                  <NuxtLink
+                    to="/auth"
+                    class="inline-flex justify-center rounded-md border border-zinc-900 dark:border-zinc-100 py-2 px-4 text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 w-full sm:w-auto"
+                  >
+                    Sign in
+                  </NuxtLink>
+                </div>
+                <div
+                  v-else-if="isSignedIn && !shopRowId && !myReview"
+                  class="w-full max-w-full min-w-0 flex-[1_1_100%] sm:flex-[1_1_calc(50%-4px)] p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md border border-zinc-200/80 dark:border-zinc-600/80"
+                >
+                  <p class="text-sm text-zinc-500 dark:text-zinc-400">Loading shop…</p>
+                </div>
+                <div
+                  v-else-if="isSignedIn && shopRowId && !myReview"
+                  class="w-full max-w-full min-w-0 flex-[1_1_100%] sm:flex-[1_1_calc(50%-4px)] p-2 bg-zinc-100 dark:bg-zinc-800/50 rounded-md border border-zinc-200/80 dark:border-zinc-600/80"
+                >
+                  <ShopReviewForm
+                    :key="'compose-' + shopRowId"
+                    embedded
+                    :shop-id="shopRowId"
+                    :shop-name="shopReviewDisplayName"
+                    :initial-rating="5"
+                    initial-body=""
+                    :is-editing="false"
+                    :on-submitted="handleInlineReviewSubmitted"
+                    :on-deleted="handleInlineReviewDeleted"
+                  />
+                </div>
+                <div
+                  v-else-if="isSignedIn && myReview && !reviewsInlineEdit"
+                  class="w-full max-w-full min-w-0 flex-[1_1_100%] sm:flex-[1_1_calc(50%-4px)]"
+                >
+                  <CardReview
+                    :reviewer-name="myReview.author_display_name || 'Diver'"
+                    :review-date="formatReviewDate(myReview.created_at)"
+                    :rating="myReview.rating"
+                    :review-text="myReview.body"
+                    :show-delete="canDeleteReview(myReview)"
+                    @delete="handleDeleteReview(myReview)"
+                  />
+                </div>
+                <div
+                  v-else-if="isSignedIn && myReview && reviewsInlineEdit && shopRowId"
+                  class="w-full max-w-full min-w-0 flex-[1_1_100%] sm:flex-[1_1_calc(50%-4px)] p-2 bg-zinc-100 dark:bg-zinc-800/50 rounded-md border border-zinc-200/80 dark:border-zinc-600/80"
+                >
+                  <ShopReviewForm
+                    :key="'edit-' + myReview.id"
+                    embedded
+                    :shop-id="shopRowId"
+                    :shop-name="shopReviewDisplayName"
+                    :initial-rating="myReview.rating"
+                    :initial-body="myReview.body"
+                    :is-editing="true"
+                    :review-id="myReview.id"
+                    :on-submitted="handleInlineReviewSubmitted"
+                    :on-deleted="handleInlineReviewDeleted"
+                  />
+                </div>
+                <div
+                  v-for="r in otherReviews"
                   :key="r.id"
-                  :reviewer-name="r.author_display_name || 'Diver'"
-                  :review-date="formatReviewDate(r.created_at)"
-                  :rating="r.rating"
-                  :review-text="r.body"
-                  :show-delete="canDeleteReview(r)"
-                  @delete="handleDeleteReview(r)"
-                />
+                  class="w-full max-w-full min-w-0 flex-[1_1_100%] sm:flex-[1_1_calc(50%-4px)]"
+                >
+                  <CardReview
+                    :reviewer-name="r.author_display_name || 'Diver'"
+                    :review-date="formatReviewDate(r.created_at)"
+                    :rating="r.rating"
+                    :review-text="r.body"
+                    :show-delete="canDeleteReview(r)"
+                    @delete="handleDeleteReview(r)"
+                  />
+                </div>
               </div>
             </div>
             <!-- Nearby Dive Shops Tab -->
@@ -234,7 +311,7 @@
 import { MapPin, Phone, Mail, Globe, ChevronLeft, X } from 'lucide-vue-next'
 import CardInfo from '~/components/CardInfo.vue'
 import CardReview from '~/components/CardReview.vue'
-import CardReviewEmpty from '~/components/CardReviewEmpty.vue'
+import ShopReviewForm from '~/components/ShopReviewForm.vue'
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useDrawer } from '~/composables/useDrawer'
 import { useAuth } from '~/composables/useAuth'
@@ -289,7 +366,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['close', 'before-review-drawer'])
+const emit = defineEmits(['close'])
 
 /** Ignore close clicks until the opening pointer gesture has fully finished (see index nextTick open). */
 const canEmitClose = ref(false)
@@ -364,7 +441,7 @@ watch(
 
 const shopRowId = computed(() => shopData.value?.id ?? '')
 
-const { user, isAppAdmin } = useAuth()
+const { user, isAppAdmin, isSignedIn } = useAuth()
 const { client } = useSupabase()
 const { reviews, pending: reviewsPending, refresh: refreshReviews } = useShopReviews(shopRowId)
 
@@ -373,6 +450,31 @@ const myReview = computed(() => {
   if (!uid) return null
   return reviews.value.find(r => r.user_id === uid) ?? null
 })
+
+/** Reviews after the lead slot: exclude current user’s review so it isn’t duplicated when shown as lead CardReview */
+const otherReviews = computed(() => {
+  const my = myReview.value
+  if (!my) return reviews.value
+  return reviews.value.filter(r => r.id !== my.id)
+})
+
+const shopReviewDisplayName = computed(() => shopData.value?.business_name || 'Dive Shop')
+
+const reviewsInlineEdit = ref(false)
+
+watch(myReview, (v) => {
+  if (!v) reviewsInlineEdit.value = false
+})
+
+async function handleInlineReviewSubmitted () {
+  reviewsInlineEdit.value = false
+  await refreshReviews()
+}
+
+async function handleInlineReviewDeleted () {
+  reviewsInlineEdit.value = false
+  await refreshReviews()
+}
 
 function canDeleteReview (r) {
   if (isAppAdmin.value) return true
@@ -387,6 +489,7 @@ async function handleDeleteReview (r) {
   if (!confirm(`Delete review by ${label}? This cannot be undone.`)) return
   try {
     await deleteShopReview(client, r.id)
+    reviewsInlineEdit.value = false
     await refreshReviews()
   } catch (e) {
     alert(e instanceof Error ? e.message : 'Could not delete review.')
@@ -433,25 +536,6 @@ const handleClose = () => {
 
 // Drawer functionality
 const { openDrawer } = useDrawer()
-
-function openReviewDrawer () {
-  const my = myReview.value
-  emit('before-review-drawer')
-  openDrawer('review-form', {
-    shopId: shopRowId.value,
-    shopName: shopData.value?.business_name || 'Dive Shop',
-    initialRating: my?.rating ?? 5,
-    initialBody: my?.body ?? '',
-    isEditing: !!my,
-    reviewId: my?.id ?? null,
-    onSubmitted: () => {
-      refreshReviews()
-    },
-    onDeleted: () => {
-      refreshReviews()
-    }
-  })
-}
 
 function handleBookingButtonClick () {
   if (props.isInBookingFlow) {

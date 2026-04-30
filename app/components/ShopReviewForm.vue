@@ -1,6 +1,9 @@
 <template>
-  <div class="flex flex-col h-full min-h-0">
-    <div class="w-full h-10 lg:h-18 p-1 border-b border-zinc-300 dark:border-zinc-700 shrink-0 flex items-center">
+  <div :class="embedded ? 'flex flex-col min-h-0' : 'flex flex-col h-full min-h-0'">
+    <div
+      v-if="!embedded"
+      class="w-full h-10 lg:h-18 p-1 border-b border-zinc-300 dark:border-zinc-700 shrink-0 flex items-center"
+    >
       <div class="w-full flex items-center justify-between px-2 overflow-auto">
         <h2 class="text-base font-medium truncate text-zinc-900 dark:text-white">
           {{ isEditing ? 'Edit review' : 'Review' }} · {{ shopName }}
@@ -11,7 +14,7 @@
       </div>
     </div>
 
-    <div class="w-full flex-1 min-h-0 overflow-y-auto p-2">
+    <div :class="embedded ? 'w-full p-2' : 'w-full flex-1 min-h-0 overflow-y-auto p-2'">
       <div v-if="!isSignedIn" class="flex flex-col gap-3 p-2">
         <p class="text-sm text-zinc-600 dark:text-zinc-400">
           Sign in to leave a review for this dive shop.
@@ -19,16 +22,17 @@
         <NuxtLink
           to="/auth"
           class="inline-flex justify-center rounded-md border border-zinc-900 dark:border-zinc-100 py-2 px-4 text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800"
-          @click="closeDrawer"
+          @click="onAuthLinkClick"
         >
           Sign in
         </NuxtLink>
       </div>
 
       <form v-else class="flex flex-col gap-3" @submit.prevent="handleSubmit">
-        <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-2 p-2">
-          <legend class="text-xs uppercase font-medium px-1 text-zinc-900 dark:text-white">Rating</legend>
-          <div class="flex items-center gap-1 px-1" role="group" aria-label="Star rating">
+        <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2">
+          <!-- Use a normal block label, not <legend>: legends are laid out on the fieldset border and sit outside flex padding -->
+          <label id="review-rating-label" class="text-xs uppercase font-medium px-1 text-zinc-900 dark:text-white">Rating</label>
+          <div class="flex items-center gap-1 px-1" role="group" aria-labelledby="review-rating-label">
             <button
               v-for="n in 5"
               :key="n"
@@ -43,7 +47,7 @@
           </div>
         </fieldset>
 
-        <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2">
+        <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-2 p-2">
           <label for="review-body" class="text-xs uppercase font-medium px-1 text-zinc-900 dark:text-white">Comment</label>
           <textarea
             id="review-body"
@@ -52,7 +56,7 @@
             required
             minlength="1"
             placeholder="Share your experience…"
-            class="rounded-sm w-full p-2 outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm resize-y min-h-[120px]"
+            class="rounded-sm w-full p-2 outline-none dark:bg-zinc-900 hover:bg-zinc-200/50 dark:hover:bg-zinc-900 focus:bg-zinc-200 dark:focus:bg-zinc-900 bg-white  text-zinc-900 dark:text-white text-sm resize-y min-h-[120px]"
           />
         </fieldset>
 
@@ -121,11 +125,22 @@ const props = defineProps({
   onDeleted: {
     type: Function,
     default: null
+  },
+  /** When true: no drawer header/close; submit/delete do not close the layout drawer */
+  embedded: {
+    type: Boolean,
+    default: false
   }
 })
 
 const { closeDrawer } = useDrawer()
 const { isSignedIn, user } = useAuth()
+
+function onAuthLinkClick () {
+  if (!props.embedded) {
+    closeDrawer()
+  }
+}
 const { client } = useSupabase()
 
 const rating = ref(typeof props.initialRating === 'number' && props.initialRating >= 1 && props.initialRating <= 5
@@ -164,7 +179,9 @@ async function handleSubmit () {
     if (typeof props.onSubmitted === 'function') {
       props.onSubmitted()
     }
-    closeDrawer()
+    if (!props.embedded) {
+      closeDrawer()
+    }
   } catch (e) {
     submitError.value = e instanceof Error ? e.message : 'Could not save review.'
   } finally {
@@ -182,7 +199,9 @@ async function handleDelete () {
     if (typeof props.onDeleted === 'function') {
       props.onDeleted()
     }
-    closeDrawer()
+    if (!props.embedded) {
+      closeDrawer()
+    }
   } catch (e) {
     submitError.value = e instanceof Error ? e.message : 'Could not delete review.'
   } finally {
