@@ -237,71 +237,73 @@
                     </button>
                   </div>
 
-                  <!-- Courses: Any + Done first, then course name chips (same UX as dive sites) -->
+                  <!-- Courses: optional Any (hidden when search already inferred picks); course chips; Done = white CTA row below (flex gap) -->
                   <div
                     v-if="msg.courseOptions && msg.courseOptions.length > 0"
-                    class="flex flex-wrap gap-2 transition-opacity duration-200"
+                    class="flex flex-col gap-4 p-2 transition-opacity duration-200"
                     :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
                   >
-                    <div class="flex gap-2 w-full">
+                    <div class="flex w-full flex-wrap gap-2">
                       <button
+                        v-if="!shouldHideAnyCourseChip(msg)"
                         type="button"
                         @click="sendMessage('any')"
-                        class="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"
+                        class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"
                       >
                         Any
                       </button>
                       <button
+                        v-for="course in msg.courseOptions"
+                        :key="course.id"
                         type="button"
-                        @click="sendMessage('done')"
-                        class="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                        @click="sendMessage(course.name)"
+                        :class="isCourseChipSelected(msg, course)
+                          ? 'w-fit px-3 py-1.5 text-sm rounded-full border border-black dark:border-white bg-white dark:bg-zinc-900 text-black dark:text-white font-medium transition-colors cursor-pointer'
+                          : 'w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer'"
                       >
-                        Done
+                        {{ course.name }}
                       </button>
                     </div>
                     <button
-                      v-for="course in msg.courseOptions"
-                      :key="course.id"
                       type="button"
-                      @click="sendMessage(course.name)"
-                      :class="isCourseChipSelected(msg, course)
-                        ? 'w-fit px-3 py-1.5 text-sm rounded-full border border-black dark:border-white bg-white dark:bg-zinc-900 text-black dark:text-white font-medium transition-colors cursor-pointer'
-                        : 'w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer'"
+                      @click="sendMessage('done')"
+                      class="self-start px-3 py-1.5 text-sm rounded-full bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 transition-colors cursor-pointer font-medium"
                     >
-                      {{ course.name }}
+                      Done
                     </button>
                   </div>
 
-                  <!-- Dive sites: Any + Done first (50/50), then shop-specific site chips (w-fit); past = faded -->
+                  <!-- Dive sites: optional Any; site chips; Done = white CTA below -->
                   <div
                     v-if="msg.diveSiteOptions && msg.diveSiteOptions.length > 0"
-                    class="flex flex-wrap gap-2 transition-opacity duration-200"
+                    class="flex flex-col gap-4 p-2 transition-opacity duration-200"
                     :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
                   >
-                    <div class="flex gap-2 w-full">
+                    <div class="flex w-full flex-wrap gap-2">
                       <button
+                        v-if="!shouldHideAnyDiveSiteChip(msg)"
                         type="button"
                         @click="sendMessage('any')"
-                        class="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"
+                        class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"
                       >
                         Any
                       </button>
                       <button
+                        v-for="site in msg.diveSiteOptions"
+                        :key="site.id"
                         type="button"
-                        @click="sendMessage('done')"
-                        class="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                        @click="sendMessage(site.name)"
+                        class="w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
                       >
-                        Done
+                        {{ site.name }}
                       </button>
                     </div>
                     <button
-                      v-for="site in msg.diveSiteOptions"
-                      :key="site.id"
                       type="button"
-                      @click="sendMessage(site.name)"
-                      class="w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                      @click="sendMessage('done')"
+                      class="self-start px-3 py-1.5 text-sm rounded-full bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 transition-colors cursor-pointer font-medium"
                     >
-                      {{ site.name }}
+                      Done
                     </button>
                   </div>
                   </div>
@@ -1155,6 +1157,20 @@ function getSelectedCourseNamesForMessage (msg) {
 }
 function isCourseChipSelected (msg, course) {
   return getSelectedCourseNamesForMessage(msg).has((course.name ?? '').toString().trim().toLowerCase())
+}
+
+/** Hide “Any” when courses were already chosen (e.g. search inference) — redundant with pre-selected chips. */
+function shouldHideAnyCourseChip (msg) {
+  const payload = msg.payload ?? msg.bookingPayload
+  const dc = payload?.desiredCourses
+  return Array.isArray(dc) && dc.length > 0
+}
+
+/** Hide “Any” when dive sites were pre-filled (e.g. guided type → site names). */
+function shouldHideAnyDiveSiteChip (msg) {
+  const payload = msg.payload ?? msg.bookingPayload
+  const ds = payload?.desiredDiveSites
+  return Array.isArray(ds) && ds.length > 0
 }
 
 /** When user taps entity clarification chip, backend needs the original phrase from the prior assistant message. */
