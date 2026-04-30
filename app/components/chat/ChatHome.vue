@@ -386,7 +386,6 @@
                       :on-show-form="handleShowFormFromPanel"
                       :on-hide-form="handleHideFormFromPanel"
                       @close="closeShopDetail"
-                      @before-review-drawer="closeShopDetail"
                     />
                   </div>
                 </div>

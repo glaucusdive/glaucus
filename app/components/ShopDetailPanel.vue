@@ -11,7 +11,6 @@
     :on-hide-form="onHideForm"
     :booking-cta-scroll-delay-ms="bookingCtaScrollDelayMs"
     @close="$emit('close')"
-    @before-review-drawer="$emit('before-review-drawer')"
   />
   </div>
 </template>
@@ -54,6 +53,6 @@ defineProps({
   }
 })
 
-defineEmits(['close', 'before-review-drawer'])
+defineEmits(['close'])
 </script>
 
