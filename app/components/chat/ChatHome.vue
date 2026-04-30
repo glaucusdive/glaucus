@@ -173,28 +173,33 @@
                     </p>
                   </div>
 
-                  <!-- Selectable options: Book chip (white) first, then Load next 5; past messages = faded, not clickable -->
+                  <!-- Selectable options: filter chips first; primary book CTA on its own row below (flex gap) so it is not confused with filters -->
                   <div
                     v-if="(msg.selectableOptions && msg.selectableOptions.length > 0) || (msg.shops?.length && selectedShopId && selectedShopName)"
-                    class="flex flex-wrap gap-2 p-2 transition-opacity duration-200"
+                    class="flex flex-col gap-4 p-2 transition-opacity duration-200"
                     :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
                   >
+                    <div
+                      v-if="(msg.selectableOptions || []).filter(o => o.label !== 'Load next 20').length > 0"
+                      class="flex w-full flex-wrap gap-2"
+                    >
+                      <button
+                        v-for="(opt, i) in (msg.selectableOptions || []).filter(o => o.label !== 'Load next 20')"
+                        :key="i"
+                        type="button"
+                        @click="sendMessage(opt.value, opt.label)"
+                        class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                      >
+                        {{ opt.label }}
+                      </button>
+                    </div>
                     <button
                       v-if="msg.shops?.length && selectedShopId && selectedShopName"
                       type="button"
                       @click="sendMessage(selectedShopName ? `Let's book ${selectedShopName}` : 'Let\'s book this')"
-                      class="px-3 py-1.5 text-sm rounded-full bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-100 transition-colors cursor-pointer font-medium"
+                      class="self-start px-3 py-1.5 text-sm rounded-full bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-100 transition-colors cursor-pointer font-medium"
                     >
                       Let's book {{ selectedShopName }}
-                    </button>
-                    <button
-                      v-for="(opt, i) in (msg.selectableOptions || []).filter(o => o.label !== 'Load next 20')"
-                      :key="i"
-                      type="button"
-                      @click="sendMessage(opt.value, opt.label)"
-                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
-                    >
-                      {{ opt.label }}
                     </button>
                   </div>
 
