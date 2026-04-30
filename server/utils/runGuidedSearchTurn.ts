@@ -7,11 +7,13 @@ import {
   POPULAR_DESTINATION_KEYS,
   applyGuidedSearchCommandPure,
   filtersConstrainGuidedShops,
+  guidedBranchSelectableOptions,
   guidedCourseIntentLabelFromMessage,
   guidedNeedsCombinedQuery,
   guidedPostResultsFilterChips,
+  guidedShopTypeLabelFromMessage,
   guidedSiteTypeLabelFromMessage,
-  initialGuidedSearchState,
+  mergeGuidedSearchState,
   isBookingHandoffUserMessage,
   parseGuidedCourse,
   parseGuidedDest,
@@ -51,21 +53,12 @@ function toSearchFilters (f: GuidedSearchState['filters']): SearchFilters {
   return { ...f }
 }
 
-function tripTypeChips (): { label: string; value: string }[] {
+function shopTypeChips (): { label: string; value: string }[] {
   return [
-    { label: 'Any trip type', value: GuidedCommands.tripAny },
+    { label: 'Any', value: GuidedCommands.tripAny },
     { label: 'Dive Shop / Day Trip', value: GuidedCommands.tripDiveShop },
     { label: 'Liveaboard', value: GuidedCommands.tripLiveaboard },
     { label: 'Resort', value: GuidedCommands.tripResort }
-  ]
-}
-
-function branchChips (): { label: string; value: string }[] {
-  return [
-    { label: 'By location', value: GuidedCommands.branchLocation },
-    { label: 'By certification course', value: GuidedCommands.branchCourse },
-    { label: 'By dive site type', value: GuidedCommands.branchSiteType },
-    { label: 'By business name', value: GuidedCommands.branchName }
   ]
 }
 
@@ -150,6 +143,44 @@ function emptySearchReopenSiteTypePicker (params: {
     hasMoreResults: false,
     filters: toSearchFilters(nextFilters),
     selectableOptions: [...siteTypeChips(), { label: 'Start over', value: GuidedCommands.reset }],
+    guidedSearchState: nextState,
+    bookingHints,
+    activityLog
+  }
+}
+
+function emptySearchReopenShopTypePicker (params: {
+  state: GuidedSearchState
+  rawMsg: string
+  activityLog: GuidedFlowSearchResponse['activityLog']
+}): GuidedFlowSearchResponse {
+  const { state, rawMsg, activityLog } = params
+  const nextFilters = { ...state.filters }
+  delete nextFilters.diveTypes
+  const nextState: GuidedSearchState = {
+    ...state,
+    step: 'shop_type_pick',
+    filters: nextFilters
+  }
+  const label = guidedShopTypeLabelFromMessage(rawMsg)
+  let bookingHints: GuidedFlowSearchResponse['bookingHints'] = undefined
+  if (nextState.courseIntent?.trim()) {
+    bookingHints = {
+      desiredCourses: [nextState.courseIntent.trim()],
+      diveSiteTypeLabel: nextState.diveSiteTypeLabel ?? null
+    }
+  } else if (nextState.diveSiteTypeLabel) {
+    bookingHints = { desiredCourses: undefined, diveSiteTypeLabel: nextState.diveSiteTypeLabel }
+  }
+  return {
+    success: true,
+    intent: 'search',
+    message: `No dive businesses matched “${label}” for your filters. Pick another dive shop type below.`,
+    shops: [],
+    totalResults: 0,
+    hasMoreResults: false,
+    filters: toSearchFilters(nextFilters),
+    selectableOptions: [...shopTypeChips(), { label: 'Start over', value: GuidedCommands.reset }],
     guidedSearchState: nextState,
     bookingHints,
     activityLog
@@ -400,19 +431,6 @@ function guidedPaginationSelectableOptions (
   return out
 }
 
-function mergeGuidedState (incoming: GuidedSearchState | null | undefined): GuidedSearchState {
-  const base = initialGuidedSearchState()
-  if (!incoming || typeof incoming !== 'object') return base
-  return {
-    step: incoming.step ?? base.step,
-    branch: incoming.branch ?? null,
-    filters: incoming.filters && typeof incoming.filters === 'object' ? { ...incoming.filters } : {},
-    courseIntent: incoming.courseIntent ?? null,
-    diveSiteTypeLabel: incoming.diveSiteTypeLabel ?? null,
-    nameQuery: incoming.nameQuery ?? null
-  }
-}
-
 export async function runGuidedSearchTurn (
   body: GuidedFlowRequestBody,
   supabaseUrl: string,
@@ -423,10 +441,11 @@ export async function runGuidedSearchTurn (
     activityLog.push({ stage, label, at: Date.now() })
   }
 
-  let state = mergeGuidedState(body.guidedSearchState)
+  let state = mergeGuidedSearchState(body.guidedSearchState)
   const rawMsg = String(body.message || '').trim()
   /** Captured before step transitions this turn — used to reopen the matching mini-flow on zero hits. */
   const priorStepWasLocationDestination = state.step === 'location_destination'
+  const priorStepWasShopTypePick = state.step === 'shop_type_pick'
   const priorStepWasSiteTypePick = state.step === 'site_type_pick'
   const priorStepWasCoursePick = state.step === 'course_pick'
   const priorStepWasNameSearch = state.step === 'name_search'
@@ -679,21 +698,22 @@ export async function runGuidedSearchTurn (
         totalResults: 0,
         hasMoreResults: false,
         filters: {},
-        selectableOptions: branchChips(),
+        selectableOptions: guidedBranchSelectableOptions(),
         guidedSearchState: state,
         activityLog
       }
     }
-    if (state.step === 'location_trip_type') {
+    if (state.step === 'shop_type_pick') {
       return {
         success: true,
         intent: 'search',
-        message: 'What type of trip are you looking for? Pick one, then choose or type a destination.',
+        message:
+          'What type of dive business are you looking for? Pick one — then narrow by location, course, dive site type, or name from the results.',
         shops: [],
         totalResults: 0,
         hasMoreResults: false,
         filters: toSearchFilters(state.filters),
-        selectableOptions: tripTypeChips(),
+        selectableOptions: [...shopTypeChips(), { label: 'Start over', value: GuidedCommands.reset }],
         guidedSearchState: state,
         activityLog
       }
@@ -778,6 +798,9 @@ export async function runGuidedSearchTurn (
     if (total === 0) {
       if (priorStepWasLocationDestination) {
         return emptySearchReopenLocationPicker({ state, rawMsg, activityLog, bookingHints })
+      }
+      if (priorStepWasShopTypePick) {
+        return emptySearchReopenShopTypePicker({ state, rawMsg, activityLog })
       }
       if (priorStepWasSiteTypePick) {
         return emptySearchReopenSiteTypePicker({ state, rawMsg, activityLog })
@@ -882,6 +905,9 @@ export async function runGuidedSearchTurn (
     if (priorStepWasLocationDestination) {
       return emptySearchReopenLocationPicker({ state, rawMsg, activityLog, bookingHints })
     }
+    if (priorStepWasShopTypePick) {
+      return emptySearchReopenShopTypePicker({ state, rawMsg, activityLog })
+    }
     if (priorStepWasSiteTypePick) {
       return emptySearchReopenSiteTypePicker({ state, rawMsg, activityLog })
     }
@@ -898,7 +924,7 @@ export async function runGuidedSearchTurn (
     all,
     total > 0
       ? `Here are dive businesses for your filters.`
-      : `No dive businesses matched these filters. Try widening the area or trip type.`
+      : `No dive businesses matched these filters. Try widening filters or dive shop type.`
   )
 
   return {

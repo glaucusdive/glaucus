@@ -15,12 +15,12 @@ export interface GuidedSearchFilters {
   dates?: { start?: string; end?: string }
 }
 
-export type GuidedSearchBranch = 'location' | 'course' | 'site_type' | 'name'
+export type GuidedSearchBranch = 'location' | 'shop_type' | 'course' | 'site_type' | 'name'
 
 export type GuidedSearchStep =
   | 'choose_branch'
-  | 'location_trip_type'
   | 'location_destination'
+  | 'shop_type_pick'
   | 'course_pick'
   | 'site_type_pick'
   | 'name_search'
@@ -52,9 +52,28 @@ export function initialGuidedSearchState (): GuidedSearchState {
   }
 }
 
+/** Merge partial/legacy client state into a full GuidedSearchState (migrates removed `location_trip_type`). */
+export function mergeGuidedSearchState (incoming: GuidedSearchState | null | undefined): GuidedSearchState {
+  const base = initialGuidedSearchState()
+  if (!incoming || typeof incoming !== 'object') return base
+  let step = (incoming.step ?? base.step) as GuidedSearchStep | string
+  if (step === 'location_trip_type') {
+    step = 'location_destination'
+  }
+  return {
+    step: step as GuidedSearchStep,
+    branch: incoming.branch ?? null,
+    filters: incoming.filters && typeof incoming.filters === 'object' ? { ...incoming.filters } : {},
+    courseIntent: incoming.courseIntent ?? null,
+    diveSiteTypeLabel: incoming.diveSiteTypeLabel ?? null,
+    nameQuery: incoming.nameQuery ?? null
+  }
+}
+
 /** Chip values (message field); display labels passed separately in UI */
 export const GuidedCommands = {
   branchLocation: `${GUIDED_PREFIX}branch:location`,
+  branchShopType: `${GUIDED_PREFIX}branch:shop_type`,
   branchCourse: `${GUIDED_PREFIX}branch:course`,
   branchSiteType: `${GUIDED_PREFIX}branch:site_type`,
   branchName: `${GUIDED_PREFIX}branch:name`,
@@ -71,6 +90,7 @@ export const GuidedCommands = {
   siteTypePrefix: `${GUIDED_PREFIX}site:`,
   /** Post-results refinement: keep other dimensions; do not use branch:* (those clear state). */
   filterLocation: `${GUIDED_PREFIX}filter:location`,
+  filterShopType: `${GUIDED_PREFIX}filter:shop_type`,
   filterCourse: `${GUIDED_PREFIX}filter:course`,
   filterSiteType: `${GUIDED_PREFIX}filter:site_type`,
   filterName: `${GUIDED_PREFIX}filter:name`
@@ -79,6 +99,7 @@ export const GuidedCommands = {
 export function guidedBranchSelectableOptions (): { label: string; value: string }[] {
   return [
     { label: 'By location', value: GuidedCommands.branchLocation },
+    { label: 'By dive shop type', value: GuidedCommands.branchShopType },
     { label: 'By certification course', value: GuidedCommands.branchCourse },
     { label: 'By dive site type', value: GuidedCommands.branchSiteType },
     { label: 'By business name', value: GuidedCommands.branchName }
@@ -163,6 +184,16 @@ export function guidedSiteTypeLabelFromMessage (message: string): string {
   return s?.label || (message.trim() || 'that site type')
 }
 
+/** Human label for empty-search copy when the user sent a dive-shop-type chip (`guided:trip:…`). */
+export function guidedShopTypeLabelFromMessage (message: string): string {
+  const t = message.trim().toLowerCase()
+  if (t === GuidedCommands.tripAny.toLowerCase()) return 'any dive business type'
+  if (t === GuidedCommands.tripDiveShop.toLowerCase()) return 'Dive Shop / Day Trip'
+  if (t === GuidedCommands.tripLiveaboard.toLowerCase()) return 'Liveaboard'
+  if (t === GuidedCommands.tripResort.toLowerCase()) return 'Resort'
+  return 'that dive shop type'
+}
+
 export function guidedHasLocationFilters (state: Pick<GuidedSearchState, 'filters'>): boolean {
   const f = state.filters
   return !!(String(f.country || '').trim() || String(f.locale || '').trim() || String(f.region || '').trim())
@@ -200,6 +231,11 @@ export function guidedPostResultsFilterChips (state: GuidedSearchState): { label
   out.push({
     label: guidedHasLocationFilters(state) ? 'Change location' : 'Filter by location',
     value: GuidedCommands.filterLocation
+  })
+  const hasShopType = !!(state.filters.diveTypes && state.filters.diveTypes.length > 0)
+  out.push({
+    label: hasShopType ? 'Change dive shop type' : 'Filter by dive shop type',
+    value: GuidedCommands.filterShopType
   })
   out.push({
     label: state.courseIntent?.trim()
@@ -252,7 +288,16 @@ export function applyGuidedSearchCommandPure (
 
   if (m === GuidedCommands.branchLocation) {
     next.branch = 'location'
-    next.step = 'location_trip_type'
+    next.step = 'location_destination'
+    next.courseIntent = null
+    next.diveSiteTypeLabel = null
+    next.nameQuery = null
+    next.filters = {}
+    return next
+  }
+  if (m === GuidedCommands.branchShopType) {
+    next.branch = 'shop_type'
+    next.step = 'shop_type_pick'
     next.courseIntent = null
     next.diveSiteTypeLabel = null
     next.nameQuery = null
@@ -289,8 +334,11 @@ export function applyGuidedSearchCommandPure (
 
   if (prev.step === 'results') {
     if (m === GuidedCommands.filterLocation) {
-      const hasTrip = !!(next.filters.diveTypes && next.filters.diveTypes.length > 0)
-      next.step = hasTrip ? 'location_destination' : 'location_trip_type'
+      next.step = 'location_destination'
+      return next
+    }
+    if (m === GuidedCommands.filterShopType) {
+      next.step = 'shop_type_pick'
       return next
     }
     if (m === GuidedCommands.filterCourse) {
@@ -307,25 +355,26 @@ export function applyGuidedSearchCommandPure (
     }
   }
 
-  if (next.step === 'location_trip_type') {
+  /** Dive shop type (`filters.diveTypes`); chip tokens unchanged for stable bookmarks. */
+  if (next.step === 'shop_type_pick') {
     if (m === GuidedCommands.tripAny) {
       next.filters = { ...next.filters, diveTypes: undefined }
-      next.step = 'location_destination'
+      next.step = 'results'
       return next
     }
     if (m === GuidedCommands.tripDiveShop) {
       next.filters = { ...next.filters, diveTypes: ['Dive Shop'] }
-      next.step = 'location_destination'
+      next.step = 'results'
       return next
     }
     if (m === GuidedCommands.tripLiveaboard) {
       next.filters = { ...next.filters, diveTypes: ['Liveaboard'] }
-      next.step = 'location_destination'
+      next.step = 'results'
       return next
     }
     if (m === GuidedCommands.tripResort) {
       next.filters = { ...next.filters, diveTypes: ['Dive Resort'] }
-      next.step = 'location_destination'
+      next.step = 'results'
       return next
     }
   }

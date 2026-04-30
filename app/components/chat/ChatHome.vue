@@ -417,6 +417,7 @@ import {
   GuidedCommands,
   guidedBranchSelectableOptions,
   initialGuidedSearchState,
+  mergeGuidedSearchState,
   isBookingHandoffUserMessage
 } from '~~/shared/guidedFlow'
 import {
@@ -785,7 +786,7 @@ async function hydrateFromRecord (cachedState) {
   selectedShopId.value = cachedState.selectedShopId ?? null
   detailDrawerShopId.value = cachedState.detailDrawerShopId ?? cachedState.mobileDetailShopId ?? null
   guidedSearchState.value = cachedState.guidedSearchState
-    ? { ...initialGuidedSearchState(), ...cachedState.guidedSearchState }
+    ? mergeGuidedSearchState(cachedState.guidedSearchState)
     : initialGuidedSearchState()
   guidedBookingHints.value = cachedState.guidedBookingHints ?? null
   pendingBookingPayload.value = null
@@ -1468,7 +1469,7 @@ const sendMessage = async (messageText, displayText) => {
 
       if (guidedRes?.success) {
         const mergedState = guidedRes.guidedSearchState
-          ? { ...initialGuidedSearchState(), ...guidedRes.guidedSearchState }
+          ? mergeGuidedSearchState(guidedRes.guidedSearchState)
           : initialGuidedSearchState()
         guidedSearchState.value = mergedState
         if (
@@ -1866,7 +1867,7 @@ const stepBack = () => {
       (m) => m.role === 'assistant' && m.guidedSearchState && typeof m.guidedSearchState === 'object'
     )
     guidedSearchState.value = lastAssist?.guidedSearchState
-      ? { ...initialGuidedSearchState(), ...lastAssist.guidedSearchState }
+      ? mergeGuidedSearchState(lastAssist.guidedSearchState)
       : initialGuidedSearchState()
     const lastHints = [...messages.value].reverse().find(
       (m) => m.role === 'assistant' && m.guidedBookingHintsSnapshot != null
