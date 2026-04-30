@@ -51,3 +51,17 @@ Mandatory review remains `resolvePreSendWhenPayloadReady`. Edits during/after re
 ## Review
 
 Guided search uses `/api/guided-flow` for search rails; booking and other JSON turns use POST `/api/guided-orchestrator` (implementation in `server/utils/runAiSearchPostHandler.ts`). POST `/api/ai-search` returns 410. `npm test` passes (including new guided tests).
+
+---
+
+# Bottom detail drawer (chat) — done
+
+- [x] `ChatHome.vue`: full-width chat; shop detail in bottom sheet (`detailDrawerShopId`); GSAP slide-up; close keeps `selectedShopId` for booking chip
+- [x] `useSearchCache.ts`: `detailDrawerShopId` + legacy `mobileDetailShopId` read/write mirror on persist
+- [x] `CardSearchResult.vue`: small bottom-right `ChevronUp` opens details; AI bubbles keep `ChevronRight` for booking form
+- [x] `DiveShopDetail.vue` / `ShopDetailPanel.vue`: `showBookingCta` (false in chat drawer)
+- [x] Verify: `npm test`, `npm run build`
+
+## Review
+
+Booking form stays in `default.vue` right drawer; shop tabs + contact live in the chat bottom sheet. Opening the booking form clears the detail sheet so the two don’t fight.

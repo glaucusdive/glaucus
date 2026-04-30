@@ -1,6 +1,6 @@
 <template>
     <div class="flex flex-col h-full w-full relative">
-      <!-- Header: min-w-0 + shrink-0 so title truncates in narrow split view instead of clipping Step back -->
+      <!-- Header: min-w-0 + shrink-0 so title truncates instead of clipping Step back -->
       <div
         class="min-h-10 min-w-0 flex flex-row justify-between items-stretch border-b border-zinc-200 dark:border-zinc-700 shrink-0">
         <div
@@ -22,13 +22,10 @@
         </div>
       </div>
 
-      <!-- Main Content Area - Split View on Desktop -->
+      <!-- Main content: full-width chat; shop detail is a bottom sheet overlay -->
       <div class="flex-1 flex flex-row overflow-hidden relative">
         <!-- Chat Section -->
-        <div :class="[
-          'flex min-w-0 flex-col h-full transition-all duration-300 ease-in-out relative',
-          selectedShopId ? 'w-full lg:w-1/2' : 'w-full'
-        ]">
+        <div class="relative flex min-w-0 h-full w-full flex-col transition-all duration-300 ease-in-out">
           <!-- Messages Container -->
           <div ref="messagesContainer"
             class="flex-1 overflow-y-auto p-2 md:p-4 flex flex-col gap-2 *:max-w-3xl *:mx-auto *:w-full">
@@ -356,43 +353,47 @@
               />
             </div>
           </div>
+
+          <!-- Shop detail: teleported full-viewport sheet (above layout chrome); booking form stays layout right drawer -->
+          <ClientOnly>
+            <Teleport to="body">
+              <Transition @enter="onDetailDrawerEnter" @leave="onDetailDrawerLeave" :css="false">
+                <div
+                  v-if="detailDrawerShopId"
+                  class="fixed inset-0 z-[55] flex flex-col justify-end pointer-events-auto"
+                  role="dialog"
+                  aria-modal="true"
+                  :aria-label="detailDrawerAriaLabel"
+                >
+                  <div
+                    data-detail-drawer-backdrop
+                    class="absolute inset-0 bg-black/50"
+                    @click="closeShopDetail"
+                  />
+                  <div
+                    data-detail-drawer-sheet
+                    class="relative z-10 mx-auto flex h-[95dvh] min-h-0 w-[99dvw] max-w-none flex-col overflow-hidden rounded-t-xl border border-b-0 border-zinc-200 bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.12)] dark:border-zinc-600 dark:bg-zinc-900 dark:shadow-[0_-8px_30px_rgba(0,0,0,0.4)]"
+                    @click.stop
+                  >
+                    <ShopDetailPanel
+                      :key="detailDrawerShopId"
+                      :shop-lookup="detailDrawerShopId"
+                      :booking-cta-scroll-delay-ms="400"
+                      :show-booking-cta="false"
+                      :is-in-booking-flow="isInBookingFlowForShop(detailDrawerShopId)"
+                      :is-form-open="isBookingFormOpen"
+                      :on-start-booking="handleStartBookingFromPanel"
+                      :on-show-form="handleShowFormFromPanel"
+                      :on-hide-form="handleHideFormFromPanel"
+                      @close="closeShopDetail"
+                      @before-review-drawer="closeShopDetail"
+                    />
+                  </div>
+                </div>
+              </Transition>
+            </Teleport>
+          </ClientOnly>
         </div>
-
-        <!-- Shop Detail Panel - Desktop Split View -->
-        <Transition @enter="onShopPanelEnter" @leave="onShopPanelLeave" :css="false">
-          <div v-if="selectedShopId && isDesktop"
-            class="w-1/2 h-full border-l border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
-            <ShopDetailPanel :key="selectedShopId" :shop-lookup="selectedShopId"
-              :booking-cta-scroll-delay-ms="400"
-              :is-in-booking-flow="isInBookingFlowForShop(selectedShopId)"
-              :is-form-open="isBookingFormOpen"
-              :on-start-booking="handleStartBookingFromPanel"
-              :on-show-form="handleShowFormFromPanel"
-              :on-hide-form="handleHideFormFromPanel"
-              @close="closeShopDetail" />
-          </div>
-        </Transition>
-
-        <!-- Shop Detail Panel - Mobile Drawer (only when user taps "View details", not on card tap) -->
-        <Transition @enter="onMobileDrawerEnter" @leave="onMobileDrawerLeave" :css="false">
-          <div v-if="mobileDetailShopId && !isDesktop" class="fixed inset-0 z-50 lg:hidden">
-            <!-- Backdrop -->
-            <div @click="closeShopDetail" class="absolute inset-0 bg-black/50"></div>
-            <!-- Drawer -->
-            <div
-              @click.stop
-              class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-zinc-900 h-full overflow-hidden">
-              <ShopDetailPanel :key="mobileDetailShopId" :shop-lookup="mobileDetailShopId"
-              :booking-cta-scroll-delay-ms="400"
-              :is-in-booking-flow="isInBookingFlowForShop(mobileDetailShopId)"
-              :is-form-open="isBookingFormOpen"
-              :on-start-booking="handleStartBookingFromPanel"
-              :on-show-form="handleShowFormFromPanel"
-              :on-hide-form="handleHideFormFromPanel"
-              @close="closeShopDetail" />
-            </div>
-          </div>
-        </Transition>
       </div>
     </div>
 </template>
@@ -562,8 +563,8 @@ const abortController = ref(null)
 const selectedShopId = ref(null)
 /** Carried-over booking form data when user chose "Pick a new diveshop"; sent with next "Book with X" so details transfer. */
 const pendingBookingPayload = ref(null)
-/** On mobile, drawer opens only when user taps "View details"; card tap only selects for booking. */
-const mobileDetailShopId = ref(null)
+/** Shop detail bottom sheet opens when user taps the up-arrow on a result card. */
+const detailDrawerShopId = ref(null)
 
 /** Deterministic guided search (no LLM routing); see /api/guided-flow */
 const useGuidedSearch = computed(() =>
@@ -581,6 +582,14 @@ const selectedShopName = computed(() => {
   if (shop?.business_name) return shop.business_name
   const bookingMsg = [...messages.value].reverse().find(m => m.shopId === selectedShopId.value && m.shopName)
   return bookingMsg?.shopName ?? null
+})
+
+const detailDrawerAriaLabel = computed(() => {
+  if (!detailDrawerShopId.value) return 'Shop details'
+  if (selectedShopId.value === detailDrawerShopId.value && selectedShopName.value) {
+    return `Details for ${selectedShopName.value}`
+  }
+  return 'Shop details'
 })
 
 // Latest booking payload from chat (for pre-filling the booking-form drawer and sending to API)
@@ -760,7 +769,7 @@ function buildPageCachePayload () {
     userInput: userInput.value,
     lastQuery: typeof route.query.q === 'string' ? route.query.q : null,
     selectedShopId: selectedShopId.value,
-    mobileDetailShopId: mobileDetailShopId.value,
+    detailDrawerShopId: detailDrawerShopId.value,
     drawerOpen: drawerWasOpen,
     drawerShopId: drawerWasOpen ? (drawerData.shopId ?? null) : null,
     drawerShopName: drawerWasOpen ? (drawerData.shopName ?? null) : null,
@@ -775,7 +784,7 @@ async function hydrateFromRecord (cachedState) {
   messages.value = cachedState.messages || []
   userInput.value = cachedState.userInput || ''
   selectedShopId.value = cachedState.selectedShopId ?? null
-  mobileDetailShopId.value = cachedState.mobileDetailShopId ?? null
+  detailDrawerShopId.value = cachedState.detailDrawerShopId ?? cachedState.mobileDetailShopId ?? null
   guidedSearchState.value = cachedState.guidedSearchState
     ? { ...initialGuidedSearchState(), ...cachedState.guidedSearchState }
     : initialGuidedSearchState()
@@ -872,7 +881,7 @@ function activeSessionToPageState () {
     userInput: active.userInput || '',
     lastQuery: active.lastQuery || null,
     selectedShopId: active.selectedShopId ?? null,
-    mobileDetailShopId: active.mobileDetailShopId ?? null,
+    detailDrawerShopId: active.detailDrawerShopId ?? active.mobileDetailShopId ?? null,
     drawerOpen: active.drawerOpen ?? false,
     drawerShopId: active.drawerShopId ?? null,
     drawerShopName: active.drawerShopName ?? null,
@@ -924,7 +933,7 @@ function applyPendingDraftResumeFromProfile () {
   messages.value = resumeMessages
   userInput.value = ''
   selectedShopId.value = shopId
-  mobileDetailShopId.value = shopId
+  detailDrawerShopId.value = null
 
   const root = readChatsRoot() ?? ensureChatsRoot()
   persistActiveChatsRoot(root, {
@@ -932,7 +941,7 @@ function applyPendingDraftResumeFromProfile () {
     userInput: '',
     lastQuery: null,
     selectedShopId: shopId,
-    mobileDetailShopId: shopId,
+    detailDrawerShopId: null,
     drawerOpen: true,
     drawerShopId: shopId,
     drawerShopName: shopName
@@ -1004,7 +1013,8 @@ onMounted(async () => {
     messages.value = cachedState.messages
     userInput.value = cachedState.userInput || ''
     if (cachedState.selectedShopId) selectedShopId.value = cachedState.selectedShopId
-    if (cachedState.mobileDetailShopId) mobileDetailShopId.value = cachedState.mobileDetailShopId
+    const restoredDetail = cachedState.detailDrawerShopId ?? cachedState.mobileDetailShopId
+    if (restoredDetail) detailDrawerShopId.value = restoredDetail
 
     if (!initialQuery || initialQuery === cachedState.lastQuery) {
       isRestoringCache.value = false
@@ -1050,7 +1060,7 @@ onMounted(async () => {
 
 // Persist cache when state changes
 watch([messages, userInput], persistCache, { deep: true })
-watch([selectedShopId, mobileDetailShopId, isOpen, drawerData], persistCache, { deep: true })
+watch([selectedShopId, detailDrawerShopId, isOpen, drawerData], persistCache, { deep: true })
 
 // Auto-scroll to bottom when new messages arrive
 const scrollToBottom = async () => {
@@ -1192,7 +1202,7 @@ function openBookingFormDrawerFromPreSend () {
   armShopDetailCloseGuard()
   nextTick(() => {
     selectedShopId.value = shop.id
-    mobileDetailShopId.value = shop.id
+    detailDrawerShopId.value = null
     openDrawer('booking-form', {
       shopId: shop.id,
       shopName: shop.name,
@@ -1208,7 +1218,7 @@ function persistBookingResumeSnapshot () {
       v: 1,
       messages: JSON.parse(JSON.stringify(messages.value)),
       selectedShopId: selectedShopId.value,
-      mobileDetailShopId: mobileDetailShopId.value,
+      detailDrawerShopId: detailDrawerShopId.value,
       pendingBookingPayload: pendingBookingPayload.value
         ? JSON.parse(JSON.stringify(pendingBookingPayload.value))
         : null
@@ -1237,7 +1247,8 @@ function tryRestoreBookingSessionAfterAuth () {
     sessionStorage.removeItem(BOOKING_RESUME_SESSION_KEY)
     messages.value = snap.messages
     if (snap.selectedShopId) selectedShopId.value = snap.selectedShopId
-    if (snap.mobileDetailShopId != null) mobileDetailShopId.value = snap.mobileDetailShopId
+    const snapDetail = snap.detailDrawerShopId ?? snap.mobileDetailShopId
+    if (snapDetail != null) detailDrawerShopId.value = snapDetail
     pendingBookingPayload.value = snap.pendingBookingPayload ?? null
     const p = getLatestBookingPayloadFromMessages(messages.value)
     const lastBookingAssist = [...messages.value].reverse().find(m => m.role === 'assistant' && m.intent === 'booking' && m.shopName)
@@ -1618,7 +1629,7 @@ const sendMessage = async (messageText, displayText) => {
         closeDrawer()
         selectedShopId.value = null
         pendingBookingPayload.value = null
-        mobileDetailShopId.value = null
+        detailDrawerShopId.value = null
         const resetContent = (response.message && String(response.message).trim())
           ? response.message
           : 'How can I help?'
@@ -1866,23 +1877,26 @@ const stepBack = () => {
   persistCache()
 }
 
-// Handle shop selection (card tap: select for booking; on mobile does not open drawer)
+// Handle shop selection (card tap: select for booking; does not open detail drawer)
 const handleShopSelected = (shop) => {
   armShopDetailCloseGuard()
   // Defer until after this click finishes so the new panel/backdrop never receives the same pointer gesture.
   nextTick(() => {
+    if (detailDrawerShopId.value && detailDrawerShopId.value !== shop.id) {
+      detailDrawerShopId.value = null
+    }
     selectedShopId.value = shop.id
     // Selection does not push a new message — scroll the chat column so chips / bottom of results stay in view.
     void scrollToBottom()
   })
 }
 
-// Handle "View details" button (opens drawer on mobile; on desktop panel already shows when selected)
+// Handle detail affordance on card (opens bottom sheet)
 const handleViewDetails = (shop) => {
   armShopDetailCloseGuard()
   nextTick(() => {
     selectedShopId.value = shop.id
-    mobileDetailShopId.value = shop.id
+    detailDrawerShopId.value = shop.id
     void scrollToBottom()
   })
 }
@@ -1906,7 +1920,7 @@ function openBookingFormDrawerFromMessage (msg) {
   const payload = msg.payload !== undefined ? msg.payload : msg.bookingPayload
   nextTick(() => {
     selectedShopId.value = shop.id
-    mobileDetailShopId.value = shop.id
+    detailDrawerShopId.value = null
     openDrawer('booking-form', {
       shopId: shop.id,
       shopName: shop.name,
@@ -1915,66 +1929,48 @@ function openBookingFormDrawerFromMessage (msg) {
   })
 }
 
-// Close shop detail (desktop: clear selection; mobile: close drawer only, keep selection for book chip)
+// Close shop detail bottom sheet only (keep selected shop for booking chip)
 const closeShopDetail = () => {
   if (Date.now() < shopDetailCloseGuardUntil) return
-  if (isDesktop.value) {
-    selectedShopId.value = null
+  detailDrawerShopId.value = null
+}
+
+// GSAP: shop detail bottom sheet
+function onDetailDrawerEnter (el, done) {
+  const backdrop = el.querySelector('[data-detail-drawer-backdrop]')
+  const sheet = el.querySelector('[data-detail-drawer-sheet]')
+  if (!backdrop || !sheet) {
+    done()
+    return
   }
-  mobileDetailShopId.value = null
-}
-
-// GSAP animations for shop panel
-const onShopPanelEnter = (el, done) => {
-  gsap.from(el, {
-    x: '100%',
-    duration: 0.3,
-    ease: 'power3.out',
-    onComplete: done
-  })
-}
-
-const onShopPanelLeave = (el, done) => {
-  gsap.to(el, {
-    x: '100%',
-    duration: 0.3,
-    ease: 'power3.in',
-    onComplete: done
-  })
-}
-
-// GSAP animations for mobile drawer
-const onMobileDrawerEnter = (el, done) => {
-  const drawer = el.querySelector('.absolute.right-0')
-  const backdrop = el.querySelector('.absolute.inset-0')
-  
   gsap.from(backdrop, {
     opacity: 0,
-    duration: 0.3,
+    duration: 0.25,
     ease: 'power2.out'
   })
-  
-  gsap.from(drawer, {
-    x: '100%',
-    duration: 0.4,
+  gsap.from(sheet, {
+    y: '100%',
+    duration: 0.35,
     ease: 'power3.out',
     onComplete: done
   })
 }
 
-const onMobileDrawerLeave = (el, done) => {
-  const drawer = el.querySelector('.absolute.right-0')
-  const backdrop = el.querySelector('.absolute.inset-0')
-  
+function onDetailDrawerLeave (el, done) {
+  const backdrop = el.querySelector('[data-detail-drawer-backdrop]')
+  const sheet = el.querySelector('[data-detail-drawer-sheet]')
+  if (!backdrop || !sheet) {
+    done()
+    return
+  }
   gsap.to(backdrop, {
     opacity: 0,
     duration: 0.2,
     ease: 'power2.in'
   })
-  
-  gsap.to(drawer, {
-    x: '100%',
-    duration: 0.3,
+  gsap.to(sheet, {
+    y: '100%',
+    duration: 0.28,
     ease: 'power3.in',
     onComplete: done
   })

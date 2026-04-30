@@ -4,14 +4,6 @@
     <div class="flex flex-col justify-center z-40 w-full divide-y divide-zinc-300 dark:divide-zinc-700">
       <!-- Title -->
       <header class="flex flex-row justify-start items-stretch gap-0 divide-x divide-zinc-300 dark:divide-zinc-700">
-        <div class="p-1 flex items-center">
-          <div
-            class="hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-sm min-w-8 w-full h-full flex items-center justify-center cursor-pointer px-1"
-            @click.stop="handleClose">
-            <ChevronLeft v-if="!showCloseButton" class="w-4 h-4 cq:lg:w-6 cq:lg:h-6 text-zinc-900 dark:text-white" />
-            <X v-else class="w-4 h-4 cq:lg:w-6 cq:lg:h-6 text-zinc-900 dark:text-white" />
-          </div>
-        </div>
         <div class="p-1 lg:p-2 grow flex items-center overflow-auto">
           <h1 class="text-sm cq:lg:text-3xl font-medium p-0 leading-none cq:lg:px-2 w-full truncate text-zinc-900 dark:text-white">{{
             shopData?.business_name ||
@@ -22,6 +14,14 @@
             :class="isDemoMode ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'">
             {{ isDemoMode ? 'Demo' : 'Live' }}
           </button>
+        </div>
+        <div class="p-1 flex items-center">
+          <div
+            class="hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-sm min-w-8 w-full h-full flex items-center justify-center cursor-pointer px-1"
+            @click.stop="handleClose">
+            <ChevronLeft v-if="!showCloseButton" class="w-4 h-4 cq:lg:w-6 cq:lg:h-6 text-zinc-900 dark:text-white" />
+            <X v-else class="w-4 h-4 cq:lg:w-6 cq:lg:h-6 text-zinc-900 dark:text-white" />
+          </div>
         </div>
       </header>
       <!-- Tabs -->
@@ -59,7 +59,7 @@
               </div>
             </div>
             <!-- Courses Tab -->
-            <div v-if="activeTab === 'courses'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
+            <div v-if="activeTab === 'courses'" class="flex flex-col gap-4 p-2 lg:p-4 h-full overflow-y-auto">
               <div v-if="coursesList.length === 0" class="text-zinc-500 dark:text-zinc-400 italic p-4">
                 No courses listed.
               </div>
@@ -73,7 +73,7 @@
               </div>
             </div>
             <!-- More Information Tab -->
-            <div v-if="activeTab === 'information'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
+            <div v-if="activeTab === 'information'" class="flex flex-col gap-4 p-2 lg:p-4 h-full overflow-y-auto">
               <div class="flex flex-col cq:lg:flex-row gap-2">
                 <CardInfo title="Hours" :items="displayHours" empty-message="Hours not available" />
                 <CardInfo title="Languages" :items="displayLanguages || []" display-mode="text" empty-message="Languages not available" />
@@ -114,7 +114,7 @@
                 -->
               </div>
             </div>
-            <div v-if="activeTab === 'reviews'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
+            <div v-if="activeTab === 'reviews'" class="flex flex-col gap-4 p-2 lg:p-4 h-full overflow-y-auto">
               <div class="flex flex-row items-center justify-between gap-2 flex-wrap">
                 <h3 class="text-sm font-semibold text-zinc-900 dark:text-white">All reviews</h3>
                 <button
@@ -143,7 +143,7 @@
               </div>
             </div>
             <!-- Nearby Dive Shops Tab -->
-            <div v-if="showNearbyTab && activeTab === 'nearby'" class="flex flex-col gap-4 p-2 h-full overflow-y-auto">
+            <div v-if="showNearbyTab && activeTab === 'nearby'" class="flex flex-col gap-4 p-2 lg:p-4 h-full overflow-y-auto">
               <section class="flex flex-col gap-4">
                 <p v-if="nearbyShops.length === 0" class="text-zinc-500 dark:text-zinc-400 italic p-4">
                   No nearby dive shops in this region.
@@ -173,8 +173,9 @@
           class="w-full cq:lg:min-w-1/2 cq:lg:w-1/2 cq:xl:min-w-1/3 cq:xl:w-1/3 p-2 h-auto cq:xl:h-full cq:lg:order-1 sticky bottom-0 cq:2xl:bottom-auto bg-zinc-50 dark:bg-zinc-900">
           <div class="h-full">
             <div class="flex flex-col gap-2">
-              <!-- Book Now / Show form Button -->
+              <!-- Book Now / Show form Button (hidden in chat detail drawer while form UX is redesigned) -->
               <div
+                v-if="showBookingCta"
                 ref="bookingCtaAnchor"
                 class="flex flex-col gap-2 cq:lg:p-4 bg-zinc-100 dark:bg-zinc-800 rounded-md cq:lg:order-1 scroll-mt-4"
               >
@@ -189,7 +190,7 @@
               </div>
               <!-- Contact Information -->
               <div class="flex flex-col gap-2 border border-zinc-300 dark:border-zinc-700 rounded-md cq:lg:order-2">
-                <ul class="flex flex-row cq:lg:flex-col justify-between lg:justify-start divide-x lg:divide-y divide-zinc-300 dark:divide-zinc-700">
+                <ul class="flex flex-row cq:lg:flex-col justify-between lg:justify-start divide-x lg:divide-x-0 lg:divide-y divide-zinc-300 dark:divide-zinc-700">
                   <li class="w-full flex justify-center cq:lg:justify-start" v-if="contactInfo?.address">
                     <a :href="`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contactInfo.address)}`"
                       target="_blank" class="w-full justify-center p-4 flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 overflow-hidden">
@@ -198,7 +199,7 @@
                     </a>
                   </li>
                   <li class="w-full flex justify-center cq:lg:justify-start" v-if="contactInfo?.phone">
-                    <div class="w-full justify-center flex flex-row gap-4 items-center">
+                    <div class="w-full justify-center lg:justify-start flex flex-row gap-4 items-center">
                       <a :href="`tel:${contactInfo.phone}`" class="p-4 flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
                         <Phone class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
                         <span class="hidden cq:lg:block">{{ contactInfo.phone }}</span>
@@ -280,11 +281,15 @@ const props = defineProps({
   bookingCtaScrollDelayMs: {
     type: Number,
     default: 0
+  },
+  showBookingCta: {
+    type: Boolean,
+    default: true
   }
 })
 
 // Emits
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'before-review-drawer'])
 
 /** Ignore close clicks until the opening pointer gesture has fully finished (see index nextTick open). */
 const canEmitClose = ref(false)
@@ -428,6 +433,7 @@ const { openDrawer } = useDrawer()
 
 function openReviewDrawer () {
   const my = myReview.value
+  emit('before-review-drawer')
   openDrawer('review-form', {
     shopId: shopRowId.value,
     shopName: shopData.value?.business_name || 'Dive Shop',
