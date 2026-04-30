@@ -1,4 +1,4 @@
-/** Filters shape from /api/ai-search (subset). */
+/** Filters shape from chat search API (subset). */
 export type SearchFiltersLite = {
   country?: string | null
   locale?: string | null

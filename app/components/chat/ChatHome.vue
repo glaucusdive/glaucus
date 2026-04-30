@@ -34,16 +34,37 @@
             class="flex-1 overflow-y-auto p-2 md:p-4 flex flex-col gap-2 *:max-w-3xl *:mx-auto *:w-full">
 
             <div v-if="messages.length === 0" class="flex flex-col items-center justify-center gap-8 h-full">
-              <div class="text-center space-y-4 flex flex-col items-center">
-                <h2 class="max-w-2xl lg:text-2xl font-bold text-zinc-900 dark:text-white">
-                  Tell me what you're looking for in your diving experience, and I'll help you find the best dive shops.
-                </h2>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
-                  <button v-for="example in exampleQueries" :key="example" @click="sendMessage(example)"
-                    class="text-left p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer bg-white dark:bg-zinc-900">
-                    <p class="text-sm text-zinc-700 dark:text-zinc-300">{{ example }}</p>
-                  </button>
-                </div>
+              <div class="text-center space-y-4 flex flex-col items-center max-w-2xl">
+                <template v-if="useGuidedSearch">
+                  <h2 class="max-w-2xl lg:text-2xl font-bold text-zinc-900 dark:text-white">
+                    Search dive businesses
+                  </h2>
+                  <p class="text-sm lg:text-base text-zinc-600 dark:text-zinc-400 px-2">
+                    Choose how you want to search — then follow the steps. No AI guessing your route.
+                  </p>
+                  <div class="flex flex-wrap justify-center gap-2 mt-4">
+                    <button
+                      v-for="opt in guidedBranchOptions"
+                      :key="opt.value"
+                      type="button"
+                      @click="sendMessage(opt.value, opt.label)"
+                      class="px-4 py-2.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer font-medium"
+                    >
+                      {{ opt.label }}
+                    </button>
+                  </div>
+                </template>
+                <template v-else>
+                  <h2 class="max-w-2xl lg:text-2xl font-bold text-zinc-900 dark:text-white">
+                    Tell me what you're looking for in your diving experience, and I'll help you find the best dive shops.
+                  </h2>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
+                    <button v-for="example in exampleQueries" :key="example" @click="sendMessage(example)"
+                      class="text-left p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer bg-white dark:bg-zinc-900">
+                      <p class="text-sm text-zinc-700 dark:text-zinc-300">{{ example }}</p>
+                    </button>
+                  </div>
+                </template>
               </div>
             </div>
 
@@ -323,6 +344,7 @@
                 ref="chatComposerRef"
                 v-model="userInput"
                 :loading="isLoading"
+                :placeholder="chatComposerPlaceholder"
                 @submit="handleSubmit"
               />
             </div>
@@ -384,6 +406,12 @@ import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst } from 
 import { getLatestBookingPayloadFromMessages, bookingPayloadHasNamedDiver } from '~/utils/chatBookingPayload'
 import { isSearchPaginationUserMessage } from '~/utils/searchPaginationIntent'
 import { initSignedInChatsFromRemote, chatRemoteHydrateTick } from '~/composables/userChatsRemote'
+import {
+  GuidedCommands,
+  guidedBranchSelectableOptions,
+  initialGuidedSearchState,
+  isBookingHandoffUserMessage
+} from '~~/shared/guidedFlow'
 import {
   BOOKING_PRESEND_CONFIRM_SEND,
   BOOKING_PRESEND_CREATE_ACCOUNT,
@@ -495,12 +523,12 @@ async function syncProfileAfterChatBookingSent (body) {
 const userInput = ref('')
 const chatComposerRef = ref(null)
 const isLoading = ref(false)
-/** Shown while POST /api/ai-search-stream is in progress */
+/** Legacy: kept empty; streaming endpoint removed */
 const searchStreamStatus = ref('')
 const searchStreamPreview = ref('')
 /** Cumulative status lines from the stream (copied onto the assistant message when the turn completes) */
 const searchStreamProgressLines = ref([])
-/** Staged activity lines while waiting on non-streaming /api/ai-search (booking, clarify chips, etc.) */
+/** Staged activity lines while waiting on non-streaming POST /api/guided-orchestrator (booking, clarify, etc.) */
 const loadingProgressLines = ref([])
 let loadingProgressTimer = null
 const messages = ref([])
@@ -529,6 +557,14 @@ const selectedShopId = ref(null)
 const pendingBookingPayload = ref(null)
 /** On mobile, drawer opens only when user taps "View details"; card tap only selects for booking. */
 const mobileDetailShopId = ref(null)
+
+/** Deterministic guided search (no LLM routing); see /api/guided-flow */
+const useGuidedSearch = computed(() =>
+  String(runtimeConfig.public.useGuidedSearch ?? 'true').toLowerCase() !== 'false'
+)
+const guidedSearchState = ref(initialGuidedSearchState())
+/** From last guided search results — merged into booking when user taps Start booking */
+const guidedBookingHints = ref(null)
 
 // Selected shop name for "Book for [name]" chip (from results list or booking message)
 const selectedShopName = computed(() => {
@@ -583,8 +619,25 @@ function isInBookingFlowForShop (shopId) {
 }
 
 // Start booking via AI agent (from "Start Booking" in right panel)
-function handleStartBookingFromPanel (shopId, shopName) {
+async function handleStartBookingFromPanel (shopId, shopName) {
   selectedShopId.value = shopId
+  if (useGuidedSearch.value && guidedBookingHints.value && shopId) {
+    const hints = guidedBookingHints.value
+    const pre = { shopId }
+    let hasExtra = false
+    if (Array.isArray(hints.desiredCourses) && hints.desiredCourses.length) {
+      pre.desiredCourses = [...hints.desiredCourses]
+      hasExtra = true
+    }
+    if (hints.diveSiteTypeLabel) {
+      const sites = await diveSiteNamesMatchingTypeForShop(shopId, hints.diveSiteTypeLabel)
+      if (sites.length) {
+        pre.desiredDiveSites = sites
+        hasExtra = true
+      }
+    }
+    if (hasExtra) pendingBookingPayload.value = pre
+  }
   sendMessage(shopName ? `Let's book ${shopName}` : "Let's book this")
 }
 
@@ -632,13 +685,50 @@ function armShopDetailCloseGuard () {
   shopDetailCloseGuardUntil = Date.now() + SHOP_DETAIL_CLOSE_GUARD_MS
 }
 
-// Example queries for initial state
+// Example queries for initial state (legacy / non-guided search)
 const exampleQueries = [
   "I want to do wreck diving in Bali from Jan 1-7, 2026",
   "Looking for beginner-friendly dive shops in the Maldives",
   "Find highly rated dive shops in Thailand",
   "Shops in Mexico that offer advanced certification courses"
 ]
+
+const guidedBranchOptions = computed(() => guidedBranchSelectableOptions())
+
+const chatComposerPlaceholder = computed(() =>
+  useGuidedSearch.value
+    ? 'Use chips above, or type a place or shop name…'
+    : 'Ask me anything about dive shops...'
+)
+
+/** Dive sites for this shop whose dive_site_types.name matches the guided label */
+async function diveSiteNamesMatchingTypeForShop (shopId, typeLabel) {
+  if (!shopId || !typeLabel?.trim()) return []
+  try {
+    const { data: junction, error: jErr } = await client
+      .from('diveshop_dive_sites')
+      .select('dive_site_id')
+      .eq('diveshop_id', shopId)
+    if (jErr || !junction?.length) return []
+    const ids = [...new Set(junction.map((r) => r.dive_site_id).filter(Boolean))]
+    const { data: sites, error: sErr } = await client
+      .from('dive_sites')
+      .select('name, dive_site_type:dive_site_types(name)')
+      .in('id', ids)
+    if (sErr || !sites?.length) return []
+    const out = []
+    for (const row of sites) {
+      const t = row.dive_site_type
+      const typeName = (t && typeof t === 'object' ? (Array.isArray(t) ? t[0]?.name : t.name) : null) || ''
+      if (String(typeName).trim() === String(typeLabel).trim() && row.name) {
+        out.push(String(row.name).trim())
+      }
+    }
+    return [...new Set(out)]
+  } catch {
+    return []
+  }
+}
 
 // Cache helpers
 const { getCache, setCache, clearCache } = useSearchCache()
@@ -666,7 +756,9 @@ function buildPageCachePayload () {
     mobileDetailShopId: mobileDetailShopId.value,
     drawerOpen: drawerWasOpen,
     drawerShopId: drawerWasOpen ? (drawerData.shopId ?? null) : null,
-    drawerShopName: drawerWasOpen ? (drawerData.shopName ?? null) : null
+    drawerShopName: drawerWasOpen ? (drawerData.shopName ?? null) : null,
+    guidedSearchState: guidedSearchState.value,
+    guidedBookingHints: guidedBookingHints.value
   }
 }
 
@@ -677,6 +769,10 @@ async function hydrateFromRecord (cachedState) {
   userInput.value = cachedState.userInput || ''
   selectedShopId.value = cachedState.selectedShopId ?? null
   mobileDetailShopId.value = cachedState.mobileDetailShopId ?? null
+  guidedSearchState.value = cachedState.guidedSearchState
+    ? { ...initialGuidedSearchState(), ...cachedState.guidedSearchState }
+    : initialGuidedSearchState()
+  guidedBookingHints.value = cachedState.guidedBookingHints ?? null
   pendingBookingPayload.value = null
   isLoading.value = false
   if (abortController.value) {
@@ -772,7 +868,9 @@ function activeSessionToPageState () {
     mobileDetailShopId: active.mobileDetailShopId ?? null,
     drawerOpen: active.drawerOpen ?? false,
     drawerShopId: active.drawerShopId ?? null,
-    drawerShopName: active.drawerShopName ?? null
+    drawerShopName: active.drawerShopName ?? null,
+    guidedSearchState: active.guidedSearchState ?? null,
+    guidedBookingHints: active.guidedBookingHints ?? null
   }
 }
 
@@ -1147,68 +1245,6 @@ function tryRestoreBookingSessionAfterAuth () {
   }
 }
 
-/** NDJSON from POST /api/ai-search-stream — final `result` payload, or null to use /api/ai-search JSON. */
-async function consumeAiSearchNdjsonStream ({ body, headers, signal, onStatus, onAssistantDelta, onShop }) {
-  const hdrs = { 'Content-Type': 'application/json', ...(headers || {}) }
-  const res = await fetch('/api/ai-search-stream', {
-    method: 'POST',
-    headers: hdrs,
-    body: JSON.stringify(body),
-    signal
-  })
-  if (!res.ok) return null
-  const reader = res.body?.getReader()
-  if (!reader) return null
-  const decoder = new TextDecoder()
-  let buffer = ''
-  let finalPayload = null
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() ?? ''
-      for (const line of lines) {
-        if (!line.trim()) continue
-        let ev
-        try {
-          ev = JSON.parse(line)
-        } catch {
-          continue
-        }
-        if (ev.type === 'meta' && ev.fallbackToJson) {
-          await reader.cancel().catch(() => {})
-          return null
-        }
-        if (ev.type === 'activity' && typeof ev.label === 'string') {
-          onStatus(ev.label)
-        }
-        if (ev.type === 'status' && typeof ev.text === 'string') {
-          onStatus(ev.text)
-        }
-        if (ev.type === 'assistant_delta' && typeof ev.text === 'string' && ev.text) {
-          onAssistantDelta(ev.text)
-        }
-        if (ev.type === 'shop' && ev.shop != null && typeof onShop === 'function') {
-          onShop(ev.shop)
-        }
-        if (ev.type === 'result' && ev.payload) {
-          finalPayload = ev.payload
-        }
-        if (ev.type === 'error') {
-          await reader.cancel().catch(() => {})
-          return null
-        }
-      }
-    }
-  } catch (e) {
-    if (e?.name === 'AbortError') throw e
-    return null
-  }
-  return finalPayload
-}
-
 // Send message to AI. Optional displayText: show this in the chat bubble while sending messageText to the API (e.g. chip label vs value).
 const sendMessage = async (messageText, displayText) => {
   const message = messageText ?? userInput.value.trim()
@@ -1339,6 +1375,126 @@ const sendMessage = async (messageText, displayText) => {
       ...(pendingEntityClarifyPhrase ? { pendingEntityClarifyPhrase } : {})
     }
 
+    const aiHeaders = {}
+    const bearer =
+      accessToken.value || (await client.auth.getSession()).data.session?.access_token || null
+    if (bearer) aiHeaders.Authorization = `Bearer ${bearer}`
+
+    const useGuidedTurn =
+      useGuidedSearch.value &&
+      !inBookingFlow &&
+      !pendingEntityClarifyPhrase?.trim() &&
+      !isBookingHandoffUserMessage(message)
+
+    if (useGuidedTurn) {
+      if (loadingProgressTimer != null) {
+        clearInterval(loadingProgressTimer)
+        loadingProgressTimer = null
+      }
+      loadingProgressLines.value = ['Finding dive shops…']
+      searchStreamStatus.value = ''
+      searchStreamPreview.value = ''
+      searchStreamProgressLines.value = []
+
+      let guidedRes
+      try {
+        guidedRes = await $fetch('/api/guided-flow', {
+          method: 'POST',
+          body: {
+            guidedSearchState: guidedSearchState.value,
+            message,
+            shopsAlreadyShownCount,
+            ...(lastSearchContext
+              ? {
+                  lastSearchFilters: lastSearchContext.filters,
+                  lastSearchTotalResults: lastSearchContext.totalResults
+                }
+              : {})
+          },
+          signal: currentAbortController.signal,
+          ...(Object.keys(aiHeaders).length ? { headers: aiHeaders } : {})
+        })
+      } catch (fetchErr) {
+        if (fetchErr?.name === 'AbortError' || currentAbortController.signal.aborted) {
+          return
+        }
+        console.error('[chat] guided-flow error:', fetchErr)
+        if (!currentAbortController.signal.aborted) {
+          messages.value.push({
+            role: 'assistant',
+            content: 'Sorry, something went wrong with search. Please try again.',
+            shops: [],
+            totalResults: 0,
+            hasMoreResults: false
+          })
+        }
+        return
+      }
+
+      if (currentAbortController.signal.aborted) {
+        return
+      }
+
+      if (guidedRes?.success) {
+        const mergedState = guidedRes.guidedSearchState
+          ? { ...initialGuidedSearchState(), ...guidedRes.guidedSearchState }
+          : initialGuidedSearchState()
+        guidedSearchState.value = mergedState
+        if (
+          guidedRes.bookingHints &&
+          (guidedRes.bookingHints.desiredCourses?.length ||
+            guidedRes.bookingHints.diveSiteTypeLabel)
+        ) {
+          guidedBookingHints.value = guidedRes.bookingHints
+        } else {
+          guidedBookingHints.value = null
+        }
+        if (guidedRes.openShopId) {
+          selectedShopId.value = guidedRes.openShopId
+        }
+        const logLines = Array.isArray(guidedRes.activityLog)
+          ? guidedRes.activityLog.map((a) =>
+            typeof a === 'object' && a != null && 'label' in a && a.label
+              ? String(a.label)
+              : String(a)
+          )
+          : []
+        const hintsSnap =
+          guidedRes.bookingHints &&
+          (guidedRes.bookingHints.desiredCourses?.length ||
+            guidedRes.bookingHints.diveSiteTypeLabel)
+            ? { ...guidedRes.bookingHints }
+            : null
+        messages.value.push({
+          role: 'assistant',
+          content: guidedRes.message || '',
+          ...(logLines.length ? { searchProgressLog: logLines } : {}),
+          shops: guidedRes.shops || [],
+          totalResults: guidedRes.totalResults ?? 0,
+          hasMoreResults: guidedRes.hasMoreResults ?? false,
+          intent: 'search',
+          selectableOptions: guidedRes.selectableOptions,
+          filters:
+            guidedRes.filters && typeof guidedRes.filters === 'object' && !Array.isArray(guidedRes.filters)
+              ? guidedRes.filters
+              : {},
+          guidedSearchState: mergedState,
+          guidedBookingHintsSnapshot: hintsSnap
+        })
+      } else {
+        messages.value.push({
+          role: 'assistant',
+          content:
+            (guidedRes && guidedRes.message) ||
+            'Sorry, guided search returned an error. Please try again.',
+          shops: [],
+          totalResults: 0,
+          hasMoreResults: false
+        })
+      }
+      return
+    }
+
     searchStreamStatus.value = ''
     searchStreamPreview.value = ''
     searchStreamProgressLines.value = []
@@ -1349,18 +1505,23 @@ const sendMessage = async (messageText, displayText) => {
       }
       loadingProgressLines.value = []
     }
-    const startLoadingProgressHint = () => {
+    const startLoadingProgressHint = (kind = 'default') => {
       clearLoadingProgress()
-      const steps = inBookingFlow
-        ? [
-            'Understanding your request',
-            'Updating your booking…'
-          ]
-        : [
-            'Understanding your request',
-            'Searching location data (city, state, country)',
-            'Finding dive shops…'
-          ]
+      /** Not model “reasoning” — local status only. Wording avoids implying an LLM when this is DB + rules. */
+      let steps
+      if (inBookingFlow) {
+        steps = ['Updating your booking…']
+      } else if (kind === 'booking_handoff' || isBookingHandoffUserMessage(message)) {
+        steps = ['Opening booking…']
+      } else if (useGuidedSearch.value) {
+        steps = ['Searching our directory…']
+      } else {
+        steps = [
+          'Preparing your search…',
+          'Searching location data (city, state, country)',
+          'Finding dive shops…'
+        ]
+      }
       let i = 0
       loadingProgressLines.value = [steps[0]]
       loadingProgressTimer = setInterval(() => {
@@ -1374,89 +1535,15 @@ const sendMessage = async (messageText, displayText) => {
       }, 480)
     }
 
-    let streamProgressSnapshot = []
-    let streamPreviewSnapshot = ''
-    let streamedAssistantDraft = ''
-    /** Index of assistant row created when first streamed `shop` arrives (merged on `result`). */
-    let streamShopAssistIndex = -1
-
-    const streamEligible =
-      !inBookingFlow &&
-      !pendingEntityClarifyPhrase?.trim()
-
-    if (!streamEligible) {
-      startLoadingProgressHint()
-    }
+    startLoadingProgressHint(
+      isBookingHandoffUserMessage(message) ? 'booking_handoff' : 'default'
+    )
 
     const maxAiAttempts = 3
     const baseAiRetryMs = 350
     let response = null
-    const aiHeaders = {}
-    const bearer =
-      accessToken.value || (await client.auth.getSession()).data.session?.access_token || null
-    if (bearer) aiHeaders.Authorization = `Bearer ${bearer}`
 
-    if (streamEligible && !currentAbortController.signal.aborted) {
-      try {
-        response = await consumeAiSearchNdjsonStream({
-          body: aiSearchBody,
-          headers: aiHeaders,
-          signal: currentAbortController.signal,
-          onStatus: (t) => {
-            searchStreamStatus.value = t
-            const lines = searchStreamProgressLines.value
-            if (t && lines[lines.length - 1] !== t) {
-              searchStreamProgressLines.value = [...lines, t]
-            }
-          },
-          onAssistantDelta: (t) => { streamedAssistantDraft += t },
-          onShop: (shop) => {
-            if (streamShopAssistIndex < 0) {
-              messages.value.push({
-                role: 'assistant',
-                content: '',
-                shops: [shop],
-                totalResults: 0,
-                hasMoreResults: false,
-                intent: 'search',
-                streamingShopsPending: true
-              })
-              streamShopAssistIndex = messages.value.length - 1
-            } else {
-              const row = messages.value[streamShopAssistIndex]
-              if (row) {
-                row.shops = [...(row.shops || []), shop]
-              }
-            }
-            void nextTick(() => scrollToBottom())
-          }
-        })
-      } catch (fetchErr) {
-        if (fetchErr?.name === 'AbortError' || currentAbortController.signal.aborted) {
-          searchStreamStatus.value = ''
-          searchStreamPreview.value = ''
-          searchStreamProgressLines.value = []
-          if (streamShopAssistIndex >= 0) {
-            messages.value.splice(streamShopAssistIndex, 1)
-            streamShopAssistIndex = -1
-          }
-          return
-        }
-        response = null
-      }
-    }
-
-    if (!response && streamShopAssistIndex >= 0) {
-      messages.value.splice(streamShopAssistIndex, 1)
-      streamShopAssistIndex = -1
-    }
-
-    if (streamEligible && !response) {
-      startLoadingProgressHint()
-    }
-
-    streamProgressSnapshot = [...searchStreamProgressLines.value]
-    streamPreviewSnapshot = streamedAssistantDraft
+    const streamProgressSnapshot = []
     searchStreamStatus.value = ''
     searchStreamPreview.value = ''
     searchStreamProgressLines.value = []
@@ -1466,7 +1553,7 @@ const sendMessage = async (messageText, displayText) => {
         return
       }
       try {
-        response = await $fetch('/api/ai-search', {
+        response = await $fetch('/api/guided-orchestrator', {
           method: 'POST',
           signal: currentAbortController.signal,
           body: aiSearchBody,
@@ -1479,7 +1566,7 @@ const sendMessage = async (messageText, displayText) => {
         if (attempt >= maxAiAttempts) {
           throw fetchErr
         }
-        console.warn(`[chat] ai-search request failed (${attempt}/${maxAiAttempts}), retrying:`, fetchErr)
+        console.warn(`[chat] guided-orchestrator request failed (${attempt}/${maxAiAttempts}), retrying:`, fetchErr)
         await new Promise(r => setTimeout(r, baseAiRetryMs * Math.pow(2, attempt - 1)))
         continue
       }
@@ -1489,7 +1576,7 @@ const sendMessage = async (messageText, displayText) => {
       if (attempt >= maxAiAttempts) {
         break
       }
-      console.warn(`[chat] ai-search success:false (${attempt}/${maxAiAttempts}), retrying`)
+      console.warn(`[chat] guided-orchestrator success:false (${attempt}/${maxAiAttempts}), retrying`)
       await new Promise(r => setTimeout(r, baseAiRetryMs * Math.pow(2, attempt - 1)))
     }
     
@@ -1635,88 +1722,29 @@ const sendMessage = async (messageText, displayText) => {
         }
       }
       const content = (response.message && String(response.message).trim()) ? response.message : 'Got it — what would you like to tell me next?'
-      const preambleFromStream =
-        !response.messagePreamble && streamPreviewSnapshot?.trim()
-          ? streamPreviewSnapshot.trim()
-          : undefined
 
-      const mergeIntoStreamSlot =
-        streamShopAssistIndex >= 0 &&
-        messages.value[streamShopAssistIndex]?.streamingShopsPending
-
-      if (mergeIntoStreamSlot) {
-        const m = messages.value[streamShopAssistIndex]
-        m.content = content
-        if (response.messagePreamble) {
-          m.preamble = response.messagePreamble
-        } else if (preambleFromStream) {
-          m.preamble = preambleFromStream
-        } else {
-          delete m.preamble
-        }
-        if (progressForAssistant?.length) {
-          m.searchProgressLog = progressForAssistant
-        } else {
-          delete m.searchProgressLog
-        }
-        if (reasoningForAssistant) {
-          m.reasoningSummary = reasoningForAssistant
-        } else {
-          delete m.reasoningSummary
-        }
-        m.shops = response.shops || []
-        m.totalResults = response.totalResults
-        m.hasMoreResults = response.hasMoreResults
-        m.intent = response.intent
-        m.bookingReady = response.bookingReady
-        m.payload = storedPayload
-        m.shopId = response.shopId
-        m.shopName = response.shopName
-        m.selectableOptions = response.selectableOptions
-        m.rentalEquipmentOptions = response.rentalEquipmentOptions || undefined
-        m.hideNoneForGear = response.hideNoneForGear ?? false
-        m.courseOptions = response.courseOptions || undefined
-        m.diveSiteOptions = response.diveSiteOptions || undefined
-        if (response.filters && typeof response.filters === 'object') {
-          m.filters = response.filters
-        } else {
-          delete m.filters
-        }
-        if (response.entityClarifyPending) {
-          m.entityClarifyPending = response.entityClarifyPending
-        } else {
-          delete m.entityClarifyPending
-        }
-        delete m.streamingShopsPending
-        streamShopAssistIndex = -1
-      } else {
-        if (streamShopAssistIndex >= 0) {
-          messages.value.splice(streamShopAssistIndex, 1)
-          streamShopAssistIndex = -1
-        }
-        messages.value.push({
-          role: 'assistant',
-          content,
-          ...(response.messagePreamble ? { preamble: response.messagePreamble } : preambleFromStream ? { preamble: preambleFromStream } : {}),
-          ...(progressForAssistant?.length ? { searchProgressLog: progressForAssistant } : {}),
-          ...(reasoningForAssistant ? { reasoningSummary: reasoningForAssistant } : {}),
-          shops: response.shops || [],
-          totalResults: response.totalResults,
-          hasMoreResults: response.hasMoreResults,
-          intent: response.intent,
-          bookingReady: response.bookingReady,
-          payload: storedPayload,
-          shopId: response.shopId,
-          shopName: response.shopName,
-          selectableOptions: response.selectableOptions,
-          rentalEquipmentOptions: response.rentalEquipmentOptions || undefined,
-          hideNoneForGear: response.hideNoneForGear ?? false,
-          courseOptions: response.courseOptions || undefined,
-          diveSiteOptions: response.diveSiteOptions || undefined,
-          ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {}),
-          ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {})
-        })
-      }
+      messages.value.push({
+        role: 'assistant',
+        content,
+        ...(response.messagePreamble ? { preamble: response.messagePreamble } : {}),
+        ...(progressForAssistant?.length ? { searchProgressLog: progressForAssistant } : {}),
+        ...(reasoningForAssistant ? { reasoningSummary: reasoningForAssistant } : {}),
+        shops: response.shops || [],
+        totalResults: response.totalResults,
+        hasMoreResults: response.hasMoreResults,
+        intent: response.intent,
+        bookingReady: response.bookingReady,
+        payload: storedPayload,
+        shopId: response.shopId,
+        shopName: response.shopName,
+        selectableOptions: response.selectableOptions,
+        rentalEquipmentOptions: response.rentalEquipmentOptions || undefined,
+        hideNoneForGear: response.hideNoneForGear ?? false,
+        courseOptions: response.courseOptions || undefined,
+        diveSiteOptions: response.diveSiteOptions || undefined,
+        ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {}),
+        ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {})
+      })
       if (response.intent === 'booking' && storedPayload) {
         updateBookingPayloadIfOpen(storedPayload)
         if (isSignedIn.value) {
@@ -1802,6 +1830,18 @@ const canStepBack = computed(() => {
 const stepBack = () => {
   if (!canStepBack.value) return
   messages.value = messages.value.slice(0, -2)
+  if (useGuidedSearch.value) {
+    const lastAssist = [...messages.value].reverse().find(
+      (m) => m.role === 'assistant' && m.guidedSearchState && typeof m.guidedSearchState === 'object'
+    )
+    guidedSearchState.value = lastAssist?.guidedSearchState
+      ? { ...initialGuidedSearchState(), ...lastAssist.guidedSearchState }
+      : initialGuidedSearchState()
+    const lastHints = [...messages.value].reverse().find(
+      (m) => m.role === 'assistant' && m.guidedBookingHintsSnapshot != null
+    )
+    guidedBookingHints.value = lastHints?.guidedBookingHintsSnapshot ?? null
+  }
   persistCache()
 }
 
@@ -1919,10 +1959,7 @@ const onMobileDrawerLeave = (el, done) => {
   })
 }
 
-// Set page title
-useHead({
-  title: 'AI Dive Shop Search - Glaucus'
-})
+useHead({ title: 'Dive Shop Search | Glaucus' })
 </script>
 
 <style scoped>

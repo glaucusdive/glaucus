@@ -26,7 +26,17 @@ export default defineNuxtConfig({
       supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,
       supabaseKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY,
       /** before_send | after_send | off — when to prompt account creation in chat booking flow */
-      bookingSignupTiming: process.env.NUXT_PUBLIC_BOOKING_SIGNUP_TIMING || 'off'
+      bookingSignupTiming: process.env.NUXT_PUBLIC_BOOKING_SIGNUP_TIMING || 'off',
+      /**
+       * When not 'false', chat search uses deterministic guided rails (/api/guided-flow) instead of LLM routing.
+       * POST /api/ai-search and POST /api/ai-search-stream return 410; JSON turns use /api/guided-orchestrator only.
+       */
+      useGuidedSearch: process.env.NUXT_PUBLIC_USE_GUIDED_SEARCH ?? 'true',
+      /**
+       * When not 'false', guided-orchestrator skips NLU + all OpenRouter (search + booking LLM). Default: off.
+       * Set NUXT_PUBLIC_DISABLE_CHAT_AI=false to re-enable conversational booking / legacy search inside orchestrator.
+       */
+      disableChatAi: process.env.NUXT_PUBLIC_DISABLE_CHAT_AI ?? 'true'
     }
   }
 })

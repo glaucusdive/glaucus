@@ -36,3 +36,18 @@ Explicit phrasing like “dive resorts in Bali” now applies `Dive Resort` befo
 ## Review
 
 Mandatory review remains `resolvePreSendWhenPayloadReady`. Edits during/after review clear presend ack via `clearBookingPreSendFlags`; re-open review after one-shot field updates when the step machine returns to `ready`.
+
+---
+
+# Rails Search Plan (guided flow) — done
+
+- [x] Shared deterministic state + commands: `shared/guidedFlow.ts` (`applyGuidedSearchCommandPure`, chips, parsers)
+- [x] Server: `server/utils/runGuidedSearchTurn.ts` + `server/api/guided-flow.post.ts` (no LLM on search path)
+- [x] Client: `ChatHome.vue` — when `useGuidedSearch` and not booking / entity-clarify, POST `/api/guided-flow`; persist `guidedSearchState` / hints in cache; chip-first empty state; `streamEligible` excludes guided search
+- [x] Step back restores `guidedSearchState` and `guidedBookingHintsSnapshot` from history
+- [x] Start booking merges optional course / dive-site-type hints without empty-array placeholders
+- [x] Vitest: `tests/guided/guidedFlow.test.ts`
+
+## Review
+
+Guided search uses `/api/guided-flow` for search rails; booking and other JSON turns use POST `/api/guided-orchestrator` (implementation in `server/utils/runAiSearchPostHandler.ts`). POST `/api/ai-search` returns 410. `npm test` passes (including new guided tests).
