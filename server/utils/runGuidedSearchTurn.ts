@@ -7,8 +7,10 @@ import {
   POPULAR_DESTINATION_KEYS,
   applyGuidedSearchCommandPure,
   filtersConstrainGuidedShops,
+  guidedCourseIntentLabelFromMessage,
   guidedNeedsCombinedQuery,
   guidedPostResultsFilterChips,
+  guidedSiteTypeLabelFromMessage,
   initialGuidedSearchState,
   isBookingHandoffUserMessage,
   parseGuidedCourse,
@@ -115,6 +117,105 @@ function emptySearchReopenLocationPicker (params: {
     hasMoreResults: false,
     filters: toSearchFilters(nextFilters),
     selectableOptions: [...destChips(), { label: 'Start over', value: GuidedCommands.reset }],
+    guidedSearchState: nextState,
+    bookingHints,
+    activityLog
+  }
+}
+
+function emptySearchReopenSiteTypePicker (params: {
+  state: GuidedSearchState
+  rawMsg: string
+  activityLog: GuidedFlowSearchResponse['activityLog']
+}): GuidedFlowSearchResponse {
+  const { state, rawMsg, activityLog } = params
+  const nextFilters = { ...state.filters }
+  delete nextFilters.activityTokens
+  const nextState: GuidedSearchState = {
+    ...state,
+    step: 'site_type_pick',
+    diveSiteTypeLabel: null,
+    filters: nextFilters
+  }
+  const label = guidedSiteTypeLabelFromMessage(rawMsg)
+  const bookingHints: GuidedFlowSearchResponse['bookingHints'] = nextState.courseIntent?.trim()
+    ? { desiredCourses: [nextState.courseIntent.trim()], diveSiteTypeLabel: null }
+    : undefined
+  return {
+    success: true,
+    intent: 'search',
+    message: `No dive businesses matched “${label}” for your filters. Pick another dive site type below.`,
+    shops: [],
+    totalResults: 0,
+    hasMoreResults: false,
+    filters: toSearchFilters(nextFilters),
+    selectableOptions: [...siteTypeChips(), { label: 'Start over', value: GuidedCommands.reset }],
+    guidedSearchState: nextState,
+    bookingHints,
+    activityLog
+  }
+}
+
+function emptySearchReopenCoursePicker (params: {
+  state: GuidedSearchState
+  rawMsg: string
+  activityLog: GuidedFlowSearchResponse['activityLog']
+}): GuidedFlowSearchResponse {
+  const { state, rawMsg, activityLog } = params
+  const nextState: GuidedSearchState = {
+    ...state,
+    step: 'course_pick',
+    courseIntent: null
+  }
+  const label = guidedCourseIntentLabelFromMessage(rawMsg)
+  const bookingHints: GuidedFlowSearchResponse['bookingHints'] = nextState.diveSiteTypeLabel
+    ? { desiredCourses: undefined, diveSiteTypeLabel: nextState.diveSiteTypeLabel }
+    : undefined
+  return {
+    success: true,
+    intent: 'search',
+    message: `No dive businesses matched “${label}” for your filters. Pick another certification course below.`,
+    shops: [],
+    totalResults: 0,
+    hasMoreResults: false,
+    filters: toSearchFilters(state.filters),
+    selectableOptions: [...courseChips(), { label: 'Start over', value: GuidedCommands.reset }],
+    guidedSearchState: nextState,
+    bookingHints,
+    activityLog
+  }
+}
+
+function emptySearchReopenNameSearch (params: {
+  state: GuidedSearchState
+  rawMsg: string
+  activityLog: GuidedFlowSearchResponse['activityLog']
+}): GuidedFlowSearchResponse {
+  const { state, rawMsg, activityLog } = params
+  const nextState: GuidedSearchState = {
+    ...state,
+    step: 'name_search',
+    nameQuery: null
+  }
+  const label = rawMsg.trim() || 'that name'
+  let bookingHints: GuidedFlowSearchResponse['bookingHints'] = undefined
+  if (nextState.courseIntent?.trim()) {
+    bookingHints = {
+      desiredCourses: [nextState.courseIntent.trim()],
+      diveSiteTypeLabel: nextState.diveSiteTypeLabel ?? null
+    }
+  } else if (nextState.diveSiteTypeLabel) {
+    bookingHints = { desiredCourses: undefined, diveSiteTypeLabel: nextState.diveSiteTypeLabel }
+  }
+  return {
+    success: true,
+    intent: 'search',
+    message: `No dive businesses matched “${label}” for your filters. Type another business name below.`,
+    shops: [],
+    totalResults: 0,
+    hasMoreResults: false,
+    filters: toSearchFilters(state.filters),
+    selectableOptions: [{ label: 'Start over', value: GuidedCommands.reset }],
     guidedSearchState: nextState,
     bookingHints,
     activityLog
@@ -324,8 +425,11 @@ export async function runGuidedSearchTurn (
 
   let state = mergeGuidedState(body.guidedSearchState)
   const rawMsg = String(body.message || '').trim()
-  /** Captured before location_destination merges into `results` — used to reopen the place picker on zero hits. */
+  /** Captured before step transitions this turn — used to reopen the matching mini-flow on zero hits. */
   const priorStepWasLocationDestination = state.step === 'location_destination'
+  const priorStepWasSiteTypePick = state.step === 'site_type_pick'
+  const priorStepWasCoursePick = state.step === 'course_pick'
+  const priorStepWasNameSearch = state.step === 'name_search'
 
   if (isBookingHandoffUserMessage(rawMsg)) {
     return {
@@ -671,8 +775,19 @@ export async function runGuidedSearchTurn (
     } else if (state.diveSiteTypeLabel) {
       bookingHints = { desiredCourses: undefined, diveSiteTypeLabel: state.diveSiteTypeLabel }
     }
-    if (total === 0 && priorStepWasLocationDestination) {
-      return emptySearchReopenLocationPicker({ state, rawMsg, activityLog, bookingHints })
+    if (total === 0) {
+      if (priorStepWasLocationDestination) {
+        return emptySearchReopenLocationPicker({ state, rawMsg, activityLog, bookingHints })
+      }
+      if (priorStepWasSiteTypePick) {
+        return emptySearchReopenSiteTypePicker({ state, rawMsg, activityLog })
+      }
+      if (priorStepWasCoursePick) {
+        return emptySearchReopenCoursePicker({ state, rawMsg, activityLog })
+      }
+      if (priorStepWasNameSearch) {
+        return emptySearchReopenNameSearch({ state, rawMsg, activityLog })
+      }
     }
     const formatted = formatEntitySearchResponse(
       combinedFilters,
@@ -698,6 +813,9 @@ export async function runGuidedSearchTurn (
 
   if (state.branch === 'course' && state.courseIntent) {
     const { shops, total } = await runCourseBranchQuery(supabaseUrl, supabaseKey, state.courseIntent)
+    if (total === 0 && priorStepWasCoursePick) {
+      return emptySearchReopenCoursePicker({ state, rawMsg, activityLog })
+    }
     bookingHints = { desiredCourses: [state.courseIntent], diveSiteTypeLabel: null }
     const formatted = formatEntitySearchResponse(
       { ...toSearchFilters(state.filters), activityTokens: undefined },
@@ -724,6 +842,9 @@ export async function runGuidedSearchTurn (
   if (state.branch === 'name' && state.nameQuery) {
     const matches = await listShopsMatchingName(supabaseUrl, supabaseKey, state.nameQuery, 50)
     const total = matches.length
+    if (total === 0 && priorStepWasNameSearch) {
+      return emptySearchReopenNameSearch({ state, rawMsg, activityLog })
+    }
     if (total === 1 && matches[0]) {
       openShopId = matches[0].id
     }
@@ -757,8 +878,19 @@ export async function runGuidedSearchTurn (
     bookingHints = { desiredCourses: undefined, diveSiteTypeLabel: state.diveSiteTypeLabel }
   }
 
-  if (total === 0 && priorStepWasLocationDestination) {
-    return emptySearchReopenLocationPicker({ state, rawMsg, activityLog, bookingHints })
+  if (total === 0) {
+    if (priorStepWasLocationDestination) {
+      return emptySearchReopenLocationPicker({ state, rawMsg, activityLog, bookingHints })
+    }
+    if (priorStepWasSiteTypePick) {
+      return emptySearchReopenSiteTypePicker({ state, rawMsg, activityLog })
+    }
+    if (priorStepWasCoursePick) {
+      return emptySearchReopenCoursePicker({ state, rawMsg, activityLog })
+    }
+    if (priorStepWasNameSearch) {
+      return emptySearchReopenNameSearch({ state, rawMsg, activityLog })
+    }
   }
 
   const formatted = formatEntitySearchResponse(

@@ -4,8 +4,10 @@ import {
   GuidedCommands,
   applyGuidedSearchCommandPure,
   filtersConstrainGuidedShops,
+  guidedCourseIntentLabelFromMessage,
   guidedNeedsCombinedQuery,
   guidedPostResultsFilterChips,
+  guidedSiteTypeLabelFromMessage,
   initialGuidedSearchState,
   isBookingHandoffUserMessage,
   parseGuidedSiteType
@@ -131,6 +133,18 @@ describe('guidedNeedsCombinedQuery / filtersConstrainGuidedShops', () => {
       filters: { country: 'Mexico' }
     }
     expect(guidedNeedsCombinedQuery(state)).toBe(true)
+  })
+})
+
+describe('guidedCourseIntentLabelFromMessage / guidedSiteTypeLabelFromMessage', () => {
+  it('resolves course chip token to a readable label', () => {
+    const msg = `${GuidedCommands.coursePrefix}${encodeURIComponent('Advanced Open Water')}`
+    expect(guidedCourseIntentLabelFromMessage(msg)).toBe('Advanced Open Water')
+  })
+
+  it('resolves site-type chip to chip label', () => {
+    const msg = `${GuidedCommands.siteTypePrefix}cenote`
+    expect(guidedSiteTypeLabelFromMessage(msg)).toBe('Cenote')
   })
 })
 

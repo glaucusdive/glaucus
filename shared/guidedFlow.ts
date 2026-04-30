@@ -151,6 +151,18 @@ export function parseGuidedSiteType (message: string): { label: string; token: s
   return { label: chip.label, token: chip.activityToken }
 }
 
+/** Human label for empty-search copy when the user sent a `guided:course:…` chip. */
+export function guidedCourseIntentLabelFromMessage (message: string): string {
+  const c = parseGuidedCourse(message)
+  return c?.trim() || 'that course'
+}
+
+/** Human label when the user sent a `guided:site:…` chip. */
+export function guidedSiteTypeLabelFromMessage (message: string): string {
+  const s = parseGuidedSiteType(message)
+  return s?.label || (message.trim() || 'that site type')
+}
+
 export function guidedHasLocationFilters (state: Pick<GuidedSearchState, 'filters'>): boolean {
   const f = state.filters
   return !!(String(f.country || '').trim() || String(f.locale || '').trim() || String(f.region || '').trim())
