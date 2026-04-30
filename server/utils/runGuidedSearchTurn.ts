@@ -6,6 +6,9 @@ import {
   GUIDED_SITE_TYPE_CHIPS,
   POPULAR_DESTINATION_KEYS,
   applyGuidedSearchCommandPure,
+  filtersConstrainGuidedShops,
+  guidedNeedsCombinedQuery,
+  guidedPostResultsFilterChips,
   initialGuidedSearchState,
   isBookingHandoffUserMessage,
   parseGuidedCourse,
@@ -71,6 +74,53 @@ function destChips (): { label: string; value: string }[] {
   }))
 }
 
+/** Readable place name for empty-result copy (chip vs typed text). */
+function userPlaceLabelForEmptyMessage (rawMsg: string): string {
+  const t = rawMsg.trim()
+  if (t.toLowerCase().startsWith(GuidedCommands.destPrefix.toLowerCase())) {
+    const key = t.slice(GuidedCommands.destPrefix.length).toLowerCase()
+    const row = POPULAR_DESTINATION_KEYS.find(d => d.key === key)
+    return row?.label ?? t
+  }
+  return t || 'that place'
+}
+
+/**
+ * User was on the location destination step, picked/chtyped a place, and got zero shops — stay in the mini-flow
+ * with popular destinations + free text (no extra "Change location" click).
+ */
+function emptySearchReopenLocationPicker (params: {
+  state: GuidedSearchState
+  rawMsg: string
+  activityLog: GuidedFlowSearchResponse['activityLog']
+  bookingHints?: GuidedFlowSearchResponse['bookingHints']
+}): GuidedFlowSearchResponse {
+  const { state, rawMsg, activityLog, bookingHints } = params
+  const nextFilters = { ...state.filters }
+  delete nextFilters.locale
+  delete nextFilters.country
+  delete nextFilters.region
+  const nextState: GuidedSearchState = {
+    ...state,
+    step: 'location_destination',
+    filters: nextFilters
+  }
+  const label = userPlaceLabelForEmptyMessage(rawMsg)
+  return {
+    success: true,
+    intent: 'search',
+    message: `No dive businesses matched “${label}” for your filters. Pick a popular place below or type another city or country.`,
+    shops: [],
+    totalResults: 0,
+    hasMoreResults: false,
+    filters: toSearchFilters(nextFilters),
+    selectableOptions: [...destChips(), { label: 'Start over', value: GuidedCommands.reset }],
+    guidedSearchState: nextState,
+    bookingHints,
+    activityLog
+  }
+}
+
 function courseChips (): { label: string; value: string }[] {
   return GUIDED_COURSE_CHIPS.map(c => ({
     label: c.label,
@@ -128,6 +178,127 @@ async function runCourseBranchQuery (
   return { shops: list, total: list.length }
 }
 
+function intersectIdLists (lists: string[][]): string[] {
+  const nonEmpty = lists.filter(l => l.length > 0)
+  if (!nonEmpty.length) return []
+  const sorted = [...nonEmpty].sort((a, b) => a.length - b.length)
+  let out = [...new Set(sorted[0]!)]
+  for (let i = 1; i < sorted.length; i++) {
+    const s = new Set(sorted[i]!)
+    out = out.filter(id => s.has(id))
+  }
+  return out
+}
+
+function shopRowSortKey (row: Record<string, unknown>): { r: number; n: string } {
+  const gr = row.google_rating
+  const r = typeof gr === 'number' ? gr : -1
+  const n = String(row.business_name ?? '')
+  return { r, n }
+}
+
+async function fetchShopsFullRowsByIds (
+  supabaseUrl: string,
+  supabaseKey: string,
+  ids: string[]
+): Promise<unknown[]> {
+  if (!ids.length) return []
+  const client = createClient(supabaseUrl, supabaseKey)
+  const chunk = 80
+  const rows: unknown[] = []
+  for (let i = 0; i < ids.length; i += chunk) {
+    const slice = ids.slice(i, i + chunk)
+    const { data, error } = await client
+      .from('diveshops')
+      .select('*, country:countries(name), region:regions(name)')
+      .in('id', slice)
+    if (!error && data?.length) rows.push(...(data as unknown[]))
+  }
+  return (rows as Record<string, unknown>[]).sort((a, b) => {
+    const A = shopRowSortKey(a)
+    const B = shopRowSortKey(b)
+    if (B.r !== A.r) return B.r - A.r
+    return A.n.localeCompare(B.n)
+  })
+}
+
+/**
+ * Intersect course junction IDs, `buildDiveShopQuery` shop rows, and/or name matches; then load full rows sorted like search.
+ */
+async function runGuidedCombinedResultsQuery (
+  supabaseUrl: string,
+  supabaseKey: string,
+  state: GuidedSearchState
+): Promise<{ shops: unknown[]; total: number; filters: SearchFilters }> {
+  const filters = toSearchFilters(state.filters)
+  const empty = (): { shops: unknown[]; total: number; filters: SearchFilters } => ({
+    shops: [],
+    total: 0,
+    filters
+  })
+  try {
+    const lists: string[][] = []
+
+    if (state.courseIntent?.trim()) {
+      const cids = await shopIdsForCourseSearch(supabaseUrl, supabaseKey, state.courseIntent.trim())
+      if (!cids.length) return empty()
+      lists.push(cids)
+    }
+    if (filtersConstrainGuidedShops(state.filters)) {
+      const { data, error } = await buildDiveShopQuery(supabaseUrl, supabaseKey, filters, null, {
+        defaultLimit: 500
+      })
+      if (error) {
+        console.error('[guided] buildDiveShopQuery in combined search:', error)
+        return empty()
+      }
+      const shopIds = ((data || []) as { id: string }[]).map(r => r.id).filter(Boolean)
+      if (!shopIds.length) return empty()
+      lists.push(shopIds)
+    }
+    if (state.nameQuery?.trim()) {
+      const matches = await listShopsMatchingName(
+        supabaseUrl,
+        supabaseKey,
+        state.nameQuery.trim(),
+        300
+      )
+      if (!matches.length) return empty()
+      lists.push(matches.map(m => m.id).filter(Boolean))
+    }
+
+    const idOrder = intersectIdLists(lists)
+    const capped = idOrder.slice(0, 500)
+    const shops = await fetchShopsFullRowsByIds(supabaseUrl, supabaseKey, capped)
+    return { shops, total: shops.length, filters }
+  } catch (err) {
+    console.error('[guided] runGuidedCombinedResultsQuery:', err)
+    return empty()
+  }
+}
+
+function guidedResultsSelectableOptions (
+  state: GuidedSearchState,
+  formatted: ReturnType<typeof formatEntitySearchResponse>
+): { label: string; value: string }[] {
+  return [
+    ...(formatted.selectableOptions || []),
+    ...guidedPostResultsFilterChips(state),
+    { label: 'New search', value: GuidedCommands.reset }
+  ]
+}
+
+function guidedPaginationSelectableOptions (
+  state: GuidedSearchState,
+  hasMore: boolean
+): { label: string; value: string }[] {
+  const out: { label: string; value: string }[] = []
+  if (hasMore) out.push({ label: 'Load next 5', value: 'Show more' })
+  out.push(...guidedPostResultsFilterChips(state))
+  out.push({ label: 'New search', value: GuidedCommands.reset })
+  return out
+}
+
 function mergeGuidedState (incoming: GuidedSearchState | null | undefined): GuidedSearchState {
   const base = initialGuidedSearchState()
   if (!incoming || typeof incoming !== 'object') return base
@@ -153,6 +324,8 @@ export async function runGuidedSearchTurn (
 
   let state = mergeGuidedState(body.guidedSearchState)
   const rawMsg = String(body.message || '').trim()
+  /** Captured before location_destination merges into `results` — used to reopen the place picker on zero hits. */
+  const priorStepWasLocationDestination = state.step === 'location_destination'
 
   if (isBookingHandoffUserMessage(rawMsg)) {
     return {
@@ -179,12 +352,67 @@ export async function runGuidedSearchTurn (
     const alreadyShown = Math.max(0, body.shopsAlreadyShownCount ?? 0)
     const pageSize = /\b(show next 20|load next 20|next 20)\b/i.test(rawMsg) ? 20 : 5
 
+    if (guidedNeedsCombinedQuery(state)) {
+      const { shops: allShops, total, filters: combinedFilters } = await runGuidedCombinedResultsQuery(
+        supabaseUrl,
+        supabaseKey,
+        state
+      )
+      const effectiveTotal = clientTotal ?? total
+      if (alreadyShown >= effectiveTotal) {
+        const empty = formatEntitySearchResponse(combinedFilters, [], 'No more results for this search.')
+        return {
+          success: true,
+          intent: 'search',
+          ...empty,
+          guidedSearchState: state,
+          activityLog,
+          selectableOptions: guidedPaginationSelectableOptions(state, false)
+        }
+      }
+      const slice = allShops.slice(alreadyShown, alreadyShown + pageSize)
+      const remaining = Math.max(0, effectiveTotal - alreadyShown - slice.length)
+      const formatted = formatEntitySearchResponse(
+        combinedFilters,
+        slice,
+        remaining > 0 ? 'Here are more dive businesses matching your filters.' : 'Here are the remaining dive businesses matching your filters.'
+      )
+      const bookingHints: GuidedFlowSearchResponse['bookingHints'] =
+        state.courseIntent?.trim() || state.diveSiteTypeLabel
+          ? {
+              desiredCourses: state.courseIntent?.trim() ? [state.courseIntent.trim()] : undefined,
+              diveSiteTypeLabel: state.diveSiteTypeLabel ?? null
+            }
+          : undefined
+      return {
+        success: true,
+        intent: 'search',
+        message: formatted.message,
+        shops: formatted.shops,
+        totalResults: effectiveTotal,
+        hasMoreResults: remaining > 0,
+        filters: combinedFilters,
+        selectableOptions: guidedPaginationSelectableOptions(state, remaining > 0),
+        guidedSearchState: state,
+        bookingHints,
+        activityLog
+      }
+    }
+
     if (state.branch === 'course' && state.courseIntent) {
       const { shops: allShops, total } = await runCourseBranchQuery(supabaseUrl, supabaseKey, state.courseIntent)
       const effectiveTotal = clientTotal ?? total
       if (alreadyShown >= effectiveTotal) {
         const empty = formatEntitySearchResponse(filters, [], 'No more results for this search.')
-        return { success: true, intent: 'search', ...empty, guidedSearchState: state, activityLog }
+        return {
+          success: true,
+          intent: 'search',
+          ...empty,
+          guidedSearchState: state,
+          activityLog,
+          selectableOptions: guidedPaginationSelectableOptions(state, false),
+          bookingHints: { desiredCourses: [state.courseIntent!], diveSiteTypeLabel: null }
+        }
       }
       const slice = allShops.slice(alreadyShown, alreadyShown + pageSize)
       const remaining = Math.max(0, effectiveTotal - alreadyShown - slice.length)
@@ -203,9 +431,10 @@ export async function runGuidedSearchTurn (
         totalResults: effectiveTotal,
         hasMoreResults: remaining > 0,
         filters,
-        selectableOptions: remaining > 0 ? [{ label: 'Load next 5', value: 'Show more' }] : undefined,
+        selectableOptions: guidedPaginationSelectableOptions(state, remaining > 0),
         guidedSearchState: state,
-        activityLog
+        activityLog,
+        bookingHints: { desiredCourses: [state.courseIntent], diveSiteTypeLabel: null }
       }
     }
 
@@ -219,7 +448,8 @@ export async function runGuidedSearchTurn (
           intent: 'search',
           ...empty,
           guidedSearchState: state,
-          activityLog
+          activityLog,
+          selectableOptions: guidedPaginationSelectableOptions(state, false)
         }
       }
       const slice = matches.slice(alreadyShown, alreadyShown + pageSize)
@@ -239,7 +469,7 @@ export async function runGuidedSearchTurn (
         totalResults: total,
         hasMoreResults: remaining > 0,
         filters,
-        selectableOptions: remaining > 0 ? [{ label: 'Load next 5', value: 'Show more' }] : undefined,
+        selectableOptions: guidedPaginationSelectableOptions(state, remaining > 0),
         guidedSearchState: state,
         activityLog
       }
@@ -253,7 +483,14 @@ export async function runGuidedSearchTurn (
       const pageShops = (queryResult.data || []) as unknown[]
       if (alreadyShown >= clientTotal) {
         const empty = formatEntitySearchResponse(filters, [], 'No more results for this search.')
-        return { success: true, intent: 'search', ...empty, guidedSearchState: state, activityLog }
+        return {
+          success: true,
+          intent: 'search',
+          ...empty,
+          guidedSearchState: state,
+          activityLog,
+          selectableOptions: guidedPaginationSelectableOptions(state, false)
+        }
       }
       const remaining = Math.max(0, clientTotal - alreadyShown - pageShops.length)
       const formatted = formatEntitySearchResponse(
@@ -269,7 +506,7 @@ export async function runGuidedSearchTurn (
         totalResults: clientTotal,
         hasMoreResults: remaining > 0,
         filters,
-        selectableOptions: remaining > 0 ? [{ label: 'Load next 5', value: 'Show more' }] : undefined,
+        selectableOptions: guidedPaginationSelectableOptions(state, remaining > 0),
         guidedSearchState: state,
         activityLog
       }
@@ -293,7 +530,7 @@ export async function runGuidedSearchTurn (
       totalResults: total,
       hasMoreResults: remaining > 0,
       filters,
-      selectableOptions: remaining > 0 ? [{ label: 'Load next 5', value: 'Show more' }] : undefined,
+      selectableOptions: guidedPaginationSelectableOptions(state, remaining > 0),
       guidedSearchState: state,
       activityLog
     }
@@ -309,6 +546,7 @@ export async function runGuidedSearchTurn (
       state = {
         ...state,
         filters: { ...state.filters, locale: msg },
+        branch: state.branch ?? 'location',
         step: 'results'
       }
       pushLog('destination', 'Searching by place you entered')
@@ -318,7 +556,7 @@ export async function runGuidedSearchTurn (
       state = {
         ...state,
         nameQuery: msg,
-        branch: 'name',
+        branch: state.branch ?? 'name',
         step: 'results'
       }
       pushLog('name', 'Searching by business name')
@@ -419,6 +657,45 @@ export async function runGuidedSearchTurn (
   let bookingHints: GuidedFlowSearchResponse['bookingHints'] = undefined
   let openShopId: string | undefined
 
+  if (guidedNeedsCombinedQuery(state)) {
+    const { shops, total, filters: combinedFilters } = await runGuidedCombinedResultsQuery(
+      supabaseUrl,
+      supabaseKey,
+      state
+    )
+    if (state.courseIntent?.trim()) {
+      bookingHints = {
+        desiredCourses: [state.courseIntent.trim()],
+        diveSiteTypeLabel: state.diveSiteTypeLabel ?? null
+      }
+    } else if (state.diveSiteTypeLabel) {
+      bookingHints = { desiredCourses: undefined, diveSiteTypeLabel: state.diveSiteTypeLabel }
+    }
+    if (total === 0 && priorStepWasLocationDestination) {
+      return emptySearchReopenLocationPicker({ state, rawMsg, activityLog, bookingHints })
+    }
+    const formatted = formatEntitySearchResponse(
+      combinedFilters,
+      shops,
+      total > 0
+        ? 'Here are dive businesses matching your combined filters.'
+        : 'No dive businesses matched these combined filters. Try widening one dimension or start a new search.'
+    )
+    return {
+      success: true,
+      intent: 'search',
+      message: formatted.message,
+      shops: formatted.shops,
+      totalResults: formatted.totalResults,
+      hasMoreResults: formatted.hasMoreResults,
+      filters: formatted.filters as SearchFilters,
+      selectableOptions: guidedResultsSelectableOptions(state, formatted),
+      guidedSearchState: state,
+      bookingHints,
+      activityLog
+    }
+  }
+
   if (state.branch === 'course' && state.courseIntent) {
     const { shops, total } = await runCourseBranchQuery(supabaseUrl, supabaseKey, state.courseIntent)
     bookingHints = { desiredCourses: [state.courseIntent], diveSiteTypeLabel: null }
@@ -437,10 +714,7 @@ export async function runGuidedSearchTurn (
       totalResults: total,
       hasMoreResults: formatted.hasMoreResults,
       filters: formatted.filters as SearchFilters,
-      selectableOptions: [
-        ...(formatted.selectableOptions || []),
-        { label: 'New search', value: GuidedCommands.reset }
-      ],
+      selectableOptions: guidedResultsSelectableOptions(state, formatted),
       guidedSearchState: state,
       bookingHints,
       activityLog
@@ -450,13 +724,12 @@ export async function runGuidedSearchTurn (
   if (state.branch === 'name' && state.nameQuery) {
     const matches = await listShopsMatchingName(supabaseUrl, supabaseKey, state.nameQuery, 50)
     const total = matches.length
-    const firstPage = matches.slice(0, 5)
-    if (total === 1 && firstPage[0]) {
-      openShopId = firstPage[0].id
+    if (total === 1 && matches[0]) {
+      openShopId = matches[0].id
     }
     const formatted = formatEntitySearchResponse(
       toSearchFilters(state.filters),
-      firstPage as unknown[],
+      matches as unknown[],
       total > 0
         ? `Found ${total} business(es) matching “${state.nameQuery}”.`
         : `No businesses matched “${state.nameQuery}”. Try a shorter name or search by location.`
@@ -469,10 +742,7 @@ export async function runGuidedSearchTurn (
       totalResults: total,
       hasMoreResults: formatted.hasMoreResults,
       filters: formatted.filters as SearchFilters,
-      selectableOptions: [
-        ...(formatted.selectableOptions || []),
-        { label: 'New search', value: GuidedCommands.reset }
-      ],
+      selectableOptions: guidedResultsSelectableOptions(state, formatted),
       guidedSearchState: state,
       openShopId,
       activityLog
@@ -483,14 +753,17 @@ export async function runGuidedSearchTurn (
   const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, filters)
   const all = (dbResult.data || []) as unknown[]
   const total = all.length
-  const firstPage = all.slice(0, 5)
   if (state.branch === 'site_type' && state.diveSiteTypeLabel) {
     bookingHints = { desiredCourses: undefined, diveSiteTypeLabel: state.diveSiteTypeLabel }
   }
 
+  if (total === 0 && priorStepWasLocationDestination) {
+    return emptySearchReopenLocationPicker({ state, rawMsg, activityLog, bookingHints })
+  }
+
   const formatted = formatEntitySearchResponse(
     filters,
-    firstPage,
+    all,
     total > 0
       ? `Here are dive businesses for your filters.`
       : `No dive businesses matched these filters. Try widening the area or trip type.`
@@ -504,10 +777,7 @@ export async function runGuidedSearchTurn (
     totalResults: total,
     hasMoreResults: formatted.hasMoreResults,
     filters: formatted.filters as SearchFilters,
-    selectableOptions: [
-      ...(formatted.selectableOptions || []),
-      { label: 'New search', value: GuidedCommands.reset }
-    ],
+    selectableOptions: guidedResultsSelectableOptions(state, formatted),
     guidedSearchState: state,
     bookingHints,
     activityLog
