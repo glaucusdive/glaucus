@@ -6,6 +6,8 @@ export interface SearchCacheState {
   lastQuery: string | null
   timestamp: number
   selectedShopId?: string | null
+  /** Shop detail bottom drawer (chat). Legacy key: mobileDetailShopId. */
+  detailDrawerShopId?: string | null
   mobileDetailShopId?: string | null
   drawerOpen?: boolean
   drawerShopId?: string | null
@@ -45,6 +47,7 @@ function emptySession (): ChatSessionRecord {
     lastQuery: null,
     timestamp: now,
     selectedShopId: null,
+    detailDrawerShopId: null,
     mobileDetailShopId: null,
     drawerOpen: false,
     drawerShopId: null,
@@ -138,6 +141,7 @@ export function ensureChatsRoot (): ChatsRoot {
       lastQuery: legacy.lastQuery ?? null,
       timestamp: legacy.timestamp || now,
       selectedShopId: legacy.selectedShopId ?? null,
+      detailDrawerShopId: (legacy as SearchCacheState).detailDrawerShopId ?? legacy.mobileDetailShopId ?? null,
       mobileDetailShopId: legacy.mobileDetailShopId ?? null,
       drawerOpen: legacy.drawerOpen ?? false,
       drawerShopId: legacy.drawerShopId ?? null,
@@ -174,13 +178,15 @@ export function getActiveSession (root: ChatsRoot): ChatSessionRecord | null {
 }
 
 export function payloadToSessionFields (state: Omit<SearchCacheState, 'timestamp'>): Omit<ChatSessionRecord, 'id' | 'title' | 'updatedAt'> {
+  const detailId = state.detailDrawerShopId ?? state.mobileDetailShopId ?? null
   return {
     messages: state.messages ?? [],
     userInput: state.userInput ?? '',
     lastQuery: state.lastQuery ?? null,
     timestamp: Date.now(),
     selectedShopId: state.selectedShopId ?? null,
-    mobileDetailShopId: state.mobileDetailShopId ?? null,
+    detailDrawerShopId: detailId,
+    mobileDetailShopId: detailId,
     drawerOpen: state.drawerOpen ?? false,
     drawerShopId: state.drawerShopId ?? null,
     drawerShopName: state.drawerShopName ?? null
@@ -233,6 +239,7 @@ export function archiveActiveAndStartNewChatsRoot (root: ChatsRoot, state: Omit<
       updatedAt: Date.now(),
       timestamp: Date.now(),
       selectedShopId: null,
+      detailDrawerShopId: null,
       mobileDetailShopId: null,
       drawerOpen: false,
       drawerShopId: null,
@@ -282,7 +289,8 @@ export function activeToSearchCacheState (root: ChatsRoot): SearchCacheState | n
     lastQuery: s.lastQuery,
     timestamp: s.timestamp,
     selectedShopId: s.selectedShopId,
-    mobileDetailShopId: s.mobileDetailShopId,
+    detailDrawerShopId: s.detailDrawerShopId ?? s.mobileDetailShopId ?? null,
+    mobileDetailShopId: s.mobileDetailShopId ?? s.detailDrawerShopId ?? null,
     drawerOpen: s.drawerOpen,
     drawerShopId: s.drawerShopId,
     drawerShopName: s.drawerShopName
