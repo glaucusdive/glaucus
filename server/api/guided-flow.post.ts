@@ -33,5 +33,14 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  return await runGuidedSearchTurn(body, supabaseUrl, supabaseKey)
+  try {
+    return await runGuidedSearchTurn(body, supabaseUrl, supabaseKey)
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err)
+    console.error('[guided-flow]', detail, err)
+    return {
+      success: false as const,
+      message: 'Search could not complete. Please try again or tap New search.'
+    }
+  }
 })

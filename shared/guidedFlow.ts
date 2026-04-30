@@ -68,7 +68,12 @@ export const GuidedCommands = {
   /** Prefix for course chips */
   coursePrefix: `${GUIDED_PREFIX}course:`,
   /** Prefix for site-type chips */
-  siteTypePrefix: `${GUIDED_PREFIX}site:`
+  siteTypePrefix: `${GUIDED_PREFIX}site:`,
+  /** Post-results refinement: keep other dimensions; do not use branch:* (those clear state). */
+  filterLocation: `${GUIDED_PREFIX}filter:location`,
+  filterCourse: `${GUIDED_PREFIX}filter:course`,
+  filterSiteType: `${GUIDED_PREFIX}filter:site_type`,
+  filterName: `${GUIDED_PREFIX}filter:name`
 } as const
 
 export function guidedBranchSelectableOptions (): { label: string; value: string }[] {
@@ -146,6 +151,63 @@ export function parseGuidedSiteType (message: string): { label: string; token: s
   return { label: chip.label, token: chip.activityToken }
 }
 
+export function guidedHasLocationFilters (state: Pick<GuidedSearchState, 'filters'>): boolean {
+  const f = state.filters
+  return !!(String(f.country || '').trim() || String(f.locale || '').trim() || String(f.region || '').trim())
+}
+
+/** True when `buildDiveShopQuery` would apply at least one shop filter beyond an empty state. */
+export function filtersConstrainGuidedShops (filters: GuidedSearchFilters): boolean {
+  const f = filters
+  if (guidedHasLocationFilters({ filters: f })) return true
+  if (f.minRating !== undefined && f.minRating > 0) return true
+  if (f.languages && f.languages.length > 0) return true
+  if (f.diveTypes && f.diveTypes.length > 0) return true
+  if (f.activityTokens && f.activityTokens.length > 0) return true
+  if (f.dates?.start || f.dates?.end) return true
+  return false
+}
+
+/**
+ * Course and name are queried outside `buildDiveShopQuery`; when either pairs with shop filters or the other, we intersect ID sets.
+ */
+export function guidedNeedsCombinedQuery (state: GuidedSearchState): boolean {
+  const hasCourse = !!(state.courseIntent?.trim())
+  const hasName = !!(state.nameQuery?.trim())
+  const shopFiltered = filtersConstrainGuidedShops(state.filters)
+  return (hasCourse && (shopFiltered || hasName)) || (hasName && (shopFiltered || hasCourse))
+}
+
+/**
+ * After a results page, offer cross-filter chips. Location / course / site type / name are always available
+ * so users can change an active dimension (e.g. pick another dive site type) without starting over.
+ */
+export function guidedPostResultsFilterChips (state: GuidedSearchState): { label: string; value: string }[] {
+  if (state.step !== 'results') return []
+  const out: { label: string; value: string }[] = []
+  out.push({
+    label: guidedHasLocationFilters(state) ? 'Change location' : 'Filter by location',
+    value: GuidedCommands.filterLocation
+  })
+  out.push({
+    label: state.courseIntent?.trim()
+      ? 'Change certification course'
+      : 'Filter by certification course',
+    value: GuidedCommands.filterCourse
+  })
+  const hasSite =
+    !!(state.diveSiteTypeLabel || (state.filters.activityTokens && state.filters.activityTokens.length > 0))
+  out.push({
+    label: hasSite ? 'Change dive site type' : 'Filter by dive site type',
+    value: GuidedCommands.filterSiteType
+  })
+  out.push({
+    label: state.nameQuery?.trim() ? 'Change business name' : 'Filter by business name',
+    value: GuidedCommands.filterName
+  })
+  return out
+}
+
 /**
  * Phrases that hand off to the booking orchestrator (chips / panel: "Let's book …", "Lets book …").
  * Guided search must not handle these while still on `intent: 'search'`, or it will re-run DB search with stale filters.
@@ -211,6 +273,26 @@ export function applyGuidedSearchCommandPure (
     next.nameQuery = null
     next.filters = {}
     return next
+  }
+
+  if (prev.step === 'results') {
+    if (m === GuidedCommands.filterLocation) {
+      const hasTrip = !!(next.filters.diveTypes && next.filters.diveTypes.length > 0)
+      next.step = hasTrip ? 'location_destination' : 'location_trip_type'
+      return next
+    }
+    if (m === GuidedCommands.filterCourse) {
+      next.step = 'course_pick'
+      return next
+    }
+    if (m === GuidedCommands.filterSiteType) {
+      next.step = 'site_type_pick'
+      return next
+    }
+    if (m === GuidedCommands.filterName) {
+      next.step = 'name_search'
+      return next
+    }
   }
 
   if (next.step === 'location_trip_type') {

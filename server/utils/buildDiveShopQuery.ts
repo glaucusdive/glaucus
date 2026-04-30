@@ -17,10 +17,26 @@ export interface SearchFilters {
 }
 
 /**
+ * Strip characters that break PostgREST `or=(...)` comma-separated grammar or act as ILIKE metacharacters.
+ * @see PostgrestFilterBuilder.or — filters string is passed through as-is.
+ */
+export function sanitizeTermForPostgrestOrFragment (term: string): string {
+  return term
+    .trim()
+    .replace(/[%_\\]/g, ' ')
+    .replace(/[(),]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
  * PostgREST `.or()` fragment: location text matches city, state, `locale`, or `street_address` (ilike).
  */
 export function diveshopLocaleOrConditions (term: string): string {
-  const t = term.trim()
+  const t = sanitizeTermForPostgrestOrFragment(term)
+  if (!t) {
+    return 'id.eq.00000000-0000-0000-0000-000000000000'
+  }
   return `city.ilike.%${t}%,state.ilike.%${t}%,locale.ilike.%${t}%,street_address.ilike.%${t}%`
 }
 
@@ -34,20 +50,25 @@ export function diveshopLocaleOrConditions (term: string): string {
  */
 export type DiveShopQueryRange = { offset: number; limit: number }
 
+/** When no `range`, default row cap (guided combined search may raise this for ID intersection). */
+export type BuildDiveShopQueryOptions = { defaultLimit?: number }
+
 export async function buildDiveShopQuery (
   supabaseUrl: string,
   supabaseKey: string,
   filters: SearchFilters,
-  range?: DiveShopQueryRange | null
+  range?: DiveShopQueryRange | null,
+  options?: BuildDiveShopQueryOptions | null
 ) {
   const client = createClient(supabaseUrl, supabaseKey)
+  const defaultLimit = options?.defaultLimit != null && options.defaultLimit > 0 ? options.defaultLimit : 50
 
   const applyWindow = (q: ReturnType<typeof client.from>) => {
     if (range && range.limit > 0 && range.offset >= 0) {
       const end = range.offset + range.limit - 1
       return q.range(range.offset, end)
     }
-    return q.limit(50)
+    return q.limit(defaultLimit)
   }
 
   let activityIdFilter: string[] | null = null
@@ -69,10 +90,19 @@ export async function buildDiveShopQuery (
 
   // Resolve country name to ID(s) and filter by country_id (reliable; join-filter on embedded table is not applied correctly in some clients)
   if (filters.country?.trim()) {
+    const countryPat = sanitizeTermForPostgrestOrFragment(filters.country)
+    if (!countryPat) {
+      const emptyBase = client
+        .from('diveshops')
+        .select('*, country:countries(name), region:regions(name)')
+        .in('country_id', ['00000000-0000-0000-0000-000000000000'])
+      return await applyWindow(emptyBase)
+    }
+    const countryIlike = `%${countryPat.replace(/\s+/g, '%')}%`
     const { data: countries } = await client
       .from('countries')
       .select('id')
-      .ilike('name', `%${filters.country.trim()}%`)
+      .ilike('name', countryIlike)
     const countryIds = (countries || []).map(c => c.id)
     if (countryIds.length === 0) {
       // No matching country — return empty result
@@ -84,17 +114,34 @@ export async function buildDiveShopQuery (
 
   // Resolve region name to ID(s) and filter by region_id
   if (filters.region?.trim()) {
+    const regionPat = sanitizeTermForPostgrestOrFragment(filters.region)
+    if (!regionPat) {
+      const emptyBase = client
+        .from('diveshops')
+        .select('*, country:countries(name), region:regions(name)')
+        .in('country_id', ['00000000-0000-0000-0000-000000000000'])
+      return await applyWindow(emptyBase)
+    }
+    const regionIlike = `%${regionPat.replace(/\s+/g, '%')}%`
     const { data: regions } = await client
       .from('regions')
       .select('id')
-      .ilike('name', `%${filters.region.trim()}%`)
+      .ilike('name', regionIlike)
     const regionIds = (regions || []).map(r => r.id)
     if (regionIds.length > 0) query = query.in('region_id', regionIds)
   }
 
   // Apply locale filter (city, state, locale, or street address)
   if (filters.locale?.trim()) {
-    query = query.or(diveshopLocaleOrConditions(filters.locale))
+    const locSafe = sanitizeTermForPostgrestOrFragment(filters.locale)
+    if (!locSafe) {
+      const emptyBase = client
+        .from('diveshops')
+        .select('*, country:countries(name), region:regions(name)')
+        .in('country_id', ['00000000-0000-0000-0000-000000000000'])
+      return await applyWindow(emptyBase)
+    }
+    query = query.or(diveshopLocaleOrConditions(locSafe))
   }
 
   // Apply minimum rating filter (include shops with no rating so we don't return zero when data has nulls)
