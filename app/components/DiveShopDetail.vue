@@ -74,7 +74,7 @@
             </div>
             <!-- More Information Tab -->
             <div v-if="activeTab === 'information'" class="flex flex-col gap-4 p-2 lg:p-4 h-full overflow-y-auto">
-              <div class="flex flex-col cq:lg:flex-row gap-2">
+              <div v-if="SHOW_INFORMATION_HOURS_LANGUAGES_DETAILS" class="flex flex-col cq:lg:flex-row gap-2">
                 <CardInfo title="Hours" :items="displayHours" empty-message="Hours not available" />
                 <CardInfo title="Languages" :items="displayLanguages || []" display-mode="text" empty-message="Languages not available" />
                 <CardInfo title="Details" empty-message="No description available for this dive shop.">
@@ -97,7 +97,7 @@
                   </span>
                 </CardInfo>
               </div>
-              <div class="flex flex-col cq:lg:flex-row gap-2 rounded-md">
+              <div class="flex flex-col gap-2 rounded-md">
                 <CardInfo
                   title="Equipment Rental"
                   :items="equipmentList"
@@ -314,6 +314,9 @@ onUnmounted(() => {
 
 // Read more/read less state
 const showFullDetails = ref(false)
+
+/** More Information tab: Hours / Languages / Details row — set true to show again */
+const SHOW_INFORMATION_HOURS_LANGUAGES_DETAILS = false
 
 // Tab system state
 const activeTab = ref('reviews')
