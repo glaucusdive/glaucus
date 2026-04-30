@@ -1,6 +1,6 @@
 /**
  * User message is asking for the next page of the *same* search (not a new query).
- * Shared with server routes (`ai-search`, `ai-search-stream`) and
+ * Shared with server routes (`guided-orchestrator`, `guided-flow`) and
  * `server/utils/tripTypeSearchPipeline.ts`.
  */
 const paginationPattern =

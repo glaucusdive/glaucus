@@ -4,19 +4,19 @@ overview: Rebuild the chat/search and booking experience around deterministic ra
 todos:
   - id: define-state-machine
     content: Define one deterministic state machine for search and booking, with explicit allowed transitions.
-    status: pending
+    status: completed
   - id: remove-llm-routing
     content: Remove LLM-owned routing from search/booking decisions; keep only deterministic regex, chips, DB lookups, and forms.
-    status: pending
+    status: completed
   - id: chip-first-ui
     content: Replace most open-ended search prompts with chip-first guided steps and controlled inputs.
-    status: pending
+    status: completed
   - id: unify-endpoints
     content: Make stream and JSON paths share the same deterministic route output or temporarily disable stream for guided flows.
-    status: pending
+    status: completed
   - id: add-tests
     content: Add golden flow tests proving repeated user actions produce the same route and chips.
-    status: pending
+    status: completed
 isProject: false
 ---
 
