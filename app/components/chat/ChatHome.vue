@@ -28,18 +28,21 @@
         <div class="relative flex min-w-0 h-full w-full flex-col transition-all duration-300 ease-in-out">
           <!-- Messages Container -->
           <div ref="messagesContainer"
-            class="flex-1 overflow-y-auto p-2 md:p-4 flex flex-col gap-2 *:max-w-3xl *:mx-auto *:w-full">
+            class="flex-1 overflow-y-auto p-2 md:p-4 flex flex-col gap-2 *:mx-auto *:w-full">
 
-            <div v-if="messages.length === 0" class="flex flex-col items-center justify-center gap-8 h-full">
-              <div class="text-center space-y-4 flex flex-col items-center max-w-2xl">
+            <div v-if="messages.length === 0" class="flex flex-col items-center justify-center gap-8 h-full w-full">
+              <div class="text-center flex flex-col gap-4 items-center">
                 <template v-if="useGuidedSearch">
-                  <h2 class="max-w-2xl lg:text-2xl font-bold text-zinc-900 dark:text-white">
-                    Search dive businesses
-                  </h2>
-                  <p class="text-sm lg:text-base text-zinc-600 dark:text-zinc-400 px-2">
-                    Choose how you want to search — then follow the steps. No AI guessing your route.
-                  </p>
-                  <div class="flex flex-wrap justify-center gap-2 mt-4">
+                  <div class="flex flex-col gap-1">
+                    <h2 class="max-w-2xl lg:text-2xl font-bold text-zinc-900 dark:text-white">
+                      Search dive businesses
+                    </h2>
+                    <p class="text-sm lg:text-base text-zinc-600 dark:text-zinc-400 px-2">
+                      Choose how you want to search — then follow the steps. No AI guessing your route.
+                    </p>
+                  </div>
+                  
+                  <div class="flex flex-wrap justify-center gap-2">
                     <button
                       v-for="opt in guidedBranchOptions"
                       :key="opt.value"
@@ -66,7 +69,7 @@
             </div>
 
             <!-- Message history -->
-            <div v-for="(msg, index) in messages" :key="index" class="">
+            <div v-for="(msg, index) in messages" :key="index" class="max-w-2xl">
               <!-- User message -->
               <div v-if="msg.role === 'user'" class="flex justify-end">
                 <div class="max-w-[80%] bg-blue-600 text-white rounded-lg p-2">
