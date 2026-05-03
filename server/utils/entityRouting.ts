@@ -5,6 +5,7 @@ import type { EntityClarifyKind } from './entityClarify'
 import { entityClarifySelectableOptions } from './entityClarify'
 import type { ResolvedShop } from './resolveShop'
 import { listShopsMatchingName } from './resolveShop'
+import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 
 /** Avoid ilike metacharacters from user input. */
 function sanitizeIlike (s: string): string {
@@ -141,6 +142,8 @@ export function formatEntitySearchResponse (
   const selectableOptions = resultCount > 5
     ? [{ label: 'Load next 5', value: 'Show more' }]
     : undefined
+  const searchMatchBadges =
+    responseShops.length > 0 ? buildSearchMatchBadges(filters, null) : []
   return {
     success: true as const,
     message,
@@ -148,7 +151,8 @@ export function formatEntitySearchResponse (
     totalResults: resultCount,
     hasMoreResults: resultCount > 5,
     filters,
-    selectableOptions
+    selectableOptions,
+    ...(searchMatchBadges.length ? { searchMatchBadges } : {})
   }
 }
 

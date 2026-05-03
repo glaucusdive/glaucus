@@ -48,6 +48,8 @@ export interface GuidedFlowSearchResponse {
   /** Client merges into booking when user starts booking from guided search */
   bookingHints?: { desiredCourses?: string[]; diveSiteTypeLabel?: string | null }
   activityLog?: { stage: string; label: string; at: number }[]
+  /** Optional; client may also derive from `filters` + `bookingHints`. */
+  searchMatchBadges?: string[]
 }
 
 function toSearchFilters (f: GuidedSearchState['filters']): SearchFilters {

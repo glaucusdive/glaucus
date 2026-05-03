@@ -28,6 +28,21 @@
         {{ shopTypeDisplay }}
       </p>
 
+      <!-- Why this result set matched the user's search (same chips for each card in a batch) -->
+      <div
+        v-if="matchBadges && matchBadges.length > 0"
+        class="flex flex-wrap gap-1.5"
+        aria-label="Search match highlights"
+      >
+        <span
+          v-for="(b, bi) in matchBadges"
+          :key="bi"
+          class="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-800 dark:text-blue-200 border border-blue-500/25 dark:border-blue-400/30"
+        >
+          {{ b }}
+        </span>
+      </div>
+
       <!-- Location -->
       <div class="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
         <MapPin class="w-4 h-4 shrink-0 mt-0.5" />
@@ -101,6 +116,11 @@ const props = defineProps({
   active: {
     type: Boolean,
     default: false
+  },
+  /** Labels from active search filters (directory-level match). */
+  matchBadges: {
+    type: Array,
+    default: undefined
   }
 })
 
