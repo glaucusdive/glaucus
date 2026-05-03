@@ -1,4 +1,6 @@
 import { deriveChatTitle } from '~/utils/chatTitle'
+import type { GuidedSearchState } from '~~/shared/guidedFlow'
+import { initialGuidedSearchState } from '~~/shared/guidedFlow'
 
 export interface SearchCacheState {
   messages: any[]
@@ -12,6 +14,11 @@ export interface SearchCacheState {
   drawerOpen?: boolean
   drawerShopId?: string | null
   drawerShopName?: string | null
+  /** Chat-only: guided rails state (when using /api/guided-flow). */
+  guidedSearchState?: GuidedSearchState | null
+  guidedBookingHints?: { desiredCourses?: string[]; diveSiteTypeLabel?: string | null } | null
+  /** When AI-first is on, user may opt into chip-based guided for this session. */
+  preferGuidedThisSession?: boolean
 }
 
 export interface ChatSessionRecord extends SearchCacheState {
@@ -51,7 +58,8 @@ function emptySession (): ChatSessionRecord {
     mobileDetailShopId: null,
     drawerOpen: false,
     drawerShopId: null,
-    drawerShopName: null
+    drawerShopName: null,
+    preferGuidedThisSession: false
   }
 }
 
@@ -189,7 +197,16 @@ export function payloadToSessionFields (state: Omit<SearchCacheState, 'timestamp
     mobileDetailShopId: detailId,
     drawerOpen: state.drawerOpen ?? false,
     drawerShopId: state.drawerShopId ?? null,
-    drawerShopName: state.drawerShopName ?? null
+    drawerShopName: state.drawerShopName ?? null,
+    ...(state.guidedSearchState != null
+      ? { guidedSearchState: state.guidedSearchState }
+      : {}),
+    ...(state.guidedBookingHints !== undefined
+      ? { guidedBookingHints: state.guidedBookingHints }
+      : {}),
+    ...(typeof state.preferGuidedThisSession === 'boolean'
+      ? { preferGuidedThisSession: state.preferGuidedThisSession }
+      : {})
   }
 }
 
@@ -243,7 +260,10 @@ export function archiveActiveAndStartNewChatsRoot (root: ChatsRoot, state: Omit<
       mobileDetailShopId: null,
       drawerOpen: false,
       drawerShopId: null,
-      drawerShopName: null
+      drawerShopName: null,
+      guidedSearchState: initialGuidedSearchState(),
+      guidedBookingHints: null,
+      preferGuidedThisSession: false
     }
     const sessions = root.sessions.map(s => (s.id === active.id ? cleared : s))
     const next = { version: 1 as const, activeSessionId: active.id, sessions }
@@ -293,7 +313,10 @@ export function activeToSearchCacheState (root: ChatsRoot): SearchCacheState | n
     mobileDetailShopId: s.mobileDetailShopId ?? s.detailDrawerShopId ?? null,
     drawerOpen: s.drawerOpen,
     drawerShopId: s.drawerShopId,
-    drawerShopName: s.drawerShopName
+    drawerShopName: s.drawerShopName,
+    guidedSearchState: s.guidedSearchState,
+    guidedBookingHints: s.guidedBookingHints,
+    preferGuidedThisSession: s.preferGuidedThisSession
   }
 }
 

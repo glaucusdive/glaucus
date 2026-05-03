@@ -24,6 +24,7 @@ import { formatEntitySearchResponse } from './entityRouting'
 import { listShopsMatchingName } from './resolveShop'
 import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
 import { normalizeClientSearchFilters } from './normalizeClientSearchFilters'
+import { shopIdsForCourseSearch } from './shopIdsForCourseSearch'
 
 export interface GuidedFlowRequestBody {
   guidedSearchState?: GuidedSearchState | null
@@ -265,29 +266,6 @@ function siteTypeChips (): { label: string; value: string }[] {
     label: c.label,
     value: `${GuidedCommands.siteTypePrefix}${c.activityToken}`
   }))
-}
-
-async function shopIdsForCourseSearch (
-  supabaseUrl: string,
-  supabaseKey: string,
-  searchTerm: string
-): Promise<string[]> {
-  const client = createClient(supabaseUrl, supabaseKey)
-  const pattern = `%${searchTerm.replace(/%/g, '').trim()}%`
-  const { data: courses, error } = await client
-    .from('courses')
-    .select('id')
-    .ilike('certification_name', pattern)
-    .limit(40)
-  if (error || !courses?.length) return []
-  const ids = [...new Set(courses.map((c: { id: string }) => c.id).filter(Boolean))]
-  if (!ids.length) return []
-  const { data: junction } = await client
-    .from('diveshop_courses')
-    .select('diveshop_id')
-    .in('course_id', ids)
-  if (!junction?.length) return []
-  return [...new Set((junction as { diveshop_id: string }[]).map(j => j.diveshop_id).filter(Boolean))]
 }
 
 async function runCourseBranchQuery (

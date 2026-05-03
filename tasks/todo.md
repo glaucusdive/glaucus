@@ -1,3 +1,16 @@
+# Chat home search-path examples — done
+
+- [x] Restore the pre-search chat home landing prompt
+- [x] Add five example cards matching the five search paths
+- [x] Keep the five guided search-path chips visible before search
+- [x] Verify: `ReadLints` on `ChatHome.vue`; `npm run build`
+
+## Review
+
+The empty chat state now shows the landing headline, five path-specific examples, and the rounded search path chips for location, dive shop type, certification course, dive site type, and business name. In AI-first mode the examples send natural-language searches; in guided mode they enter the matching guided path.
+
+---
+
 # Fix City Search — progress
 
 - [x] Port location-first search into `ai-search-stream` before trip-type gate
@@ -65,3 +78,20 @@ Guided search uses `/api/guided-flow` for search rails; booking and other JSON t
 ## Review
 
 Booking form stays in `default.vue` right drawer; shop tabs + contact live in the chat bottom sheet. Opening the booking form clears the detail sheet so the two don’t fight.
+
+---
+
+# AI Search Chat Reintegration — done
+
+- [x] Feature flag: `NUXT_PUBLIC_AI_SEARCH_FIRST` (default `false`) + `nuxt.config.ts` `public.aiSearchFirst`
+- [x] NLU contract: `interpretUserTurn` — `certification_course_hint`, `dive_site_type_label`, `trip_product_type`; `shared/searchAiContract.ts` doc type
+- [x] Merge + DB: `searchNluMerge.ts`, course filter via `shopIdsForCourseSearch.ts` (shared with guided), `mergeInterpretSearchFacetsIntoFilters` before `buildDiveShopQuery`
+- [x] Client routing: `ChatHome.vue` — AI-first empty state, `preferGuidedThisSession`, `useGuidedTurn` skips `/api/guided-flow` when AI-first unless user opts into chips; loading hints use `useGuidedTurn`
+- [x] Orchestrator: `runAiSearchPostHandler` — skip trip-type chip gate when `aiSearchFirst` or NLU pinned an axis; extended NLU hints; `runTripTypeSearchAfterLlm` gets `aiSearchFirst` + abort signal
+- [x] Grounded narration: `searchResultNarration.ts` after results; fewer chips when `aiSearchFirst` (`capSelectableOptionsForAiSearchFirst`, no trip-type chips on broad follow-up)
+- [x] Session cache: `useSearchCache` persists `guidedSearchState`, `guidedBookingHints`, `preferGuidedThisSession` via `payloadToSessionFields`
+- [x] Vitest: `tests/server/searchNluMerge.test.ts`
+
+## Review
+
+Enable with `NUXT_PUBLIC_AI_SEARCH_FIRST=true` and `NUXT_PUBLIC_DISABLE_CHAT_AI=false` plus OpenRouter key. Guided chips remain available via “Prefer step-by-step chips instead”. `npm test` passes (150 tests).

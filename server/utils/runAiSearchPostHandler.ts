@@ -550,7 +550,8 @@ export async function runAiSearchPostHandler (event: H3Event) {
     const supabaseUrl = config.public.supabaseUrl
     const supabaseKey = config.public.supabaseKey
     const chatAiOff =
-      String(config.public.disableChatAi ?? 'true').toLowerCase() !== 'false'
+      String(config.public.disableChatAi ?? (process.env.NODE_ENV === 'production' ? 'true' : 'false')).toLowerCase() !==
+      'false'
 
     if (!continuingBooking && supabaseUrl && supabaseKey) {
       const shopInfoTurn = await tryShopInfoResponse(message, selectedShopId, lastShops, supabaseUrl, supabaseKey)
@@ -584,6 +585,10 @@ export async function runAiSearchPostHandler (event: H3Event) {
         }
         return out as T
       }
+
+      const aiSearchFirst =
+        String(useRuntimeConfig().public.aiSearchFirst ?? 'false').toLowerCase() === 'true'
+      const searchAbortSignal = abortSignalFromH3Event(event)
 
       // --- Booking agent (per .cursor/rules/ai-agent-structure.mdc) ---
       // Tools: entity routing (extractReferredEntityPhrase, probeReferentPhrase, routeReferentFromProbe, handleForcedEntityClarify), getShopById, listShopsMatchingName, getDiveSitesForShop, getRentalEquipmentForShop, buildDiveShopQuery, tryFastPath, tryFastPathUnitOnly, LLM chat.
@@ -672,6 +677,9 @@ export async function runAiSearchPostHandler (event: H3Event) {
               regexReferent: referredPhraseRegex,
               destination_text: interpretTurn.destination_text,
               activity_terms: interpretTurn.activity_terms,
+              certification_course_hint: interpretTurn.certification_course_hint,
+              dive_site_type_label: interpretTurn.dive_site_type_label,
+              trip_product_type: interpretTurn.trip_product_type,
               goal: interpretTurn.goal
             })
           }
@@ -2538,13 +2546,24 @@ export async function runAiSearchPostHandler (event: H3Event) {
         })
       }
 
-      // Trip-type first: show chips immediately (no AI call) so user doesn't see "typing..."
+      // Trip-type first (legacy): chip gate. Skipped when AI-first search is on or NLU already pinned a search axis.
       const tripTypeChoiceInMessage = userMessageIndicatesTripTypeChoice(message)
-      // Session memory: if the user already specified a trip type in any earlier message, don't ask again
       const userAlreadySpecifiedTripType = historyContainsTripTypeChoice(history)
       const nluActivityForHint = normalizeActivityTerms(interpretTurn?.activity_terms)
       const userSpecifiedActivityNlu = nluActivityForHint.length > 0
-      if (!userAlreadySpecifiedTripType && !tripTypeChoiceInMessage && !userSpecifiedActivityNlu) {
+      const nluSkipsTripTypeQuestion =
+        !!(interpretTurn?.destination_text?.trim()) ||
+        !!(interpretTurn?.certification_course_hint?.trim()) ||
+        !!(interpretTurn?.dive_site_type_label?.trim()) ||
+        interpretTurn?.trip_product_type != null ||
+        !!(interpretTurn?.shop_name_hint?.trim())
+      if (
+        !aiSearchFirst &&
+        !userAlreadySpecifiedTripType &&
+        !tripTypeChoiceInMessage &&
+        !userSpecifiedActivityNlu &&
+        !nluSkipsTripTypeQuestion
+      ) {
         return withAgentMeta(tripTypeFirstQuestionResponse())
       }
 
@@ -2554,6 +2573,23 @@ export async function runAiSearchPostHandler (event: H3Event) {
       }
       if (nluActivityForHint.length > 0) {
         nluHint += `\n\n[System hint for FILTERS: match dive style / environment — ${nluActivityForHint.join(', ')}]`
+      }
+      if (interpretTurn?.certification_course_hint?.trim()) {
+        nluHint +=
+          `\n\n[System hint: user wants shops that offer a certification/course matching — ${interpretTurn.certification_course_hint.trim()}]`
+      }
+      if (interpretTurn?.dive_site_type_label?.trim()) {
+        nluHint +=
+          `\n\n[System hint for FILTERS: dive site / environment preference — ${interpretTurn.dive_site_type_label.trim()}]`
+      }
+      if (interpretTurn?.trip_product_type) {
+        const dt =
+          interpretTurn.trip_product_type === 'liveaboard'
+            ? 'Liveaboard'
+            : interpretTurn.trip_product_type === 'dive_resort'
+              ? 'Dive Resort'
+              : 'Dive Shop'
+        nluHint += `\n\n[System hint for FILTERS: set diveTypes to ["${dt}"] if not already set]`
       }
       const userMessageForSearch = message + nluHint
 
@@ -2600,7 +2636,9 @@ export async function runAiSearchPostHandler (event: H3Event) {
           supabaseUrl,
           supabaseKey,
           shopsAlreadyShownCount,
-          interpretTurn
+          interpretTurn,
+          aiSearchFirst,
+          signal: searchAbortSignal
         })
       )
     }, {

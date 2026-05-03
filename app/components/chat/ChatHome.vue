@@ -31,40 +31,26 @@
             class="flex-1 overflow-y-auto p-2 md:p-4 flex flex-col gap-2 *:mx-auto *:w-full">
 
             <div v-if="messages.length === 0" class="flex flex-col items-center justify-center gap-8 h-full w-full">
-              <div class="text-center flex flex-col gap-4 items-center">
-                <template v-if="useGuidedSearch">
-                  <div class="flex flex-col gap-1">
-                    <h2 class="max-w-2xl lg:text-2xl font-bold text-zinc-900 dark:text-white">
-                      Search dive businesses
-                    </h2>
-                    <p class="text-sm lg:text-base text-zinc-600 dark:text-zinc-400 px-2">
-                      Choose how you want to search — then follow the steps. No AI guessing your route.
-                    </p>
-                  </div>
-                  
-                  <div class="flex flex-wrap justify-center gap-2">
-                    <button
-                      v-for="opt in guidedBranchOptions"
-                      :key="opt.value"
-                      type="button"
-                      @click="sendMessage(opt.value, opt.label)"
-                      class="px-4 py-2.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer font-medium"
-                    >
-                      {{ opt.label }}
-                    </button>
-                  </div>
-                </template>
-                <template v-else>
-                  <h2 class="max-w-2xl lg:text-2xl font-bold text-zinc-900 dark:text-white">
-                    Tell me what you're looking for in your diving experience, and I'll help you find the best dive shops.
-                  </h2>
-                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
-                    <button v-for="example in exampleQueries" :key="example" @click="sendMessage(example)"
-                      class="text-left p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer bg-white dark:bg-zinc-900">
-                      <p class="text-sm text-zinc-700 dark:text-zinc-300">{{ example }}</p>
-                    </button>
-                  </div>
-                </template>
+              <div class="text-center flex flex-col gap-5 items-center max-w-4xl">
+                <h2 class="max-w-3xl text-xl sm:text-2xl lg:text-3xl font-bold text-zinc-900 dark:text-white">
+                  Tell me what you're looking for in your diving experience, and I'll help you find the best dive shops.
+                </h2>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mt-2 w-full">
+                  <button
+                    v-for="example in searchPathExamples"
+                    :key="example.path"
+                    type="button"
+                    @click="sendLandingSearchExample(example)"
+                    class="text-left p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer bg-white dark:bg-zinc-900"
+                  >
+                    <span class="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-500 mb-2">
+                      {{ example.path }}
+                    </span>
+                    <span class="block text-sm text-zinc-700 dark:text-zinc-300">{{ example.query }}</span>
+                  </button>
+                </div>
+
               </div>
             </div>
 
@@ -418,7 +404,7 @@ import { isSearchPaginationUserMessage } from '~/utils/searchPaginationIntent'
 import { initSignedInChatsFromRemote, chatRemoteHydrateTick } from '~/composables/userChatsRemote'
 import {
   GuidedCommands,
-  guidedBranchSelectableOptions,
+  GUIDED_PREFIX,
   initialGuidedSearchState,
   mergeGuidedSearchState,
   isBookingHandoffUserMessage
@@ -573,6 +559,12 @@ const detailDrawerShopId = ref(null)
 const useGuidedSearch = computed(() =>
   String(runtimeConfig.public.useGuidedSearch ?? 'true').toLowerCase() !== 'false'
 )
+/** When true (env), pre-booking uses orchestrator NLU + search LLM instead of /api/guided-flow. */
+const useAiSearchFirst = computed(() =>
+  String(runtimeConfig.public.aiSearchFirst ?? 'false').toLowerCase() === 'true'
+)
+/** User chose “step-by-step chips” for this session (overrides AI-first routing). */
+const preferGuidedThisSession = ref(false)
 const guidedSearchState = ref(initialGuidedSearchState())
 /** From last guided search results — merged into booking when user taps Start booking */
 const guidedBookingHints = ref(null)
@@ -704,21 +696,90 @@ function armShopDetailCloseGuard () {
   shopDetailCloseGuardUntil = Date.now() + SHOP_DETAIL_CLOSE_GUARD_MS
 }
 
-// Example queries for initial state (legacy / non-guided search)
-const exampleQueries = [
-  "I want to do wreck diving in Bali from Jan 1-7, 2026",
-  "Looking for beginner-friendly dive shops in the Maldives",
-  "Find highly rated dive shops in Thailand",
-  "Shops in Mexico that offer advanced certification courses"
-]
+function addDays (date, days) {
+  const next = new Date(date)
+  next.setDate(next.getDate() + days)
+  return next
+}
 
-const guidedBranchOptions = computed(() => guidedBranchSelectableOptions())
+function formatFutureDateRange () {
+  const start = addDays(new Date(), 45)
+  const end = addDays(start, 6)
+  const monthDay = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' })
+  const monthDayYear = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
-const chatComposerPlaceholder = computed(() =>
-  useGuidedSearch.value
-    ? 'Use chips above, or type a place or shop name…'
-    : 'Ask me anything about dive shops...'
-)
+  if (start.getFullYear() === end.getFullYear()) {
+    if (start.getMonth() === end.getMonth()) {
+      return `${monthDay.format(start)}-${end.getDate()}, ${end.getFullYear()}`
+    }
+    return `${monthDay.format(start)}-${monthDayYear.format(end)}`
+  }
+
+  return `${monthDayYear.format(start)}-${monthDayYear.format(end)}`
+}
+
+// Empty-state examples mirror the five supported search paths.
+const searchPathExamples = computed(() => [
+  {
+    path: 'By location',
+    query: 'Find dive shops in Bali',
+    guidedValue: GuidedCommands.branchLocation
+  },
+  {
+    path: 'By dive shop type',
+    query: 'Looking for liveaboards in the Maldives',
+    guidedValue: GuidedCommands.branchShopType
+  },
+  {
+    path: 'By certification course',
+    query: 'Shops in Mexico that offer advanced certification courses',
+    guidedValue: GuidedCommands.branchCourse
+  },
+  {
+    path: 'By dive site type',
+    query: `I want to do wreck diving in Bali from ${formatFutureDateRange()}`,
+    guidedValue: GuidedCommands.branchSiteType
+  },
+  {
+    path: 'By business name',
+    query: 'Search for a dive shop by business name',
+    guidedValue: GuidedCommands.branchName
+  }
+])
+
+/** True when the last assistant turn left us inside a guided mini-flow (past branch pick). */
+function isMidGuidedSearchWizard (messageList) {
+  const lastAssist = [...messageList].reverse().find(
+    (m) => m.role === 'assistant' && m.guidedSearchState && typeof m.guidedSearchState === 'object'
+  )
+  const step = lastAssist?.guidedSearchState?.step
+  return !!(step && step !== 'choose_branch')
+}
+
+function sendLandingSearchExample (example) {
+  const chatAiOn =
+    String(runtimeConfig.public.disableChatAi ?? (import.meta.dev ? 'false' : 'true')).toLowerCase() === 'false'
+  const useChipBootstrap =
+    useGuidedSearch.value &&
+    !chatAiOn &&
+    (!useAiSearchFirst.value || preferGuidedThisSession.value)
+  // With NLU off, the example sentence cannot be parsed on the server — keep chip bootstrap for that env only.
+  if (useChipBootstrap) {
+    sendMessage(example.guidedValue, example.path)
+    return
+  }
+  sendMessage(example.query)
+}
+
+const chatComposerPlaceholder = computed(() => {
+  if (useAiSearchFirst.value && !preferGuidedThisSession.value) {
+    return 'Describe destination, trip style, courses, site types, or a shop name…'
+  }
+  if (useGuidedSearch.value) {
+    return 'Use chips above, or type a place or shop name…'
+  }
+  return 'Ask me anything about dive shops...'
+})
 
 /** Dive sites for this shop whose dive_site_types.name matches the guided label */
 async function diveSiteNamesMatchingTypeForShop (shopId, typeLabel) {
@@ -777,7 +838,8 @@ function buildPageCachePayload () {
     drawerShopId: drawerWasOpen ? (drawerData.shopId ?? null) : null,
     drawerShopName: drawerWasOpen ? (drawerData.shopName ?? null) : null,
     guidedSearchState: guidedSearchState.value,
-    guidedBookingHints: guidedBookingHints.value
+    guidedBookingHints: guidedBookingHints.value,
+    preferGuidedThisSession: preferGuidedThisSession.value
   }
 }
 
@@ -792,6 +854,7 @@ async function hydrateFromRecord (cachedState) {
     ? mergeGuidedSearchState(cachedState.guidedSearchState)
     : initialGuidedSearchState()
   guidedBookingHints.value = cachedState.guidedBookingHints ?? null
+  preferGuidedThisSession.value = !!cachedState.preferGuidedThisSession
   pendingBookingPayload.value = null
   isLoading.value = false
   if (abortController.value) {
@@ -889,7 +952,8 @@ function activeSessionToPageState () {
     drawerShopId: active.drawerShopId ?? null,
     drawerShopName: active.drawerShopName ?? null,
     guidedSearchState: active.guidedSearchState ?? null,
-    guidedBookingHints: active.guidedBookingHints ?? null
+    guidedBookingHints: active.guidedBookingHints ?? null,
+    preferGuidedThisSession: active.preferGuidedThisSession ?? false
   }
 }
 
@@ -1062,7 +1126,7 @@ onMounted(async () => {
 })
 
 // Persist cache when state changes
-watch([messages, userInput], persistCache, { deep: true })
+watch([messages, userInput, preferGuidedThisSession, guidedSearchState, guidedBookingHints], persistCache, { deep: true })
 watch([selectedShopId, detailDrawerShopId, isOpen, drawerData], persistCache, { deep: true })
 
 // Auto-scroll to bottom when new messages arrive
@@ -1415,11 +1479,17 @@ const sendMessage = async (messageText, displayText) => {
       accessToken.value || (await client.auth.getSession()).data.session?.access_token || null
     if (bearer) aiHeaders.Authorization = `Bearer ${bearer}`
 
+    const trimmedMsg = message.trim()
+    const startsGuidedToken = trimmedMsg.toLowerCase().startsWith(GUIDED_PREFIX)
+    const midGuidedWizard = isMidGuidedSearchWizard(messages.value)
+
     const useGuidedTurn =
       useGuidedSearch.value &&
+      (!useAiSearchFirst.value || preferGuidedThisSession.value) &&
       !inBookingFlow &&
       !pendingEntityClarifyPhrase?.trim() &&
-      !isBookingHandoffUserMessage(message)
+      !isBookingHandoffUserMessage(message) &&
+      (startsGuidedToken || isSearchPaginationUserMessage(trimmedMsg) || midGuidedWizard)
 
     if (useGuidedTurn) {
       if (loadingProgressTimer != null) {
@@ -1548,7 +1618,7 @@ const sendMessage = async (messageText, displayText) => {
         steps = ['Updating your booking…']
       } else if (kind === 'booking_handoff' || isBookingHandoffUserMessage(message)) {
         steps = ['Opening booking…']
-      } else if (useGuidedSearch.value) {
+      } else if (useGuidedTurn) {
         steps = ['Searching our directory…']
       } else {
         steps = [

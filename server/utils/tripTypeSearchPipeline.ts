@@ -1,5 +1,8 @@
 import { buildDiveShopQuery, type SearchFilters } from './buildDiveShopQuery'
 import { mergeActivityIntoFilters, mergeNluHintsIntoFilters, type InterpretedTurn } from './interpretUserTurn'
+import { mergeInterpretSearchFacetsIntoFilters } from './searchNluMerge'
+import { shopIdsForCourseSearch } from './shopIdsForCourseSearch'
+import { narrateSearchResults } from './searchResultNarration'
 import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
 
 export function tripTypeFirstQuestionResponse (opts?: { searchFlowReset?: boolean }) {
@@ -152,8 +155,20 @@ export function isQuerySpecificEnoughForDirectShopCards (
   const hasRating = filters.minRating != null && filters.minRating > 0
   const hasDiveTypes = (filters.diveTypes?.length ?? 0) > 0
   const tripPinned = tripTypeInMessage || userAlreadySpecifiedTripType
+  const hasCertHint = !!(interpretTurn?.certification_course_hint?.trim())
+  const hasSiteTypeLabel = !!(interpretTurn?.dive_site_type_label?.trim())
+  const hasTripProduct = interpretTurn?.trip_product_type != null
 
-  return skillOrAudience || hasActivity || hasRating || hasDiveTypes || tripPinned
+  return (
+    skillOrAudience ||
+    hasActivity ||
+    hasRating ||
+    hasDiveTypes ||
+    tripPinned ||
+    hasCertHint ||
+    hasSiteTypeLabel ||
+    hasTripProduct
+  )
 }
 
 /** User-visible preamble when templated final copy replaces the model MESSAGE. */
@@ -281,6 +296,23 @@ export interface RunTripTypeSearchAfterLlmInput {
   onStatus?: (text: string) => void
   /** Optional NLU extraction from interpretUserTurn (orchestrator). */
   interpretTurn?: InterpretedTurn | null
+  /** When true, skip heavy trip-type chips on follow-ups and cap quick-reply chips. */
+  aiSearchFirst?: boolean
+  signal?: AbortSignal
+}
+
+/** Fewer tap targets in AI-first mode; keep pagination chips. */
+export function capSelectableOptionsForAiSearchFirst (
+  aiSearchFirst: boolean | undefined,
+  opts: { label: string; value: string }[] | undefined,
+  max = 4
+): { label: string; value: string }[] | undefined {
+  if (!aiSearchFirst || !opts?.length) return opts
+  const isPagination = (o: { label: string; value: string }) =>
+    /\bshow more\b/i.test(String(o.value || '')) || /\bload next\b/i.test(String(o.label || ''))
+  const pag = opts.filter(isPagination)
+  const rest = opts.filter(o => !isPagination(o))
+  return [...pag, ...rest].slice(0, max)
 }
 
 export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLlmInput): Promise<{
@@ -294,7 +326,19 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
   filters: SearchFilters
   selectableOptions: { label: string; value: string }[] | undefined
 }> {
-  const { message, history, aiMessage, openrouterApiKey, supabaseUrl, supabaseKey, shopsAlreadyShownCount, onStatus, interpretTurn } = input
+  const {
+    message,
+    history,
+    aiMessage,
+    openrouterApiKey,
+    supabaseUrl,
+    supabaseKey,
+    shopsAlreadyShownCount,
+    onStatus,
+    interpretTurn,
+    aiSearchFirst,
+    signal: searchSignal
+  } = input
 
   /** Pagination offset applies only to explicit "show more" / next page — not new searches or refinements. */
   const paginationOffset = isSearchPaginationUserMessage(message)
@@ -305,6 +349,7 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
   if (interpretTurn) {
     filters = mergeNluHintsIntoFilters(filters, interpretTurn)
     filters = mergeActivityIntoFilters(filters, interpretTurn)
+    filters = mergeInterpretSearchFacetsIntoFilters(filters, interpretTurn)
   }
   filters = mergeInferredDiveTypesIntoFilters(filters, message)
   console.log('[AI Search] Extracted filters:', filters)
@@ -367,10 +412,17 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
 
   const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, filters)
 
-  const { data: shops, error: dbError } = dbResult as { data: unknown[] | null; error: unknown }
+  const { data: shopsRaw, error: dbError } = dbResult as { data: unknown[] | null; error: unknown }
   if (dbError) {
     console.error('Database error:', dbError)
     throw new Error('Failed to search dive shops')
+  }
+
+  let shops = shopsRaw || []
+  const courseHint = interpretTurn?.certification_course_hint?.trim()
+  if (courseHint) {
+    const allowedIds = new Set(await shopIdsForCourseSearch(supabaseUrl, supabaseKey, courseHint))
+    shops = (shops as { id?: string }[]).filter(s => s.id && allowedIds.has(s.id))
   }
 
   const resultCount = shops?.length || 0
@@ -468,7 +520,13 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
         .replace(/\bonly \d+\b/gi, `only ${resultCount}`)
       : ''
     const fromBroadening = broadeningResult.suggestions?.map(s => ({ label: s, value: s })) ?? []
-    selectableOptions = mergeSelectableOptions(buildRelaxFilterChips(filters), fromBroadening)
+    selectableOptions = aiSearchFirst
+      ? capSelectableOptionsForAiSearchFirst(
+        aiSearchFirst,
+        mergeSelectableOptions(buildRelaxFilterChips(filters), fromBroadening),
+        5
+      )
+      : mergeSelectableOptions(buildRelaxFilterChips(filters), fromBroadening)
     if (!followUpMessage?.trim()) {
       if (resultCount === 0) {
         followUpMessage =
@@ -519,11 +577,15 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
         selectableOptions = followUpAiMessage ? [] : []
       } else {
         followUpMessage = followUpAiMessage || 'Would you prefer dive shops, a liveaboard, or a resort?'
-        selectableOptions = followUpAiMessage ? [] : [
-          { label: 'Dive Shop / Day Trip', value: 'I prefer dive shops' },
-          { label: 'Liveaboard', value: 'I prefer a liveaboard' },
-          { label: 'Resort', value: 'I prefer a resort' }
-        ]
+        if (aiSearchFirst || followUpAiMessage) {
+          selectableOptions = []
+        } else {
+          selectableOptions = [
+            { label: 'Dive Shop / Day Trip', value: 'I prefer dive shops' },
+            { label: 'Liveaboard', value: 'I prefer a liveaboard' },
+            { label: 'Resort', value: 'I prefer a resort' }
+          ]
+        }
       }
     }
   }
@@ -596,13 +658,28 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     selectableOptions = mergeSelectableOptions(buildRelaxFilterChips(filters), selectableOptions)
   }
 
-  const messagePreamble = searchReplyMessagePreamble(conversationalMessage, finalMessage)
+  let messagePreamble = searchReplyMessagePreamble(conversationalMessage, finalMessage)
+
+  if (responseShops.length > 0 && openrouterApiKey) {
+    const narration = await narrateSearchResults({
+      openrouterApiKey,
+      userMessage: message,
+      filtersSummary: JSON.stringify(filters),
+      shops: responseShops,
+      signal: searchSignal
+    })
+    if (narration?.trim()) {
+      messagePreamble = messagePreamble ? `${narration.trim()}\n\n${messagePreamble}` : narration.trim()
+    }
+  }
 
   const pageOffset = Math.min(Math.max(0, paginationOffset), resultCount)
   const hasMorePages = resultCount > pageOffset + responseShops.length
 
   console.log(`[AI Search] Sending response - hasMorePages: ${hasMorePages}, shops count: ${responseShops.length}`)
   console.log('[AI Search] Final message:', finalMessage)
+
+  const trimmedOptions = capSelectableOptionsForAiSearchFirst(aiSearchFirst, selectableOptions)
 
   return {
     success: true,
@@ -613,6 +690,6 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     totalResults: resultCount,
     hasMoreResults: hasMorePages,
     filters,
-    selectableOptions
+    selectableOptions: trimmedOptions
   }
 }
