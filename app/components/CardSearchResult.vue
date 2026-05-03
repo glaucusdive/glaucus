@@ -23,20 +23,15 @@
         </div>
       </div>
 
-      <!-- Diveshop type(s): Dive Shop / Day Trip, Liveaboard, Dive Resort -->
-      <p v-if="shopTypeDisplay" class="text-sm text-zinc-500 dark:text-zinc-400">
-        {{ shopTypeDisplay }}
-      </p>
-
-      <!-- Why this result set matched the user's search (same chips for each card in a batch) -->
+      <!-- Shop type, courses, site types, plus non-redundant search context (dates, activity, etc.) -->
       <div
-        v-if="matchBadges && matchBadges.length > 0"
+        v-if="cardPills.length > 0"
         class="flex flex-wrap gap-1.5"
-        aria-label="Search match highlights"
+        aria-label="Shop highlights"
       >
         <span
-          v-for="(b, bi) in matchBadges"
-          :key="bi"
+          v-for="(b, bi) in cardPills"
+          :key="'pill-' + bi"
           class="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-800 dark:text-blue-200 border border-blue-500/25 dark:border-blue-400/30"
         >
           {{ b }}
@@ -117,7 +112,7 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  /** Labels from active search filters (directory-level match). */
+  /** Extra labels from the active search (dates, activity, etc.) — appended after per-shop pills when not redundant. */
   matchBadges: {
     type: Array,
     default: undefined
@@ -126,16 +121,53 @@ const props = defineProps({
 
 defineEmits(['shop-selected', 'view-details'])
 
-// Format shop.type (e.g. "Dive Shop, Liveaboard" or "Dive Resort") with display labels
 function formatShopTypePart (part) {
   if (part === 'Dive Shop') return 'Dive Shop / Day Trip'
   return part
 }
 
-const shopTypeDisplay = computed(() => {
+const MAX_PILLS = 10
+
+const cardPills = computed(() => {
+  const seen = new Set()
+  const out = []
+  const add = (label) => {
+    const t = String(label).trim()
+    if (!t) return
+    const k = t.toLowerCase()
+    if (seen.has(k)) return
+    seen.add(k)
+    out.push(t)
+  }
+
   const raw = props.shop?.type
-  if (!raw || typeof raw !== 'string') return ''
-  const parts = raw.split(',').map(s => s.trim()).filter(Boolean).map(formatShopTypePart)
-  return parts.length ? parts.join(' | ') : ''
+  if (raw && typeof raw === 'string') {
+    const parts = raw.split(',').map(s => s.trim()).filter(Boolean).map(formatShopTypePart)
+    for (const p of parts) add(p)
+  }
+
+  const courses = props.shop?.cardCourseNames
+  if (Array.isArray(courses)) {
+    for (const c of courses) add(c)
+  }
+
+  const dtypes = props.shop?.cardDiveSiteTypeNames
+  if (Array.isArray(dtypes)) {
+    for (const d of dtypes) add(d)
+  }
+
+  for (const b of props.matchBadges || []) {
+    if (typeof b !== 'string') continue
+    const bt = b.trim()
+    if (!bt) continue
+    const courseDir = /^Course \(directory\):\s*(.+)$/i.exec(bt)
+    if (courseDir) {
+      const name = courseDir[1].trim().toLowerCase()
+      if (seen.has(name)) continue
+    }
+    add(bt)
+  }
+
+  return out.slice(0, MAX_PILLS)
 })
 </script>

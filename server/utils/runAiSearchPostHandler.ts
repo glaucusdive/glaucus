@@ -39,6 +39,17 @@ import { inferSearchFiltersFromDestination } from '../utils/destinationToSearchF
 import { normalizeClientSearchFilters } from '../utils/normalizeClientSearchFilters'
 import { tryApplySearchFilterRelax } from '../utils/searchFilterRelaxFromFollowUp'
 import { resolveBookingTargetFromPhrase } from '../utils/resolveBookingTarget'
+import { extractMidBookingShopSwitchPhrase, userMessageWantsResumeSearchDuringBooking } from '../utils/bookingFlowEscape'
+import {
+  formatActivityStyleFilterLine,
+  formatBookingLlmActivityLine,
+  formatGeoDirectoryQueryLine,
+  formatInterpretActivityLine,
+  formatProbeDirectoryLine,
+  formatSearchLlmActivityLine,
+  formatSearchRelaxActivityLine,
+  formatTripTypeGateActivityLine
+} from '../utils/formatSearchActivityLog'
 import { tryShopInfoResponse } from '../utils/shopInfoForChat'
 import { applyInferredCoursesToPayloadIfEligible } from '../utils/inferCoursesFromConversation'
 import { runWithRetries } from '../utils/retryWithBackoff'
@@ -321,7 +332,7 @@ function normalizeBookingPayloadForSendCheck (payload: BookingPayload): BookingP
   return p
 }
 
-interface RequestBody {
+export interface RequestBody {
   message: string
   history: Message[]
   selectedShopId?: string
@@ -350,6 +361,13 @@ interface RequestBody {
   lastSearchFilters?: SearchFilters
   /** Echo of last search totalResults (client); with lastSearchFilters enables a single DB range page. */
   lastSearchTotalResults?: number
+  /** When true, POST handler may be invoked with a pre-read body; client uses NDJSON progress on `/api/guided-orchestrator`. */
+  progressStream?: boolean
+}
+
+export type RunAiSearchPostHandlerOptions = {
+  body?: RequestBody
+  onActivityLine?: (label: string) => void
 }
 
 function inferAlreadyShownForPagination (history: Message[], shopsAlreadyShownCount: number | undefined): number {
@@ -513,9 +531,10 @@ COLLECTED: {"name":"...","email":"...","startDate":"...","endDate":"...","number
 Never put COLLECTED in the middle of your reply — your message to the user must come first, then COLLECTED on its own line. Include every field you have collected so far (use empty string or [] for not yet collected). Use the exact same JSON shape as BOOKING_READY. Always proceed to the next empty field question (e.g. after dates ask for courses; after courses ask for dive sites; after dive sites ask for number of divers; after gear for last diver, output BOOKING_READY).`
 }
 
-export async function runAiSearchPostHandler (event: H3Event) {
+export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSearchPostHandlerOptions) {
   try {
-    const body = await readBody<RequestBody>(event)
+    const onActivityLine = options?.onActivityLine
+    const body = options?.body ?? await readBody<RequestBody>(event)
     const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill, pendingEntityClarifyPhrase, lastSearchFilters: bodyLastSearchFilters, lastSearchTotalResults: bodyLastSearchTotalResults } = body
 
     if (!message || typeof message !== 'string') {
@@ -572,8 +591,11 @@ export async function runAiSearchPostHandler (event: H3Event) {
         reasoningSummary: undefined as string | undefined
       }
       let interpretTurn: InterpretedTurn | null = null
+      let interpretNluRan = false
+      let interpretNluOk = false
       const pushActivity = (stage: string, label: string) => {
         agentMeta.activityLog.push({ stage, label, at: Date.now() })
+        onActivityLine?.(label)
       }
       const withAgentMeta = <T extends Record<string, unknown>>(payload: T): T => {
         const out = { ...payload } as T & { activityLog?: typeof agentMeta.activityLog; reasoningSummary?: string }
@@ -616,7 +638,12 @@ export async function runAiSearchPostHandler (event: H3Event) {
           normalizedLast && tryApplySearchFilterRelax(message.trim(), normalizedLast)
         if (relaxed) {
           console.log('[AI Search] Filter relax fast path — NLU + OpenRouter search skipped')
-          pushActivity('search_relax', 'Widening filters from your last search')
+          pushActivity(
+            'search_relax',
+            formatSearchRelaxActivityLine(
+              relaxed.locale?.trim() || relaxed.country?.trim() || relaxed.region?.trim() || 'your area'
+            )
+          )
           try {
             const queryResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, relaxed)
             const { data: shops, error: dbErr } = queryResult
@@ -661,18 +688,21 @@ export async function runAiSearchPostHandler (event: H3Event) {
       } else if (!continuingBooking && !clarifyChoice && supabaseUrl && supabaseKey) {
         const referredPhraseRegex = extractReferredEntityPhrase(message) ?? extractBookingTargetFallback(message)
         if (!chatAiOff && shouldRunInterpretNlu(message, wantsToBookRegex, referredPhraseRegex)) {
-          pushActivity('interpret', 'Understanding your request')
+          interpretNluRan = true
           const ir = await interpretUserTurn({
             message,
             history: history || [],
             openrouterApiKey,
             signal: abortSignalFromH3Event(event)
           })
+          interpretNluOk = ir.ok
           if (ir.ok) {
             interpretTurn = ir.data
             if (interpretTurn.reasoning_summary?.trim()) {
               agentMeta.reasoningSummary = interpretTurn.reasoning_summary.trim()
             }
+            const interpretLine = formatInterpretActivityLine(interpretTurn, true)
+            if (interpretLine) pushActivity('interpret', interpretLine)
             console.log('[NLU]', {
               regexReferent: referredPhraseRegex,
               destination_text: interpretTurn.destination_text,
@@ -682,6 +712,9 @@ export async function runAiSearchPostHandler (event: H3Event) {
               trip_product_type: interpretTurn.trip_product_type,
               goal: interpretTurn.goal
             })
+          } else {
+            const failLine = formatInterpretActivityLine(null, false)
+            if (failLine) pushActivity('interpret', failLine)
           }
         }
         effectiveWantsToBook =
@@ -706,7 +739,6 @@ export async function runAiSearchPostHandler (event: H3Event) {
         let skipEntityProbeFromGeo = false
         let skipEntityProbeFromActivity = false
         if (tryLocationFirst) {
-          pushActivity('probe', 'Searching by location (city, state, country)')
           const geoFilters = mergeInferredDiveTypesIntoFilters(
             mergeActivityIntoFilters(
               mergeNluHintsIntoFilters(
@@ -719,8 +751,9 @@ export async function runAiSearchPostHandler (event: H3Event) {
           )
           const geoQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, geoFilters)
           const geoList = (geoQuery.data || []) as Array<{ id: string; business_name?: string }>
+          const placeLabel = destText
+          pushActivity('probe', formatGeoDirectoryQueryLine(placeLabel, geoList.length))
           if (!geoQuery.error && geoList.length > 0) {
-            const placeLabel = destText
             if (effectiveWantsToBook && geoList.length === 1) {
               const only = geoList[0]!
               resolvedShop = await getShopById(supabaseUrl, supabaseKey, only.id)
@@ -757,10 +790,11 @@ export async function runAiSearchPostHandler (event: H3Event) {
           (interpretTurn?.goal === 'search_shops' || interpretTurn?.goal === 'start_booking')
 
         if (tryActivityOnlySearch) {
-          pushActivity('probe', 'Matching dive style and linked sites')
           const actFilters = mergeActivityIntoFilters({}, interpretTurn)
           const actQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, actFilters)
           const actList = (actQuery.data || []) as Array<{ id: string; business_name?: string }>
+          const label = nluActivityTerms.join(', ')
+          pushActivity('probe', formatActivityStyleFilterLine(label, actList.length))
           if (!actQuery.error && actList.length === 0) {
             return withAgentMeta({
               success: true,
@@ -773,7 +807,6 @@ export async function runAiSearchPostHandler (event: H3Event) {
             })
           }
           if (!actQuery.error && actList.length > 0) {
-            const label = nluActivityTerms.join(', ')
             if (effectiveWantsToBook && actList.length === 1) {
               const only = actList[0]!
               resolvedShop = await getShopById(supabaseUrl, supabaseKey, only.id)
@@ -810,12 +843,12 @@ export async function runAiSearchPostHandler (event: H3Event) {
               resolvedByNamedShop = !!resolvedShop
               skipEntityProbe = true
             } else if (target.kind === 'ambiguous') {
-              pushActivity('probe', 'Checking our dive shop directory')
+              pushActivity('probe', formatProbeDirectoryLine(target.phrase))
               return withAgentMeta({ ...shopDisambiguationResponsePayload(target.phrase, target.shops), intent: 'search' as const })
             }
           }
           if (!skipEntityProbe) {
-            pushActivity('probe', 'Checking our dive shop directory')
+            pushActivity('probe', formatProbeDirectoryLine(referredPhrase))
             const probe = await probeReferentPhrase(supabaseUrl, supabaseKey, referredPhrase)
             const routed = await routeReferentFromProbe(supabaseUrl, supabaseKey, probe)
             if (routed.type === 'clarify') {
@@ -1021,7 +1054,11 @@ export async function runAiSearchPostHandler (event: H3Event) {
         // User replied to "shop has no gear" with no payload yet: Pick a new diveshop (clear shop) or Continue (start form)
         if (continuingBooking && !bookingPayload) {
           const msgTrim = message.trim()
-          if (/pick a new diveshop|choose another shop|different (shop|diveshop)/i.test(msgTrim)) {
+          if (
+            /pick a new diveshop|choose another shop|different (shop|diveshop)|go back to search|show me dive shops to search again/i.test(
+              msgTrim
+            )
+          ) {
             return withAgentMeta({
               success: true,
               intent: 'booking' as const,
@@ -1115,6 +1152,190 @@ export async function runAiSearchPostHandler (event: H3Event) {
             })
             if (gatedChip) return gatedChip
           }
+
+          // Mid-booking: go back to search, or switch to a different shop (before tryFastPath treats text as e.g. contact name).
+          if (userMessageWantsResumeSearchDuringBooking(msgTrim)) {
+            const { shopId: _carrySid, ...payloadWithoutShop } = clearBookingPreSendFlags(
+              bookingPayload as BookingPayloadLocal
+            ) as BookingPayload
+            return withAgentMeta({
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message:
+                'No problem — you’re back to browsing. Search or pick a shop from your results, then say "Book with [shop name]" to start again. Details you already entered will carry over.',
+              shopId: undefined,
+              shopName: undefined,
+              bookingPayload: undefined,
+              pendingBookingPayload: payloadWithoutShop,
+              selectableOptions: undefined,
+              rentalEquipmentOptions: undefined,
+              courseOptions: undefined,
+              diveSiteOptions: undefined
+            })
+          }
+
+          const switchPhrase = extractMidBookingShopSwitchPhrase(msgTrim)
+          if (switchPhrase && supabaseUrl && supabaseKey) {
+            let target = await resolveBookingTargetFromPhrase(switchPhrase, lastShops, supabaseUrl, supabaseKey)
+            if (target.kind === 'none') {
+              const probeSw = await probeReferentPhrase(supabaseUrl, supabaseKey, switchPhrase)
+              const routedSw = await routeReferentFromProbe(supabaseUrl, supabaseKey, probeSw)
+              if (routedSw.type === 'booking') {
+                target = { kind: 'single', shop: routedSw.shop }
+              } else if (routedSw.type === 'shop_disambiguation') {
+                const { shopId: _s, ...carryAmb } = clearBookingPreSendFlags(
+                  bookingPayload as BookingPayloadLocal
+                ) as BookingPayload
+                return withAgentMeta({
+                  success: true,
+                  intent: 'booking' as const,
+                  bookingReady: false,
+                  message: `Which shop did you mean? Pick one to switch your booking.`,
+                  shopId: undefined,
+                  shopName: undefined,
+                  bookingPayload: undefined,
+                  pendingBookingPayload: carryAmb,
+                  selectableOptions: routedSw.shops.map(s => ({
+                    label: s.business_name,
+                    value: `Let's book ${s.business_name}`
+                  })),
+                  rentalEquipmentOptions: undefined,
+                  courseOptions: undefined,
+                  diveSiteOptions: undefined
+                })
+              }
+            }
+
+            if (target.kind === 'ambiguous') {
+              const { shopId: _s, ...carryAmb } = clearBookingPreSendFlags(
+                bookingPayload as BookingPayloadLocal
+              ) as BookingPayload
+              return withAgentMeta({
+                success: true,
+                intent: 'booking' as const,
+                bookingReady: false,
+                message: `Which "${switchPhrase}" did you mean? Tap a shop to switch your booking.`,
+                shopId: undefined,
+                shopName: undefined,
+                bookingPayload: undefined,
+                pendingBookingPayload: carryAmb,
+                selectableOptions: target.shops.map(s => ({
+                  label: s.business_name,
+                  value: `Let's book ${s.business_name}`
+                })),
+                rentalEquipmentOptions: undefined,
+                courseOptions: undefined,
+                diveSiteOptions: undefined
+              })
+            }
+
+            if (target.kind === 'single') {
+              const newShop = await getShopById(supabaseUrl, supabaseKey, target.shop.id)
+              if (newShop && newShop.id !== resolvedShop.id) {
+                const [dsSw, reSw, coSw] = await Promise.all([
+                  getDiveSitesForShop(supabaseUrl, supabaseKey, newShop.id),
+                  getRentalEquipmentForShop(supabaseUrl, supabaseKey, newShop.id),
+                  getCoursesForShop(supabaseUrl, supabaseKey, newShop.id)
+                ])
+                let mergedSw: BookingPayload = {
+                  ...clearBookingPreSendFlags(bookingPayload as BookingPayloadLocal),
+                  shopId: newShop.id
+                }
+                mergedSw = clampBookingPayloadToNextStep(mergedSw as BookingPayloadLocal, {
+                  shopCourseCount: coSw.length,
+                  shopDiveSiteCount: dsSw.length
+                }) as BookingPayload
+                mergedSw = applyInferredCoursesToPayloadIfEligible(
+                  mergedSw as BookingPayloadLocal,
+                  history,
+                  message,
+                  coSw
+                ) as BookingPayload
+                const nextSw = getNextBookingStep(mergedSw)
+                const switchOpen =
+                  nextSw?.step === 'name'
+                    ? `Switching to ${newShop.business_name}. What's the name for the booking?`
+                    : nextSw?.step === 'email'
+                      ? `Switching to ${newShop.business_name}. What email should we use for the booking?`
+                      : nextSw?.step === 'dates'
+                        ? `Switching to ${newShop.business_name}. What are your trip dates (start and end)?`
+                        : nextSw?.step === 'courses'
+                          ? (mergedSw.desiredCourses?.length && mergedSw.coursesSelectionComplete === false
+                            ? `Switching to ${newShop.business_name}. I noted ${mergedSw.desiredCourses.join(', ')} from your search. ${COURSES_LINE}`
+                            : `Switching to ${newShop.business_name}. Are you interested in any courses on this trip? ${COURSES_LINE}`)
+                          : nextSw?.step === 'diveSites'
+                            ? (mergedSw.desiredCourses?.length
+                              ? `Switching to ${newShop.business_name}. I noted ${mergedSw.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive? ${DIVE_SITES_LINE}`
+                              : `Switching to ${newShop.business_name}. Which dive sites would you like to dive? ${DIVE_SITES_LINE}`)
+                            : `Switching to ${newShop.business_name}. What's the name for the booking?`
+                return withAgentMeta({
+                  success: true,
+                  intent: 'booking' as const,
+                  bookingReady: false,
+                  message: switchOpen,
+                  shopId: newShop.id,
+                  shopName: newShop.business_name,
+                  bookingPayload: mergedSw,
+                  selectableOptions: undefined,
+                  rentalEquipmentOptions:
+                    getNextBookingStep(mergedSw)?.step === 'gear' && reSw.length > 0 ? reSw : undefined,
+                  hideNoneForGear: hideNoneForGear(mergedSw),
+                  courseOptions:
+                    getNextBookingStep(mergedSw)?.step === 'courses' && coSw.length > 0 ? coSw : undefined,
+                  diveSiteOptions:
+                    getNextBookingStep(mergedSw)?.step === 'diveSites' && dsSw.length > 0 ? dsSw : undefined
+                })
+              }
+              if (newShop && newShop.id === resolvedShop.id) {
+                const sameNext = getNextBookingStep(bookingPayload as BookingPayloadLocal)
+                const sameCopy = sameNext
+                  ? orchestratorSplitBookingCopyForStep(sameNext, bookingPayload, {
+                    shopCourseCount: courses.length,
+                    shopDiveSiteCount: diveSites.length,
+                    coursesLine: COURSES_LINE,
+                    diveSitesLine: DIVE_SITES_LINE
+                  })
+                  : null
+                return withAgentMeta({
+                  success: true,
+                  intent: 'booking' as const,
+                  bookingReady: false,
+                  message: `You're already booking ${newShop.business_name}. ${sameCopy?.message ?? 'Continue with your booking below.'}`,
+                  ...(sameCopy?.messagePreamble ? { messagePreamble: sameCopy.messagePreamble } : {}),
+                  shopId: resolvedShop.id,
+                  shopName: resolvedShop.business_name,
+                  bookingPayload,
+                  selectableOptions: undefined,
+                  rentalEquipmentOptions: addGearOptions(bookingPayload),
+                  hideNoneForGear: hideNoneForGear(bookingPayload),
+                  courseOptions: addCourseOptions(bookingPayload),
+                  diveSiteOptions: addDiveSiteOptions(bookingPayload)
+                })
+              }
+            }
+
+            if (switchPhrase) {
+              return withAgentMeta({
+                success: true,
+                intent: 'booking' as const,
+                bookingReady: false,
+                message: `I couldn't find "${switchPhrase}" in our directory. Try another spelling, search first, or say "go back to search" to browse without this booking.`,
+                shopId: resolvedShop.id,
+                shopName: resolvedShop.business_name,
+                bookingPayload,
+                selectableOptions: [
+                  { label: 'Pick a new diveshop', value: 'Pick a new diveshop' },
+                  { label: 'Go back to search', value: 'Show me dive shops to search again' }
+                ],
+                rentalEquipmentOptions: addGearOptions(bookingPayload),
+                hideNoneForGear: hideNoneForGear(bookingPayload),
+                courseOptions: addCourseOptions(bookingPayload),
+                diveSiteOptions: addDiveSiteOptions(bookingPayload)
+              })
+            }
+          }
+
           const sendIntent = isConfirmSendMessage(msgTrim)
           const sendAnywayIntent = isSendAnywayMessage(msgTrim)
           const finishTasksIntent = isFinishRemainingTasksMessage(msgTrim)
@@ -1496,7 +1717,11 @@ export async function runAiSearchPostHandler (event: H3Event) {
             if (gatedLast) return gatedLast
           }
           // "Pick a new diveshop" → return current form data so client can carry it over to the next shop
-          if (/pick a new diveshop|choose another shop|different (shop|diveshop)/i.test(msgTrim)) {
+          if (
+            /pick a new diveshop|choose another shop|different (shop|diveshop)|go back to search|show me dive shops to search again/i.test(
+              msgTrim
+            )
+          ) {
             const { shopId: _s, ...payloadWithoutShop } = clearBookingPreSendFlags(bookingPayload as BookingPayloadLocal) as BookingPayload
             return withAgentMeta({
               success: true,
@@ -2059,7 +2284,7 @@ export async function runAiSearchPostHandler (event: H3Event) {
           ...(history || []),
           { role: 'user' as const, content: message }
         ]
-        pushActivity('booking_llm', 'Drafting your answer')
+        pushActivity('booking_llm', formatBookingLlmActivityLine())
         const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -2564,6 +2789,12 @@ export async function runAiSearchPostHandler (event: H3Event) {
         !userSpecifiedActivityNlu &&
         !nluSkipsTripTypeQuestion
       ) {
+        agentMeta.activityLog.length = 0
+        const gateLine = formatTripTypeGateActivityLine(interpretTurn, {
+          ran: interpretNluRan,
+          ok: interpretNluOk
+        })
+        if (gateLine) pushActivity('trip_type_gate', gateLine)
         return withAgentMeta(tripTypeFirstQuestionResponse())
       }
 
@@ -2600,7 +2831,7 @@ export async function runAiSearchPostHandler (event: H3Event) {
         { role: 'user', content: userMessageForSearch }
       ]
 
-      pushActivity('search_llm', 'Drafting your answer')
+      pushActivity('search_llm', formatSearchLlmActivityLine())
       const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -2636,6 +2867,7 @@ export async function runAiSearchPostHandler (event: H3Event) {
           supabaseUrl,
           supabaseKey,
           shopsAlreadyShownCount,
+          onStatus: onActivityLine,
           interpretTurn,
           aiSearchFirst,
           signal: searchAbortSignal
