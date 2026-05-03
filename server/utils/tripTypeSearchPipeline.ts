@@ -7,6 +7,13 @@ import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationI
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 import { enrichShopsForSearchCards } from './enrichShopsForSearchCards'
 
+/** Optional post-result chips: narrow directory by business / trip format. */
+export const TRIP_TYPE_OPTIONAL_FILTER_CHIPS: { label: string; value: string }[] = [
+  { label: 'Dive Shop / Day Trip', value: 'I prefer dive shops' },
+  { label: 'Liveaboard', value: 'I prefer a liveaboard' },
+  { label: 'Resort', value: 'I prefer a resort' }
+]
+
 export function tripTypeFirstQuestionResponse (opts?: { searchFlowReset?: boolean }) {
   return {
     success: true as const,
@@ -16,11 +23,7 @@ export function tripTypeFirstQuestionResponse (opts?: { searchFlowReset?: boolea
     totalResults: 0,
     hasMoreResults: false,
     filters: {} as SearchFilters,
-    selectableOptions: [
-      { label: 'Dive Shop / Day Trip', value: 'I prefer dive shops' },
-      { label: 'Liveaboard', value: 'I prefer a liveaboard' },
-      { label: 'Resort', value: 'I prefer a resort' }
-    ],
+    selectableOptions: [...TRIP_TYPE_OPTIONAL_FILTER_CHIPS],
     ...(opts?.searchFlowReset ? { searchFlowReset: true as const } : {})
   }
 }
@@ -579,16 +582,10 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
         followUpMessage = followUpAiMessage || 'Would you like to narrow by location, rating, or something else?'
         selectableOptions = followUpAiMessage ? [] : []
       } else {
-        followUpMessage = followUpAiMessage || 'Would you prefer dive shops, a liveaboard, or a resort?'
-        if (aiSearchFirst || followUpAiMessage) {
-          selectableOptions = []
-        } else {
-          selectableOptions = [
-            { label: 'Dive Shop / Day Trip', value: 'I prefer dive shops' },
-            { label: 'Liveaboard', value: 'I prefer a liveaboard' },
-            { label: 'Resort', value: 'I prefer a resort' }
-          ]
-        }
+        followUpMessage =
+          followUpAiMessage ||
+          'You can narrow further by area, rating, or trip format — use the chips below or tell me what you prefer.'
+        selectableOptions = []
       }
     }
   }
@@ -688,6 +685,17 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
 
   const trimmedOptions = capSelectableOptionsForAiSearchFirst(aiSearchFirst, selectableOptions)
 
+  const offerOptionalTripTypeChips =
+    responseShops.length > 0 &&
+    !(filters.diveTypes?.length) &&
+    !tripTypeChoiceInMessage &&
+    !userAlreadySpecifiedTripType &&
+    interpretTurn?.trip_product_type == null
+
+  const selectableOptionsWithTripFilter = offerOptionalTripTypeChips
+    ? mergeSelectableOptions(trimmedOptions, TRIP_TYPE_OPTIONAL_FILTER_CHIPS)
+    : trimmedOptions
+
   const searchMatchBadges =
     responseShops.length > 0
       ? buildSearchMatchBadges(filters, interpretTurn
@@ -708,7 +716,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     totalResults: resultCount,
     hasMoreResults: hasMorePages,
     filters,
-    selectableOptions: trimmedOptions,
+    selectableOptions: selectableOptionsWithTripFilter,
     ...(searchMatchBadges.length ? { searchMatchBadges } : {})
   }
 }
