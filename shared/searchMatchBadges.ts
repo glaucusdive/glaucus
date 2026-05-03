@@ -44,17 +44,6 @@ function humanizeActivityToken (t: string): string {
   return titleCasePhrase(k.replace(/_/g, ' '))
 }
 
-function formatTripTypes (types: string[]): string {
-  return types
-    .map((d) => {
-      if (d === 'Dive Shop') return 'Dive shop / day trip'
-      if (d === 'Dive Resort') return 'Dive resort'
-      if (d === 'Liveaboard') return 'Liveaboard'
-      return d
-    })
-    .join(' · ')
-}
-
 function formatDateRange (d: { start?: string; end?: string }): string | null {
   const s = d.start?.trim()
   const e = d.end?.trim()
@@ -94,17 +83,6 @@ export function buildSearchMatchBadges (
     if (seen.has(k)) return
     seen.add(k)
     out.push(t)
-  }
-
-  const locParts = [filters.locale, filters.region, filters.country]
-    .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
-    .map(s => s.trim())
-  if (locParts.length) {
-    add([...new Set(locParts)].join(', '))
-  }
-
-  if (filters.diveTypes?.length) {
-    add(`Trip: ${formatTripTypes(filters.diveTypes)}`)
   }
 
   for (const t of filters.activityTokens || []) {

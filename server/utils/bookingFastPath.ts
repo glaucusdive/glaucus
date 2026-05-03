@@ -1,3 +1,5 @@
+import { extractMidBookingShopSwitchPhrase } from './bookingFlowEscape'
+
 /** Minimal booking types to avoid circular import from ai-search.post */
 export interface BookingDiverLocal {
   name: string
@@ -576,6 +578,8 @@ export function tryFastPath (
 
   switch (step.step) {
     case 'name': {
+      // Mid-booking shop switch ("Wait, let's book with …") — orchestrator handles; never store as contact name.
+      if (extractMidBookingShopSwitchPhrase(msg)) return null
       if (msg.length < 2 || msg.length > 100) return null
       if (looksLikeSingleName(msg)) {
         return { message: `Got it — could you give me your full name (first and last)?`, payload: p }

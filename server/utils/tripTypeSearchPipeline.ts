@@ -5,6 +5,7 @@ import { shopIdsForCourseSearch } from './shopIdsForCourseSearch'
 import { narrateSearchResults } from './searchResultNarration'
 import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
+import { enrichShopsForSearchCards } from './enrichShopsForSearchCards'
 
 export function tripTypeFirstQuestionResponse (opts?: { searchFlowReset?: boolean }) {
   return {
@@ -658,6 +659,10 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     finalMessage =
       `You've seen all ${resultCount} shop${resultCount === 1 ? '' : 's'} in this search. Try widening a filter or searching another area.`
     selectableOptions = mergeSelectableOptions(buildRelaxFilterChips(filters), selectableOptions)
+  }
+
+  if (responseShops.length > 0) {
+    await enrichShopsForSearchCards(supabaseUrl, supabaseKey, responseShops)
   }
 
   let messagePreamble = searchReplyMessagePreamble(conversationalMessage, finalMessage)

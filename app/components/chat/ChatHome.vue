@@ -315,7 +315,7 @@
                   <span
                     v-if="!searchStreamStatus && !searchStreamPreview && loadingProgressLines.length === 0"
                     class="text-sm text-zinc-900 dark:text-zinc-200"
-                  >Thinking…</span>
+                  >Waiting for response…</span>
                   <span
                     v-else-if="!searchStreamStatus && !searchStreamPreview && loadingProgressLines.length > 0"
                     class="text-sm text-zinc-600 dark:text-zinc-400"
@@ -521,7 +521,7 @@ const searchStreamStatus = ref('')
 const searchStreamPreview = ref('')
 /** Cumulative status lines from the stream (copied onto the assistant message when the turn completes) */
 const searchStreamProgressLines = ref([])
-/** Staged activity lines while waiting on non-streaming POST /api/guided-orchestrator (booking, clarify, etc.) */
+/** Staged activity lines while waiting on POST /api/guided-orchestrator (NDJSON progress when not in booking handoff). */
 const loadingProgressLines = ref([])
 let loadingProgressTimer = null
 const messages = ref([])
@@ -1340,6 +1340,57 @@ function tryRestoreBookingSessionAfterAuth () {
   }
 }
 
+/**
+ * POST /api/guided-orchestrator with `progressStream` — NDJSON `progress` lines then one `result` payload.
+ */
+async function postGuidedOrchestratorNdjson ({ url, headers, body, signal, onProgress }) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(headers && typeof headers === 'object' ? headers : {})
+    },
+    body: JSON.stringify({ ...body, progressStream: true }),
+    signal
+  })
+  if (!res.ok) {
+    const t = await res.text()
+    throw new Error(t || `HTTP ${res.status}`)
+  }
+  const reader = res.body?.getReader()
+  if (!reader) throw new Error('No response body')
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let payload = null
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const parts = buffer.split('\n')
+    buffer = parts.pop() || ''
+    for (const line of parts) {
+      const trimmed = line.trim()
+      if (!trimmed) continue
+      const obj = JSON.parse(trimmed)
+      if (obj.type === 'progress' && typeof obj.label === 'string') {
+        onProgress?.(obj.label)
+      } else if (obj.type === 'result') {
+        payload = obj.payload
+      } else if (obj.type === 'error') {
+        throw new Error(typeof obj.message === 'string' ? obj.message : 'Orchestrator error')
+      }
+    }
+  }
+  const tail = buffer.trim()
+  if (tail) {
+    const obj = JSON.parse(tail)
+    if (obj.type === 'result') payload = obj.payload
+    else if (obj.type === 'error') throw new Error(typeof obj.message === 'string' ? obj.message : 'Orchestrator error')
+  }
+  if (payload == null) throw new Error('No result from orchestrator stream')
+  return payload
+}
+
 // Send message to AI. Optional displayText: show this in the chat bubble while sending messageText to the API (e.g. chip label vs value).
 const sendMessage = async (messageText, displayText) => {
   const message = messageText ?? userInput.value.trim()
@@ -1630,7 +1681,7 @@ const sendMessage = async (messageText, displayText) => {
     }
     const startLoadingProgressHint = (kind = 'default') => {
       clearLoadingProgress()
-      /** Not model “reasoning” — local status only. Wording avoids implying an LLM when this is DB + rules. */
+      /** Short local hints only where we do not have server-driven lines; orchestrator JSON has no fake DB phases. */
       let steps
       if (inBookingFlow) {
         steps = ['Updating your booking…']
@@ -1639,11 +1690,8 @@ const sendMessage = async (messageText, displayText) => {
       } else if (useGuidedTurn) {
         steps = ['Searching our directory…']
       } else {
-        steps = [
-          'Preparing your search…',
-          'Searching location data (city, state, country)',
-          'Finding dive shops…'
-        ]
+        loadingProgressLines.value = []
+        return
       }
       let i = 0
       loadingProgressLines.value = [steps[0]]
@@ -1666,22 +1714,45 @@ const sendMessage = async (messageText, displayText) => {
     const baseAiRetryMs = 350
     let response = null
 
+    const useProgressStream =
+      !inBookingFlow &&
+      !isBookingHandoffUserMessage(message)
+
     const streamProgressSnapshot = []
     searchStreamStatus.value = ''
     searchStreamPreview.value = ''
     searchStreamProgressLines.value = []
+
+    const pushProgressLine = (label) => {
+      if (!label || typeof label !== 'string') return
+      if (streamProgressSnapshot.length > 0 && streamProgressSnapshot[streamProgressSnapshot.length - 1] === label) {
+        return
+      }
+      streamProgressSnapshot.push(label)
+      loadingProgressLines.value = [...streamProgressSnapshot]
+    }
 
     for (let attempt = 1; attempt <= maxAiAttempts && !response; attempt++) {
       if (currentAbortController.signal.aborted) {
         return
       }
       try {
-        response = await $fetch('/api/guided-orchestrator', {
-          method: 'POST',
-          signal: currentAbortController.signal,
-          body: aiSearchBody,
-          ...(Object.keys(aiHeaders).length ? { headers: aiHeaders } : {})
-        })
+        if (useProgressStream) {
+          response = await postGuidedOrchestratorNdjson({
+            url: '/api/guided-orchestrator',
+            headers: aiHeaders,
+            body: aiSearchBody,
+            signal: currentAbortController.signal,
+            onProgress: pushProgressLine
+          })
+        } else {
+          response = await $fetch('/api/guided-orchestrator', {
+            method: 'POST',
+            signal: currentAbortController.signal,
+            body: aiSearchBody,
+            ...(Object.keys(aiHeaders).length ? { headers: aiHeaders } : {})
+          })
+        }
       } catch (fetchErr) {
         if (fetchErr?.name === 'AbortError' || currentAbortController.signal.aborted) {
           return

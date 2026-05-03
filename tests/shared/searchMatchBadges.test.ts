@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 
 describe('buildSearchMatchBadges', () => {
-  it('includes location, trip type, activity tokens, and dates', () => {
+  it('includes activity tokens and dates but not filter geo or trip type', () => {
     const badges = buildSearchMatchBadges(
       {
         locale: 'Bali',
@@ -13,14 +13,14 @@ describe('buildSearchMatchBadges', () => {
       },
       null
     )
-    expect(badges.some(b => b.includes('Bali'))).toBe(true)
-    expect(badges.some(b => /Indonesia/i.test(b))).toBe(true)
-    expect(badges.some(b => /Dive shop/i.test(b))).toBe(true)
+    expect(badges.some(b => b.includes('Bali'))).toBe(false)
+    expect(badges.some(b => /Indonesia/i.test(b))).toBe(false)
+    expect(badges.some(b => /Dive shop/i.test(b))).toBe(false)
     expect(badges).toContain('Wreck diving')
     expect(badges.some(b => b.startsWith('Dates:'))).toBe(true)
   })
 
-  it('adds course and NLU activity / site labels', () => {
+  it('adds course and NLU activity / site labels without locale chips', () => {
     const badges = buildSearchMatchBadges(
       { locale: 'Cozumel', country: 'Mexico' },
       {
@@ -29,6 +29,7 @@ describe('buildSearchMatchBadges', () => {
         dive_site_type_label: 'wall dives'
       }
     )
+    expect(badges.some(b => b.includes('Cozumel'))).toBe(false)
     expect(badges.some(b => b.includes('Open Water'))).toBe(true)
     expect(badges).toContain('Drift diving')
     expect(badges).toContain('Wall Dives')
