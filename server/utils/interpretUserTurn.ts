@@ -11,6 +11,23 @@ export const InterpretedTurnSchema = z.object({
   shop_name_hint: z.string().max(200).nullable().optional(),
   /** Short tokens for activity / environment (e.g. cave, wreck, cenote, muck, drift) — not trip format (liveaboard). */
   activity_terms: z.array(z.string().max(48)).max(8).nullable().optional(),
+  /** Certification / course the user wants to take or find (fragment for DB ilike on courses.certification_name). */
+  certification_course_hint: z.string().max(120).nullable().optional(),
+  /** Dive site / environment category (e.g. wreck, reef, cenote) — mapped server-side to activity tokens. */
+  dive_site_type_label: z.string().max(80).nullable().optional(),
+  /** Operator format: liveaboard vs resort vs dive shop / day boat — maps to SearchFilters.diveTypes. */
+  trip_product_type: z.preprocess(
+    (v) => {
+      if (v == null || v === '') return null
+      if (typeof v !== 'string') return v
+      const t = v.toLowerCase().trim().replace(/[\s-]+/g, '_')
+      if (t === 'liveaboard' || t === 'live_aboard') return 'liveaboard'
+      if (t === 'dive_resort' || t === 'resort' || t === 'dive_resorts') return 'dive_resort'
+      if (t === 'dive_shop' || t === 'dive_shops' || t === 'day_trip' || t === 'day_trips') return 'dive_shop'
+      return null
+    },
+    z.enum(['liveaboard', 'dive_resort', 'dive_shop']).nullable().optional()
+  ),
   wants_booking: z.boolean().optional(),
   reasoning_summary: z.string().max(500).nullable().optional(),
   confidence: z.number().min(0).max(1).optional()
@@ -25,6 +42,9 @@ Return ONLY a JSON object (no markdown) with this shape:
   "destination_text": string or null,
   "shop_name_hint": string or null,
   "activity_terms": string[] or null,
+  "certification_course_hint": string or null,
+  "dive_site_type_label": string or null,
+  "trip_product_type": "liveaboard" | "dive_resort" | "dive_shop" | null,
   "wants_booking": boolean or omit,
   "reasoning_summary": string or null,
   "confidence": number between 0 and 1 or omit
@@ -40,6 +60,9 @@ Rules:
 - destination_text: the travel / dive DESTINATION (geographic) ONLY — city, island, state, or country (e.g. "Bali", "California", "Cozumel", "Mexico"). Use this when the user says "dive in …", "book in …", "trip to …", "going to …". No verbs or filler. If they said "book a dive in bali", destination_text must be "Bali", NOT "a dive in bali".
 - shop_name_hint: ONLY when the user names a specific dive business (e.g. "Zen Resort", "Atlantis Bali Diving", or the name after "let's do …" / "go with …" / "I'll take …"). Do NOT put a country or region here. If they are only expressing where they want to travel, keep shop_name_hint null even if a shop name contains that place word. When the message is clearly picking one operator (selection phrasing), set shop_name_hint to that business name and set destination_text to null unless they also introduced a **new** trip destination in the same message.
 - activity_terms: when the user cares about a KIND of diving or environment — NOT liveaboard vs resort (that is a separate product flow). Use 1–4 short lowercase tokens, e.g. ["cave"] for "cave diving", ["wreck"] for wreck diving, ["muck"] or ["macro"] for muck/macro, ["cenote"] for cenotes, ["ice"] for ice diving, ["drift"] for drift diving. If they mention BOTH a place and an activity (e.g. "cave diving in Mexico"), set destination_text to "Mexico" AND activity_terms to ["cave"]. If there is no activity signal, use null or omit.
+- certification_course_hint: when the user wants a **certification course** or training (Open Water, Advanced, Rescue, Nitrox, Divemaster, Discover Scuba, etc.). Put a short searchable fragment (e.g. "Open Water", "Advanced Open Water", "Nitrox"). Null if they are not asking for a course.
+- dive_site_type_label: when they care about **type of dive site / environment** as a category (wreck, reef, wall, muck, cenote, cavern/cave, beach, lake). One short phrase matching how divers talk (e.g. "wreck", "reef diving", "cenotes"). Null if not mentioned. Do not duplicate trip_product_type here.
+- trip_product_type: when they specify **liveaboard vs resort vs dive shop / day trips**: use "liveaboard" for liveaboards; "dive_resort" for dive resorts; "dive_shop" for land-based dive shops, day boats, or day trips. Null if they do not express a preference.
 - reasoning_summary: ONE short user-safe sentence in first person ("I'm treating this as travel to Bali, then we'll pick a shop.") or null.
 
 When the user could mean either a place or a shop name containing that word (e.g. "Bali"), prefer destination_text for travel phrasing ("in Bali", "to Bali") and shop_name_hint only if they clearly ask for one operator by name.

@@ -33,10 +33,18 @@ export default defineNuxtConfig({
        */
       useGuidedSearch: process.env.NUXT_PUBLIC_USE_GUIDED_SEARCH ?? 'true',
       /**
-       * When not 'false', guided-orchestrator skips NLU + all OpenRouter (search + booking LLM). Default: off.
-       * Set NUXT_PUBLIC_DISABLE_CHAT_AI=false to re-enable conversational booking / legacy search inside orchestrator.
+       * When 'true', guided-orchestrator skips NLU + all OpenRouter (search + booking LLM).
+       * Default: off in development (so AI features work locally), on in production unless you set the env var.
+       * Set NUXT_PUBLIC_DISABLE_CHAT_AI=true in prod if you want chip-only / no OpenRouter spend.
        */
-      disableChatAi: process.env.NUXT_PUBLIC_DISABLE_CHAT_AI ?? 'true'
+      disableChatAi:
+        process.env.NUXT_PUBLIC_DISABLE_CHAT_AI ??
+        (process.env.NODE_ENV === 'production' ? 'true' : 'false'),
+      /**
+       * When 'true', pre-booking search uses the orchestrator (NLU + search LLM) instead of chip-first /api/guided-flow.
+       * Requires NUXT_PUBLIC_DISABLE_CHAT_AI=false and OpenRouter. Default: false (guided remains primary).
+       */
+      aiSearchFirst: process.env.NUXT_PUBLIC_AI_SEARCH_FIRST ?? 'false'
     }
   }
 })
