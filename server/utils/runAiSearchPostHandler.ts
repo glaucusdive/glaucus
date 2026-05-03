@@ -47,20 +47,16 @@ import {
   formatInterpretActivityLine,
   formatProbeDirectoryLine,
   formatSearchLlmActivityLine,
-  formatSearchRelaxActivityLine,
-  formatTripTypeGateActivityLine
+  formatSearchRelaxActivityLine
 } from '../utils/formatSearchActivityLog'
 import { tryShopInfoResponse } from '../utils/shopInfoForChat'
 import { applyInferredCoursesToPayloadIfEligible } from '../utils/inferCoursesFromConversation'
 import { runWithRetries } from '../utils/retryWithBackoff'
 import { SEARCH_DIVE_SYSTEM_PROMPT } from '../utils/searchDiveSystemPrompt'
 import {
-  historyContainsTripTypeChoice,
   mergeInferredDiveTypesIntoFilters,
   runTripTypeSearchAfterLlm,
-  searchFlowResetResponse,
-  tripTypeFirstQuestionResponse,
-  userMessageIndicatesTripTypeChoice
+  searchFlowResetResponse
 } from '../utils/tripTypeSearchPipeline'
 import {
   buildDiverFieldEditPrompt,
@@ -2771,32 +2767,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
         })
       }
 
-      // Trip-type first (legacy): chip gate. Skipped when AI-first search is on or NLU already pinned a search axis.
-      const tripTypeChoiceInMessage = userMessageIndicatesTripTypeChoice(message)
-      const userAlreadySpecifiedTripType = historyContainsTripTypeChoice(history)
       const nluActivityForHint = normalizeActivityTerms(interpretTurn?.activity_terms)
-      const userSpecifiedActivityNlu = nluActivityForHint.length > 0
-      const nluSkipsTripTypeQuestion =
-        !!(interpretTurn?.destination_text?.trim()) ||
-        !!(interpretTurn?.certification_course_hint?.trim()) ||
-        !!(interpretTurn?.dive_site_type_label?.trim()) ||
-        interpretTurn?.trip_product_type != null ||
-        !!(interpretTurn?.shop_name_hint?.trim())
-      if (
-        !aiSearchFirst &&
-        !userAlreadySpecifiedTripType &&
-        !tripTypeChoiceInMessage &&
-        !userSpecifiedActivityNlu &&
-        !nluSkipsTripTypeQuestion
-      ) {
-        agentMeta.activityLog.length = 0
-        const gateLine = formatTripTypeGateActivityLine(interpretTurn, {
-          ran: interpretNluRan,
-          ok: interpretNluOk
-        })
-        if (gateLine) pushActivity('trip_type_gate', gateLine)
-        return withAgentMeta(tripTypeFirstQuestionResponse())
-      }
 
       let nluHint = ''
       if (interpretTurn?.destination_text?.trim()) {
