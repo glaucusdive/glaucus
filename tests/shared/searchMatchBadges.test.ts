@@ -1,0 +1,44 @@
+import { describe, expect, it } from 'vitest'
+import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
+
+describe('buildSearchMatchBadges', () => {
+  it('includes location, trip type, activity tokens, and dates', () => {
+    const badges = buildSearchMatchBadges(
+      {
+        locale: 'Bali',
+        country: 'Indonesia',
+        diveTypes: ['Dive Shop'],
+        activityTokens: ['wreck'],
+        dates: { start: '2026-06-17', end: '2026-06-23' }
+      },
+      null
+    )
+    expect(badges.some(b => b.includes('Bali'))).toBe(true)
+    expect(badges.some(b => /Indonesia/i.test(b))).toBe(true)
+    expect(badges.some(b => /Dive shop/i.test(b))).toBe(true)
+    expect(badges).toContain('Wreck diving')
+    expect(badges.some(b => b.startsWith('Dates:'))).toBe(true)
+  })
+
+  it('adds course and NLU activity / site labels', () => {
+    const badges = buildSearchMatchBadges(
+      { locale: 'Cozumel', country: 'Mexico' },
+      {
+        certification_course_hint: 'Open Water',
+        activity_terms: ['drift'],
+        dive_site_type_label: 'wall dives'
+      }
+    )
+    expect(badges.some(b => b.includes('Open Water'))).toBe(true)
+    expect(badges).toContain('Drift diving')
+    expect(badges).toContain('Wall Dives')
+  })
+
+  it('dedupes overlapping activity signals', () => {
+    const badges = buildSearchMatchBadges(
+      { activityTokens: ['wreck'] },
+      { activity_terms: ['wreck'], dive_site_type_label: null, certification_course_hint: null }
+    )
+    expect(badges.filter(b => b === 'Wreck diving').length).toBe(1)
+  })
+})

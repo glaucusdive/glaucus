@@ -4,6 +4,7 @@ import { mergeInterpretSearchFacetsIntoFilters } from './searchNluMerge'
 import { shopIdsForCourseSearch } from './shopIdsForCourseSearch'
 import { narrateSearchResults } from './searchResultNarration'
 import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
+import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 
 export function tripTypeFirstQuestionResponse (opts?: { searchFlowReset?: boolean }) {
   return {
@@ -325,6 +326,7 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
   hasMoreResults: boolean
   filters: SearchFilters
   selectableOptions: { label: string; value: string }[] | undefined
+  searchMatchBadges?: string[]
 }> {
   const {
     message,
@@ -681,6 +683,17 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
 
   const trimmedOptions = capSelectableOptionsForAiSearchFirst(aiSearchFirst, selectableOptions)
 
+  const searchMatchBadges =
+    responseShops.length > 0
+      ? buildSearchMatchBadges(filters, interpretTurn
+        ? {
+            certification_course_hint: interpretTurn.certification_course_hint ?? null,
+            activity_terms: interpretTurn.activity_terms ?? null,
+            dive_site_type_label: interpretTurn.dive_site_type_label ?? null
+          }
+        : null)
+      : []
+
   return {
     success: true,
     intent: 'search' as const,
@@ -690,6 +703,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     totalResults: resultCount,
     hasMoreResults: hasMorePages,
     filters,
-    selectableOptions: trimmedOptions
+    selectableOptions: trimmedOptions,
+    ...(searchMatchBadges.length ? { searchMatchBadges } : {})
   }
 }

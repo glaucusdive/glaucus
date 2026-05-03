@@ -26,6 +26,7 @@
       <div class="flex-1 flex flex-row overflow-hidden relative">
         <!-- Chat Section -->
         <div class="relative flex min-w-0 h-full w-full flex-col transition-all duration-300 ease-in-out">
+
           <!-- Messages Container -->
           <div ref="messagesContainer"
             class="flex-1 overflow-y-auto p-2 md:p-4 flex flex-col gap-2 *:mx-auto *:w-full">
@@ -88,9 +89,9 @@
                     </summary>
                     <p class="px-2 pb-2 pt-0 leading-relaxed whitespace-pre-wrap">{{ msg.reasoningSummary }}</p>
                   </details>
-                  <!-- Prior-topic ack only (e.g. dates); next bubble holds the question + chevron -->
+                  <!-- Lead-in / narration / ack — always before shop cards when both exist -->
                   <div
-                    v-if="msg.preamble && !(msg.shops && msg.shops.length > 0)"
+                    v-if="msg.preamble"
                     class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 chat-bubble-pop-first"
                   >
                     <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap">{{ msg.preamble }}</p>
@@ -132,6 +133,7 @@
                         <CardSearchResult
                           :shop="shop"
                           :active="selectedShopId === shop.id"
+                          :match-badges="msg.searchMatchBadges"
                           @shop-selected="handleShopSelected"
                           @view-details="handleViewDetails"
                         />
@@ -142,13 +144,6 @@
                     <div v-if="msg.totalResults && msg.totalResults > msg.shops.length" class="text-sm text-zinc-500">
                       {{ getResultsRangeLabel(index) }}
                     </div>
-                  </div>
-
-                  <div
-                    v-if="msg.preamble && msg.shops && msg.shops.length > 0"
-                    class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 chat-bubble-pop-first"
-                  >
-                    <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap">{{ msg.preamble }}</p>
                   </div>
 
                   <div
@@ -298,7 +293,7 @@
             </div>
 
             <!-- Loading: stream shows status + MESSAGE preview + spinner only (no duplicate “thinking” label) -->
-            <div v-if="isLoading" class="flex justify-start">
+            <div v-if="isLoading" class="flex justify-start max-w-2xl">
               <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3 flex flex-col gap-2 max-w-[min(90%,42rem)] min-w-0">
                 <div
                   v-if="loadingProgressLines.length > 0"
@@ -415,6 +410,7 @@ import {
   BOOKING_PRESEND_OPEN_FORM,
   BOOKING_RESUME_SESSION_KEY
 } from '~~/shared/bookingPreSendTokens'
+import { buildSearchMatchBadges } from '~~/shared/searchMatchBadges'
 
 // Get route to check for initial query
 const route = useRoute()
@@ -1570,6 +1566,30 @@ const sendMessage = async (messageText, displayText) => {
             guidedRes.bookingHints.diveSiteTypeLabel)
             ? { ...guidedRes.bookingHints }
             : null
+        const guidedFilters =
+          guidedRes.filters && typeof guidedRes.filters === 'object' && !Array.isArray(guidedRes.filters)
+            ? guidedRes.filters
+            : {}
+        const guidedFacets =
+          guidedRes.bookingHints?.desiredCourses?.[0]?.trim()
+            ? {
+                certification_course_hint: guidedRes.bookingHints.desiredCourses[0].trim(),
+                dive_site_type_label: guidedRes.bookingHints.diveSiteTypeLabel?.trim() ?? null,
+                activity_terms: null
+              }
+            : guidedRes.bookingHints?.diveSiteTypeLabel?.trim()
+              ? {
+                  dive_site_type_label: guidedRes.bookingHints.diveSiteTypeLabel.trim(),
+                  certification_course_hint: null,
+                  activity_terms: null
+                }
+              : null
+        const guidedShopCount = (guidedRes.shops || []).length
+        const guidedBadges = guidedShopCount ? buildSearchMatchBadges(guidedFilters, guidedFacets) : []
+        const serverGuidedBadges = Array.isArray(guidedRes.searchMatchBadges)
+          ? guidedRes.searchMatchBadges.filter((x) => typeof x === 'string' && String(x).trim())
+          : []
+        const searchMatchBadges = guidedBadges.length ? guidedBadges : serverGuidedBadges
         messages.value.push({
           role: 'assistant',
           content: guidedRes.message || '',
@@ -1579,12 +1599,10 @@ const sendMessage = async (messageText, displayText) => {
           hasMoreResults: guidedRes.hasMoreResults ?? false,
           intent: 'search',
           selectableOptions: guidedRes.selectableOptions,
-          filters:
-            guidedRes.filters && typeof guidedRes.filters === 'object' && !Array.isArray(guidedRes.filters)
-              ? guidedRes.filters
-              : {},
+          filters: guidedFilters,
           guidedSearchState: mergedState,
-          guidedBookingHintsSnapshot: hintsSnap
+          guidedBookingHintsSnapshot: hintsSnap,
+          ...(searchMatchBadges.length ? { searchMatchBadges } : {})
         })
       } else {
         messages.value.push({
@@ -1706,13 +1724,26 @@ const sendMessage = async (messageText, displayText) => {
         const resetContent = (response.message && String(response.message).trim())
           ? response.message
           : 'How can I help?'
+        const resetShops = response.shops || []
+        const resetApiBadges = Array.isArray(response.searchMatchBadges)
+          ? response.searchMatchBadges.filter((x) => typeof x === 'string' && String(x).trim())
+          : []
+        const resetFilterObj =
+          response.filters && typeof response.filters === 'object' && !Array.isArray(response.filters)
+            ? response.filters
+            : null
+        const resetFallbackBadges =
+          resetShops.length > 0 && resetFilterObj && !resetApiBadges.length
+            ? buildSearchMatchBadges(resetFilterObj, null)
+            : []
+        const resetSearchMatchBadges = resetApiBadges.length ? resetApiBadges : resetFallbackBadges
         messages.value = [
           { role: 'user', content: textToShow },
           {
             role: 'assistant',
             content: resetContent,
             ...(response.messagePreamble ? { preamble: response.messagePreamble } : {}),
-            shops: response.shops || [],
+            shops: resetShops,
             totalResults: response.totalResults,
             hasMoreResults: response.hasMoreResults,
             intent: response.intent,
@@ -1728,7 +1759,8 @@ const sendMessage = async (messageText, displayText) => {
             ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {}),
             ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {}),
             ...(progressForAssistant ? { searchProgressLog: progressForAssistant } : {}),
-            ...(reasoningForAssistant ? { reasoningSummary: reasoningForAssistant } : {})
+            ...(reasoningForAssistant ? { reasoningSummary: reasoningForAssistant } : {}),
+            ...(resetSearchMatchBadges.length ? { searchMatchBadges: resetSearchMatchBadges } : {})
           }
         ]
         isLoading.value = false
@@ -1828,13 +1860,27 @@ const sendMessage = async (messageText, displayText) => {
       }
       const content = (response.message && String(response.message).trim()) ? response.message : 'Got it — what would you like to tell me next?'
 
+      const shopsOut = response.shops || []
+      const apiBadges = Array.isArray(response.searchMatchBadges)
+        ? response.searchMatchBadges.filter((x) => typeof x === 'string' && String(x).trim())
+        : []
+      const filterObj =
+        response.filters && typeof response.filters === 'object' && !Array.isArray(response.filters)
+          ? response.filters
+          : null
+      const fallbackBadges =
+        shopsOut.length > 0 && filterObj && !apiBadges.length
+          ? buildSearchMatchBadges(filterObj, null)
+          : []
+      const searchMatchBadges = apiBadges.length ? apiBadges : fallbackBadges
+
       messages.value.push({
         role: 'assistant',
         content,
         ...(response.messagePreamble ? { preamble: response.messagePreamble } : {}),
         ...(progressForAssistant?.length ? { searchProgressLog: progressForAssistant } : {}),
         ...(reasoningForAssistant ? { reasoningSummary: reasoningForAssistant } : {}),
-        shops: response.shops || [],
+        shops: shopsOut,
         totalResults: response.totalResults,
         hasMoreResults: response.hasMoreResults,
         intent: response.intent,
@@ -1848,7 +1894,8 @@ const sendMessage = async (messageText, displayText) => {
         courseOptions: response.courseOptions || undefined,
         diveSiteOptions: response.diveSiteOptions || undefined,
         ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {}),
-        ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {})
+        ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {}),
+        ...(searchMatchBadges.length ? { searchMatchBadges } : {})
       })
       if (response.intent === 'booking' && storedPayload) {
         updateBookingPayloadIfOpen(storedPayload)
