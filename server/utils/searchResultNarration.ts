@@ -56,8 +56,7 @@ Write 2 short sentences: welcome-style guidance for a scuba diver and why these 
           },
           { role: 'user', content: user }
         ],
-        temperature: 0.45,
-        max_tokens: 220
+        max_completion_tokens: 220
       }),
       signal
     })

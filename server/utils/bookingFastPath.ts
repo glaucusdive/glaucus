@@ -380,6 +380,11 @@ function looksLikeSingleName (s: string): boolean {
   return parts.length === 1
 }
 
+/** Course/dive-site multi-select and gear "done" — never a literal certification number. */
+function isBookingOptionalStepToken (msg: string): boolean {
+  return /^(done|none|any|no|skip|nothing|no more|that's all|finish|that's it)$/i.test(msg.trim())
+}
+
 export interface FastPathResult {
   message: string
   /** Short ack bubble before `message` when one turn closes a topic and asks the next (e.g. dates → courses). */
@@ -733,6 +738,7 @@ export function tryFastPath (
     }
     case 'certificationNumber': {
       if (!divers[i]) return null
+      if (isBookingOptionalStepToken(msg)) return null
       divers[i].certificationNumber = msg
       p.divers = divers
       const n = divers[i].name || 'They'

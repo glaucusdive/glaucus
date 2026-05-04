@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { clampBookingPayloadToNextStep, getNextBookingStep, type BookingPayloadLocal } from '../../server/utils/bookingFastPath'
+import {
+  clampBookingPayloadToNextStep,
+  getNextBookingStep,
+  tryFastPath,
+  type BookingPayloadLocal
+} from '../../server/utils/bookingFastPath'
 
 const opts = { shopCourseCount: 0, shopDiveSiteCount: 0 }
 
@@ -76,5 +81,40 @@ describe('clampBookingPayloadToNextStep (per-diver order)', () => {
     overfill.divers![0].weight = '180'
     const clamped = clampBookingPayloadToNextStep(overfill, opts)
     expect(getNextBookingStep(clamped)?.step).toBe('certificationNumber')
+  })
+})
+
+describe('tryFastPath', () => {
+  it('does not treat "done" as a certification number (courses/dive-sites / UX token)', () => {
+    const p: BookingPayloadLocal = {
+      name: 'Contact',
+      email: 'c@example.com',
+      startDate: '2026-05-05',
+      endDate: '2026-05-20',
+      desiredCourses: [],
+      coursesSelectionComplete: true,
+      desiredDiveSites: [],
+      numberOfDivers: 1,
+      divers: [
+        {
+          name: 'Chris Porter',
+          certificationNumber: '',
+          numberOfDives: '',
+          height: '',
+          heightUnit: 'ft-in',
+          weight: '',
+          weightUnit: 'lbs',
+          gear: []
+        }
+      ]
+    }
+    expect(getNextBookingStep(p)?.step).toBe('certificationNumber')
+    const fast = tryFastPath(
+      { step: 'certificationNumber', diverIndex: 0, diverName: 'Chris Porter' },
+      'done',
+      p,
+      'Shop'
+    )
+    expect(fast).toBeNull()
   })
 })

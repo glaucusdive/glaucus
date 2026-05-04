@@ -2435,8 +2435,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           body: JSON.stringify({
             model: OPENAI_CHAT_MODEL,
             messages,
-            temperature: 0.6,
-            max_tokens: 1200
+            max_completion_tokens: 1200
           })
         })
         if (!aiResponse.ok) {
@@ -2825,8 +2824,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 { role: 'system', content: 'You extract search filters from conversations. Return only FILTERS in the specified format.' },
                 { role: 'user', content: filterExtractionPrompt }
               ],
-              temperature: 0.3,
-              max_tokens: 200
+              max_completion_tokens: 200
             })
           })
 
@@ -2953,8 +2951,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
         body: JSON.stringify({
           model: OPENAI_CHAT_MODEL,
           messages,
-          temperature: 0.7,
-          max_tokens: 1000
+          max_completion_tokens: 1000
         })
       })
 
