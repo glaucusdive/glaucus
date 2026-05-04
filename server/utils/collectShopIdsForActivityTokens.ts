@@ -7,6 +7,14 @@ export function sanitizeActivityTokenForIlike (s: string): string {
 
 const MAX_SITE_IDS = 400
 
+export type CollectShopIdsForActivityOptions = {
+  /**
+   * When set (e.g. search country resolved to IDs), only dive_sites in these countries
+   * qualify — avoids a shop in the search country matching only via wreck sites elsewhere.
+   */
+  diveSiteCountryIds?: string[] | null
+}
+
 async function shopIdsFromJunction (
   client: SupabaseClient,
   diveSiteIds: string[]
@@ -26,16 +34,27 @@ async function shopIdsFromJunction (
 }
 
 /**
- * Shop IDs matching a single activity token: diveshops (notes, name, trip type text)
- * OR linked dive_sites (name) OR dive_site_types (name) → sites → junction.
+ * Shop IDs matching activity tokens via **linked dive sites only** (strict):
+ * - `dive_sites.name` ILIKE `%token%`
+ * - `dive_site_types.name` ILIKE `%token%` → sites → junction
+ *
+ * Does **not** match diveshop marketing text (notes / business_name / type), so operators
+ * cannot appear in wreck search without at least one qualifying linked site.
+ *
+ * When `diveSiteCountryIds` is provided, only sites in those countries count (aligns with
+ * country-scoped searches like wreck diving in Bali / Indonesia).
+ *
  * Multiple tokens: intersection (AND) across tokens.
  */
 export async function collectShopIdsForActivityTokens (
   client: SupabaseClient,
-  rawTokens: string[]
+  rawTokens: string[],
+  options?: CollectShopIdsForActivityOptions | null
 ): Promise<string[]> {
   const tokens = [...new Set(rawTokens.map(sanitizeActivityTokenForIlike).filter(Boolean))]
   if (!tokens.length) return []
+
+  const countryIds = options?.diveSiteCountryIds?.filter(Boolean) ?? null
 
   const perTokenSets: Set<string>[] = []
 
@@ -43,20 +62,11 @@ export async function collectShopIdsForActivityTokens (
     const pattern = `%${token}%`
     const set = new Set<string>()
 
-    const { data: shopRows } = await client
-      .from('diveshops')
-      .select('id')
-      .or(`notes.ilike.${pattern},business_name.ilike.${pattern},type.ilike.${pattern}`)
-    for (const row of shopRows || []) {
-      const id = (row as { id: string }).id
-      if (id) set.add(id)
+    let nameQ = client.from('dive_sites').select('id').ilike('name', pattern)
+    if (countryIds?.length) {
+      nameQ = nameQ.in('country_id', countryIds)
     }
-
-    const { data: sitesByName } = await client
-      .from('dive_sites')
-      .select('id')
-      .ilike('name', pattern)
-      .limit(MAX_SITE_IDS)
+    const { data: sitesByName } = await nameQ.limit(MAX_SITE_IDS)
     const siteIdsFromName = (sitesByName || []).map((r: { id: string }) => r.id).filter(Boolean)
     for (const sid of await shopIdsFromJunction(client, siteIdsFromName)) {
       set.add(sid)
@@ -68,11 +78,14 @@ export async function collectShopIdsForActivityTokens (
       .ilike('name', pattern)
     const typeIds = (typeRows || []).map((r: { id: string }) => r.id).filter(Boolean)
     if (typeIds.length) {
-      const { data: sitesByType } = await client
+      let typeQ = client
         .from('dive_sites')
         .select('id')
         .in('dive_site_type_id', typeIds)
-        .limit(MAX_SITE_IDS)
+      if (countryIds?.length) {
+        typeQ = typeQ.in('country_id', countryIds)
+      }
+      const { data: sitesByType } = await typeQ.limit(MAX_SITE_IDS)
       const siteIdsFromType = (sitesByType || []).map((r: { id: string }) => r.id).filter(Boolean)
       for (const sid of await shopIdsFromJunction(client, siteIdsFromType)) {
         set.add(sid)

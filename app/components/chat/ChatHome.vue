@@ -134,6 +134,7 @@
                           :shop="shop"
                           :active="selectedShopId === shop.id"
                           :match-badges="msg.searchMatchBadges"
+                          :search-filters="msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : undefined"
                           @shop-selected="handleShopSelected"
                           @view-details="handleViewDetails"
                         />
@@ -292,34 +293,49 @@
               </div>
             </div>
 
-            <!-- Loading: stream shows status + MESSAGE preview + spinner only (no duplicate “thinking” label) -->
+            <!-- Loading: NDJSON / fallback status + optional stream preview + three-dot bounce -->
             <div v-if="isLoading" class="flex justify-start max-w-2xl">
               <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3 flex flex-col gap-2 max-w-[min(90%,42rem)] min-w-0">
                 <div
-                  v-if="loadingProgressLines.length > 0"
+                  v-if="loadingProgressLines.length > 0 || loadingFallbackLine"
                   class="flex flex-col gap-1 border-b border-zinc-200/80 dark:border-zinc-600/80 pb-2 mb-1"
                 >
+                  <template v-if="loadingProgressLines.length > 0">
+                    <p
+                      v-for="(line, li) in loadingProgressLines"
+                      :key="'lp-' + li"
+                      class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed chat-loading-progress-line"
+                      :style="{ animationDelay: `${li * 90}ms` }"
+                    >
+                      {{ line }}
+                    </p>
+                  </template>
                   <p
-                    v-for="(line, li) in loadingProgressLines"
-                    :key="'lp-' + li"
+                    v-else
                     class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed chat-loading-progress-line"
-                    :style="{ animationDelay: `${li * 90}ms` }"
                   >
-                    {{ line }}
+                    {{ loadingFallbackLine }}
                   </p>
                 </div>
                 <p v-if="searchStreamStatus" class="text-xs text-zinc-500 dark:text-zinc-400">{{ searchStreamStatus }}</p>
                 <p v-if="searchStreamPreview" class="text-sm text-zinc-800 dark:text-white whitespace-pre-wrap min-w-0">{{ searchStreamPreview }}</p>
-                <div class="flex items-center gap-2">
-                  <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-zinc-600 dark:border-zinc-300 shrink-0"></div>
+                <div class="flex items-center gap-2.5 min-h-[1.25rem]">
+                  <div
+                    class="chat-loading-bounce-dots flex shrink-0 items-center gap-1"
+                    aria-hidden="true"
+                  >
+                    <span class="chat-loading-bounce-dot bg-zinc-500 dark:bg-zinc-400" />
+                    <span class="chat-loading-bounce-dot chat-loading-bounce-dot--2 bg-zinc-500 dark:bg-zinc-400" />
+                    <span class="chat-loading-bounce-dot chat-loading-bounce-dot--3 bg-zinc-500 dark:bg-zinc-400" />
+                  </div>
                   <span
-                    v-if="!searchStreamStatus && !searchStreamPreview && loadingProgressLines.length === 0"
-                    class="text-sm text-zinc-900 dark:text-zinc-200"
-                  >Waiting for response…</span>
-                  <span
-                    v-else-if="!searchStreamStatus && !searchStreamPreview && loadingProgressLines.length > 0"
+                    v-if="!searchStreamStatus && !searchStreamPreview && loadingProgressLines.length > 0"
                     class="text-sm text-zinc-600 dark:text-zinc-400"
                   >Working…</span>
+                  <span
+                    v-else-if="!searchStreamStatus && !searchStreamPreview && loadingFallbackLine"
+                    class="text-sm text-zinc-600 dark:text-zinc-400"
+                  >Hang tight…</span>
                 </div>
               </div>
             </div>
@@ -524,6 +540,35 @@ const searchStreamProgressLines = ref([])
 /** Staged activity lines while waiting on POST /api/guided-orchestrator (NDJSON progress when not in booking handoff). */
 const loadingProgressLines = ref([])
 let loadingProgressTimer = null
+
+/** Rotating scuba-themed line when no server progress yet (or non-stream wait). */
+const SCUBA_LOADING_FALLBACK_MESSAGES = [
+  'Suiting up…',
+  'Plotting your dive…',
+  'Scanning our directory…',
+  'Checking conditions…',
+  'Surfacing matches…'
+]
+const loadingFallbackLine = ref('')
+let loadingFallbackTimer = null
+
+function stopLoadingFallback () {
+  if (loadingFallbackTimer != null) {
+    clearInterval(loadingFallbackTimer)
+    loadingFallbackTimer = null
+  }
+  loadingFallbackLine.value = ''
+}
+
+function startLoadingFallback () {
+  stopLoadingFallback()
+  let i = 0
+  loadingFallbackLine.value = SCUBA_LOADING_FALLBACK_MESSAGES[i]
+  loadingFallbackTimer = setInterval(() => {
+    i = (i + 1) % SCUBA_LOADING_FALLBACK_MESSAGES.length
+    loadingFallbackLine.value = SCUBA_LOADING_FALLBACK_MESSAGES[i]
+  }, 2200)
+}
 const messages = ref([])
 const messagesContainer = ref(null)
 const isRestoringCache = ref(true)
@@ -1407,6 +1452,12 @@ const sendMessage = async (messageText, displayText) => {
     searchStreamStatus.value = ''
     searchStreamPreview.value = ''
     searchStreamProgressLines.value = []
+    if (loadingProgressTimer != null) {
+      clearInterval(loadingProgressTimer)
+      loadingProgressTimer = null
+    }
+    loadingProgressLines.value = []
+    stopLoadingFallback()
   }
 
   const textToShow = displayText ?? message
@@ -1543,6 +1594,7 @@ const sendMessage = async (messageText, displayText) => {
         clearInterval(loadingProgressTimer)
         loadingProgressTimer = null
       }
+      stopLoadingFallback()
       loadingProgressLines.value = ['Finding dive shops…']
       searchStreamStatus.value = ''
       searchStreamPreview.value = ''
@@ -1678,6 +1730,7 @@ const sendMessage = async (messageText, displayText) => {
         loadingProgressTimer = null
       }
       loadingProgressLines.value = []
+      stopLoadingFallback()
     }
     const startLoadingProgressHint = (kind = 'default') => {
       clearLoadingProgress()
@@ -1710,6 +1763,10 @@ const sendMessage = async (messageText, displayText) => {
       isBookingHandoffUserMessage(message) ? 'booking_handoff' : 'default'
     )
 
+    if (loadingProgressLines.value.length === 0) {
+      startLoadingFallback()
+    }
+
     const maxAiAttempts = 3
     const baseAiRetryMs = 350
     let response = null
@@ -1730,6 +1787,7 @@ const sendMessage = async (messageText, displayText) => {
       }
       streamProgressSnapshot.push(label)
       loadingProgressLines.value = [...streamProgressSnapshot]
+      stopLoadingFallback()
     }
 
     for (let attempt = 1; attempt <= maxAiAttempts && !response; attempt++) {
@@ -2026,6 +2084,7 @@ const sendMessage = async (messageText, displayText) => {
         loadingProgressTimer = null
       }
       loadingProgressLines.value = []
+      stopLoadingFallback()
       isLoading.value = false
       abortController.value = null
       await scrollToBottom()
@@ -2220,6 +2279,43 @@ useHead({ title: 'Dive Shop Search | Glaucus' })
   .chat-loading-progress-line {
     animation: none;
     opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes chat-loading-dot-bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  40% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
+}
+
+.chat-loading-bounce-dot {
+  display: block;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+  animation: chat-loading-dot-bounce 0.7s ease-in-out infinite;
+}
+
+.chat-loading-bounce-dot--2 {
+  animation-delay: 0.15s;
+}
+
+.chat-loading-bounce-dot--3 {
+  animation-delay: 0.3s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-loading-bounce-dot {
+    animation: none;
+    opacity: 0.75;
     transform: none;
   }
 }
