@@ -25,11 +25,11 @@ function tripProductLabel (t: string | null | undefined): string | null {
 }
 
 /**
- * One factual line after `interpretUserTurn` (OpenRouter JSON NLU).
+ * One factual line after `interpretUserTurn` (OpenAI GPT-5.5 JSON NLU).
  * Returns null if there is nothing concrete to show.
  */
 export function formatInterpretActivityLine (interpret: InterpretedTurn | null, ok: boolean): string | null {
-  if (!ok) return 'NLU (OpenRouter) failed — continuing with rules and your exact wording.'
+  if (!ok) return 'NLU (GPT-5.5) failed — continuing with rules and your exact wording.'
   if (!interpret) return null
   const bits: string[] = []
   const g = interpret.goal ? (GOAL_LABEL[interpret.goal] ?? interpret.goal) : null
@@ -43,7 +43,7 @@ export function formatInterpretActivityLine (interpret: InterpretedTurn | null, 
   const tp = tripProductLabel(interpret.trip_product_type ?? null)
   if (tp) bits.push(`trip product: ${tp}`)
   if (!bits.length) return null
-  return truncate(`NLU (OpenRouter) — ${bits.join(' · ')}`)
+  return truncate(`NLU (GPT-5.5) — ${bits.join(' · ')}`)
 }
 
 /** After `buildDiveShopQuery` for a destination-first path. */
@@ -79,11 +79,11 @@ export function formatTripTypeGateActivityLine (interpret: InterpretedTurn | nul
 }
 
 export function formatSearchLlmActivityLine (): string {
-  return 'OpenRouter — drafting FILTERS/MESSAGE for dive shop search (search model)'
+  return 'GPT-5.5 — drafting FILTERS/MESSAGE for dive shop search (search model)'
 }
 
 export function formatBookingLlmActivityLine (): string {
-  return 'OpenRouter — drafting booking COLLECTED fields (booking model)'
+  return 'GPT-5.5 — drafting booking COLLECTED fields (booking model)'
 }
 
 export function formatSearchRelaxActivityLine (placeHint: string): string {

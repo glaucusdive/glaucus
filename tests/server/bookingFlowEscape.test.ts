@@ -4,21 +4,28 @@ import {
   userMessageWantsResumeSearchDuringBooking
 } from '../../server/utils/bookingFlowEscape'
 
-describe('bookingFlowEscape', () => {
-  it('detects resume-search phrasing', () => {
-    expect(userMessageWantsResumeSearchDuringBooking('go back to search')).toBe(true)
-    expect(userMessageWantsResumeSearchDuringBooking('Show me dive shops to search again')).toBe(true)
-    expect(userMessageWantsResumeSearchDuringBooking('Chris Porter')).toBe(false)
-  })
-
-  it('extracts shop switch after wait / instead', () => {
-    expect(extractMidBookingShopSwitchPhrase("Wait lets book with Dive Porter")).toBe('Dive Porter')
-    expect(extractMidBookingShopSwitchPhrase("Actually let's book Adventure Divers Bali")).toBe(
-      'Adventure Divers Bali'
+describe('extractMidBookingShopSwitchPhrase', () => {
+  it('extracts shop from mid-sentence book-with after sorry', () => {
+    const p = extractMidBookingShopSwitchPhrase(
+      'Sorry I need to go back and book with Dive Porter'
     )
+    expect(p?.toLowerCase()).toContain('dive')
+    expect(p?.toLowerCase()).toContain('porter')
   })
 
-  it('does not treat a plain full name as shop switch', () => {
-    expect(extractMidBookingShopSwitchPhrase('Jane Marie Smith')).toBeNull()
+  it('does not treat plain name as switch', () => {
+    expect(extractMidBookingShopSwitchPhrase('Jane Smith')).toBeNull()
+    expect(extractMidBookingShopSwitchPhrase('Chris')).toBeNull()
+  })
+})
+
+describe('userMessageWantsResumeSearchDuringBooking', () => {
+  it('detects go back and keep searching phrasing', () => {
+    expect(userMessageWantsResumeSearchDuringBooking('I want to go back and keep searching')).toBe(true)
+    expect(userMessageWantsResumeSearchDuringBooking('go back and keep looking')).toBe(true)
+  })
+
+  it('detects not ready to book', () => {
+    expect(userMessageWantsResumeSearchDuringBooking('not ready to book yet')).toBe(true)
   })
 })

@@ -77,7 +77,7 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 ## Dive shop chat (optional AI-first search)
 
 - **`NUXT_PUBLIC_AI_SEARCH_FIRST`** — when `true`, pre-booking search uses the guided orchestrator (NLU + search LLM + Supabase) instead of chip-first `/api/guided-flow`. Default is `false` (guided remains primary).
-- **`NUXT_PUBLIC_DISABLE_CHAT_AI`** — set to `true` to turn off NLU/OpenRouter (search + booking LLM). Defaults to **`false` in development** and **`true` in production builds** so local AI testing works without extra env. Override per deploy as needed.
+- **`NUXT_PUBLIC_DISABLE_CHAT_AI`** — set to `true` to turn off NLU and GPT-5.5 chat (search + booking LLM). Defaults to **`false` in development** and **`true` in production builds** so local AI testing works without extra env. Override per deploy as needed. Requires **`NUXT_OPENAI_API_KEY`** or **`OPENAI_API_KEY`** when chat AI is enabled.
 - Users can switch back to step-by-step chips for the session from the empty-state link (“Prefer step-by-step chips instead”).
 
 ## Versioning

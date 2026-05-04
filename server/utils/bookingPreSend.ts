@@ -30,6 +30,7 @@ export function clearBookingPreSendFlags<T extends BookingPayloadLocal> (p: T): 
   delete (out as { preSendReviewAck?: boolean }).preSendReviewAck
   delete (out as { preSendSignupSkipped?: boolean }).preSendSignupSkipped
   delete (out as { pendingReviewEdit?: unknown }).pendingReviewEdit
+  delete (out as { pendingVerbatimContactName?: string }).pendingVerbatimContactName
   return out
 }
 

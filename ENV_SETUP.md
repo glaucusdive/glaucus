@@ -37,9 +37,11 @@ NUXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 # Optional: chat booking flow — when to prompt account creation (before_send | after_send | off)
 # NUXT_PUBLIC_BOOKING_SIGNUP_TIMING=off
 
-# OpenRouter API Configuration
-# Get your API key from: https://openrouter.ai/keys
-NUXT_OPENROUTER_API_KEY=your_openrouter_api_key_here
+# OpenAI API (GPT-5.5) — NLU, search drafting, booking assistant, optional contact-reply classifier
+# Get your API key from: https://platform.openai.com/api-keys
+NUXT_OPENAI_API_KEY=your_openai_api_key_here
+# Alternative env name (either works):
+# OPENAI_API_KEY=your_openai_api_key_here
 
 # Resend (booking emails to diveshops)
 # Get your API key from: https://resend.com/api-keys
@@ -48,21 +50,17 @@ RESEND_API_KEY=re_xxxxxxxxxxxx
 # BOOKING_FROM_EMAIL=Glaucus <bookings@yourdomain.com>
 ```
 
-## Getting an OpenRouter API Key
+## Getting an OpenAI API Key
 
-1. Visit [https://openrouter.ai/keys](https://openrouter.ai/keys)
-2. Sign up or log in to your account
-3. Create a new API key
-4. Copy the key and add it to your `.env` file as `NUXT_OPENROUTER_API_KEY`
+1. Visit [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+2. Sign up or log in and create an API key
+3. Add it to your `.env` as `NUXT_OPENAI_API_KEY` or `OPENAI_API_KEY`
 
 ## Cost Information
 
-The AI search feature uses OpenAI's GPT-5 Mini model via OpenRouter:
-- Input: $0.25 per million tokens
-- Output: $2.00 per million tokens
-- Web search: $10 per 1000 searches (not currently used)
+Chat NLU, search, and booking flows call **OpenAI** using model **`gpt-5.5`**. See current pricing on [OpenAI pricing](https://openai.com/api/pricing/). Typical conversation costs depend on message length and retries; keep keys server-side only.
 
-Typical conversation costs are minimal (a few cents per search session).
+Typical conversation costs are minimal (a few cents per search session) for short turns.
 
 ## Resend (booking emails)
 

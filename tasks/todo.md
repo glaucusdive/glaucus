@@ -94,4 +94,4 @@ Booking form stays in `default.vue` right drawer; shop tabs + contact live in th
 
 ## Review
 
-Enable with `NUXT_PUBLIC_AI_SEARCH_FIRST=true` and `NUXT_PUBLIC_DISABLE_CHAT_AI=false` plus OpenRouter key. Guided chips remain available via “Prefer step-by-step chips instead”. `npm test` passes (150 tests).
+Enable with `NUXT_PUBLIC_AI_SEARCH_FIRST=true` and `NUXT_PUBLIC_DISABLE_CHAT_AI=false` plus `NUXT_OPENAI_API_KEY` (or `OPENAI_API_KEY`). Guided chips remain available via “Prefer step-by-step chips instead”. `npm test` passes.

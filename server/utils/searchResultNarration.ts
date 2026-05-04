@@ -1,7 +1,6 @@
-import { OPENROUTER_CHAT_MODEL } from './openRouterChatModel'
+import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from './openAiChatModel'
 
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
-export const SEARCH_RESULT_NARRATION_MODEL = OPENROUTER_CHAT_MODEL
+export const SEARCH_RESULT_NARRATION_MODEL = OPENAI_CHAT_MODEL
 
 function shopCardSummary (shop: Record<string, unknown>): string {
   const name = String(shop.business_name ?? 'Unknown')
@@ -21,15 +20,15 @@ function shopCardSummary (shop: Record<string, unknown>): string {
  * Short, grounded concierge copy over the shops we are about to show (no new businesses).
  */
 export async function narrateSearchResults (input: {
-  openrouterApiKey: string
+  openaiApiKey: string
   userMessage: string
   filtersSummary: string
   shops: unknown[]
   signal?: AbortSignal
 }): Promise<string | null> {
-  const { openrouterApiKey, userMessage, filtersSummary, shops, signal } = input
+  const { openaiApiKey, userMessage, filtersSummary, shops, signal } = input
   const rows = (shops || []).slice(0, 5) as Record<string, unknown>[]
-  if (!rows.length || !openrouterApiKey.trim()) return null
+  if (!rows.length || !openaiApiKey.trim()) return null
   const lines = rows.map(shopCardSummary)
   const user = `User asked (latest message): ${userMessage.trim()}
 
@@ -41,13 +40,11 @@ ${lines.map((l, i) => `${i + 1}. ${l}`).join('\n')}
 Write 2 short sentences: welcome-style guidance for a scuba diver and why these picks match what they said. Do not claim amenities not in the list. If a field is empty, do not guess. No bullet list.`
 
   try {
-    const res = await fetch(OPENROUTER_URL, {
+    const res = await fetch(OPENAI_CHAT_COMPLETIONS_URL, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${openrouterApiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://glaucus.app',
-        'X-Title': 'Glaucus search result narration'
+        Authorization: `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         model: SEARCH_RESULT_NARRATION_MODEL,

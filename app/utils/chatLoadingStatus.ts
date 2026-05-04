@@ -29,10 +29,10 @@ export function chatLoadingLinesForKind (kind: ChatLoadingKind): readonly string
 export function mapOrchestratorActivityToStatusLine (label: string): string | null {
   const s = String(label || '').trim()
   if (!s) return null
-  if (/NLU \(OpenRouter\) failed/i.test(s)) {
+  if (/NLU \([^)]+\) failed/i.test(s)) {
     return 'Working from what you typed…'
   }
-  if (/^NLU \(OpenRouter\)/i.test(s)) {
+  if (/^NLU \(/i.test(s)) {
     return 'Understanding your request…'
   }
   if (/Supabase dive shop query for style/i.test(s)) {

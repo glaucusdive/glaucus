@@ -99,4 +99,13 @@ describe('bookingPreSend', () => {
     expect(cleared.pendingReviewEdit).toBeUndefined()
     expect(cleared.preSendReviewAck).toBeUndefined()
   })
+
+  it('clearBookingPreSendFlags removes pendingVerbatimContactName', () => {
+    const p = {
+      ...readyPayload(),
+      pendingVerbatimContactName: 'Sorry, book with Dive Porter instead'
+    }
+    const cleared = clearBookingPreSendFlags(p)
+    expect(cleared.pendingVerbatimContactName).toBeUndefined()
+  })
 })
