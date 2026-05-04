@@ -15,13 +15,13 @@ describe('chatLoadingLinesForKind', () => {
 
 describe('mapOrchestratorActivityToStatusLine', () => {
   it('maps NLU and Supabase patterns', () => {
-    expect(mapOrchestratorActivityToStatusLine('NLU (OpenRouter) — goal: find shops')).toBe(
+    expect(mapOrchestratorActivityToStatusLine('NLU (GPT-5.5) — goal: find shops')).toBe(
       'Understanding your request…'
     )
     expect(mapOrchestratorActivityToStatusLine('Supabase dive shop query for "Bali" → 16 rows')).toBe(
       'Searching our dive directory…'
     )
-    expect(mapOrchestratorActivityToStatusLine('OpenRouter — drafting FILTERS/MESSAGE for dive shop search (search model)')).toBe(
+    expect(mapOrchestratorActivityToStatusLine('GPT-5.5 — drafting FILTERS/MESSAGE for dive shop search (search model)')).toBe(
       'Shaping your search…'
     )
   })

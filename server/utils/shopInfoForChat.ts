@@ -295,7 +295,7 @@ function buildMenuOptions (shop: ShopInfoBundle): { label: string; value: string
 }
 
 /**
- * Orchestrator-only shop facts: no OpenRouter. Returns null if this request is not a shop-info turn.
+ * Orchestrator-only shop facts: no LLM. Returns null if this request is not a shop-info turn.
  */
 export async function tryShopInfoResponse (
   message: string,

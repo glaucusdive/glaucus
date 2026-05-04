@@ -1,7 +1,5 @@
 import { extractVisibleMessageSuffixAfterMessageTag, visibleSuffixDelta } from './searchStreamMessageSuffix'
-import { OPENROUTER_CHAT_MODEL } from './openRouterChatModel'
-
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
+import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from './openAiChatModel'
 
 export interface StreamSearchFirstOptions {
   apiKey: string
@@ -14,13 +12,13 @@ export interface StreamSearchFirstOptions {
 }
 
 /**
- * OpenRouter OpenAI-compatible streaming completion; accumulates full assistant text.
+ * OpenAI Chat Completions streaming; accumulates full assistant text.
  * Invokes onAssistantDelta only for the substring after MESSAGE: (FILTERS block is not forwarded).
  */
-export async function streamOpenRouterSearchFirstCompletion (opts: StreamSearchFirstOptions): Promise<string> {
+export async function streamOpenAiSearchFirstCompletion (opts: StreamSearchFirstOptions): Promise<string> {
   const {
     apiKey,
-    model = OPENROUTER_CHAT_MODEL,
+    model = OPENAI_CHAT_MODEL,
     messages,
     temperature = 0.7,
     maxTokens = 1000,
@@ -28,13 +26,11 @@ export async function streamOpenRouterSearchFirstCompletion (opts: StreamSearchF
     onAssistantDelta
   } = opts
 
-  const res = await fetch(OPENROUTER_URL, {
+  const res = await fetch(OPENAI_CHAT_COMPLETIONS_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://glaucus.app',
-      'X-Title': 'Glaucus Dive Shop Search'
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify({
       model,
@@ -48,11 +44,11 @@ export async function streamOpenRouterSearchFirstCompletion (opts: StreamSearchF
 
   if (!res.ok) {
     const errText = await res.text()
-    throw new Error(`OpenRouter stream error: ${res.status} ${errText.slice(0, 500)}`)
+    throw new Error(`OpenAI stream error: ${res.status} ${errText.slice(0, 500)}`)
   }
 
   if (!res.body) {
-    throw new Error('OpenRouter stream: empty body')
+    throw new Error('OpenAI stream: empty body')
   }
 
   const reader = res.body.getReader()

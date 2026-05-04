@@ -1,7 +1,7 @@
 import { createError, defineEventHandler } from 'h3'
 
 /**
- * Retired: NDJSON streaming search used OpenRouter. The app no longer calls this route.
+ * Retired: NDJSON streaming search (legacy). The app no longer calls this route.
  * Use POST /api/guided-flow for deterministic search and POST /api/guided-orchestrator for JSON turns.
  */
 export default defineEventHandler(() => {

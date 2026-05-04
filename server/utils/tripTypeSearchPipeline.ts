@@ -7,7 +7,7 @@ import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationI
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
 import { enrichShopsForSearchCards } from './enrichShopsForSearchCards'
-import { OPENROUTER_CHAT_MODEL } from './openRouterChatModel'
+import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from './openAiChatModel'
 
 /** Optional post-result chips: narrow directory by business / trip format. */
 export const TRIP_TYPE_OPTIONAL_FILTER_CHIPS: { label: string; value: string }[] = [
@@ -294,7 +294,7 @@ export interface RunTripTypeSearchAfterLlmInput {
   message: string
   history: { role: string; content: string }[]
   aiMessage: string
-  openrouterApiKey: string
+  openaiApiKey: string
   supabaseUrl: string
   supabaseKey: string
   /** Total shop cards already shown (pagination when broadening path + many results). */
@@ -338,7 +338,7 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
     message,
     history,
     aiMessage,
-    openrouterApiKey,
+    openaiApiKey,
     supabaseUrl,
     supabaseKey,
     shopsAlreadyShownCount,
@@ -464,16 +464,14 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
 
   await Promise.all([
     (resultCount <= 2 || wantsMoreOptions)
-      ? fetch('https://openrouter.ai/api/v1/chat/completions', {
+      ? fetch(OPENAI_CHAT_COMPLETIONS_URL, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${openrouterApiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://glaucus.app',
-          'X-Title': 'Glaucus Dive Shop Search'
+          Authorization: `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: OPENROUTER_CHAT_MODEL,
+          model: OPENAI_CHAT_MODEL,
           messages: [
             { role: 'system', content: 'You are a helpful dive shop search assistant with knowledge of global dive destinations. Be concise and helpful.' },
             { role: 'user', content: broadeningPrompt(resultCount) }
@@ -484,16 +482,14 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
       }).then(parseBroadeningBody).then(r => { broadeningResult = r }).catch(() => {})
       : Promise.resolve(),
     resultCount > 5
-      ? fetch('https://openrouter.ai/api/v1/chat/completions', {
+      ? fetch(OPENAI_CHAT_COMPLETIONS_URL, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${openrouterApiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://glaucus.app',
-          'X-Title': 'Glaucus Dive Shop Search'
+          Authorization: `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: OPENROUTER_CHAT_MODEL,
+          model: OPENAI_CHAT_MODEL,
           messages: [
             { role: 'system', content: 'You ask ONE short question at a time. Never repeat a question that was already asked in the conversation.' },
             { role: 'user', content: followUpPrompt }
@@ -666,9 +662,9 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
 
   let messagePreamble = searchReplyMessagePreamble(conversationalMessage, finalMessage)
 
-  if (responseShops.length > 0 && openrouterApiKey) {
+  if (responseShops.length > 0 && openaiApiKey) {
     const narration = await narrateSearchResults({
-      openrouterApiKey,
+      openaiApiKey,
       userMessage: message,
       filtersSummary: JSON.stringify(filters),
       shops: responseShops,

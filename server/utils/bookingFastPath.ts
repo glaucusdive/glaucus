@@ -1,4 +1,5 @@
 import { extractMidBookingShopSwitchPhrase } from './bookingFlowEscape'
+import { contactNameInputLikelyNotAPlainName } from './bookingFieldReplyHeuristics'
 
 /** Minimal booking types to avoid circular import from ai-search.post */
 export interface BookingDiverLocal {
@@ -38,6 +39,8 @@ export interface BookingPayloadLocal {
    * is treated as the replacement value. Cleared when applied or when pre-send flags reset.
    */
   pendingReviewEdit?: PendingReviewEdit
+  /** Chat-only: last long line held until user picks a clarify chip (not sent to /api/booking). */
+  pendingVerbatimContactName?: string
 }
 
 export type PendingReviewEdit =
@@ -580,6 +583,8 @@ export function tryFastPath (
     case 'name': {
       // Mid-booking shop switch ("Wait, let's book with …") — orchestrator handles; never store as contact name.
       if (extractMidBookingShopSwitchPhrase(msg)) return null
+      // Long / question-shaped lines — defer to orchestrator (LLM / classifier), not blind name capture.
+      if (contactNameInputLikelyNotAPlainName(msg)) return null
       if (msg.length < 2 || msg.length > 100) return null
       if (looksLikeSingleName(msg)) {
         return { message: `Got it — could you give me your full name (first and last)?`, payload: p }

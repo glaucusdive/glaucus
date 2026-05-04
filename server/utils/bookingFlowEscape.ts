@@ -1,4 +1,8 @@
-import { extractBookingTargetFallback, extractShopSelectionPhrase } from './extractReferredEntityPhrase'
+import {
+  extractBookingTargetFallback,
+  extractReferredEntityPhrase,
+  extractShopSelectionPhrase
+} from './extractReferredEntityPhrase'
 
 const LEAD_IN =
   /^(?:wait|hold on|hang on|sorry|actually|nevermind|never mind|whoops|oops|stop|cancel)\s*[,\s:-]*\s*/i
@@ -10,6 +14,12 @@ export function userMessageWantsResumeSearchDuringBooking (message: string): boo
   if (/^show me dive shops to search again$/i.test(t)) return true
   return (
     /\b(?:go\s+back|back)\s+to\s+(?:the\s+)?search/i.test(t) ||
+    /\bgo\s+back\s+and\s+(?:keep\s+)?(?:search|look|browse)/i.test(t) ||
+    /\b(?:keep|continue)\s+(?:search|looking|browsing)/i.test(t) ||
+    /\bnot\s+ready\s+to\s+book\b/i.test(t) ||
+    /\b(?:want|need)\s+to\s+(?:keep\s+)?(?:look|search|browse)\b/i.test(t) ||
+    /\blook\s+at\s+more\s+(?:dive\s+)?shops?\b/i.test(t) ||
+    /\b(?:just\s+)?want\s+to\s+see\s+more\s+shops?\b/i.test(t) ||
     /\bshow\s+me\s+dive\s+shops\b/i.test(t) ||
     /\bsearch\s+again\b/i.test(t) ||
     /\b(?:find|show)\s+(?:me\s+)?(?:other|more|different)\s+(?:dive\s+)?shops?\b/i.test(t) ||
@@ -41,5 +51,9 @@ export function extractMidBookingShopSwitchPhrase (message: string): string | nu
     /\b(?:i\s*'?ll\s+)(?:take|pick)\b/i.test(delead) ||
     /\b(?:different|another|other)\s+(?:dive\s+)?shop\b/i.test(delead)
   if (!hasSwitchSignal) return null
-  return extractBookingTargetFallback(delead) || extractShopSelectionPhrase(delead)
+  return (
+    extractBookingTargetFallback(delead) ||
+    extractShopSelectionPhrase(delead) ||
+    extractReferredEntityPhrase(delead)
+  )
 }

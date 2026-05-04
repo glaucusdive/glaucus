@@ -2,10 +2,9 @@ import { z } from 'zod'
 import type { SearchFilters } from './buildDiveShopQuery'
 import { sanitizeActivityTokenForIlike } from './collectShopIdsForActivityTokens'
 
-import { OPENROUTER_CHAT_MODEL } from './openRouterChatModel'
+import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from './openAiChatModel'
 
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
-export const INTERPRET_USER_TURN_MODEL = OPENROUTER_CHAT_MODEL
+export const INTERPRET_USER_TURN_MODEL = OPENAI_CHAT_MODEL
 
 export const InterpretedTurnSchema = z.object({
   goal: z.enum(['search_shops', 'start_booking', 'continue', 'shop_info', 'unclear']),
@@ -162,27 +161,25 @@ export function parseInterpretedTurnFromModelText (raw: string): { ok: true; dat
 export interface InterpretUserTurnInput {
   message: string
   history?: { role: string; content: string }[]
-  openrouterApiKey: string
+  openaiApiKey: string
   signal?: AbortSignal
 }
 
 export async function interpretUserTurn (input: InterpretUserTurnInput): Promise<
   { ok: true; data: InterpretedTurn } | { ok: false; error?: string }
 > {
-  const { message, history = [], openrouterApiKey, signal } = input
+  const { message, history = [], openaiApiKey, signal } = input
   const recent = history.slice(-6).map(h => `${h.role}: ${h.content}`).join('\n')
   const userContent = recent
     ? `Recent conversation:\n${recent}\n\nCurrent message:\n${message}`
     : message
 
   try {
-    const res = await fetch(OPENROUTER_URL, {
+    const res = await fetch(OPENAI_CHAT_COMPLETIONS_URL, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${openrouterApiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://glaucus.app',
-        'X-Title': 'Glaucus interpret user turn'
+        Authorization: `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         model: INTERPRET_USER_TURN_MODEL,

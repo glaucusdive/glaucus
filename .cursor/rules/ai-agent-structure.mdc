@@ -49,13 +49,15 @@ When designing or implementing AI agents in this project, ensure each capability
 
 Concrete instance: `server/utils/runAiSearchPostHandler.ts` (POST `/api/guided-orchestrator`) plus utilities under `server/utils/`. **Tool selection for top-level routing (search vs booking vs entity clarify) is done by the orchestrator** because outcomes must match Supabase data; the model is not asked to pick tools for that step. The model is still used for search filter extraction (`FILTERS:` / `MESSAGE:`) and booking-field conversation when already in the booking branch.
 
-**NLU pre-step (`interpretUserTurn` in `server/utils/interpretUserTurn.ts`):** Before `probeReferentPhrase`, when `shouldRunInterpretNlu` passes, the orchestrator calls OpenRouter once with **JSON output** to extract `goal`, `destination_text` (clean place name, not regex junk like “a dive in bali”), optional `shop_name_hint`, and optional `reasoning_summary`. `pickReferentPhraseForProbe` prefers NLU place hints over regex capture, then existing **probe / route** logic runs unchanged. **Search:** `runTripTypeSearchAfterLlm` receives `interpretTurn` and merges hints via `mergeNluHintsIntoFilters`; the user message to the search LLM may include a short `[System hint for FILTERS: …]` suffix. **Activity UX:** The orchestrator records milestones (`interpret`, `probe`, `search_llm`, `booking_llm`) and returns `activityLog` + optional `reasoningSummary` on API responses; `app/components/chat/ChatHome.vue` shows them as progress lines and a collapsible “How we understood this”. **`/api/ai-search-stream`:** emits NDJSON `type: 'activity'` during the same phases and attaches `activityLog` / `reasoningSummary` on the final `result` payload.
+**Booking contact-name step:** The **server** decides whether a user line is a literal contact name vs switching to another dive shop vs exiting back to search (patterns, `extractMidBookingShopSwitchPhrase` + entity routing, length / discourse heuristics in `bookingFieldReplyHeuristics`, and optional `classifyBookingContactReply` with GPT-5.5 JSON when still ambiguous); the **booking chat model does not own that routing**.
+
+**NLU pre-step (`interpretUserTurn` in `server/utils/interpretUserTurn.ts`):** Before `probeReferentPhrase`, when `shouldRunInterpretNlu` passes, the orchestrator calls **OpenAI** (GPT-5.5) once with **JSON output** to extract `goal`, `destination_text` (clean place name, not regex junk like “a dive in bali”), optional `shop_name_hint`, and optional `reasoning_summary`. `pickReferentPhraseForProbe` prefers NLU place hints over regex capture, then existing **probe / route** logic runs unchanged. **Search:** `runTripTypeSearchAfterLlm` receives `interpretTurn` and merges hints via `mergeNluHintsIntoFilters`; the user message to the search LLM may include a short `[System hint for FILTERS: …]` suffix. **Activity UX:** The orchestrator records milestones (`interpret`, `probe`, `search_llm`, `booking_llm`) and returns `activityLog` + optional `reasoningSummary` on API responses; `app/components/chat/ChatHome.vue` shows them as progress lines and a collapsible “How we understood this”. **`/api/ai-search-stream`:** emits NDJSON `type: 'activity'` during the same phases and attaches `activityLog` / `reasoningSummary` on the final `result` payload.
 
 ### Tools (contract)
 
 | Tool / read | Input | Side effects | Triggered by |
 |-------------|--------|--------------|--------------|
-| `interpretUserTurn` | user message + short history | OpenRouter JSON | Orchestrator when `shouldRunInterpretNlu` (not booking continuation; clarify chips use `handleForcedEntityClarify` without NLU on that branch) |
+| `interpretUserTurn` | user message + short history | OpenAI GPT-5.5 JSON | Orchestrator when `shouldRunInterpretNlu` (not booking continuation; clarify chips use `handleForcedEntityClarify` without NLU on that branch) |
 | `extractReferredEntityPhrase` | user message text | none | Orchestrator when not in booking continuation |
 | `probeReferentPhrase` | phrase string | read: diveshops, dive_sites, countries, country_aliases, regions, diveshops locale/city/state | Orchestrator |
 | `routeReferentFromProbe` | probe result | may call `buildDiveShopQuery` and junction reads for dive-site-linked shops (reads only, in `entityRouting.ts`) | Orchestrator |
@@ -63,9 +65,9 @@ Concrete instance: `server/utils/runAiSearchPostHandler.ts` (POST `/api/guided-o
 | `buildDiveShopQuery` | `SearchFilters` | read diveshops | Orchestrator (entity-prefilled search) or post-LLM search path |
 | `getShopById`, `listShopsMatchingName` | id / name fragment | read diveshops | Orchestrator |
 | `getDiveSitesForShop`, `getCoursesForShop`, `getRentalEquipmentForShop` | shop id | read | Orchestrator (booking branch) |
-| `tryShopInfoResponse` / `shop_info:*` chips | message + `selectedShopId` / `lastShops` | read diveshop + related sites, courses, rental gear, gases, contact | Orchestrator when not in booking continuation; no OpenRouter |
+| `tryShopInfoResponse` / `shop_info:*` chips | message + `selectedShopId` / `lastShops` | read diveshop + related sites, courses, rental gear, gases, contact | Orchestrator when not in booking continuation; no LLM |
 | `tryFastPath`, `tryFastPathUnitOnly`, booking LLM | message + payload | none (until user confirms send) | Orchestrator |
-| OpenRouter chat | conversation | external API | Orchestrator after filters / follow-ups |
+| GPT-5.5 chat (OpenAI) | conversation | external API | Orchestrator after filters / follow-ups |
 | Booking email (`/api/booking`) | final payload | sends email | User-confirmed step only (existing rules) |
 
 ### Clarification (terminal state + structured replies)
