@@ -67,28 +67,6 @@
               <!-- Assistant message -->
               <div v-else-if="msg.role === 'assistant'" class="flex justify-start">
                 <div class="md:max-w-[90%] flex-1 min-w-0 flex flex-col gap-2">
-                  <!-- Search stream progress (Applying filters…, Found N shops…) — kept in history -->
-                  <div
-                    v-if="msg.searchProgressLog && msg.searchProgressLog.length > 0"
-                    class="bg-zinc-100/80 dark:bg-zinc-800/80 rounded-lg p-2 border border-zinc-200/80 dark:border-zinc-600/80"
-                  >
-                    <p
-                      v-for="(line, pi) in msg.searchProgressLog"
-                      :key="pi"
-                      class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed"
-                    >
-                      {{ line }}
-                    </p>
-                  </div>
-                  <details
-                    v-if="msg.reasoningSummary"
-                    class="bg-zinc-100/80 dark:bg-zinc-800/80 rounded-lg border border-zinc-200/80 dark:border-zinc-600/80 text-xs text-zinc-600 dark:text-zinc-400"
-                  >
-                    <summary class="cursor-pointer px-2 py-1.5 select-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 rounded-lg">
-                      How we understood this
-                    </summary>
-                    <p class="px-2 pb-2 pt-0 leading-relaxed whitespace-pre-wrap">{{ msg.reasoningSummary }}</p>
-                  </details>
                   <!-- Lead-in / narration / ack — always before shop cards when both exist -->
                   <div
                     v-if="msg.preamble"
@@ -293,31 +271,9 @@
               </div>
             </div>
 
-            <!-- Loading: NDJSON / fallback status + optional stream preview + three-dot bounce -->
+            <!-- Loading: mapped progress + optional stream preview + dots + brand-friendly line -->
             <div v-if="isLoading" class="flex justify-start max-w-2xl">
               <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3 flex flex-col gap-2 max-w-[min(90%,42rem)] min-w-0">
-                <div
-                  v-if="loadingProgressLines.length > 0 || loadingFallbackLine"
-                  class="flex flex-col gap-1 border-b border-zinc-200/80 dark:border-zinc-600/80 pb-2 mb-1"
-                >
-                  <template v-if="loadingProgressLines.length > 0">
-                    <p
-                      v-for="(line, li) in loadingProgressLines"
-                      :key="'lp-' + li"
-                      class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed chat-loading-progress-line"
-                      :style="{ animationDelay: `${li * 90}ms` }"
-                    >
-                      {{ line }}
-                    </p>
-                  </template>
-                  <p
-                    v-else
-                    class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed chat-loading-progress-line"
-                  >
-                    {{ loadingFallbackLine }}
-                  </p>
-                </div>
-                <p v-if="searchStreamStatus" class="text-xs text-zinc-500 dark:text-zinc-400">{{ searchStreamStatus }}</p>
                 <p v-if="searchStreamPreview" class="text-sm text-zinc-800 dark:text-white whitespace-pre-wrap min-w-0">{{ searchStreamPreview }}</p>
                 <div class="flex items-center gap-2.5 min-h-[1.25rem]">
                   <div
@@ -329,13 +285,9 @@
                     <span class="chat-loading-bounce-dot chat-loading-bounce-dot--3 bg-zinc-500 dark:bg-zinc-400" />
                   </div>
                   <span
-                    v-if="!searchStreamStatus && !searchStreamPreview && loadingProgressLines.length > 0"
+                    v-if="!searchStreamPreview"
                     class="text-sm text-zinc-600 dark:text-zinc-400"
-                  >Working…</span>
-                  <span
-                    v-else-if="!searchStreamStatus && !searchStreamPreview && loadingFallbackLine"
-                    class="text-sm text-zinc-600 dark:text-zinc-400"
-                  >Hang tight…</span>
+                  >{{ searchStreamStatus || loadingBrandLine || 'Exploring our directory…' }}</span>
                 </div>
               </div>
             </div>
@@ -412,6 +364,11 @@ import { useSupabase } from '~/composables/useSupabase'
 import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst } from '~/utils/mergeProfileDefaultDivers'
 import { getLatestBookingPayloadFromMessages, bookingPayloadHasNamedDiver } from '~/utils/chatBookingPayload'
 import { isSearchPaginationUserMessage } from '~/utils/searchPaginationIntent'
+import {
+  findAnchorAssistantIndexForPagination,
+  findLastSearchAssistantContextIndex,
+  sumAssistantSearchShopsSinceIndex
+} from '~/utils/searchPaginationShownCount'
 import { initSignedInChatsFromRemote, chatRemoteHydrateTick } from '~/composables/userChatsRemote'
 import {
   GuidedCommands,
@@ -427,6 +384,11 @@ import {
   BOOKING_RESUME_SESSION_KEY
 } from '~~/shared/bookingPreSendTokens'
 import { buildSearchMatchBadges } from '~~/shared/searchMatchBadges'
+import {
+  chatLoadingLinesForKind,
+  mapOrchestratorActivityToStatusLine
+} from '~/utils/chatLoadingStatus'
+import { shouldRouteMessageToGuidedFlow } from '~/utils/chatGuidedFlowRouting'
 
 // Get route to check for initial query
 const route = useRoute()
@@ -532,43 +494,33 @@ async function syncProfileAfterChatBookingSent (body) {
 const userInput = ref('')
 const chatComposerRef = ref(null)
 const isLoading = ref(false)
-/** Legacy: kept empty; streaming endpoint removed */
+/** User-safe status from NDJSON progress (mapped); cleared each turn. */
 const searchStreamStatus = ref('')
 const searchStreamPreview = ref('')
-/** Cumulative status lines from the stream (copied onto the assistant message when the turn completes) */
-const searchStreamProgressLines = ref([])
-/** Staged activity lines while waiting on POST /api/guided-orchestrator (NDJSON progress when not in booking handoff). */
-const loadingProgressLines = ref([])
-let loadingProgressTimer = null
+/** Rotating Glaucus-friendly line while waiting (no raw server jargon). */
+const loadingBrandLine = ref('')
+let loadingBrandTimer = null
 
-/** Rotating scuba-themed line when no server progress yet (or non-stream wait). */
-const SCUBA_LOADING_FALLBACK_MESSAGES = [
-  'Suiting up…',
-  'Plotting your dive…',
-  'Scanning our directory…',
-  'Checking conditions…',
-  'Surfacing matches…'
-]
-const loadingFallbackLine = ref('')
-let loadingFallbackTimer = null
-
-function stopLoadingFallback () {
-  if (loadingFallbackTimer != null) {
-    clearInterval(loadingFallbackTimer)
-    loadingFallbackTimer = null
+function stopChatLoadingBrand () {
+  if (loadingBrandTimer != null) {
+    clearInterval(loadingBrandTimer)
+    loadingBrandTimer = null
   }
-  loadingFallbackLine.value = ''
+  loadingBrandLine.value = ''
 }
 
-function startLoadingFallback () {
-  stopLoadingFallback()
+function startChatLoadingBrand (kind) {
+  stopChatLoadingBrand()
+  const lines = [...chatLoadingLinesForKind(kind)]
+  if (!lines.length) return
   let i = 0
-  loadingFallbackLine.value = SCUBA_LOADING_FALLBACK_MESSAGES[i]
-  loadingFallbackTimer = setInterval(() => {
-    i = (i + 1) % SCUBA_LOADING_FALLBACK_MESSAGES.length
-    loadingFallbackLine.value = SCUBA_LOADING_FALLBACK_MESSAGES[i]
+  loadingBrandLine.value = lines[0]
+  loadingBrandTimer = setInterval(() => {
+    i = (i + 1) % lines.length
+    loadingBrandLine.value = lines[i]
   }, 2200)
 }
+
 const messages = ref([])
 const messagesContainer = ref(null)
 const isRestoringCache = ref(true)
@@ -725,6 +677,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', updateIsDesktop)
   clearTimeout(debounceProfileFromChatTimer)
+  stopChatLoadingBrand()
 })
 
 /**
@@ -1451,13 +1404,7 @@ const sendMessage = async (messageText, displayText) => {
     isLoading.value = false
     searchStreamStatus.value = ''
     searchStreamPreview.value = ''
-    searchStreamProgressLines.value = []
-    if (loadingProgressTimer != null) {
-      clearInterval(loadingProgressTimer)
-      loadingProgressTimer = null
-    }
-    loadingProgressLines.value = []
-    stopLoadingFallback()
+    stopChatLoadingBrand()
   }
 
   const textToShow = displayText ?? message
@@ -1519,32 +1466,23 @@ const sendMessage = async (messageText, displayText) => {
     const arr = messages.value
     const lastUserIndex = arr.length - 1
 
-    let lastSearchContextIndex = -1
-    for (let i = lastUserIndex - 1; i >= 0; i--) {
-      const m = arr[i]
-      if (m?.role !== 'assistant' || m.intent === 'booking') continue
-      const f = m.filters
-      if (f == null || typeof f !== 'object' || Array.isArray(f)) continue
-      if (Object.keys(f).length > 0) {
-        lastSearchContextIndex = i
-        break
-      }
-    }
+    const lastSearchContextIndex = findLastSearchAssistantContextIndex(arr, lastUserIndex)
 
     /** Echo for server pagination + filter-relax fast path (needs filters even when totalResults is 0). */
     const lastSearchContext = lastSearchContextIndex >= 0 ? arr[lastSearchContextIndex] : undefined
 
     let shopsAlreadyShownCount = 0
-    if (isSearchPaginationUserMessage(rawTrim) && lastSearchContextIndex >= 0) {
-      for (let i = lastSearchContextIndex; i < lastUserIndex; i++) {
-        const m = arr[i]
-        if (m?.role === 'assistant' && m.shops?.length) {
-          shopsAlreadyShownCount += m.shops.length
-        }
+    if (isSearchPaginationUserMessage(rawTrim)) {
+      const anchor = findAnchorAssistantIndexForPagination(arr, lastUserIndex)
+      if (anchor >= 0) {
+        shopsAlreadyShownCount = sumAssistantSearchShopsSinceIndex(arr, anchor, lastUserIndex)
       }
     }
 
     const pendingEntityClarifyPhrase = getPendingEntityClarifyPhraseForOutgoing(message)
+
+    const bookingHandoff = isBookingHandoffUserMessage(message)
+    startChatLoadingBrand(inBookingFlow || bookingHandoff ? 'booking' : 'search')
 
     const aiSearchBody = {
       message: message,
@@ -1581,24 +1519,21 @@ const sendMessage = async (messageText, displayText) => {
     const startsGuidedToken = trimmedMsg.toLowerCase().startsWith(GUIDED_PREFIX)
     const midGuidedWizard = isMidGuidedSearchWizard(messages.value)
 
-    const useGuidedTurn =
-      useGuidedSearch.value &&
-      (!useAiSearchFirst.value || preferGuidedThisSession.value) &&
-      !inBookingFlow &&
-      !pendingEntityClarifyPhrase?.trim() &&
-      !isBookingHandoffUserMessage(message) &&
-      (startsGuidedToken || isSearchPaginationUserMessage(trimmedMsg) || midGuidedWizard)
+    const useGuidedTurn = shouldRouteMessageToGuidedFlow({
+      useGuidedSearch: useGuidedSearch.value,
+      useAiSearchFirst: useAiSearchFirst.value,
+      preferGuidedThisSession: preferGuidedThisSession.value,
+      inBookingFlow,
+      pendingEntityClarifyPhrase,
+      messageTrimmed: trimmedMsg,
+      startsWithGuidedPrefix: startsGuidedToken,
+      midGuidedWizard,
+      guidedStep: guidedSearchState.value?.step ?? null
+    })
 
     if (useGuidedTurn) {
-      if (loadingProgressTimer != null) {
-        clearInterval(loadingProgressTimer)
-        loadingProgressTimer = null
-      }
-      stopLoadingFallback()
-      loadingProgressLines.value = ['Finding dive shops…']
       searchStreamStatus.value = ''
       searchStreamPreview.value = ''
-      searchStreamProgressLines.value = []
 
       let guidedRes
       try {
@@ -1656,13 +1591,6 @@ const sendMessage = async (messageText, displayText) => {
         if (guidedRes.openShopId) {
           selectedShopId.value = guidedRes.openShopId
         }
-        const logLines = Array.isArray(guidedRes.activityLog)
-          ? guidedRes.activityLog.map((a) =>
-            typeof a === 'object' && a != null && 'label' in a && a.label
-              ? String(a.label)
-              : String(a)
-          )
-          : []
         const hintsSnap =
           guidedRes.bookingHints &&
           (guidedRes.bookingHints.desiredCourses?.length ||
@@ -1696,7 +1624,6 @@ const sendMessage = async (messageText, displayText) => {
         messages.value.push({
           role: 'assistant',
           content: guidedRes.message || '',
-          ...(logLines.length ? { searchProgressLog: logLines } : {}),
           shops: guidedRes.shops || [],
           totalResults: guidedRes.totalResults ?? 0,
           hasMoreResults: guidedRes.hasMoreResults ?? false,
@@ -1723,49 +1650,6 @@ const sendMessage = async (messageText, displayText) => {
 
     searchStreamStatus.value = ''
     searchStreamPreview.value = ''
-    searchStreamProgressLines.value = []
-    const clearLoadingProgress = () => {
-      if (loadingProgressTimer != null) {
-        clearInterval(loadingProgressTimer)
-        loadingProgressTimer = null
-      }
-      loadingProgressLines.value = []
-      stopLoadingFallback()
-    }
-    const startLoadingProgressHint = (kind = 'default') => {
-      clearLoadingProgress()
-      /** Short local hints only where we do not have server-driven lines; orchestrator JSON has no fake DB phases. */
-      let steps
-      if (inBookingFlow) {
-        steps = ['Updating your booking…']
-      } else if (kind === 'booking_handoff' || isBookingHandoffUserMessage(message)) {
-        steps = ['Opening booking…']
-      } else if (useGuidedTurn) {
-        steps = ['Searching our directory…']
-      } else {
-        loadingProgressLines.value = []
-        return
-      }
-      let i = 0
-      loadingProgressLines.value = [steps[0]]
-      loadingProgressTimer = setInterval(() => {
-        i++
-        if (i < steps.length) {
-          loadingProgressLines.value = steps.slice(0, i + 1)
-        } else {
-          clearInterval(loadingProgressTimer)
-          loadingProgressTimer = null
-        }
-      }, 480)
-    }
-
-    startLoadingProgressHint(
-      isBookingHandoffUserMessage(message) ? 'booking_handoff' : 'default'
-    )
-
-    if (loadingProgressLines.value.length === 0) {
-      startLoadingFallback()
-    }
 
     const maxAiAttempts = 3
     const baseAiRetryMs = 350
@@ -1774,21 +1658,6 @@ const sendMessage = async (messageText, displayText) => {
     const useProgressStream =
       !inBookingFlow &&
       !isBookingHandoffUserMessage(message)
-
-    const streamProgressSnapshot = []
-    searchStreamStatus.value = ''
-    searchStreamPreview.value = ''
-    searchStreamProgressLines.value = []
-
-    const pushProgressLine = (label) => {
-      if (!label || typeof label !== 'string') return
-      if (streamProgressSnapshot.length > 0 && streamProgressSnapshot[streamProgressSnapshot.length - 1] === label) {
-        return
-      }
-      streamProgressSnapshot.push(label)
-      loadingProgressLines.value = [...streamProgressSnapshot]
-      stopLoadingFallback()
-    }
 
     for (let attempt = 1; attempt <= maxAiAttempts && !response; attempt++) {
       if (currentAbortController.signal.aborted) {
@@ -1801,7 +1670,10 @@ const sendMessage = async (messageText, displayText) => {
             headers: aiHeaders,
             body: aiSearchBody,
             signal: currentAbortController.signal,
-            onProgress: pushProgressLine
+            onProgress: (label) => {
+              const friendly = mapOrchestratorActivityToStatusLine(label)
+              if (friendly) searchStreamStatus.value = friendly
+            }
           })
         } else {
           response = await $fetch('/api/guided-orchestrator', {
@@ -1838,13 +1710,6 @@ const sendMessage = async (messageText, displayText) => {
     }
     
     if (response.success) {
-      const combinedProgressLog =
-        streamProgressSnapshot.length > 0
-          ? streamProgressSnapshot
-          : (Array.isArray(response.activityLog) ? response.activityLog.map((a) => a.label) : [])
-      const progressForAssistant = combinedProgressLog.length > 0 ? combinedProgressLog : undefined
-      const reasoningForAssistant = response.reasoningSummary?.trim() || undefined
-
       if (response.searchFlowReset) {
         closeDrawer()
         selectedShopId.value = null
@@ -1887,8 +1752,6 @@ const sendMessage = async (messageText, displayText) => {
             diveSiteOptions: response.diveSiteOptions || undefined,
             ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {}),
             ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {}),
-            ...(progressForAssistant ? { searchProgressLog: progressForAssistant } : {}),
-            ...(reasoningForAssistant ? { reasoningSummary: reasoningForAssistant } : {}),
             ...(resetSearchMatchBadges.length ? { searchMatchBadges: resetSearchMatchBadges } : {})
           }
         ]
@@ -2007,8 +1870,6 @@ const sendMessage = async (messageText, displayText) => {
         role: 'assistant',
         content,
         ...(response.messagePreamble ? { preamble: response.messagePreamble } : {}),
-        ...(progressForAssistant?.length ? { searchProgressLog: progressForAssistant } : {}),
-        ...(reasoningForAssistant ? { reasoningSummary: reasoningForAssistant } : {}),
         shops: shopsOut,
         totalResults: response.totalResults,
         hasMoreResults: response.hasMoreResults,
@@ -2078,13 +1939,7 @@ const sendMessage = async (messageText, displayText) => {
     if (abortController.value === currentAbortController) {
       searchStreamStatus.value = ''
       searchStreamPreview.value = ''
-      searchStreamProgressLines.value = []
-      if (loadingProgressTimer != null) {
-        clearInterval(loadingProgressTimer)
-        loadingProgressTimer = null
-      }
-      loadingProgressLines.value = []
-      stopLoadingFallback()
+      stopChatLoadingBrand()
       isLoading.value = false
       abortController.value = null
       await scrollToBottom()
@@ -2253,30 +2108,6 @@ useHead({ title: 'Dive Shop Search | Glaucus' })
 @media (prefers-reduced-motion: reduce) {
   .chat-bubble-pop-first,
   .chat-bubble-pop-follow {
-    animation: none;
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes chat-loading-line-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.chat-loading-progress-line {
-  opacity: 0;
-  animation: chat-loading-line-in 0.35s ease-out forwards;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .chat-loading-progress-line {
     animation: none;
     opacity: 1;
     transform: none;

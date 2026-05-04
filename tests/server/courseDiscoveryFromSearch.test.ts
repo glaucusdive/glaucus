@@ -12,5 +12,6 @@ describe('isCourseDiscoveryFollowUpMessage', () => {
   it('rejects pagination', () => {
     expect(isCourseDiscoveryFollowUpMessage('show more')).toBe(false)
     expect(isCourseDiscoveryFollowUpMessage('Load next 5')).toBe(false)
+    expect(isCourseDiscoveryFollowUpMessage('Load next 3')).toBe(false)
   })
 })

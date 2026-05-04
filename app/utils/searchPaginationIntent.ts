@@ -5,6 +5,8 @@
  */
 const paginationPattern =
   /\b(next|more|show more|next 5|next results|show next|load more|another|additional)\s*(5|results?|shops?|ones?)?\b/i
+/** User tapped a dynamic chip, e.g. "Load next 3". */
+const loadNextNPattern = /\bload next \d+\b/i
 const next20Pattern = /\b(show next 20|load next 20|next 20)\b/i
 const listOrShowShopsPattern =
   /\b(list|show)\s+(me\s+)?(the\s+|all\s+)?(?:\d+\s+)?(?:dive\s+)?shops?\b/i
@@ -14,6 +16,7 @@ export function isSearchPaginationUserMessage (message: string): boolean {
   if (!m) return false
   return (
     paginationPattern.test(m) ||
+    loadNextNPattern.test(m) ||
     next20Pattern.test(m) ||
     listOrShowShopsPattern.test(m)
   )

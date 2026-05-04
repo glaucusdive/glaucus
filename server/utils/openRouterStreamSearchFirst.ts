@@ -1,4 +1,5 @@
 import { extractVisibleMessageSuffixAfterMessageTag, visibleSuffixDelta } from './searchStreamMessageSuffix'
+import { OPENROUTER_CHAT_MODEL } from './openRouterChatModel'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
@@ -19,7 +20,7 @@ export interface StreamSearchFirstOptions {
 export async function streamOpenRouterSearchFirstCompletion (opts: StreamSearchFirstOptions): Promise<string> {
   const {
     apiKey,
-    model = 'openai/gpt-5-mini',
+    model = OPENROUTER_CHAT_MODEL,
     messages,
     temperature = 0.7,
     maxTokens = 1000,
