@@ -8,7 +8,7 @@ export interface SearchFilters {
   minRating?: number
   languages?: string[]
   diveTypes?: string[] // e.g. ["Liveaboard"], ["Dive Resort"], ["Dive Shop"] — matches diveshops.type (contains)
-  /** Short tokens (e.g. cave, wreck) — AND together; matched on notes, name, type text, linked dive sites / site types. */
+  /** Short tokens (e.g. cave, wreck) — AND together; matched only on linked dive_sites (name + dive_site_types), optionally scoped to search country. */
   activityTokens?: string[]
   dates?: {
     start?: string
@@ -71,24 +71,8 @@ export async function buildDiveShopQuery (
     return q.limit(defaultLimit)
   }
 
-  let activityIdFilter: string[] | null = null
-  if (filters.activityTokens && filters.activityTokens.length > 0) {
-    activityIdFilter = await collectShopIdsForActivityTokens(client, filters.activityTokens)
-    if (activityIdFilter.length === 0) {
-      const emptyBase = client.from('diveshops').select('*, country:countries(name), region:regions(name)').in('country_id', ['00000000-0000-0000-0000-000000000000'])
-      return await applyWindow(emptyBase)
-    }
-  }
-
-  let query = client
-    .from('diveshops')
-    .select('*, country:countries(name), region:regions(name)')
-
-  if (activityIdFilter) {
-    query = query.in('id', activityIdFilter)
-  }
-
-  // Resolve country name to ID(s) and filter by country_id (reliable; join-filter on embedded table is not applied correctly in some clients)
+  /** When `filters.country` is set, resolved once for shop query + strict activity site scope. */
+  let resolvedCountryIds: string[] | null = null
   if (filters.country?.trim()) {
     const countryPat = sanitizeTermForPostgrestOrFragment(filters.country)
     if (!countryPat) {
@@ -103,13 +87,34 @@ export async function buildDiveShopQuery (
       .from('countries')
       .select('id')
       .ilike('name', countryIlike)
-    const countryIds = (countries || []).map(c => c.id)
-    if (countryIds.length === 0) {
-      // No matching country — return empty result
+    resolvedCountryIds = (countries || []).map(c => c.id).filter(Boolean)
+    if (resolvedCountryIds.length === 0) {
       const emptyBase = client.from('diveshops').select('*, country:countries(name), region:regions(name)').in('country_id', ['00000000-0000-0000-0000-000000000000'])
       return await applyWindow(emptyBase)
     }
-    query = query.in('country_id', countryIds)
+  }
+
+  let activityIdFilter: string[] | null = null
+  if (filters.activityTokens && filters.activityTokens.length > 0) {
+    activityIdFilter = await collectShopIdsForActivityTokens(client, filters.activityTokens, {
+      diveSiteCountryIds: resolvedCountryIds ?? undefined
+    })
+    if (activityIdFilter.length === 0) {
+      const emptyBase = client.from('diveshops').select('*, country:countries(name), region:regions(name)').in('country_id', ['00000000-0000-0000-0000-000000000000'])
+      return await applyWindow(emptyBase)
+    }
+  }
+
+  let query = client
+    .from('diveshops')
+    .select('*, country:countries(name), region:regions(name)')
+
+  if (activityIdFilter) {
+    query = query.in('id', activityIdFilter)
+  }
+
+  if (resolvedCountryIds?.length) {
+    query = query.in('country_id', resolvedCountryIds)
   }
 
   // Resolve region name to ID(s) and filter by region_id

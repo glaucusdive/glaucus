@@ -102,6 +102,7 @@
 <script setup>
 import { computed } from 'vue'
 import { Star, MapPin, Languages, Globe, Phone, Mail, ChevronUp } from 'lucide-vue-next'
+import { computeCardSearchPills } from '~~/shared/cardSearchPills'
 
 const props = defineProps({
   shop: {
@@ -112,62 +113,31 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  /** Extra labels from the active search (dates, activity, etc.) — appended after per-shop pills when not redundant. */
+  /** Extra labels from the active search (dates, activity, etc.). */
   matchBadges: {
     type: Array,
+    default: undefined
+  },
+  /** Echo of assistant message `filters` so pills can match wreck / activity style vs browse mode. */
+  searchFilters: {
+    type: Object,
     default: undefined
   }
 })
 
 defineEmits(['shop-selected', 'view-details'])
 
-function formatShopTypePart (part) {
-  if (part === 'Dive Shop') return 'Dive Shop / Day Trip'
-  return part
-}
-
-const MAX_PILLS = 10
-
-const cardPills = computed(() => {
-  const seen = new Set()
-  const out = []
-  const add = (label) => {
-    const t = String(label).trim()
-    if (!t) return
-    const k = t.toLowerCase()
-    if (seen.has(k)) return
-    seen.add(k)
-    out.push(t)
-  }
-
-  const raw = props.shop?.type
-  if (raw && typeof raw === 'string') {
-    const parts = raw.split(',').map(s => s.trim()).filter(Boolean).map(formatShopTypePart)
-    for (const p of parts) add(p)
-  }
-
-  const courses = props.shop?.cardCourseNames
-  if (Array.isArray(courses)) {
-    for (const c of courses) add(c)
-  }
-
-  const dtypes = props.shop?.cardDiveSiteTypeNames
-  if (Array.isArray(dtypes)) {
-    for (const d of dtypes) add(d)
-  }
-
-  for (const b of props.matchBadges || []) {
-    if (typeof b !== 'string') continue
-    const bt = b.trim()
-    if (!bt) continue
-    const courseDir = /^Course \(directory\):\s*(.+)$/i.exec(bt)
-    if (courseDir) {
-      const name = courseDir[1].trim().toLowerCase()
-      if (seen.has(name)) continue
-    }
-    add(bt)
-  }
-
-  return out.slice(0, MAX_PILLS)
-})
+const cardPills = computed(() =>
+  computeCardSearchPills({
+    shopTypeRaw: typeof props.shop?.type === 'string' ? props.shop.type : undefined,
+    cardCourseNames: Array.isArray(props.shop?.cardCourseNames) ? props.shop.cardCourseNames : undefined,
+    cardDiveSiteTypeNames: Array.isArray(props.shop?.cardDiveSiteTypeNames)
+      ? props.shop.cardDiveSiteTypeNames
+      : undefined,
+    matchBadges: Array.isArray(props.matchBadges) ? props.matchBadges : undefined,
+    searchFilters: props.searchFilters && typeof props.searchFilters === 'object' && !Array.isArray(props.searchFilters)
+      ? props.searchFilters
+      : null
+  })
+)
 </script>

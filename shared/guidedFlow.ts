@@ -130,7 +130,7 @@ export const GUIDED_COURSE_CHIPS: { label: string; search: string }[] = [
 
 /**
  * Dive site type labels (subset of dive_site_types seed); value is token for activityTokens / ilike.
- * collectShopIdsForActivityTokens uses ilike on dive_site_types.name — use distinctive substring.
+ * Activity shop matching uses linked dive_sites (name + type) only; use distinctive substrings on types.
  */
 export const GUIDED_SITE_TYPE_CHIPS: { label: string; activityToken: string }[] = [
   { label: 'Cavern/Cave', activityToken: 'cavern' },
