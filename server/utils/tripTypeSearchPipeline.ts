@@ -5,7 +5,9 @@ import { shopIdsForCourseSearch } from './shopIdsForCourseSearch'
 import { narrateSearchResults } from './searchResultNarration'
 import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
+import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
 import { enrichShopsForSearchCards } from './enrichShopsForSearchCards'
+import { OPENROUTER_CHAT_MODEL } from './openRouterChatModel'
 
 /** Optional post-result chips: narrow directory by business / trip format. */
 export const TRIP_TYPE_OPTIONAL_FILTER_CHIPS: { label: string; value: string }[] = [
@@ -471,7 +473,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
           'X-Title': 'Glaucus Dive Shop Search'
         },
         body: JSON.stringify({
-          model: 'openai/gpt-5-mini',
+          model: OPENROUTER_CHAT_MODEL,
           messages: [
             { role: 'system', content: 'You are a helpful dive shop search assistant with knowledge of global dive destinations. Be concise and helpful.' },
             { role: 'user', content: broadeningPrompt(resultCount) }
@@ -491,7 +493,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
           'X-Title': 'Glaucus Dive Shop Search'
         },
         body: JSON.stringify({
-          model: 'openai/gpt-5-mini',
+          model: OPENROUTER_CHAT_MODEL,
           messages: [
             { role: 'system', content: 'You ask ONE short question at a time. Never repeat a question that was already asked in the conversation.' },
             { role: 'user', content: followUpPrompt }
@@ -606,7 +608,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
           : `Here are the next ${responseShops.length} results.`
       }
       if (remaining > 0) {
-        selectableOptions = [{ label: 'Load next 5', value: 'Show more' }]
+        selectableOptions = [buildSearchPaginationSelectableOption(remaining)]
       }
     } else {
       responseShops = shops || []
@@ -622,7 +624,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
     finalMessage = `I found ${resultCount} dive shops that match your criteria. Here are ${responseShops.length} top results.${followUpMessage?.trim() ? ` ${followUpMessage}` : ''}`
     if (remaining > 0) {
-      selectableOptions = [{ label: 'Load next 5', value: 'Show more' }]
+      selectableOptions = [buildSearchPaginationSelectableOption(remaining)]
     }
   } else if (userAlreadyAnsweredLastQuestion) {
     const alreadyShown = Math.min(Math.max(0, paginationOffset), resultCount)
@@ -630,7 +632,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
     finalMessage = 'Here are some top options based on what you said. You can confirm details with the shop or ask to narrow by location, rating, or trip type.'
     if (remaining > 0) {
-      selectableOptions = [{ label: 'Load next 5', value: 'Show more' }]
+      selectableOptions = [buildSearchPaginationSelectableOption(remaining)]
     }
   } else {
     const alreadyShown = Math.min(Math.max(0, paginationOffset), resultCount)
@@ -645,7 +647,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
             ? `Here are the next ${responseShops.length} results (${remaining} more in this search).`
             : `Here are the last ${responseShops.length} results.`
       if (remaining > 0) {
-        selectableOptions = [{ label: 'Load next 5', value: 'Show more' }]
+        selectableOptions = [buildSearchPaginationSelectableOption(remaining)]
       }
     } else {
       finalMessage = conversationalMessage

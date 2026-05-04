@@ -37,6 +37,7 @@ import {
 } from '../utils/courseDiscoveryFromSearch'
 import { inferSearchFiltersFromDestination } from '../utils/destinationToSearchFilters'
 import { normalizeClientSearchFilters } from '../utils/normalizeClientSearchFilters'
+import { OPENROUTER_CHAT_MODEL } from '../utils/openRouterChatModel'
 import { tryApplySearchFilterRelax } from '../utils/searchFilterRelaxFromFollowUp'
 import { resolveBookingTargetFromPhrase } from '../utils/resolveBookingTarget'
 import { extractMidBookingShopSwitchPhrase, userMessageWantsResumeSearchDuringBooking } from '../utils/bookingFlowEscape'
@@ -74,6 +75,7 @@ import {
   type InterpretedTurn
 } from '../utils/interpretUserTurn'
 import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
+import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
 import { GuidedCommands } from '../../shared/guidedFlow'
 import { BOOKING_PRESEND_OPEN_FORM } from '../../shared/bookingPreSendTokens'
 
@@ -375,10 +377,9 @@ function inferAlreadyShownForPagination (history: Message[], shopsAlreadyShownCo
         const hasResultsPhrase = msg.content?.includes('Here are') ||
           msg.content?.includes('top results') ||
           msg.content?.includes('Here are the')
-        const isAskingQuestion = msg.content?.includes('What type') ||
-          msg.content?.includes('Would you') ||
-          (msg.content?.trim().endsWith('?'))
-        if (hasResultsPhrase && !isAskingQuestion) {
+        // Count any assistant bubble that announces card results. Do not use trailing "?" or
+        // "Would you…" to skip — many first pages end with a narrowing question after "top results".
+        if (hasResultsPhrase) {
           const nextN = msg.content?.match(/next (\d+)\s+results?/i)?.[1]
           const shown = nextN ? parseInt(nextN, 10) : 5
           alreadyShown += Number.isNaN(shown) ? 5 : shown
@@ -394,7 +395,8 @@ function buildSearchPaginationApiResponse (
   lastFilters: SearchFilters,
   nextShops: unknown[],
   resultCount: number,
-  alreadyShown: number
+  alreadyShown: number,
+  paginationPageSize: number = 5
 ) {
   const remaining = Math.max(0, resultCount - alreadyShown - nextShops.length)
   if (nextShops.length > 0) {
@@ -409,7 +411,7 @@ function buildSearchPaginationApiResponse (
       hasMoreResults: remaining > 0,
       filters: lastFilters,
       selectableOptions: remaining > 0
-        ? [{ label: 'Load next 5', value: 'Show more' }]
+        ? [buildSearchPaginationSelectableOption(remaining, paginationPageSize)]
         : undefined
     }
   }
@@ -2290,7 +2292,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             'X-Title': 'Glaucus Dive Shop Booking'
           },
           body: JSON.stringify({
-            model: 'openai/gpt-5-mini',
+            model: OPENROUTER_CHAT_MODEL,
             messages,
             temperature: 0.6,
             max_tokens: 1200
@@ -2615,7 +2617,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             if (clientTotal != null) {
               console.log('[AI Search] Pagination fast path: client filters + total, OpenRouter skipped')
               if (alreadyShown >= clientTotal) {
-                return buildSearchPaginationApiResponse(normalizedFromClient, [], clientTotal, alreadyShown)
+                return buildSearchPaginationApiResponse(normalizedFromClient, [], clientTotal, alreadyShown, paginationPageSize)
               }
               const queryResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, normalizedFromClient, {
                 offset: alreadyShown,
@@ -2627,7 +2629,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               } else {
                 const nextShops = pageShops || []
                 console.log(`[AI Search] Pagination fast path: offset=${alreadyShown} limit=${paginationPageSize} rows=${nextShops.length} total=${clientTotal}`)
-                return buildSearchPaginationApiResponse(normalizedFromClient, nextShops, clientTotal, alreadyShown)
+                return buildSearchPaginationApiResponse(normalizedFromClient, nextShops, clientTotal, alreadyShown, paginationPageSize)
               }
             } else {
               console.log('[AI Search] Pagination: client filters only (no total) — DB full page, OpenRouter skipped')
@@ -2640,7 +2642,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 const resultCount = full.length
                 const nextShops = full.slice(alreadyShown, alreadyShown + paginationPageSize)
                 console.log(`[AI Search] Pagination filters-only: alreadyShown=${alreadyShown} pageSize=${paginationPageSize} resultCount=${resultCount}`)
-                return buildSearchPaginationApiResponse(normalizedFromClient, nextShops, resultCount, alreadyShown)
+                return buildSearchPaginationApiResponse(normalizedFromClient, nextShops, resultCount, alreadyShown, paginationPageSize)
               }
             }
           } catch (fastPathErr) {
@@ -2679,7 +2681,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               'X-Title': 'Glaucus Dive Shop Search'
             },
             body: JSON.stringify({
-              model: 'openai/gpt-5-mini',
+              model: OPENROUTER_CHAT_MODEL,
               messages: [
                 { role: 'system', content: 'You extract search filters from conversations. Return only FILTERS in the specified format.' },
                 { role: 'user', content: filterExtractionPrompt }
@@ -2710,7 +2712,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               console.log(`[AI Search] Pagination (LLM): already shown ${alreadyShown} shops, total results: ${resultCount}, pageSize: ${paginationPageSize}`)
 
               const nextShops = (shops || []).slice(alreadyShown, alreadyShown + paginationPageSize)
-              return buildSearchPaginationApiResponse(lastFilters, nextShops, resultCount, alreadyShown)
+              return buildSearchPaginationApiResponse(lastFilters, nextShops, resultCount, alreadyShown, paginationPageSize)
             }
           }
         } catch (paginationError) {
@@ -2812,7 +2814,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           'X-Title': 'Glaucus Dive Shop Search'
         },
         body: JSON.stringify({
-          model: 'openai/gpt-5-mini',
+          model: OPENROUTER_CHAT_MODEL,
           messages,
           temperature: 0.7,
           max_tokens: 1000

@@ -23,6 +23,7 @@ import { buildDiveShopQuery, type SearchFilters } from './buildDiveShopQuery'
 import { formatEntitySearchResponse } from './entityRouting'
 import { listShopsMatchingName } from './resolveShop'
 import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
+import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
 import { normalizeClientSearchFilters } from './normalizeClientSearchFilters'
 import { shopIdsForCourseSearch } from './shopIdsForCourseSearch'
 
@@ -402,10 +403,13 @@ function guidedResultsSelectableOptions (
 
 function guidedPaginationSelectableOptions (
   state: GuidedSearchState,
-  hasMore: boolean
+  remainingMoreInSearch: number,
+  pageSize: number
 ): { label: string; value: string }[] {
   const out: { label: string; value: string }[] = []
-  if (hasMore) out.push({ label: 'Load next 5', value: 'Show more' })
+  if (remainingMoreInSearch > 0) {
+    out.push(buildSearchPaginationSelectableOption(remainingMoreInSearch, pageSize))
+  }
   out.push(...guidedPostResultsFilterChips(state))
   out.push({ label: 'New search', value: GuidedCommands.reset })
   return out
@@ -470,7 +474,7 @@ export async function runGuidedSearchTurn (
           ...empty,
           guidedSearchState: state,
           activityLog,
-          selectableOptions: guidedPaginationSelectableOptions(state, false)
+          selectableOptions: guidedPaginationSelectableOptions(state, 0, pageSize)
         }
       }
       const slice = allShops.slice(alreadyShown, alreadyShown + pageSize)
@@ -495,7 +499,7 @@ export async function runGuidedSearchTurn (
         totalResults: effectiveTotal,
         hasMoreResults: remaining > 0,
         filters: combinedFilters,
-        selectableOptions: guidedPaginationSelectableOptions(state, remaining > 0),
+        selectableOptions: guidedPaginationSelectableOptions(state, remaining, pageSize),
         guidedSearchState: state,
         bookingHints,
         activityLog
@@ -513,7 +517,7 @@ export async function runGuidedSearchTurn (
           ...empty,
           guidedSearchState: state,
           activityLog,
-          selectableOptions: guidedPaginationSelectableOptions(state, false),
+          selectableOptions: guidedPaginationSelectableOptions(state, 0, pageSize),
           bookingHints: { desiredCourses: [state.courseIntent!], diveSiteTypeLabel: null }
         }
       }
@@ -534,7 +538,7 @@ export async function runGuidedSearchTurn (
         totalResults: effectiveTotal,
         hasMoreResults: remaining > 0,
         filters,
-        selectableOptions: guidedPaginationSelectableOptions(state, remaining > 0),
+        selectableOptions: guidedPaginationSelectableOptions(state, remaining, pageSize),
         guidedSearchState: state,
         activityLog,
         bookingHints: { desiredCourses: [state.courseIntent], diveSiteTypeLabel: null }
@@ -552,7 +556,7 @@ export async function runGuidedSearchTurn (
           ...empty,
           guidedSearchState: state,
           activityLog,
-          selectableOptions: guidedPaginationSelectableOptions(state, false)
+          selectableOptions: guidedPaginationSelectableOptions(state, 0, pageSize)
         }
       }
       const slice = matches.slice(alreadyShown, alreadyShown + pageSize)
@@ -572,7 +576,7 @@ export async function runGuidedSearchTurn (
         totalResults: total,
         hasMoreResults: remaining > 0,
         filters,
-        selectableOptions: guidedPaginationSelectableOptions(state, remaining > 0),
+        selectableOptions: guidedPaginationSelectableOptions(state, remaining, pageSize),
         guidedSearchState: state,
         activityLog
       }
@@ -592,7 +596,7 @@ export async function runGuidedSearchTurn (
           ...empty,
           guidedSearchState: state,
           activityLog,
-          selectableOptions: guidedPaginationSelectableOptions(state, false)
+          selectableOptions: guidedPaginationSelectableOptions(state, 0, pageSize)
         }
       }
       const remaining = Math.max(0, clientTotal - alreadyShown - pageShops.length)
@@ -609,7 +613,7 @@ export async function runGuidedSearchTurn (
         totalResults: clientTotal,
         hasMoreResults: remaining > 0,
         filters,
-        selectableOptions: guidedPaginationSelectableOptions(state, remaining > 0),
+        selectableOptions: guidedPaginationSelectableOptions(state, remaining, pageSize),
         guidedSearchState: state,
         activityLog
       }
@@ -633,7 +637,7 @@ export async function runGuidedSearchTurn (
       totalResults: total,
       hasMoreResults: remaining > 0,
       filters,
-      selectableOptions: guidedPaginationSelectableOptions(state, remaining > 0),
+      selectableOptions: guidedPaginationSelectableOptions(state, remaining, pageSize),
       guidedSearchState: state,
       activityLog
     }

@@ -6,6 +6,7 @@ import { entityClarifySelectableOptions } from './entityClarify'
 import type { ResolvedShop } from './resolveShop'
 import { listShopsMatchingName } from './resolveShop'
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
+import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
 
 /** Avoid ilike metacharacters from user input. */
 function sanitizeIlike (s: string): string {
@@ -139,9 +140,9 @@ export function formatEntitySearchResponse (
   const list = shops || []
   const resultCount = list.length
   const responseShops = list.slice(0, 5)
-  const selectableOptions = resultCount > 5
-    ? [{ label: 'Load next 5', value: 'Show more' }]
-    : undefined
+  const remainingMore = Math.max(0, resultCount - responseShops.length)
+  const selectableOptions =
+    remainingMore > 0 ? [buildSearchPaginationSelectableOption(remainingMore)] : undefined
   const searchMatchBadges =
     responseShops.length > 0 ? buildSearchMatchBadges(filters, null) : []
   return {

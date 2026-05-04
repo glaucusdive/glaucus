@@ -8,7 +8,7 @@ const BEGINNER_HEURISTIC =
 export function isCourseDiscoveryFollowUpMessage (message: string): boolean {
   const t = message.trim()
   if (t.length < 12) return false
-  if (/\b(show more|next 5|next\s+\d+|load more|pagination)\b/i.test(t)) return false
+  if (/\b(show more|next 5|next\s+\d+|load more|load next \d+|pagination)\b/i.test(t)) return false
   const hasCourseNoun = /\bcourses?\b/i.test(t) || /\bcertification\b/i.test(t)
   const asksCatalog =
     /\b(what|which|how)\b/i.test(t) ||

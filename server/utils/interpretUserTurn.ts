@@ -2,8 +2,10 @@ import { z } from 'zod'
 import type { SearchFilters } from './buildDiveShopQuery'
 import { sanitizeActivityTokenForIlike } from './collectShopIdsForActivityTokens'
 
+import { OPENROUTER_CHAT_MODEL } from './openRouterChatModel'
+
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
-export const INTERPRET_USER_TURN_MODEL = 'openai/gpt-5-mini'
+export const INTERPRET_USER_TURN_MODEL = OPENROUTER_CHAT_MODEL
 
 export const InterpretedTurnSchema = z.object({
   goal: z.enum(['search_shops', 'start_booking', 'continue', 'shop_info', 'unclear']),

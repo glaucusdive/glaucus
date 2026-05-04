@@ -1,5 +1,7 @@
+import { OPENROUTER_CHAT_MODEL } from './openRouterChatModel'
+
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
-export const SEARCH_RESULT_NARRATION_MODEL = 'openai/gpt-5-mini'
+export const SEARCH_RESULT_NARRATION_MODEL = OPENROUTER_CHAT_MODEL
 
 function shopCardSummary (shop: Record<string, unknown>): string {
   const name = String(shop.business_name ?? 'Unknown')
