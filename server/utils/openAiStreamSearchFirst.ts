@@ -5,7 +5,6 @@ export interface StreamSearchFirstOptions {
   apiKey: string
   model?: string
   messages: { role: string; content: string }[]
-  temperature?: number
   maxTokens?: number
   signal?: AbortSignal
   onAssistantDelta?: (text: string) => void
@@ -20,7 +19,6 @@ export async function streamOpenAiSearchFirstCompletion (opts: StreamSearchFirst
     apiKey,
     model = OPENAI_CHAT_MODEL,
     messages,
-    temperature = 0.7,
     maxTokens = 1000,
     signal,
     onAssistantDelta
@@ -35,8 +33,7 @@ export async function streamOpenAiSearchFirstCompletion (opts: StreamSearchFirst
     body: JSON.stringify({
       model,
       messages,
-      temperature,
-      max_tokens: maxTokens,
+      max_completion_tokens: maxTokens,
       stream: true
     }),
     signal

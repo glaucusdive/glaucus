@@ -61,8 +61,7 @@ export async function classifyBookingContactReply (input: {
           { role: 'system', content: SYSTEM },
           { role: 'user', content: t }
         ],
-        temperature: 0.1,
-        max_tokens: 120,
+        max_completion_tokens: 120,
         response_format: { type: 'json_object' }
       }),
       signal

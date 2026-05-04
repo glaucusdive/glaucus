@@ -187,8 +187,7 @@ export async function interpretUserTurn (input: InterpretUserTurnInput): Promise
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: userContent }
         ],
-        temperature: 0.2,
-        max_tokens: 400,
+        max_completion_tokens: 400,
         response_format: { type: 'json_object' }
       }),
       signal

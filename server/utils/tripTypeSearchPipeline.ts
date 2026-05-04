@@ -476,8 +476,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
             { role: 'system', content: 'You are a helpful dive shop search assistant with knowledge of global dive destinations. Be concise and helpful.' },
             { role: 'user', content: broadeningPrompt(resultCount) }
           ],
-          temperature: 0.7,
-          max_tokens: 150
+          max_completion_tokens: 150
         })
       }).then(parseBroadeningBody).then(r => { broadeningResult = r }).catch(() => {})
       : Promise.resolve(),
@@ -494,8 +493,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
             { role: 'system', content: 'You ask ONE short question at a time. Never repeat a question that was already asked in the conversation.' },
             { role: 'user', content: followUpPrompt }
           ],
-          temperature: 0.6,
-          max_tokens: 100
+          max_completion_tokens: 100
         })
       }).then(async (res) => {
         if (!res.ok) return
