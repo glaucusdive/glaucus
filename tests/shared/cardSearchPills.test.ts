@@ -65,6 +65,18 @@ describe('computeCardSearchPills', () => {
     expect(pills).toContain('Open Water Diver')
   })
 
+  it('keeps course pills when filters carry certificationCourseHint (no Course badge yet)', () => {
+    const pills = computeCardSearchPills({
+      shopTypeRaw: 'Dive Resort',
+      cardCourseNames: ['Advanced Open Water Diver · L5', 'Rescue Diver · L6'],
+      cardDiveSiteTypeNames: ['Reef'],
+      matchBadges: ['Reef diving'],
+      searchFilters: { activityTokens: ['reef'], country: 'Mexico', certificationCourseHint: 'Advanced' }
+    })
+    expect(pills).toContain('Advanced Open Water Diver · L5')
+    expect(pills).toContain('Reef diving')
+  })
+
   it('includes a few courses when no activity tokens', () => {
     const pills = computeCardSearchPills({
       shopTypeRaw: 'Dive Shop',

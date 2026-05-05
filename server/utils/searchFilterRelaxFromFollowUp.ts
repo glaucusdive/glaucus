@@ -6,6 +6,7 @@ function cloneFilters (f: SearchFilters): SearchFilters {
   if (f.languages?.length) out.languages = [...f.languages]
   if (f.activityTokens?.length) out.activityTokens = [...f.activityTokens]
   if (f.dates) out.dates = { ...f.dates }
+  if (f.certificationCourseHint?.trim()) out.certificationCourseHint = f.certificationCourseHint.trim()
   return out
 }
 
@@ -23,6 +24,7 @@ function normalizeForCompare (f: SearchFilters): Record<string, unknown> {
   if (f.diveTypes?.length) o.diveTypes = [...f.diveTypes].sort()
   if (f.activityTokens?.length) o.activityTokens = [...f.activityTokens].sort()
   if (f.dates?.start || f.dates?.end) o.dates = f.dates
+  if (f.certificationCourseHint?.trim()) o.certificationCourseHint = f.certificationCourseHint.trim()
   return o
 }
 

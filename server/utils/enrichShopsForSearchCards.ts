@@ -5,6 +5,22 @@ const MAX_SITE_TYPES = 8
 
 type ShopRow = { id?: string } & Record<string, unknown>
 
+type CourseLevelRow = { ranking?: number | null; name?: string | null } | null
+
+/** One line per course for result cards: certification name + numeric level when the DB links a `course_levels` row. */
+export function formatCourseCardPill (
+  certificationName: string,
+  courseLevel: CourseLevelRow | undefined
+): string {
+  const n = certificationName.trim()
+  if (!n) return ''
+  const r = courseLevel?.ranking
+  if (r != null && Number.isFinite(Number(r))) {
+    return `${n} · L${Number(r)}`
+  }
+  return n
+}
+
 /** Distinct dive_site_types.name values from junction rows (for tests / reuse). */
 export function collectDistinctDiveSiteTypeNames (
   junctionRows: { dive_sites: { dive_site_type: { name: string | null } | null } | null }[]
@@ -41,7 +57,7 @@ export async function enrichShopsForSearchCards (
   const [coursesRes, sitesRes] = await Promise.all([
     client
       .from('diveshop_courses')
-      .select('diveshop_id, courses(certification_name)')
+      .select('diveshop_id, courses(certification_name, course_level:course_levels(ranking, name))')
       .in('diveshop_id', ids),
     client
       .from('diveshop_dive_sites')
@@ -59,19 +75,23 @@ export async function enrichShopsForSearchCards (
   const coursesByShop = new Map<string, string[]>()
   for (const row of (coursesRes.data || []) as {
     diveshop_id: string
-    courses: { certification_name: string | null } | null
+    courses: { certification_name: string | null; course_level?: CourseLevelRow | CourseLevelRow[] } | null
   }[]) {
     const sid = row.diveshop_id
     const name = row.courses?.certification_name?.trim()
     if (!sid || !name) continue
+    const rawLevel = row.courses?.course_level
+    const level = Array.isArray(rawLevel) ? (rawLevel[0] ?? null) : (rawLevel ?? null)
+    const pill = formatCourseCardPill(name, level ?? null)
+    if (!pill) continue
     let arr = coursesByShop.get(sid)
     if (!arr) {
       arr = []
       coursesByShop.set(sid, arr)
     }
-    const low = name.toLowerCase()
+    const low = pill.toLowerCase()
     if (arr.some(x => x.toLowerCase() === low)) continue
-    arr.push(name)
+    arr.push(pill)
   }
   for (const arr of coursesByShop.values()) {
     arr.sort((a, b) => a.localeCompare(b))

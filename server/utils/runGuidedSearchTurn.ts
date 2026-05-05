@@ -26,6 +26,8 @@ import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationI
 import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
 import { normalizeClientSearchFilters } from './normalizeClientSearchFilters'
 import { shopIdsForCourseSearch } from './shopIdsForCourseSearch'
+import { enrichShopsForSearchCards } from './enrichShopsForSearchCards'
+import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 
 export interface GuidedFlowRequestBody {
   guidedSearchState?: GuidedSearchState | null
@@ -415,6 +417,57 @@ function guidedPaginationSelectableOptions (
   return out
 }
 
+async function presentGuidedSearchShops (
+  supabaseUrl: string,
+  supabaseKey: string,
+  filters: SearchFilters,
+  shops: unknown[],
+  courseIntent: string | null | undefined
+): Promise<{ shops: unknown[]; filters: SearchFilters }> {
+  const nextFilters = { ...filters }
+  const ci = courseIntent?.trim()
+  if (ci) nextFilters.certificationCourseHint = ci
+  const list = shops.length ? [...shops] : []
+  if (list.length) await enrichShopsForSearchCards(supabaseUrl, supabaseKey, list)
+  return { shops: list, filters: nextFilters }
+}
+
+async function assembleGuidedSearchResponse (
+  supabaseUrl: string,
+  supabaseKey: string,
+  state: GuidedSearchState,
+  formatted: ReturnType<typeof formatEntitySearchResponse>,
+  courseIntent: string | null | undefined,
+  tail: Partial<GuidedFlowSearchResponse>
+): Promise<GuidedFlowSearchResponse> {
+  const presented = await presentGuidedSearchShops(
+    supabaseUrl,
+    supabaseKey,
+    formatted.filters as SearchFilters,
+    formatted.shops,
+    courseIntent
+  )
+  const searchMatchBadges = presented.shops.length ? buildSearchMatchBadges(presented.filters, null) : []
+  const {
+    totalResults: tailTotal,
+    hasMoreResults: tailHasMore,
+    selectableOptions: tailOptions,
+    ...restTail
+  } = tail
+  return {
+    success: true,
+    intent: 'search',
+    message: formatted.message,
+    shops: presented.shops,
+    totalResults: tailTotal ?? formatted.totalResults,
+    hasMoreResults: tailHasMore ?? formatted.hasMoreResults,
+    filters: presented.filters,
+    selectableOptions: tailOptions ?? guidedResultsSelectableOptions(state, formatted),
+    ...(searchMatchBadges.length ? { searchMatchBadges } : {}),
+    ...restTail
+  } as GuidedFlowSearchResponse
+}
+
 export async function runGuidedSearchTurn (
   body: GuidedFlowRequestBody,
   supabaseUrl: string,
@@ -491,19 +544,21 @@ export async function runGuidedSearchTurn (
               diveSiteTypeLabel: state.diveSiteTypeLabel ?? null
             }
           : undefined
-      return {
-        success: true,
-        intent: 'search',
-        message: formatted.message,
-        shops: formatted.shops,
-        totalResults: effectiveTotal,
-        hasMoreResults: remaining > 0,
-        filters: combinedFilters,
-        selectableOptions: guidedPaginationSelectableOptions(state, remaining, pageSize),
-        guidedSearchState: state,
-        bookingHints,
-        activityLog
-      }
+      return await assembleGuidedSearchResponse(
+        supabaseUrl,
+        supabaseKey,
+        state,
+        formatted,
+        state.courseIntent?.trim() ?? null,
+        {
+          totalResults: effectiveTotal,
+          hasMoreResults: remaining > 0,
+          selectableOptions: guidedPaginationSelectableOptions(state, remaining, pageSize),
+          guidedSearchState: state,
+          bookingHints,
+          activityLog
+        }
+      )
     }
 
     if (state.branch === 'course' && state.courseIntent) {
@@ -530,19 +585,21 @@ export async function runGuidedSearchTurn (
           ? `Here are more dive businesses for “${state.courseIntent}”.`
           : `Here are the remaining dive businesses for “${state.courseIntent}”.`
       )
-      return {
-        success: true,
-        intent: 'search',
-        message: formatted.message,
-        shops: formatted.shops,
-        totalResults: effectiveTotal,
-        hasMoreResults: remaining > 0,
-        filters,
-        selectableOptions: guidedPaginationSelectableOptions(state, remaining, pageSize),
-        guidedSearchState: state,
-        activityLog,
-        bookingHints: { desiredCourses: [state.courseIntent], diveSiteTypeLabel: null }
-      }
+      return await assembleGuidedSearchResponse(
+        supabaseUrl,
+        supabaseKey,
+        state,
+        formatted,
+        state.courseIntent,
+        {
+          totalResults: effectiveTotal,
+          hasMoreResults: remaining > 0,
+          selectableOptions: guidedPaginationSelectableOptions(state, remaining, pageSize),
+          guidedSearchState: state,
+          activityLog,
+          bookingHints: { desiredCourses: [state.courseIntent], diveSiteTypeLabel: null }
+        }
+      )
     }
 
     if (state.branch === 'name' && state.nameQuery) {
@@ -568,18 +625,13 @@ export async function runGuidedSearchTurn (
           ? `Here are more shops matching "${state.nameQuery}".`
           : `Here are the remaining shops matching "${state.nameQuery}".`
       )
-      return {
-        success: true,
-        intent: 'search',
-        message: formatted.message,
-        shops: formatted.shops,
+      return await assembleGuidedSearchResponse(supabaseUrl, supabaseKey, state, formatted, state.courseIntent?.trim() ?? null, {
         totalResults: total,
         hasMoreResults: remaining > 0,
-        filters,
         selectableOptions: guidedPaginationSelectableOptions(state, remaining, pageSize),
         guidedSearchState: state,
         activityLog
-      }
+      })
     }
 
     if (clientTotal != null) {
@@ -605,18 +657,13 @@ export async function runGuidedSearchTurn (
         pageShops,
         remaining > 0 ? 'Here are more dive shops for your filters.' : 'Here are the remaining dive shops for your filters.'
       )
-      return {
-        success: true,
-        intent: 'search',
-        message: formatted.message,
-        shops: formatted.shops,
+      return await assembleGuidedSearchResponse(supabaseUrl, supabaseKey, state, formatted, state.courseIntent?.trim() ?? null, {
         totalResults: clientTotal,
         hasMoreResults: remaining > 0,
-        filters,
         selectableOptions: guidedPaginationSelectableOptions(state, remaining, pageSize),
         guidedSearchState: state,
         activityLog
-      }
+      })
     }
 
     const full = await buildDiveShopQuery(supabaseUrl, supabaseKey, filters)
@@ -629,18 +676,13 @@ export async function runGuidedSearchTurn (
       slice,
       remaining > 0 ? 'Here are more dive shops for your filters.' : 'Here are the remaining dive shops for your filters.'
     )
-    return {
-      success: true,
-      intent: 'search',
-      message: formatted.message,
-      shops: formatted.shops,
+    return await assembleGuidedSearchResponse(supabaseUrl, supabaseKey, state, formatted, state.courseIntent?.trim() ?? null, {
       totalResults: total,
       hasMoreResults: remaining > 0,
-      filters,
       selectableOptions: guidedPaginationSelectableOptions(state, remaining, pageSize),
       guidedSearchState: state,
       activityLog
-    }
+    })
   }
 
   const msg = rawMsg
@@ -803,19 +845,18 @@ export async function runGuidedSearchTurn (
         ? 'Here are dive businesses matching your combined filters.'
         : 'No dive businesses matched these combined filters. Try widening one dimension or start a new search.'
     )
-    return {
-      success: true,
-      intent: 'search',
-      message: formatted.message,
-      shops: formatted.shops,
-      totalResults: formatted.totalResults,
-      hasMoreResults: formatted.hasMoreResults,
-      filters: formatted.filters as SearchFilters,
-      selectableOptions: guidedResultsSelectableOptions(state, formatted),
-      guidedSearchState: state,
-      bookingHints,
-      activityLog
-    }
+    return await assembleGuidedSearchResponse(
+      supabaseUrl,
+      supabaseKey,
+      state,
+      formatted,
+      state.courseIntent?.trim() ?? null,
+      {
+        guidedSearchState: state,
+        bookingHints,
+        activityLog
+      }
+    )
   }
 
   if (state.branch === 'course' && state.courseIntent) {
@@ -831,19 +872,13 @@ export async function runGuidedSearchTurn (
         ? `Here are dive businesses that may offer courses matching “${state.courseIntent}”.`
         : `No dive businesses in our directory matched courses for “${state.courseIntent}”. Try another course or search by location.`
     )
-    return {
-      success: true,
-      intent: 'search',
-      message: formatted.message,
-      shops: formatted.shops,
+    return await assembleGuidedSearchResponse(supabaseUrl, supabaseKey, state, formatted, state.courseIntent, {
       totalResults: total,
       hasMoreResults: formatted.hasMoreResults,
-      filters: formatted.filters as SearchFilters,
-      selectableOptions: guidedResultsSelectableOptions(state, formatted),
       guidedSearchState: state,
       bookingHints,
       activityLog
-    }
+    })
   }
 
   if (state.branch === 'name' && state.nameQuery) {
@@ -862,19 +897,13 @@ export async function runGuidedSearchTurn (
         ? `Found ${total} business(es) matching “${state.nameQuery}”.`
         : `No businesses matched “${state.nameQuery}”. Try a shorter name or search by location.`
     )
-    return {
-      success: true,
-      intent: 'search',
-      message: formatted.message,
-      shops: formatted.shops,
+    return await assembleGuidedSearchResponse(supabaseUrl, supabaseKey, state, formatted, state.courseIntent?.trim() ?? null, {
       totalResults: total,
       hasMoreResults: formatted.hasMoreResults,
-      filters: formatted.filters as SearchFilters,
-      selectableOptions: guidedResultsSelectableOptions(state, formatted),
       guidedSearchState: state,
       openShopId,
       activityLog
-    }
+    })
   }
 
   const filters = toSearchFilters(state.filters)
@@ -911,17 +940,11 @@ export async function runGuidedSearchTurn (
       : `No dive businesses matched these filters. Try widening filters or dive shop type.`
   )
 
-  return {
-    success: true,
-    intent: 'search',
-    message: formatted.message,
-    shops: formatted.shops,
+  return await assembleGuidedSearchResponse(supabaseUrl, supabaseKey, state, formatted, state.courseIntent?.trim() ?? null, {
     totalResults: total,
     hasMoreResults: formatted.hasMoreResults,
-    filters: formatted.filters as SearchFilters,
-    selectableOptions: guidedResultsSelectableOptions(state, formatted),
     guidedSearchState: state,
     bookingHints,
     activityLog
-  }
+  })
 }

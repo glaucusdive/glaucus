@@ -371,7 +371,6 @@ import {
 } from '~/utils/searchPaginationShownCount'
 import { initSignedInChatsFromRemote, chatRemoteHydrateTick } from '~/composables/userChatsRemote'
 import {
-  GuidedCommands,
   GUIDED_PREFIX,
   initialGuidedSearchState,
   mergeGuidedSearchState,
@@ -716,28 +715,23 @@ function formatFutureDateRange () {
 const searchPathExamples = computed(() => [
   {
     path: 'By location',
-    query: 'Find dive shops in Bali',
-    guidedValue: GuidedCommands.branchLocation
+    query: 'Find dive shops in Bali'
   },
   {
     path: 'By dive shop type',
-    query: 'Looking for liveaboards in the Maldives',
-    guidedValue: GuidedCommands.branchShopType
+    query: 'Looking for liveaboards in the Maldives'
   },
   {
     path: 'By certification course',
-    query: 'Shops in Mexico that offer advanced certification courses',
-    guidedValue: GuidedCommands.branchCourse
+    query: 'Shops in Mexico that offer advanced certification courses'
   },
   {
     path: 'By dive site type',
-    query: `I want to do wreck diving in Bali from ${formatFutureDateRange()}`,
-    guidedValue: GuidedCommands.branchSiteType
+    query: `I want to do wreck diving in Bali from ${formatFutureDateRange()}`
   },
   {
     path: 'By business name',
-    query: 'Search for a dive shop by business name',
-    guidedValue: GuidedCommands.branchName
+    query: 'Search for a dive shop by business name'
   }
 ])
 
@@ -751,17 +745,7 @@ function isMidGuidedSearchWizard (messageList) {
 }
 
 function sendLandingSearchExample (example) {
-  const chatAiOn =
-    String(runtimeConfig.public.disableChatAi ?? (import.meta.dev ? 'false' : 'true')).toLowerCase() === 'false'
-  const useChipBootstrap =
-    useGuidedSearch.value &&
-    !chatAiOn &&
-    (!useAiSearchFirst.value || preferGuidedThisSession.value)
-  // With NLU off, the example sentence cannot be parsed on the server — keep chip bootstrap for that env only.
-  if (useChipBootstrap) {
-    sendMessage(example.guidedValue, example.path)
-    return
-  }
+  // Always send the natural-language example: same text in the bubble and to the orchestrator (not the category label or guided branch token).
   sendMessage(example.query)
 }
 
@@ -837,6 +821,57 @@ function buildPageCachePayload () {
   }
 }
 
+/** Restored sessions (and some server paths) may omit `cardCourseNames`; hydrate for result pills. */
+async function backfillSearchShopCardFieldsInMessages () {
+  if (import.meta.server) return
+  const msgs = messages.value
+  const minimal = []
+  const seen = new Set()
+  for (const m of msgs) {
+    if (m.role !== 'assistant' || !Array.isArray(m.shops)) continue
+    for (const s of m.shops) {
+      const id = s?.id
+      if (typeof id !== 'string' || !id || seen.has(id)) continue
+      if (Array.isArray(s.cardCourseNames)) continue
+      seen.add(id)
+      minimal.push({ ...s })
+      if (minimal.length >= 40) break
+    }
+    if (minimal.length >= 40) break
+  }
+  if (!minimal.length) return
+  try {
+    const { shops: enriched } = await $fetch('/api/enrich-search-shops-for-cards', {
+      method: 'POST',
+      body: { shops: minimal }
+    })
+    const enrById = new Map((enriched || []).map(r => [r.id, r]))
+    messages.value = msgs.map((m) => {
+      if (m.role !== 'assistant' || !Array.isArray(m.shops)) return m
+      let hit = false
+      const nextShops = m.shops.map((s) => {
+        const e = enrById.get(s?.id)
+        if (!e || !Array.isArray(e.cardCourseNames)) return s
+        hit = true
+        return {
+          ...s,
+          cardCourseNames: e.cardCourseNames,
+          cardDiveSiteTypeNames: e.cardDiveSiteTypeNames
+        }
+      })
+      if (!hit) return m
+      let badges = m.searchMatchBadges
+      if ((!Array.isArray(badges) || !badges.length) && m.filters && typeof m.filters === 'object' && !Array.isArray(m.filters)) {
+        const b = buildSearchMatchBadges(m.filters, null)
+        if (b.length) badges = b
+      }
+      return { ...m, shops: nextShops, ...(Array.isArray(badges) && badges.length ? { searchMatchBadges: badges } : {}) }
+    })
+  } catch (e) {
+    console.warn('[chat] enrich search cards backfill failed', e)
+  }
+}
+
 async function hydrateFromRecord (cachedState) {
   isRestoringCache.value = true
   closeDrawer()
@@ -857,6 +892,7 @@ async function hydrateFromRecord (cachedState) {
   }
   isRestoringCache.value = false
   await nextTick()
+  void backfillSearchShopCardFieldsInMessages()
   requestAnimationFrame(() => {
     setTimeout(() => {
       if (cachedState.drawerOpen && cachedState.drawerShopId) {
@@ -1081,6 +1117,7 @@ onMounted(async () => {
       isRestoringCache.value = false
       notifyChatSidebarUpdated()
       await nextTick()
+      void backfillSearchShopCardFieldsInMessages()
       requestAnimationFrame(() => {
         setTimeout(() => {
           if (cachedState.drawerOpen && cachedState.drawerShopId) {
@@ -1887,6 +1924,12 @@ const sendMessage = async (messageText, displayText) => {
         ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {}),
         ...(searchMatchBadges.length ? { searchMatchBadges } : {})
       })
+      if (
+        shopsOut.length &&
+        shopsOut.some(s => s && s.id && !Array.isArray(s.cardCourseNames))
+      ) {
+        void nextTick().then(() => backfillSearchShopCardFieldsInMessages())
+      }
       if (response.intent === 'booking' && storedPayload) {
         updateBookingPayloadIfOpen(storedPayload)
         if (isSignedIn.value) {

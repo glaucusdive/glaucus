@@ -42,4 +42,12 @@ describe('buildSearchMatchBadges', () => {
     )
     expect(badges.filter(b => b === 'Wreck diving').length).toBe(1)
   })
+
+  it('adds Course directory from filters.certificationCourseHint when facets omit it', () => {
+    const badges = buildSearchMatchBadges(
+      { country: 'Mexico', certificationCourseHint: 'Advanced' },
+      null
+    )
+    expect(badges.some(b => /^Course \(directory\):\s*Advanced$/i.test(b))).toBe(true)
+  })
 })

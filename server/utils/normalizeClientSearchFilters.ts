@@ -14,6 +14,9 @@ export function normalizeClientSearchFilters (raw: unknown): SearchFilters | nul
   if (Array.isArray(o.activityTokens) && o.activityTokens.every(x => typeof x === 'string')) {
     out.activityTokens = o.activityTokens as string[]
   }
+  if (typeof o.certificationCourseHint === 'string' && o.certificationCourseHint.trim()) {
+    out.certificationCourseHint = o.certificationCourseHint.trim().slice(0, 120)
+  }
   if (o.dates != null && typeof o.dates === 'object' && !Array.isArray(o.dates)) {
     const d = o.dates as Record<string, unknown>
     const start = typeof d.start === 'string' ? d.start : undefined
