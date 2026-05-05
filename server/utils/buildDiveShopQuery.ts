@@ -10,6 +10,8 @@ export interface SearchFilters {
   diveTypes?: string[] // e.g. ["Liveaboard"], ["Dive Resort"], ["Dive Shop"] — matches diveshops.type (contains)
   /** Short tokens (e.g. cave, wreck) — AND together; matched only on linked dive_sites (name + dive_site_types), optionally scoped to search country. */
   activityTokens?: string[]
+  /** Echo of NLU + heuristics for course directory filter; not read by `buildDiveShopQuery` (client + badges + card pills). */
+  certificationCourseHint?: string
   dates?: {
     start?: string
     end?: string

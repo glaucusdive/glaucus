@@ -1,5 +1,10 @@
 import { buildDiveShopQuery, type SearchFilters } from './buildDiveShopQuery'
-import { mergeActivityIntoFilters, mergeNluHintsIntoFilters, type InterpretedTurn } from './interpretUserTurn'
+import {
+  mergeActivityIntoFilters,
+  mergeNluHintsIntoFilters,
+  resolveEffectiveCertificationCourseHint,
+  type InterpretedTurn
+} from './interpretUserTurn'
 import { mergeInterpretSearchFacetsIntoFilters } from './searchNluMerge'
 import { shopIdsForCourseSearch } from './shopIdsForCourseSearch'
 import { narrateSearchResults } from './searchResultNarration'
@@ -162,7 +167,7 @@ export function isQuerySpecificEnoughForDirectShopCards (
   const hasRating = filters.minRating != null && filters.minRating > 0
   const hasDiveTypes = (filters.diveTypes?.length ?? 0) > 0
   const tripPinned = tripTypeInMessage || userAlreadySpecifiedTripType
-  const hasCertHint = !!(interpretTurn?.certification_course_hint?.trim())
+  const hasCertHint = !!resolveEffectiveCertificationCourseHint(message, interpretTurn ?? null)?.trim()
   const hasSiteTypeLabel = !!(interpretTurn?.dive_site_type_label?.trim())
   const hasTripProduct = interpretTurn?.trip_product_type != null
 
@@ -360,6 +365,12 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
     filters = mergeInterpretSearchFacetsIntoFilters(filters, interpretTurn)
   }
   filters = mergeInferredDiveTypesIntoFilters(filters, message)
+
+  const effectiveCourseHint = resolveEffectiveCertificationCourseHint(message, interpretTurn ?? null)
+  if (effectiveCourseHint) {
+    filters = { ...filters, certificationCourseHint: effectiveCourseHint }
+  }
+
   console.log('[AI Search] Extracted filters:', filters)
 
   const conversationText = [...(history || []).map(h => h.content), message].join(' ')
@@ -427,9 +438,8 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
   }
 
   let shops = shopsRaw || []
-  const courseHint = interpretTurn?.certification_course_hint?.trim()
-  if (courseHint) {
-    const allowedIds = new Set(await shopIdsForCourseSearch(supabaseUrl, supabaseKey, courseHint))
+  if (effectiveCourseHint) {
+    const allowedIds = new Set(await shopIdsForCourseSearch(supabaseUrl, supabaseKey, effectiveCourseHint))
     shops = (shops as { id?: string }[]).filter(s => s.id && allowedIds.has(s.id))
   }
 
@@ -692,16 +702,17 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     ? mergeSelectableOptions(trimmedOptions, TRIP_TYPE_OPTIONAL_FILTER_CHIPS)
     : trimmedOptions
 
+  const facetHintsForBadges =
+    effectiveCourseHint || interpretTurn?.activity_terms?.length || interpretTurn?.dive_site_type_label?.trim()
+      ? {
+          certification_course_hint: effectiveCourseHint ?? interpretTurn?.certification_course_hint ?? null,
+          activity_terms: interpretTurn?.activity_terms ?? null,
+          dive_site_type_label: interpretTurn?.dive_site_type_label ?? null
+        }
+      : null
+
   const searchMatchBadges =
-    responseShops.length > 0
-      ? buildSearchMatchBadges(filters, interpretTurn
-        ? {
-            certification_course_hint: interpretTurn.certification_course_hint ?? null,
-            activity_terms: interpretTurn.activity_terms ?? null,
-            dive_site_type_label: interpretTurn.dive_site_type_label ?? null
-          }
-        : null)
-      : []
+    responseShops.length > 0 ? buildSearchMatchBadges(filters, facetHintsForBadges) : []
 
   return {
     success: true,

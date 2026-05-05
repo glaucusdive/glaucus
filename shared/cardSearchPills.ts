@@ -98,6 +98,10 @@ export function courseDirectoryHintInBadges (matchBadges: string[] | undefined):
   return false
 }
 
+function courseIntentOnFilters (filters: SearchFiltersForBadges | null | undefined): boolean {
+  return !!filters?.certificationCourseHint?.trim()
+}
+
 function formatShopTypePart (part: string): string {
   if (part === 'Dive Shop') return 'Dive Shop / Day Trip'
   return part
@@ -120,7 +124,8 @@ export function computeCardSearchPills (input: {
 }): string[] {
   const activityTokens = normalizeActivityTokens(input.searchFilters ?? undefined)
   const activitySearchActive = activityTokens.length > 0
-  const courseIsSearchTarget = courseDirectoryHintInBadges(input.matchBadges)
+  const courseIsSearchTarget =
+    courseDirectoryHintInBadges(input.matchBadges) || courseIntentOnFilters(input.searchFilters)
   /** Trim course pills for space when activity is the focus, unless the user also asked for a course. */
   const omitCoursePills = activitySearchActive && !courseIsSearchTarget
 

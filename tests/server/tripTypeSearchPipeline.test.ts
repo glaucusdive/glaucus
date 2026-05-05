@@ -7,6 +7,7 @@ import {
   mergeInferredDiveTypesIntoFilters,
   userMessageIndicatesTripTypeChoice
 } from '../../server/utils/tripTypeSearchPipeline'
+import { inferCertificationCourseHintFromUserMessage } from '../../server/utils/interpretUserTurn'
 
 describe('isQuerySpecificEnoughForDirectShopCards', () => {
   it('is true for country + beginner phrasing', () => {
@@ -25,6 +26,18 @@ describe('isQuerySpecificEnoughForDirectShopCards', () => {
     expect(
       isQuerySpecificEnoughForDirectShopCards('dive shops in Thailand', { country: 'Thailand' }, null, false, false)
     ).toBe(false)
+  })
+
+  it('is true for Mexico + advanced certification when NLU omits course hint (heuristic)', () => {
+    expect(
+      isQuerySpecificEnoughForDirectShopCards(
+        'Shops in Mexico that offer advanced certification courses',
+        { country: 'Mexico' },
+        { goal: 'search_shops', destination_text: 'Mexico', certification_course_hint: null },
+        false,
+        false
+      )
+    ).toBe(true)
   })
 
   it('is true when trip type already specified in thread', () => {
@@ -73,6 +86,14 @@ describe('inferCanonicalDiveTypesFromUserMessage', () => {
 
   it('returns null when no trip type signal', () => {
     expect(inferCanonicalDiveTypesFromUserMessage('something about fish')).toBeNull()
+  })
+})
+
+describe('inferCertificationCourseHintFromUserMessage (used by search pipeline)', () => {
+  it('matches user-reported Mexico advanced query', () => {
+    expect(inferCertificationCourseHintFromUserMessage('Shops in Mexico that offer advanced certification courses')).toBe(
+      'Advanced'
+    )
   })
 })
 

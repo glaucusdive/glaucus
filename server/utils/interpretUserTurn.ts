@@ -60,8 +60,8 @@ Rules:
 
 - destination_text: the travel / dive DESTINATION (geographic) ONLY — city, island, state, or country (e.g. "Bali", "California", "Cozumel", "Mexico"). Use this when the user says "dive in …", "book in …", "trip to …", "going to …". No verbs or filler. If they said "book a dive in bali", destination_text must be "Bali", NOT "a dive in bali".
 - shop_name_hint: ONLY when the user names a specific dive business (e.g. "Zen Resort", "Atlantis Bali Diving", or the name after "let's do …" / "go with …" / "I'll take …"). Do NOT put a country or region here. If they are only expressing where they want to travel, keep shop_name_hint null even if a shop name contains that place word. When the message is clearly picking one operator (selection phrasing), set shop_name_hint to that business name and set destination_text to null unless they also introduced a **new** trip destination in the same message.
-- activity_terms: when the user cares about a KIND of diving or environment — NOT liveaboard vs resort (that is a separate product flow). Use 1–4 short lowercase tokens, e.g. ["cave"] for "cave diving", ["wreck"] for wreck diving, ["muck"] or ["macro"] for muck/macro, ["cenote"] for cenotes, ["ice"] for ice diving, ["drift"] for drift diving. If they mention BOTH a place and an activity (e.g. "cave diving in Mexico"), set destination_text to "Mexico" AND activity_terms to ["cave"]. If there is no activity signal, use null or omit.
-- certification_course_hint: when the user wants a **certification course** or training (Open Water, Advanced, Rescue, Nitrox, Divemaster, Discover Scuba, etc.). Put a short searchable fragment (e.g. "Open Water", "Advanced Open Water", "Nitrox"). Null if they are not asking for a course.
+- activity_terms: when the user cares about a KIND of diving or environment — NOT liveaboard vs resort (that is a separate product flow). Use 1–4 short lowercase tokens, e.g. ["cave"] for "cave diving", ["wreck"] for wreck diving, ["muck"] or ["macro"] for muck/macro, ["cenote"] for cenotes, ["ice"] for ice diving, ["drift"] for drift diving. If they mention BOTH a place and an activity (e.g. "cave diving in Mexico"), set destination_text to "Mexico" AND activity_terms to ["cave"]. If there is no activity signal, use null or omit. Do NOT put certification/course shopping intent here (e.g. "advanced certification courses", "shops that teach nitrox") — use certification_course_hint instead.
+- certification_course_hint: when the user wants **certification training or shops that offer a course level** (Open Water, Advanced, Advanced Open Water, Rescue, Nitrox, Divemaster, Discover Scuba, etc.). Put a short searchable fragment (e.g. "Open Water", "Advanced", "Advanced Open Water", "Nitrox"). **Required** when they ask for shops offering courses/certification/training (e.g. "shops in Mexico that offer advanced certification courses" → set certification_course_hint to "Advanced" or "Advanced Open Water", NOT only activity_terms). Null only if they are not asking for a course.
 - dive_site_type_label: when they care about **type of dive site / environment** as a category (wreck, reef, wall, muck, cenote, cavern/cave, beach, lake). One short phrase matching how divers talk (e.g. "wreck", "reef diving", "cenotes"). Null if not mentioned. Do not duplicate trip_product_type here.
 - trip_product_type: when they specify **liveaboard vs resort vs dive shop / day trips**: use "liveaboard" for liveaboards; "dive_resort" for dive resorts; "dive_shop" for land-based dive shops, day boats, or day trips. Null if they do not express a preference.
 - reasoning_summary: ONE short user-safe sentence in first person ("I'm treating this as travel to Bali, then we'll pick a shop.") or null.
@@ -247,4 +247,40 @@ export function mergeNluHintsIntoFilters (
     return { ...filters, locale: place }
   }
   return filters
+}
+
+const MAX_CERT_HINT = 120
+
+/**
+ * When NLU omits certification_course_hint, infer a short directory fragment from user text
+ * so course-based filtering and card badges still run (e.g. "advanced certification courses").
+ */
+export function inferCertificationCourseHintFromUserMessage (message: string): string | null {
+  const t = String(message || '').trim()
+  if (!t) return null
+
+  if (/\badvanced\s+open\s+water\b|\baowd?\b|\bpadi\s+aow\b/i.test(t)) return 'Advanced Open Water'
+  if (/\badvanced\s+(certification|courses?|training|programs?|class(?:es)?)\b/i.test(t)) return 'Advanced'
+  if (/\badvanced\b/i.test(t) && /\b(shop|shops|center|centre|operator|operators|offers?|offer|teach|find|looking|certification|course|training|diving)\b/i.test(t)) {
+    return 'Advanced'
+  }
+
+  if (/\brescue\s+diver\b/i.test(t)) return 'Rescue'
+  if (/\bnitrox\b|\benriched\s+air\b/i.test(t)) return 'Nitrox'
+  if (/\bdive\s*master\b/i.test(t)) return 'Divemaster'
+  if (/\bopen\s+water\b/i.test(t) && !/\badvanced\b/i.test(t)) return 'Open Water'
+  if (/\bdiscover\s+scuba\b/i.test(t)) return 'Discover Scuba'
+
+  return null
+}
+
+/** NLU hint wins; otherwise heuristic from the raw user message (same turn). */
+export function resolveEffectiveCertificationCourseHint (
+  message: string,
+  interpret: InterpretedTurn | null | undefined
+): string | null {
+  const fromNlu = interpret?.certification_course_hint?.trim()
+  if (fromNlu) return fromNlu.slice(0, MAX_CERT_HINT)
+  const inferred = inferCertificationCourseHintFromUserMessage(message)
+  return inferred ? inferred.slice(0, MAX_CERT_HINT) : null
 }

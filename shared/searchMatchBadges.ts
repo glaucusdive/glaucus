@@ -9,6 +9,8 @@ export type SearchFiltersForBadges = {
   languages?: string[]
   diveTypes?: string[]
   activityTokens?: string[]
+  /** When set (e.g. from NLU + heuristics), pairs with course directory badge / card pill logic. */
+  certificationCourseHint?: string
   dates?: { start?: string; end?: string }
 }
 
@@ -99,7 +101,8 @@ export function buildSearchMatchBadges (
     add(titleCasePhrase(facets.dive_site_type_label.trim()))
   }
 
-  const course = facets?.certification_course_hint?.trim()
+  const course =
+    facets?.certification_course_hint?.trim() || filters.certificationCourseHint?.trim()
   if (course) {
     add(`Course (directory): ${course}`)
   }

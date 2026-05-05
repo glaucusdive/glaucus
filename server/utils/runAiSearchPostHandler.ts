@@ -71,9 +71,13 @@ import {
   mergeNluHintsIntoFilters,
   normalizeActivityTerms,
   pickReferentPhraseForProbe,
+  resolveEffectiveCertificationCourseHint,
   shouldRunInterpretNlu,
   type InterpretedTurn
 } from '../utils/interpretUserTurn'
+import { enrichShopsForSearchCards } from '../utils/enrichShopsForSearchCards'
+import { shopIdsForCourseSearch } from '../utils/shopIdsForCourseSearch'
+import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
 import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
 import { GuidedCommands } from '../../shared/guidedFlow'
@@ -399,28 +403,71 @@ function inferAlreadyShownForPagination (history: Message[], shopsAlreadyShownCo
   return alreadyShown
 }
 
-function buildSearchPaginationApiResponse (
+/**
+ * Pagination responses previously returned raw `buildDiveShopQuery` rows — no `cardCourseNames`,
+ * no `searchMatchBadges`, and no course-directory filter. Align with `runTripTypeSearchAfterLlm` presentation.
+ */
+async function finalizeSearchPaginationApiResponse (
+  supabaseUrl: string,
+  supabaseKey: string,
+  userMessage: string,
+  interpretTurn: InterpretedTurn | null,
   lastFilters: SearchFilters,
-  nextShops: unknown[],
+  nextShopsRaw: unknown[],
   resultCount: number,
   alreadyShown: number,
   paginationPageSize: number = 5
 ) {
-  const remaining = Math.max(0, resultCount - alreadyShown - nextShops.length)
-  if (nextShops.length > 0) {
+  let filters: SearchFilters = { ...lastFilters }
+  const inferredHint = resolveEffectiveCertificationCourseHint(userMessage, interpretTurn ?? null)
+  if (inferredHint?.trim() && !filters.certificationCourseHint?.trim()) {
+    filters = { ...filters, certificationCourseHint: inferredHint.trim() }
+  }
+
+  let presentationShops = [...(nextShopsRaw || [])]
+  const hint = filters.certificationCourseHint?.trim()
+  if (hint && presentationShops.length > 0) {
+    const allowed = new Set(await shopIdsForCourseSearch(supabaseUrl, supabaseKey, hint))
+    presentationShops = (presentationShops as { id?: string }[]).filter(s => s.id && allowed.has(s.id))
+  }
+  if (presentationShops.length > 0) {
+    await enrichShopsForSearchCards(supabaseUrl, supabaseKey, presentationShops)
+  }
+
+  const searchMatchBadges = buildSearchMatchBadges(filters, null)
+  const rawLen = (nextShopsRaw || []).length
+  const remaining = Math.max(0, resultCount - alreadyShown - rawLen)
+
+  if (presentationShops.length > 0) {
     const messageText = remaining > 0
-      ? `Here are the next ${nextShops.length} results. ${remaining} more available.`
-      : `Here are the next ${nextShops.length} results.`
+      ? `Here are the next ${presentationShops.length} results. ${remaining} more available.`
+      : `Here are the next ${presentationShops.length} results.`
     return {
       success: true as const,
       message: messageText,
-      shops: nextShops,
+      shops: presentationShops,
       totalResults: resultCount,
       hasMoreResults: remaining > 0,
-      filters: lastFilters,
+      filters,
       selectableOptions: remaining > 0
         ? [buildSearchPaginationSelectableOption(remaining, paginationPageSize)]
-        : undefined
+        : undefined,
+      ...(searchMatchBadges.length ? { searchMatchBadges } : {})
+    }
+  }
+  if (rawLen > 0) {
+    return {
+      success: true as const,
+      message:
+        'No shops in this page match your course filter. You can load more results or widen the search.',
+      shops: [],
+      totalResults: resultCount,
+      hasMoreResults: remaining > 0,
+      filters,
+      selectableOptions: remaining > 0
+        ? [buildSearchPaginationSelectableOption(remaining, paginationPageSize)]
+        : undefined,
+      ...(searchMatchBadges.length ? { searchMatchBadges } : {})
     }
   }
   return {
@@ -429,8 +476,9 @@ function buildSearchPaginationApiResponse (
     shops: [],
     totalResults: resultCount,
     hasMoreResults: false,
-    filters: lastFilters,
-    selectableOptions: undefined
+    filters,
+    selectableOptions: undefined,
+    ...(searchMatchBadges.length ? { searchMatchBadges } : {})
   }
 }
 
@@ -2757,7 +2805,17 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             if (clientTotal != null) {
               console.log('[AI Search] Pagination fast path: client filters + total, LLM skipped')
               if (alreadyShown >= clientTotal) {
-                return buildSearchPaginationApiResponse(normalizedFromClient, [], clientTotal, alreadyShown, paginationPageSize)
+                return await finalizeSearchPaginationApiResponse(
+                  supabaseUrl,
+                  supabaseKey,
+                  message,
+                  interpretTurn,
+                  normalizedFromClient,
+                  [],
+                  clientTotal,
+                  alreadyShown,
+                  paginationPageSize
+                )
               }
               const queryResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, normalizedFromClient, {
                 offset: alreadyShown,
@@ -2769,7 +2827,17 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               } else {
                 const nextShops = pageShops || []
                 console.log(`[AI Search] Pagination fast path: offset=${alreadyShown} limit=${paginationPageSize} rows=${nextShops.length} total=${clientTotal}`)
-                return buildSearchPaginationApiResponse(normalizedFromClient, nextShops, clientTotal, alreadyShown, paginationPageSize)
+                return await finalizeSearchPaginationApiResponse(
+                  supabaseUrl,
+                  supabaseKey,
+                  message,
+                  interpretTurn,
+                  normalizedFromClient,
+                  nextShops,
+                  clientTotal,
+                  alreadyShown,
+                  paginationPageSize
+                )
               }
             } else {
               console.log('[AI Search] Pagination: client filters only (no total) — DB full page, LLM skipped')
@@ -2782,7 +2850,17 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 const resultCount = full.length
                 const nextShops = full.slice(alreadyShown, alreadyShown + paginationPageSize)
                 console.log(`[AI Search] Pagination filters-only: alreadyShown=${alreadyShown} pageSize=${paginationPageSize} resultCount=${resultCount}`)
-                return buildSearchPaginationApiResponse(normalizedFromClient, nextShops, resultCount, alreadyShown, paginationPageSize)
+                return await finalizeSearchPaginationApiResponse(
+                  supabaseUrl,
+                  supabaseKey,
+                  message,
+                  interpretTurn,
+                  normalizedFromClient,
+                  nextShops,
+                  resultCount,
+                  alreadyShown,
+                  paginationPageSize
+                )
               }
             }
           } catch (fastPathErr) {
@@ -2849,7 +2927,17 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               console.log(`[AI Search] Pagination (LLM): already shown ${alreadyShown} shops, total results: ${resultCount}, pageSize: ${paginationPageSize}`)
 
               const nextShops = (shops || []).slice(alreadyShown, alreadyShown + paginationPageSize)
-              return buildSearchPaginationApiResponse(lastFilters, nextShops, resultCount, alreadyShown, paginationPageSize)
+              return await finalizeSearchPaginationApiResponse(
+                supabaseUrl,
+                supabaseKey,
+                message,
+                interpretTurn,
+                lastFilters,
+                nextShops,
+                resultCount,
+                alreadyShown,
+                paginationPageSize
+              )
             }
           }
         } catch (paginationError) {
@@ -2915,9 +3003,10 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
       if (nluActivityForHint.length > 0) {
         nluHint += `\n\n[System hint for FILTERS: match dive style / environment — ${nluActivityForHint.join(', ')}]`
       }
-      if (interpretTurn?.certification_course_hint?.trim()) {
+      const effectiveCertForNlu = resolveEffectiveCertificationCourseHint(message, interpretTurn ?? null)
+      if (effectiveCertForNlu?.trim()) {
         nluHint +=
-          `\n\n[System hint: user wants shops that offer a certification/course matching — ${interpretTurn.certification_course_hint.trim()}]`
+          `\n\n[System hint: user wants shops that offer a certification/course matching — ${effectiveCertForNlu.trim()}]`
       }
       if (interpretTurn?.dive_site_type_label?.trim()) {
         nluHint +=

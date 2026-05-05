@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   extractJsonObject,
+  inferCertificationCourseHintFromUserMessage,
   isGarbageReferentPhrase,
   mergeActivityIntoFilters,
   mergeNluHintsIntoFilters,
   normalizeActivityTerms,
   parseInterpretedTurnFromModelText,
   pickReferentPhraseForProbe,
+  resolveEffectiveCertificationCourseHint,
   shouldRunInterpretNlu
 } from '../../server/utils/interpretUserTurn'
 
@@ -101,6 +103,35 @@ describe('mergeNluHintsIntoFilters', () => {
       { goal: 'search_shops', destination_text: 'Bali' }
     )
     expect(out.locale).toBe('Bali')
+  })
+})
+
+describe('inferCertificationCourseHintFromUserMessage / resolveEffectiveCertificationCourseHint', () => {
+  it('infers Advanced from advanced certification courses phrasing', () => {
+    expect(
+      inferCertificationCourseHintFromUserMessage(
+        'Shops in Mexico that offer advanced certification courses'
+      )
+    ).toBe('Advanced')
+  })
+
+  it('prefers NLU certification_course_hint over inference', () => {
+    expect(
+      resolveEffectiveCertificationCourseHint('anything', {
+        goal: 'search_shops',
+        certification_course_hint: 'Nitrox'
+      })
+    ).toBe('Nitrox')
+  })
+
+  it('falls back to inference when NLU omits course hint', () => {
+    expect(
+      resolveEffectiveCertificationCourseHint('Looking for shops in Cozumel with advanced courses', {
+        goal: 'search_shops',
+        destination_text: 'Cozumel',
+        certification_course_hint: null
+      })
+    ).toBe('Advanced')
   })
 })
 
