@@ -29,7 +29,7 @@
 
           <!-- Messages Container -->
           <div ref="messagesContainer"
-            class="flex-1 overflow-y-auto p-2 md:p-4 flex flex-col gap-2 *:mx-auto *:w-full">
+            class="flex-1 overflow-y-auto p-2 md:p-4 flex flex-col gap-4 *:mx-auto *:w-full">
 
             <div v-if="messages.length === 0" class="flex flex-col items-center justify-center gap-8 h-full w-full">
               <div class="text-center flex flex-col gap-5 items-center max-w-4xl">
@@ -59,7 +59,7 @@
             <div v-for="(msg, index) in messages" :key="index" class="max-w-2xl">
               <!-- User message -->
               <div v-if="msg.role === 'user'" class="flex justify-end">
-                <div class="max-w-[80%] bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-50 rounded-lg p-2 px-4">
+                <div class="max-w-[80%] bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-50 rounded-lg p-2 px-4">
                   <p class="text-sm lg:text-base">{{ msg.content }}</p>
                 </div>
               </div>
@@ -81,7 +81,7 @@
                   <!-- AI text response (chevron inside bubble when shown) -->
                   <div
                     v-if="msg.content && !(msg.shops && msg.shops.length > 0)"
-                    class="p-2 px-4 flex items-stretch gap-2"
+                    class="bg-zinc-50 dark:bg-zinc-800 p-2 flex items-stretch gap-2 rounded-lg"
                   >
                     <p class="text-sm lg:text-base text-zinc-800 dark:text-zinc-50 whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis">{{ msg.content }}
                     </p>
@@ -127,7 +127,7 @@
 
                   <div
                     v-if="msg.content && msg.shops && msg.shops.length > 0"
-                    class="p-2 px-4 flex items-stretch gap-2"
+                    class="bg-zinc-50 dark:bg-zinc-800 p-2 flex items-stretch gap-2 rounded-lg"
                   >
                     <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis">{{ msg.content }}
                     </p>
