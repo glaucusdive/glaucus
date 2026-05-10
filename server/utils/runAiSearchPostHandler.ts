@@ -620,8 +620,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
     const supabaseUrl = config.public.supabaseUrl
     const supabaseKey = config.public.supabaseKey
     const chatAiOff =
-      String(config.public.disableChatAi ?? (process.env.NODE_ENV === 'production' ? 'true' : 'false')).toLowerCase() !==
-      'false'
+      String(config.public.disableChatAi ?? 'false').toLowerCase() !== 'false'
 
     if (!continuingBooking && supabaseUrl && supabaseKey) {
       const shopInfoTurn = await tryShopInfoResponse(message, selectedShopId, lastShops, supabaseUrl, supabaseKey)
