@@ -5,7 +5,7 @@
       <!-- Title -->
       <header class="flex flex-row justify-start items-stretch gap-0 divide-x divide-zinc-300 dark:divide-zinc-700">
         <div class="p-1 lg:p-2 grow flex items-center overflow-auto">
-          <h1 class="text-sm cq:lg:text-3xl font-medium p-0 leading-none cq:lg:px-2 w-full truncate text-zinc-900 dark:text-white">{{
+          <h1 class="text-sm sm:text-2xl font-medium p-0 leading-none cq:lg:px-2 w-full truncate text-zinc-900 dark:text-white">{{
             shopData?.business_name ||
             'Loading...' }}</h1>
         </div>
