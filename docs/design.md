@@ -45,7 +45,7 @@ Add new brand colors here **before** scattering hex across components.
 
 ### Buttons
 
-- Use **Nuxt UI** `UButton` (or project primitives) where the app already does; for bespoke landing CTAs, keep **rounded corners**, clear **hover** (`transition-colors`), and **focus-visible** ring (Tailwind `focus-visible:outline-none focus-visible:ring-2` pattern) so keyboard users get a visible target.
+- Use **Nuxt UI** `UButton` (or project primitives) where the app already does; for bespoke landing CTAs, keep **rounded corners**, clear **hover** (``), and **focus-visible** ring (Tailwind `focus-visible:outline-none focus-visible:ring-2` pattern) so keyboard users get a visible target.
 - **Primary on dark:** Light-filled button with dark label is the current landing pattern; mirror for other high-contrast CTAs.
 
 ### Inputs
@@ -59,7 +59,7 @@ Add new brand colors here **before** scattering hex across components.
 
 ### States (hover, focus, disabled)
 
-- **Hover:** Slightly shift background or opacity; keep transitions short (`transition-colors`).
+- **Hover:** Slightly shift background or opacity; keep transitions short (``).
 - **Focus:** Always visible for interactive elements; never `outline-none` without a replacement ring.
 - **Disabled:** Lower contrast and `pointer-events-none` / `disabled:` attributes as appropriate; do not rely on color alone.
 

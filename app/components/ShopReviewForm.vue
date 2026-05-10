@@ -8,7 +8,7 @@
         <h2 class="text-base font-medium truncate text-zinc-900 dark:text-white">
           {{ isEditing ? 'Edit review' : 'Review' }} · {{ shopName }}
         </h2>
-        <button type="button" class="lg:p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-sm transition-colors cursor-pointer text-zinc-900 dark:text-white" @click="closeDrawer">
+        <button type="button" class="lg:p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-sm  cursor-pointer text-zinc-900 dark:text-white" @click="closeDrawer">
           <X class="w-5 h-5" />
         </button>
       </div>
@@ -65,7 +65,7 @@
         <button
           type="submit"
           :disabled="submitting || deleting || !body.trim()"
-          class="mx-2 border border-zinc-900 dark:border-zinc-100 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          class="mx-2 border border-zinc-900 dark:border-zinc-100 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium py-3 px-4 rounded-md  w-full cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {{ submitting ? 'Saving…' : (isEditing ? 'Update review' : 'Submit review') }}
         </button>
@@ -74,7 +74,7 @@
           v-if="isEditing && reviewId"
           type="button"
           :disabled="submitting || deleting"
-          class="mx-2 mb-2 border border-red-600/60 dark:border-red-500/60 text-red-700 dark:text-red-400 font-medium py-2 px-4 rounded-md transition-colors w-full cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="mx-2 mb-2 border border-red-600/60 dark:border-red-500/60 text-red-700 dark:text-red-400 font-medium py-2 px-4 rounded-md  w-full cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50 disabled:cursor-not-allowed"
           @click="handleDelete"
         >
           {{ deleting ? 'Deleting…' : 'Delete review' }}

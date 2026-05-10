@@ -3,7 +3,7 @@
     v-if="!disabled"
     :to="to"
     :class="[
-      'text-sm font-medium bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 px-4 py-2 rounded-sm transition-colors inline-flex items-center gap-2 w-full',
+      'text-sm font-medium bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 px-4 py-2 rounded-sm  inline-flex items-center gap-2 w-full',
       isActive ? '!bg-zinc-200/50 dark:!bg-zinc-800/50 !text-black dark:!text-white' : 'text-zinc-600 dark:text-zinc-400'
     ]"
     @click="handleClick"
@@ -13,7 +13,7 @@
   <span
     v-else
     :class="[
-      'text-sm font-medium bg-transparent px-4 py-2 rounded-sm transition-colors opacity-50 cursor-not-allowed text-zinc-600 dark:text-zinc-400 inline-flex items-center gap-2 w-full'
+      'text-sm font-medium bg-transparent px-4 py-2 rounded-sm  opacity-50 cursor-not-allowed text-zinc-600 dark:text-zinc-400 inline-flex items-center gap-2 w-full'
     ]"
   >
     <slot />

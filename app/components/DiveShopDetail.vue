@@ -1,33 +1,32 @@
 <template>
-  <div class="container-query flex flex-col justify-between h-full gap-0 divide-y divide-zinc-300 dark:divide-zinc-700">
+  <div class="container-query flex flex-col justify-between h-full gap-0 divide-y divide-zinc-200 dark:divide-zinc-800">
     <!-- Header -->
-    <div class="flex flex-col justify-center z-40 w-full divide-y divide-zinc-300 dark:divide-zinc-700">
+    <div class="flex flex-col justify-center z-40 w-full divide-y divide-zinc-200 dark:divide-zinc-800">
       <!-- Title -->
-      <header class="flex flex-row justify-start items-stretch gap-0 divide-x divide-zinc-300 dark:divide-zinc-700">
-        <div class="p-1 lg:p-2 grow flex items-center overflow-auto">
-          <h1 class="text-sm sm:text-2xl font-medium p-0 leading-none cq:lg:px-2 w-full truncate text-zinc-900 dark:text-white">{{
+      <header class="flex flex-row justify-start items-stretch gap-0 divide-x divide-zinc-200 dark:divide-zinc-800">
+        <div class="p-2 sm:p-4 grow flex items-center overflow-auto">
+          <h1 class="text-sm sm:text-2xl font-medium p-0 leading-none lg:px-2 w-full truncate text-zinc-900 dark:text-white">{{
             shopData?.business_name ||
             'Loading...' }}</h1>
         </div>
-        <div v-if="testMode" class="p-1 flex items-center">
-          <button @click="toggleDemoMode" class="h-full text-xs px-3 py-1 rounded-sm transition-colors cursor-pointer border border-zinc-800"
-            :class="isDemoMode ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'">
+        <div v-if="testMode" class="p-2 sm:p-4 flex items-center">
+          <button @click="toggleDemoMode" class="max-h-8 h-full text-xs px-3 py-1 rounded-sm  cursor-pointer bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-700 dark:hover:bg-zinc-600">
             {{ isDemoMode ? 'Demo' : 'Live' }}
           </button>
         </div>
-        <div class="p-1 flex items-center">
+        <div class="p-2 sm:p-4 flex items-center">
           <div
             class="hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-sm min-w-8 w-full h-full flex items-center justify-center cursor-pointer px-1"
             @click.stop="handleClose">
-            <ChevronLeft v-if="!showCloseButton" class="w-4 h-4 cq:lg:w-6 cq:lg:h-6 text-zinc-900 dark:text-white" />
-            <X v-else class="w-4 h-4 cq:lg:w-6 cq:lg:h-6 text-zinc-900 dark:text-white" />
+            <ChevronLeft v-if="!showCloseButton" class="w-4 h-4 lg:w-6 lg:h-6 text-zinc-900 dark:text-white" />
+            <X v-else class="w-4 h-4 lg:w-6 lg:h-6 text-zinc-900 dark:text-white" />
           </div>
         </div>
       </header>
       <!-- Tabs -->
       <div class="flex flex-row gap-1 items-center p-1 lg:p-2 overflow-x-auto font-medium">
         <button v-for="tab in visibleTabs" :key="tab.id" @click="activeTab = tab.id" :class="[
-          'flex flex-row gap-2 rounded-sm p-2 px-3 w-fit text-xs cq:lg:text-base cursor-pointer transition-color whitespace-nowrap',
+          'flex flex-row gap-2 rounded-sm p-2 px-3 w-fit text-xs lg:text-base cursor-pointer transition-color whitespace-nowrap',
           activeTab === tab.id
             ? 'bg-zinc-200/50 dark:bg-zinc-800 text-zinc-900 dark:text-white'
             : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/40 dark:hover:bg-zinc-800/50'
@@ -37,19 +36,19 @@
       </div>
     </div>
     <!-- Content -->
-    <div class="w-full h-0 flex-1 cq:lg:overflow-y-auto">
+    <div class="w-full h-0 flex-1 lg:overflow-y-auto">
       <!-- Main Content with Sidebar -->
       <div
-        class="flex flex-col cq:lg:flex-row justify-between cq:lg:justify-stretch items-start cq:lg:items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 cq:divide-zinc-700 divide-zinc-700 dark:divide-zinc-700 w-full h-full">
+        class="flex flex-col lg:flex-row justify-between lg:justify-stretch items-start lg:items-stretch gap-0 divide-y lg:divide-x lg:divide-y-0 divide-zinc-200 dark:divide-zinc-800 w-full h-full">
         <!-- Tab Content -->
-        <div class="w-full flex flex-col border-b-0 cq:lg:order-1 overflow-y-auto">
+        <div class="w-full flex flex-col border-b-0 lg:order-1 overflow-y-auto">
           <div class="flex flex-col gap-4 h-full w-full p-0">
             <!-- Dive Destinations Tab -->
             <div v-if="activeTab === 'destinations'" class="flex flex-col gap-2 p-2 h-full">
               <div v-if="groupedDestinations.length === 0" class="text-zinc-500 dark:text-zinc-400 italic p-4">
                 No dive destinations listed.
               </div>
-              <div v-else class="grid grid-cols-1 cq:grid-cols-2 cq:lg:grid-cols-1 gap-2">
+              <div v-else class="grid grid-cols-1 gap-2">
                 <CardInfo
                   v-for="dest in groupedDestinations"
                   :key="dest.title"
@@ -59,11 +58,11 @@
               </div>
             </div>
             <!-- Courses Tab -->
-            <div v-if="activeTab === 'courses'" class="flex flex-col gap-4 p-2 lg:p-4 h-full overflow-y-auto">
+            <div v-if="activeTab === 'courses'" class="flex flex-col gap-4 p-2 sm:p-4 h-full overflow-y-auto">
               <div v-if="coursesList.length === 0" class="text-zinc-500 dark:text-zinc-400 italic p-4">
                 No courses listed.
               </div>
-              <div v-else class="grid grid-cols-1 cq:grid-cols-2 gap-2">
+              <div v-else class="grid grid-cols-1 grid-cols-2 gap-2">
                 <CardInfo
                   v-for="(course, idx) in coursesList"
                   :key="course.title + String(idx)"
@@ -73,8 +72,8 @@
               </div>
             </div>
             <!-- More Information Tab -->
-            <div v-if="activeTab === 'information'" class="flex flex-col gap-4 p-2 lg:p-4 h-full overflow-y-auto">
-              <div v-if="SHOW_INFORMATION_HOURS_LANGUAGES_DETAILS" class="flex flex-col cq:lg:flex-row gap-2">
+            <div v-if="activeTab === 'information'" class="flex flex-col gap-4 p-2 sm:p-4 h-full overflow-y-auto">
+              <div v-if="SHOW_INFORMATION_HOURS_LANGUAGES_DETAILS" class="flex flex-col lg:flex-row gap-2">
                 <CardInfo title="Hours" :items="displayHours" empty-message="Hours not available" />
                 <CardInfo title="Languages" :items="displayLanguages || []" display-mode="text" empty-message="Languages not available" />
                 <CardInfo title="Details" empty-message="No description available for this dive shop.">
@@ -114,7 +113,7 @@
                 -->
               </div>
             </div>
-            <div v-if="activeTab === 'reviews'" class="flex flex-col gap-4 p-2 lg:p-4 h-full overflow-y-auto">
+            <div v-if="activeTab === 'reviews'" class="flex flex-col gap-4 p-2 sm:p-4 h-full overflow-y-auto">
               <div class="flex flex-row items-center justify-between gap-2 flex-wrap">
                 <h3 class="text-sm font-semibold text-zinc-900 dark:text-white">All reviews</h3>
                 <button
@@ -139,14 +138,14 @@
                 <!-- Lead: guest sign-in, compose (signed in, no review), my CardReview, or inline edit form -->
                 <div
                   v-if="!isSignedIn"
-                  class="w-full max-w-full min-w-0 flex-[1_1_100%] sm:flex-[1_1_calc(50%-4px)] p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-md flex flex-col gap-3 border border-zinc-200/80 dark:border-zinc-600/80"
+                  class="w-full max-w-full min-w-0 flex-[1_1_100%] sm:flex-[1_1_calc(50%-4px)] p-4 bg-zinc-50 dark:bg-zinc-800/30 rounded-md flex flex-col gap-3 border border-zinc-200/80 dark:border-zinc-800"
                 >
                   <p class="text-sm text-zinc-600 dark:text-zinc-400">
                     Sign in to leave a review for this dive shop.
                   </p>
                   <NuxtLink
                     to="/auth"
-                    class="inline-flex justify-center rounded-md border border-zinc-900 dark:border-zinc-100 py-2 px-4 text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 w-full sm:w-auto"
+                    class="w-full sm:w-auto inline-flex justify-center rounded-md py-2 px-4 text-base font-medium text-zinc-900 dark:text-zinc-900 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-100 dark:hover:bg-zinc-50"
                   >
                     Sign in
                   </NuxtLink>
@@ -220,12 +219,12 @@
               </div>
             </div>
             <!-- Nearby Dive Shops Tab -->
-            <div v-if="showNearbyTab && activeTab === 'nearby'" class="flex flex-col gap-4 p-2 lg:p-4 h-full overflow-y-auto">
+            <div v-if="showNearbyTab && activeTab === 'nearby'" class="flex flex-col gap-4 p-2 sm:p-4 h-full overflow-y-auto">
               <section class="flex flex-col gap-4">
                 <p v-if="nearbyShops.length === 0" class="text-zinc-500 dark:text-zinc-400 italic p-4">
                   No nearby dive shops in this region.
                 </p>
-                <div v-else class="grid grid-cols-1 cq:grid-cols-2 gap-2">
+                <div v-else class="grid grid-cols-1 grid-cols-2 gap-2">
                   <NuxtLink
                     v-for="shop in nearbyShops"
                     :key="shop.id"
@@ -247,54 +246,54 @@
         </div>
         <!-- Sidebar -->
         <div
-          class="w-full cq:lg:min-w-1/2 cq:lg:w-1/2 cq:xl:min-w-1/3 cq:xl:w-1/3 p-2 h-auto cq:xl:h-full cq:lg:order-1 sticky bottom-0 cq:2xl:bottom-auto bg-zinc-50 dark:bg-zinc-900">
+          class="w-full lg:w-1/3 p-2 sm:p-4 h-auto lg:order-1 sticky bottom-0 2xl:bottom-auto bg-zinc-50 dark:bg-zinc-900">
           <div class="h-full">
             <div class="flex flex-col gap-2">
               <!-- Book Now / Show form Button (hidden in chat detail drawer while form UX is redesigned) -->
               <div
                 v-if="showBookingCta"
                 ref="bookingCtaAnchor"
-                class="flex flex-col gap-2 cq:lg:p-4 bg-zinc-100 dark:bg-zinc-800 rounded-md cq:lg:order-1 scroll-mt-4"
+                class="flex flex-col gap-2 lg:p-4 bg-zinc-100 dark:bg-zinc-800 rounded-md lg:order-1 scroll-mt-4"
               >
-                <h2 class="hidden cq:lg:block cq:lg:text-2xl font-semibold text-zinc-900 dark:text-white">Book Now</h2>
-                <p class="hidden cq:lg:block text-sm text-zinc-600 dark:text-zinc-400">
+                <h2 class="hidden lg:block lg:text-2xl font-semibold text-zinc-900 dark:text-white">Book Now</h2>
+                <p class="hidden lg:block text-sm text-zinc-600 dark:text-zinc-400">
                   {{ isInBookingFlow ? (isFormOpen ? 'Booking form is open. Click to hide it.' : 'View or edit your booking details in the form.') : 'Ready to dive? Click below to start your booking.' }}
                 </p>
                 <button @click="handleBookingButtonClick"
-                  class="border border-zinc-400 dark:border-zinc-500 hover:border-zinc-800 dark:hover:border-zinc-200 bg-transparent dark:bg-transparent text-zinc-800 dark:text-white font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">
+                  class="border border-zinc-400 dark:border-zinc-500 hover:border-zinc-800 dark:hover:border-zinc-200 bg-transparent dark:bg-transparent text-zinc-800 dark:text-white font-medium py-3 px-4 rounded-md  w-full cursor-pointer">
                   {{ isInBookingFlow ? (isFormOpen ? 'Hide form' : 'Show form') : 'Start Booking' }}
                 </button>
               </div>
               <!-- Contact Information -->
-              <div class="flex flex-col gap-2 border border-zinc-300 dark:border-zinc-700 rounded-md cq:lg:order-2">
-                <ul class="flex flex-row cq:lg:flex-col justify-between lg:justify-start divide-x lg:divide-x-0 lg:divide-y divide-zinc-300 dark:divide-zinc-700">
-                  <li class="w-full flex justify-center cq:lg:justify-start" v-if="contactInfo?.address">
+              <div class="flex flex-col gap-2 border border-zinc-300 dark:border-zinc-800 rounded-md lg:order-2">
+                <ul class="flex flex-row lg:flex-col justify-between lg:justify-start divide-x lg:divide-x-0 lg:divide-y divide-zinc-200 dark:divide-zinc-800">
+                  <li class="w-full flex justify-center lg:justify-start" v-if="contactInfo?.address">
                     <a :href="`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contactInfo.address)}`"
                       target="_blank" class="w-full justify-center p-4 flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 overflow-hidden">
                       <MapPin class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
-                      <span class="hidden cq:lg:block truncate">{{ contactInfo.address }}</span>
+                      <span class="hidden lg:block truncate">{{ contactInfo.address }}</span>
                     </a>
                   </li>
-                  <li class="w-full flex justify-center cq:lg:justify-start" v-if="contactInfo?.phone">
+                  <li class="w-full flex justify-center lg:justify-start" v-if="contactInfo?.phone">
                     <div class="w-full justify-center lg:justify-start flex flex-row gap-4 items-center">
                       <a :href="`tel:${contactInfo.phone}`" class="p-4 flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
                         <Phone class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
-                        <span class="hidden cq:lg:block">{{ contactInfo.phone }}</span>
+                        <span class="hidden lg:block">{{ contactInfo.phone }}</span>
                       </a>
                     </div>
                   </li>
-                  <li class="w-full flex justify-center cq:lg:justify-start" v-if="contactInfo?.email">
+                  <li class="w-full flex justify-center lg:justify-start" v-if="contactInfo?.email">
                     <div class="flex flex-row gap-4 items-center">
                       <a :href="`mailto:${contactInfo.email}`" class="p-4 flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
                         <Mail class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
-                        <span class="hidden cq:lg:block">{{ contactInfo.email }}</span>
+                        <span class="hidden lg:block">{{ contactInfo.email }}</span>
                       </a>
                     </div>
                   </li>
-                  <li class="w-full flex justify-center cq:lg:justify-start" v-if="contactInfo?.website">
+                  <li class="w-full flex justify-center lg:justify-start" v-if="contactInfo?.website">
                     <a :href="contactInfo.website" target="_blank" class="p-4 flex flex-row gap-4 items-center text-zinc-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
                       <Globe class="min-w-4 max-w-4 h-4 text-zinc-600 dark:text-zinc-400" />
-                      <span class="hidden cq:lg:block truncate">{{ contactInfo.website }}</span>
+                      <span class="hidden lg:block truncate">{{ contactInfo.website }}</span>
                     </a>
                   </li>
                 </ul>

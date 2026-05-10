@@ -34,7 +34,7 @@
               >
                 <button
                   type="button"
-                  class="w-full flex items-center gap-2 text-left px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200 rounded-sm transition-colors cursor-pointer bg-transparent"
+                  class="w-full flex items-center gap-2 text-left px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200 rounded-sm  cursor-pointer bg-transparent"
                   @click="onSidebarNewChat"
                 >
                   <FilePlus class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" />
@@ -44,7 +44,7 @@
                   v-for="c in sidebarChats"
                   :key="c.id"
                   type="button"
-                  class="w-full text-left py-2 px-3 rounded-md text-sm border transition-colors cursor-pointer flex flex-row justify-between items-baseline gap-0.5"
+                  class="w-full text-left py-2 px-3 rounded-md text-sm border  cursor-pointer flex flex-row justify-between items-baseline gap-0.5"
                   :class="c.isActive
                     ? 'border-blue-500 bg-blue-50 dark:bg-zinc-900 text-zinc-900 dark:text-white'
                     : 'border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'"
@@ -67,7 +67,7 @@
             <button
               v-if="isSignedIn"
               type="button"
-              class="w-full flex items-center gap-2 text-left px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200 rounded-sm transition-colors cursor-pointer bg-transparent"
+              class="w-full flex items-center gap-2 text-left px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200 rounded-sm  cursor-pointer bg-transparent"
               @click="handleSignOut"
             >
               <LogOut class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" />

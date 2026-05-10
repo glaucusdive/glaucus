@@ -9,7 +9,7 @@
       <div class="inline-flex rounded-md border border-zinc-300 dark:border-zinc-600 p-1 mb-6">
         <button
           type="button"
-          class="px-3 py-1.5 text-sm font-medium rounded cursor-pointer transition-colors"
+          class="px-3 py-1.5 text-sm font-medium rounded cursor-pointer "
           :class="activeTab === 'incomplete' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'"
           @click="activeTab = 'incomplete'"
         >
@@ -17,7 +17,7 @@
         </button>
         <button
           type="button"
-          class="px-3 py-1.5 text-sm font-medium rounded cursor-pointer transition-colors"
+          class="px-3 py-1.5 text-sm font-medium rounded cursor-pointer "
           :class="activeTab === 'sent' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'"
           @click="activeTab = 'sent'"
         >
@@ -42,11 +42,11 @@
             </div>
             <div class="flex gap-2 shrink-0">
               <button type="button" @click="resumeDraft(d)" :disabled="resumeLoading === d.id"
-                class="px-3 py-1.5 text-sm font-medium rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 cursor-pointer transition-colors">
+                class="px-3 py-1.5 text-sm font-medium rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 cursor-pointer ">
                 {{ resumeLoading === d.id ? 'Opening…' : 'Resume' }}
               </button>
               <button type="button" @click="deleteDraft(d.id)" :disabled="deleteLoading === d.id"
-                class="px-3 py-1.5 text-sm font-medium rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-50 cursor-pointer transition-colors">
+                class="px-3 py-1.5 text-sm font-medium rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-50 cursor-pointer ">
                 {{ deleteLoading === d.id ? 'Deleting…' : 'Delete' }}
               </button>
             </div>
@@ -72,7 +72,7 @@
               </div>
               <button
                 type="button"
-                class="px-3 py-1.5 text-sm font-medium rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 cursor-pointer transition-colors"
+                class="px-3 py-1.5 text-sm font-medium rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 cursor-pointer "
                 @click="toggleSubmissionDetails(s.id)"
               >
                 {{ expandedSubmissionIds.has(s.id) ? 'Hide details' : 'View details' }}

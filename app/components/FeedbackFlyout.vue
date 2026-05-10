@@ -2,7 +2,7 @@
   <div ref="rootRef" class="relative z-0 w-full h-full">
     <button
       type="button"
-      class="relative z-[2101] w-full h-full flex items-center justify-center border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 rounded-full cursor-pointer text-zinc-900 dark:text-white bg-zinc-50 dark:bg-black"
+      class="relative z-[2101] w-full h-full flex items-center justify-center border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 rounded-full cursor-pointer text-zinc-500 dark:text-white bg-zinc-50 dark:bg-black"
       aria-label="Help and feedback"
       :aria-expanded="open"
       aria-haspopup="dialog"
@@ -147,7 +147,7 @@
 
         <div class="sticky bottom-0 w-full">
           <button type="submit" :disabled="submitting"
-            class="mt-1 border border-zinc-900 dark:border-zinc-100 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium py-2.5 px-3 rounded-md text-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full">
+            class="mt-1 border border-zinc-900 dark:border-zinc-100 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium py-2.5 px-3 rounded-md text-sm  cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full">
             {{ submitting ? 'Sending…' : 'Submit' }}
           </button>
         </div>
