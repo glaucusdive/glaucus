@@ -38,6 +38,7 @@ import {
 import { inferSearchFiltersFromDestination } from '../utils/destinationToSearchFilters'
 import { normalizeClientSearchFilters } from '../utils/normalizeClientSearchFilters'
 import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from '../utils/openAiChatModel'
+import { resolveOpenAiApiKey } from '../utils/openAiApiKey'
 import { tryApplySearchFilterRelax } from '../utils/searchFilterRelaxFromFollowUp'
 import { resolveBookingTargetFromPhrase } from '../utils/resolveBookingTarget'
 import { extractMidBookingShopSwitchPhrase, userMessageWantsResumeSearchDuringBooking } from '../utils/bookingFlowEscape'
@@ -616,7 +617,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
     }
 
     const config = useRuntimeConfig()
-    const openaiApiKey = config.openaiApiKey as string
+    const openaiApiKey = resolveOpenAiApiKey(config.openaiApiKey)
     const supabaseUrl = config.public.supabaseUrl
     const supabaseKey = config.public.supabaseKey
     const chatAiOff =
@@ -630,7 +631,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
     }
 
     if (!chatAiOff && !openaiApiKey) {
-      throw new Error('OpenAI API key not configured (set NUXT_OPENAI_API_KEY)')
+      throw new Error('OpenAI API key not configured (set NUXT_OPENAI_API_KEY or OPENAI_API_KEY for serverless)')
     }
     return await runWithRetries(async () => {
       const authUser = await getAuthUser(event)

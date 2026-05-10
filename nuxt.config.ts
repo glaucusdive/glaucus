@@ -8,8 +8,12 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Private keys — empty defaults so secrets are not baked into the Nitro bundle (Netlify secrets scan).
     // Nuxt merges NUXT_* env at server runtime; booking/geocode also read RESEND_* / SUPABASE_* fallbacks.
-    /** OpenAI API key for GPT-5.5 (NLU, search, booking chat). Set `NUXT_OPENAI_API_KEY` in env. */
-    openaiApiKey: process.env.NUXT_OPENAI_API_KEY || process.env.OPENAI_API_KEY || '',
+    /**
+     * OpenAI API key for GPT-5.5 (NLU, search, booking chat). Default empty so the
+     * key is not baked at build time; set `NUXT_OPENAI_API_KEY` (or `OPENAI_API_KEY`
+     * at function runtime — see `resolveOpenAiApiKey` in server code) on the host.
+     */
+    openaiApiKey: '',
     resendApiKey: '',
     /** From address for booking emails (e.g. "Glaucus <bookings@yourdomain.com>"). Defaults to Resend onboarding domain if unset. */
     bookingFromEmail: process.env.BOOKING_FROM_EMAIL || 'Glaucus <onboarding@resend.dev>',
