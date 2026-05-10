@@ -45,7 +45,13 @@ export default defineNuxtConfig({
        * When 'true', pre-booking search uses the orchestrator (NLU + search LLM) instead of chip-first /api/guided-flow.
        * Requires NUXT_PUBLIC_DISABLE_CHAT_AI=false and `NUXT_OPENAI_API_KEY`. Default: false (guided remains primary).
        */
-      aiSearchFirst: process.env.NUXT_PUBLIC_AI_SEARCH_FIRST ?? 'false'
+      aiSearchFirst: process.env.NUXT_PUBLIC_AI_SEARCH_FIRST ?? 'false',
+      /**
+       * Test mode: amber inset on the shell, booking whitelist (Dive Porter / Dive Shash only),
+       * dive shop Live/Demo toggle, chat “Step back”. Flip to `false` to turn off.
+       * Deploys can set `NUXT_PUBLIC_TEST_MODE` without editing this file (string `true` / `false`).
+       */
+      testMode: true
     }
   }
 })

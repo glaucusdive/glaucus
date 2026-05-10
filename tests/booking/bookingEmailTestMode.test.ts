@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { isBookingEmailAllowedInTestMode } from '../../shared/bookingEmailTestMode'
+import { isBookingEmailAllowedInTestMode, isTestModeEnabled } from '../../shared/testMode'
+
+describe('isTestModeEnabled', () => {
+  it('normalizes booleans and common string env values', () => {
+    expect(isTestModeEnabled(true)).toBe(true)
+    expect(isTestModeEnabled(false)).toBe(false)
+    expect(isTestModeEnabled('true')).toBe(true)
+    expect(isTestModeEnabled('false')).toBe(false)
+    expect(isTestModeEnabled('')).toBe(false)
+    expect(isTestModeEnabled(undefined)).toBe(false)
+  })
+})
 
 describe('isBookingEmailAllowedInTestMode', () => {
   it('allows Dive Porter and Dive Shash (case-insensitive)', () => {

@@ -1,20 +1,20 @@
 import { ref, computed } from 'vue'
-import { BOOKING_EMAIL_TEST_MODE } from '#shared/bookingEmailTestMode'
+import { useTestMode } from '~/composables/useTestMode'
 
-// Global demo mode state - shared across all components (only applies when booking email test mode is on)
+// Global demo mode state - shared across all components (only applies when test mode is on)
 const isDemoMode = ref(false)
 
-/** True when demo sample data should be shown (toggle exists only in test mode). */
-const showDemoData = computed(() => BOOKING_EMAIL_TEST_MODE && isDemoMode.value)
-
 export const useDemoMode = () => {
+  const testMode = useTestMode()
+  const showDemoData = computed(() => testMode.value && isDemoMode.value)
+
   const toggleDemoMode = () => {
-    if (!BOOKING_EMAIL_TEST_MODE) return
+    if (!testMode.value) return
     isDemoMode.value = !isDemoMode.value
   }
 
   const enableDemoMode = () => {
-    if (!BOOKING_EMAIL_TEST_MODE) return
+    if (!testMode.value) return
     isDemoMode.value = true
   }
 

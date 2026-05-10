@@ -9,7 +9,7 @@
             shopData?.business_name ||
             'Loading...' }}</h1>
         </div>
-        <div v-if="BOOKING_EMAIL_TEST_MODE" class="p-1 flex items-center">
+        <div v-if="testMode" class="p-1 flex items-center">
           <button @click="toggleDemoMode" class="h-full text-xs px-3 py-1 rounded-sm transition-colors cursor-pointer border border-zinc-800"
             :class="isDemoMode ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'">
             {{ isDemoMode ? 'Demo' : 'Live' }}
@@ -317,7 +317,6 @@ import { useDrawer } from '~/composables/useDrawer'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/composables/useSupabase'
 import { useDemoMode } from '~/composables/useDemoMode'
-import { BOOKING_EMAIL_TEST_MODE } from '#shared/bookingEmailTestMode'
 import { deleteShopReview } from '~/composables/useShopReviews'
 import { formatOperatingHours, demoHours, demoLanguages, demoDescription } from '~/utils/formatHours'
 
@@ -506,7 +505,9 @@ function formatReviewDate (iso) {
   }
 }
 
-// Demo mode: Live/Demo toggle only when BOOKING_EMAIL_TEST_MODE; sample data uses showDemoData
+const testMode = useTestMode()
+
+// Demo mode: Live/Demo toggle only when test mode is on; sample data uses showDemoData
 const { isDemoMode, showDemoData, toggleDemoMode } = useDemoMode()
 
 // Computed properties for dynamic truncation (description from notes)

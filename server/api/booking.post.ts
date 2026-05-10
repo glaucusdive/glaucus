@@ -1,9 +1,6 @@
 import { Resend } from 'resend'
 import type { H3Event } from 'h3'
-import {
-  BOOKING_EMAIL_TEST_MODE,
-  isBookingEmailAllowedInTestMode
-} from '../../shared/bookingEmailTestMode'
+import { isBookingEmailAllowedInTestMode, isTestModeEnabled } from '../../shared/testMode'
 import { getShopById } from '../utils/resolveShop'
 import { createSupabaseClientForUser, getAuthUser, getBearerToken } from '../utils/getAuthUser'
 import { runWithRetries } from '../utils/retryWithBackoff'
@@ -215,15 +212,16 @@ export default defineEventHandler(async (event) => {
 
   const shopEmail = String(shop.email).trim()
 
-  if (BOOKING_EMAIL_TEST_MODE && !isBookingEmailAllowedInTestMode(shop.business_name)) {
+  const testMode = isTestModeEnabled(config.public.testMode)
+  if (testMode && !isBookingEmailAllowedInTestMode(shop.business_name)) {
     throw createError({
       statusCode: 403,
       statusMessage:
-        'Booking email test mode is on: only Dive Porter and Dive Shash can receive shop emails. Turn off BOOKING_EMAIL_TEST_MODE in shared/bookingEmailTestMode.ts (or restart after changing it).',
+        'Test mode is on: only Dive Porter and Dive Shash can receive shop emails. Set `runtimeConfig.public.testMode` to false in nuxt.config.ts or set NUXT_PUBLIC_TEST_MODE=false (then restart).',
       data: {
-        code: 'BOOKING_EMAIL_TEST_MODE_BLOCKED',
+        code: 'TEST_MODE_BOOKING_BLOCKED',
         message:
-          'Test mode blocks sending to this dive shop. Use Dive Porter or Dive Shash, or disable test mode in shared/bookingEmailTestMode.ts.'
+          'Test mode blocks sending to this dive shop. Use Dive Porter or Dive Shash, or turn off test mode in nuxt.config.ts / NUXT_PUBLIC_TEST_MODE.'
       }
     })
   }

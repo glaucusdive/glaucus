@@ -78,6 +78,7 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 
 - **`NUXT_PUBLIC_AI_SEARCH_FIRST`** — when `true`, pre-booking search uses the guided orchestrator (NLU + search LLM + Supabase) instead of chip-first `/api/guided-flow`. Default is `false` (guided remains primary).
 - **`NUXT_PUBLIC_DISABLE_CHAT_AI`** — set to `true` to turn off NLU and GPT-5.5 chat (search + booking LLM). Defaults to **`false` in development** and **`true` in production builds** so local AI testing works without extra env. Override per deploy as needed. Requires **`NUXT_OPENAI_API_KEY`** or **`OPENAI_API_KEY`** when chat AI is enabled.
+- **Test mode** — `runtimeConfig.public.testMode` in `nuxt.config.ts` as a **boolean** (`true` / `false`). When on: amber shell inset, booking sends only to Dive Porter / Dive Shash, dive shop Live/Demo toggle, chat “Step back.” Optional env override: **`NUXT_PUBLIC_TEST_MODE`** (`true` or `false` as a string).
 - Users can switch back to step-by-step chips for the session from the empty-state link (“Prefer step-by-step chips instead”).
 
 ## Versioning
