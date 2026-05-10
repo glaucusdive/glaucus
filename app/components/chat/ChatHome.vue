@@ -361,7 +361,6 @@ import { useChatSessions, notifyChatSidebarUpdated } from '~/composables/useChat
 import { useDrawer } from '~/composables/useDrawer'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/composables/useSupabase'
-import { BOOKING_EMAIL_TEST_MODE } from '#shared/bookingEmailTestMode'
 import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst } from '~/utils/mergeProfileDefaultDivers'
 import { getLatestBookingPayloadFromMessages, bookingPayloadHasNamedDiver } from '~/utils/chatBookingPayload'
 import { isSearchPaginationUserMessage } from '~/utils/searchPaginationIntent'
@@ -2000,8 +1999,10 @@ const handleSubmit = () => {
 }
 
 // Step back: remove the last user↔assistant pair (either order) so user can redo that turn
+const testMode = useTestMode()
+
 const canStepBack = computed(() => {
-  if (!BOOKING_EMAIL_TEST_MODE) return false
+  if (!testMode.value) return false
   const m = messages.value
   if (m.length < 2) return false
   const last = m[m.length - 1]

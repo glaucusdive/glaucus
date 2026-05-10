@@ -1,7 +1,7 @@
 <template>
   <div
     class="h-dvh w-dvw overflow-hidden"
-    :class="BOOKING_EMAIL_TEST_MODE ? 'shadow-[inset_0_2px_0_0px_rgb(245_158_11)]' : ''"
+    :class="testMode ? 'shadow-[inset_0_2px_0_0px_rgb(245_158_11)]' : ''"
   >
     <div class="h-full w-full lg:flex lg:flex-row">
       <!-- Backdrop for mobile menu -->
@@ -149,7 +149,6 @@
 </template>
 
 <script setup>
-import { BOOKING_EMAIL_TEST_MODE } from '#shared/bookingEmailTestMode'
 import gsap from 'gsap'
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { X, Sun, Moon, FilePlus, CircleUser, LogIn, LogOut, CircleHelp } from 'lucide-vue-next'
@@ -164,6 +163,8 @@ import BookingForm from '~/components/BookingForm.vue'
 import ShopReviewForm from '~/components/ShopReviewForm.vue'
 import FeedbackFlyout from '~/components/FeedbackFlyout.vue'
 import Logo from '~/components/Logo.vue'
+
+const testMode = useTestMode()
 
 const route = useRoute()
 /** Chat chrome also on auth/profile so it doesn’t vanish while signing in or on account pages. */

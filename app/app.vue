@@ -8,6 +8,7 @@
 </template>
 
 <script setup>
+// Test mode: boolean `runtimeConfig.public.testMode` in nuxt.config.ts (or NUXT_PUBLIC_TEST_MODE in env).
 // Apply theme immediately before any rendering to prevent flash
 useHead({
   meta: [
