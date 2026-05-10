@@ -4,6 +4,7 @@
  * business_name matches Dive Porter or Dive Shash (substring match, case-insensitive).
  *
  * When true, the default layout shows a 2px amber inset frame (no layout shift).
+ * When false, the dive shop panel hides the Live/Demo sample-data toggle and always shows live Supabase data.
  *
  * Toggle here (and restart dev server if needed so Nitro picks up the change).
  */
