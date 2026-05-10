@@ -3063,7 +3063,8 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           onStatus: onActivityLine,
           interpretTurn,
           aiSearchFirst,
-          signal: searchAbortSignal
+          signal: searchAbortSignal,
+          lastSearchFilters: normalizeClientSearchFilters(bodyLastSearchFilters) ?? undefined
         })
       )
     }, {

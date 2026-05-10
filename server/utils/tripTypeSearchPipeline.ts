@@ -1,4 +1,5 @@
 import { buildDiveShopQuery, type SearchFilters } from './buildDiveShopQuery'
+import { carryForwardUnsetSearchAxes } from './searchFilterCarryForward'
 import {
   mergeActivityIntoFilters,
   mergeNluHintsIntoFilters,
@@ -311,6 +312,8 @@ export interface RunTripTypeSearchAfterLlmInput {
   /** When true, skip heavy trip-type chips on follow-ups and cap quick-reply chips. */
   aiSearchFirst?: boolean
   signal?: AbortSignal
+  /** Prior turn filters from the client — refinements keep ANDed axes (activity, course hint, etc.). */
+  lastSearchFilters?: SearchFilters | null
 }
 
 /** Fewer tap targets in AI-first mode; keep pagination chips. */
@@ -350,7 +353,8 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
     onStatus,
     interpretTurn,
     aiSearchFirst,
-    signal: searchSignal
+    signal: searchSignal,
+    lastSearchFilters
   } = input
 
   /** Pagination offset applies only to explicit "show more" / next page — not new searches or refinements. */
@@ -381,6 +385,8 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
       console.log('[AI Search] Inferred country from conversation:', inferred)
     }
   }
+
+  filters = carryForwardUnsetSearchAxes(filters, lastSearchFilters ?? undefined, message, interpretTurn ?? null)
 
   onStatus?.('Applying filters…')
 
