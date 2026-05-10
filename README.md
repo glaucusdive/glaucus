@@ -96,6 +96,43 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.80.0** — Enhance search functionality with certification course handling and shop enrichment (2026-05-04).
+- **0.79.6** — Refactor OpenAI API integration to use max_completion_tokens and remove temperature settings (2026-05-04).
+- **0.79.5** — Update environment setup and configuration for OpenAI integration (2026-05-03).
+- **0.79.4** — Refactor search pagination handling and improve loading indicators (2026-05-03).
+- **0.79.3** — Refactor CardSearchResult and ChatHome components for improved search functionality (2026-05-03).
+- **0.79.2** — Refactor trip type handling in AI search pipeline (2026-05-03).
+- **0.79.1** — Refactor CardSearchResult and ChatHome components for enhanced search feedback (2026-05-03).
+- **0.79.0** — Enhance CardSearchResult and ChatHome components with search match badges (2026-05-03).
+- **0.78.0** — Enhance AI-first search integration and guided search state management (2026-05-03).
+- **0.77.7** — Refactor ChatHome.vue layout for improved user experience (2026-04-30).
+- **0.77.6** — Refactor guided search state management and enhance shop type selection (2026-04-30).
+- **0.77.5** — Enhance DiveShopDetail and ShopReviewForm components for improved review handling (2026-04-30).
+- **0.77.4** — Update DiveShopDetail.vue to conditionally display information tabs (2026-04-30).
+- **0.77.3** — Refactor shop detail components for improved layout and functionality (2026-04-30).
+- **0.77.2** — Refactor booking review handling and trip date parsing (2026-04-29).
+- **0.77.1** — Refactor selectable options layout in ChatHome.vue (2026-04-29).
+- **0.77.0** — Add guided search state transitions for empty search scenarios (2026-04-29).
+- **0.76.1** — Enhance guided search functionality and error handling (2026-04-29).
+- **0.76.0** — Implement guided search and update booking flow (2026-04-29).
+- **0.75.8** — Enhance search and booking flow for dive businesses (2026-04-29).
+- **0.75.7** — Refactor search and booking experience to prioritize deterministic flows (2026-04-29).
+- **0.75.6** — Update dive shop labels for consistency across components (2026-04-29).
+- **0.75.5** — Update DiveShopDetail.vue to reveal depth information in courses list (2026-04-29).
+- **0.75.4** — Refactor courses list in DiveShopDetail.vue to streamline displayed items (2026-04-29).
+- **0.75.3** — Enhance booking review and confirmation handling (2026-04-26).
+- **0.75.2** — Refactor trip type handling in AI search pipeline (2026-04-26).
+- **0.75.1** — Refine introductory text in LandingHome.vue for clarity and conciseness (2026-04-26).
+- **0.75.0** — Enhance AI message interpretation and shop selection handling (2026-04-26).
+- **0.74.0** — Enhance AI search and pagination handling across components (2026-04-26).
+- **0.73.0** — Enhance video playback functionality in LandingPageVideo component (2026-04-26).
+- **0.72.7** — Update landing.vue to use dynamic viewport height for improved layout consistency (2026-04-25).
+- **0.72.6** — Update LandingFooter.vue to use dynamic viewport height for improved layout consistency (2026-04-25).
+- **0.72.5** — Enhance content in LandingHome.vue for improved user engagement (2026-04-25).
+- **0.72.4** — Update ChatHome and LandingHome components for improved message handling and user experience (2026-04-25).
+- **0.72.3** — Refactor search functionality in LandingHeader component (2026-04-25).
+- **0.72.2** — Enhance layout and responsiveness in LandingHome and LandingContentSlide components (2026-04-25).
+- **0.72.1** — Refactor LandingHome and LandingFooter components for improved layout and responsiveness (2026-04-25).
 - **0.72.0** — Enhance AI search functionality with filter relaxation support (2026-04-22).
 - **0.71.0** — Add relax filter chips functionality to tripTypeSearchPipeline (2026-04-19).
 - **0.70.0** — Integrate course discovery functionality into AI search flow (2026-04-19).
