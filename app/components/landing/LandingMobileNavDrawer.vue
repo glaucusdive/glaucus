@@ -20,7 +20,7 @@
           v-for="item in navItems"
           :key="item.id"
           :href="`#${item.id}`"
-          class="text-2xl font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          class="text-2xl font-medium  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
           :class="
             activeNavLinkId === item.id ? 'text-white' : 'text-zinc-400 hover:text-white'
           "

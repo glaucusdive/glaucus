@@ -2,7 +2,7 @@
   <div :class="outerClass">
     <div :class="innerClass">
       <div :class="[
-        'p-0.5 shrink-0 transition-colors ease-in-out delay-100 rounded-full w-full relative overflow-hidden gradient-container',
+        'p-0.5 shrink-0  ease-in-out delay-100 rounded-full w-full relative overflow-hidden gradient-container',
         loading ? 'animate-ring-gradient !bg-[#02C8FF]' : 'bg-transparent'
       ]">
         <form

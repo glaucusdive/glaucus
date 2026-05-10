@@ -98,7 +98,7 @@
             Open Chat
           </button>
           <button type="button"
-            class="flex lg:hidden size-10 items-center justify-center rounded-md text-zinc-100 transition-colors hover:bg-zinc-800 focus-visible:outline-none"
+            class="flex lg:hidden size-10 items-center justify-center rounded-md text-zinc-100  hover:bg-zinc-800 focus-visible:outline-none"
             :aria-expanded="mobileMenuOpen" aria-controls="landing-mobile-nav"
             :aria-label="mobileMenuOpen ? 'Close menu' : 'Open menu'" @click="toggleMobileMenu">
             <Menu v-if="!mobileMenuOpen" :width="22" :height="22" :stroke-width="1.5" aria-hidden="true" />
@@ -148,7 +148,7 @@ const navFocus =
 
 const navIconBtn = [
   'inline-flex size-6 shrink-0 items-center justify-center rounded-full',
-  'transition-colors',
+  '',
   navFocus
 ].join(' ')
 
@@ -158,7 +158,7 @@ const navSearchIconWrap =
 const navLinkBase = [
   'inline-flex shrink-0 items-center rounded-full px-2.5 py-1.5',
   'text-xs font-medium uppercase leading-none tracking-wide',
-  'transition-colors',
+  '',
   navFocus
 ].join(' ')
 

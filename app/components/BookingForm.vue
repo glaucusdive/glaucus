@@ -4,7 +4,7 @@
     <div class="w-full h-10 lg:h-[65px] p-1 border-b border-zinc-300 dark:border-zinc-700 shrink-0 flex items-center">
       <div class="w-full flex items-center justify-between px-2 overflow-auto">
         <h2 class="text-base font-medium truncate text-zinc-900 dark:text-white">Book with {{ shopName }}</h2>
-        <button @click="closeDrawer" class="lg:p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-sm transition-colors cursor-pointer text-zinc-900 dark:text-white">
+        <button @click="closeDrawer" class="lg:p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-sm  cursor-pointer text-zinc-900 dark:text-white">
           <X class="w-5 h-5" />
         </button>
       </div>
@@ -183,11 +183,11 @@
 
         <!-- Save draft (signed in) or Sign in to save draft (guest) -->
         <div class="mx-2 flex gap-2">
-          <NuxtLink v-if="!isSignedIn" to="/auth" class="flex-1 text-center py-2 px-3 rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer">
+          <NuxtLink v-if="!isSignedIn" to="/auth" class="flex-1 text-center py-2 px-3 rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800  cursor-pointer">
             Sign in to save draft
           </NuxtLink>
           <button v-else type="button" @click="saveDraft" :disabled="draftLoading || draftSaved"
-            class="flex-1 py-2 px-3 rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors">
+            class="flex-1 py-2 px-3 rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ">
             {{ draftLoading ? 'Saving…' : (draftSaved ? 'Draft saved' : 'Save as draft') }}
           </button>
         </div>
@@ -195,7 +195,7 @@
         <!-- Submit Button -->
         <div class="sticky bottom-0 bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-300 dark:border-zinc-700 p-2 mt-2">
           <button type="submit" :disabled="submitLoading"
-            class="bg-zinc-900 dark:bg-zinc-800 hover:bg-zinc-800 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-md transition-colors w-full cursor-pointer">
+            class="bg-zinc-900 dark:bg-zinc-800 hover:bg-zinc-800 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-md  w-full cursor-pointer">
             {{ submitLoading ? 'Sending…' : 'Submit Booking Request' }}
           </button>
         </div>

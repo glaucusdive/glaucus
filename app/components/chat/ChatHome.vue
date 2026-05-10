@@ -25,7 +25,7 @@
       <!-- Main content: full-width chat; shop detail is a bottom sheet overlay -->
       <div class="flex-1 flex flex-row overflow-hidden relative">
         <!-- Chat Section -->
-        <div class="relative flex min-w-0 h-full w-full flex-col transition-all duration-300 ease-in-out">
+        <div class="relative flex min-w-0 h-full w-full flex-col  duration-300 ease-in-out">
 
           <!-- Messages Container -->
           <div ref="messagesContainer"
@@ -43,7 +43,7 @@
                     :key="example.path"
                     type="button"
                     @click="sendLandingSearchExample(example)"
-                    class="text-left p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer bg-white dark:bg-zinc-900"
+                    class="text-left p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800  cursor-pointer bg-white dark:bg-zinc-900"
                   >
                     <span class="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-500 mb-2">
                       {{ example.path }}
@@ -59,7 +59,7 @@
             <div v-for="(msg, index) in messages" :key="index" class="max-w-2xl">
               <!-- User message -->
               <div v-if="msg.role === 'user'" class="flex justify-end">
-                <div class="max-w-[80%] bg-blue-600 text-white rounded-lg p-2">
+                <div class="max-w-[80%] bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-50 rounded-lg p-2 px-4">
                   <p class="text-sm lg:text-base">{{ msg.content }}</p>
                 </div>
               </div>
@@ -75,21 +75,21 @@
                     <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap">{{ msg.preamble }}</p>
                   </div>
                   <div
-                    class="flex flex-col gap-2 min-w-0"
+                    class="flex flex-col gap-4 min-w-0"
                     :class="{ 'chat-bubble-pop-follow': msg.preamble }"
                   >
                   <!-- AI text response (chevron inside bubble when shown) -->
                   <div
                     v-if="msg.content && !(msg.shops && msg.shops.length > 0)"
-                    class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 flex items-stretch gap-2"
+                    class="p-2 px-4 flex items-stretch gap-2"
                   >
-                    <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis">{{ msg.content }}
+                    <p class="text-sm lg:text-base text-zinc-800 dark:text-zinc-50 whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis">{{ msg.content }}
                     </p>
                     <button
                       v-if="(bookingShopForDrawer || (msg.shopId && msg.shopName)) && !(msg.shops && msg.shops.length > 0)"
                       type="button"
                       @click="openBookingFormDrawerFromMessage(msg)"
-                      class="w-10 shrink-0 self-stretch flex items-center justify-center rounded-sm border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200 transition-colors cursor-pointer"
+                      class="w-10 shrink-0 self-stretch flex items-center justify-center rounded-sm border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200  cursor-pointer"
                       aria-label="Open booking form"
                     >
                       <ChevronRight class="w-5 h-5" />
@@ -101,7 +101,7 @@
                     <div class="flex items-center gap-2 text-sm text-zinc-600">
                       <span class="font-medium">Top Results:</span>
                     </div>
-                    <div class="grid grid-cols-1 gap-3">
+                    <div class="grid grid-cols-1 gap-2">
                       <div
                         v-for="(shop, si) in msg.shops"
                         :key="shop.id"
@@ -127,7 +127,7 @@
 
                   <div
                     v-if="msg.content && msg.shops && msg.shops.length > 0"
-                    class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 flex items-stretch gap-2"
+                    class="p-2 px-4 flex items-stretch gap-2"
                   >
                     <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis">{{ msg.content }}
                     </p>
@@ -148,7 +148,7 @@
                         :key="i"
                         type="button"
                         @click="sendMessage(opt.value, opt.label)"
-                        class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                        class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 cursor-pointer"
                       >
                         {{ opt.label }}
                       </button>
@@ -157,7 +157,7 @@
                       v-if="msg.shops?.length && selectedShopId && selectedShopName"
                       type="button"
                       @click="sendMessage(selectedShopName ? `Let's book ${selectedShopName}` : 'Let\'s book this')"
-                      class="self-start px-3 py-1.5 text-sm rounded-full bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-100 transition-colors cursor-pointer font-medium"
+                      class="self-start px-3 py-1.5 text-sm rounded-full bg-blue-500 hover:bg-blue-400 text-white cursor-pointer font-medium"
                     >
                       Let's book {{ selectedShopName }}
                     </button>
@@ -175,8 +175,8 @@
                       type="button"
                       @click="sendMessage(getGearChipClickValue(msg, eq))"
                       :class="isGearChipSelected(msg, eq)
-                        ? 'px-3 py-1.5 text-sm rounded-full border border-black dark:border-white text-black dark:text-white transition-colors cursor-pointer font-medium'
-                        : 'px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-300 hover:border-zinc-500 dark:hover:border-zinc-400 dark:hover:text-white transition-colors cursor-pointer'"
+                        ? 'px-3 py-1.5 text-sm rounded-full border border-black dark:border-white text-black dark:text-white  cursor-pointer font-medium'
+                        : 'px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-300 hover:border-zinc-500 dark:hover:border-zinc-400 dark:hover:text-white  cursor-pointer'"
                     >
                       {{ eq.name }}
                     </button>
@@ -184,14 +184,14 @@
                       v-if="!msg.hideNoneForGear"
                       type="button"
                       @click="sendMessage('none')"
-                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"
+                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600  cursor-pointer font-medium"
                     >
                       None
                     </button>
                     <button
                       type="button"
                       @click="sendMessage('done')"
-                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer font-medium"
+                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white text-zinc-900 hover:bg-zinc-100  cursor-pointer font-medium"
                     >
                       Done
                     </button>
@@ -208,7 +208,7 @@
                         v-if="!shouldHideAnyCourseChip(msg)"
                         type="button"
                         @click="sendMessage('any')"
-                        class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"
+                        class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600  cursor-pointer font-medium"
                       >
                         Any
                       </button>
@@ -218,8 +218,8 @@
                         type="button"
                         @click="sendMessage(course.name)"
                         :class="isCourseChipSelected(msg, course)
-                          ? 'w-fit px-3 py-1.5 text-sm rounded-full border border-black dark:border-white bg-white dark:bg-zinc-900 text-black dark:text-white font-medium transition-colors cursor-pointer'
-                          : 'w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer'"
+                          ? 'w-fit px-3 py-1.5 text-sm rounded-full border border-black dark:border-white bg-white dark:bg-zinc-900 text-black dark:text-white font-medium  cursor-pointer'
+                          : 'w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700  cursor-pointer'"
                       >
                         {{ course.name }}
                       </button>
@@ -227,7 +227,7 @@
                     <button
                       type="button"
                       @click="sendMessage('done')"
-                      class="self-start px-3 py-1.5 text-sm rounded-full bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 transition-colors cursor-pointer font-medium"
+                      class="self-start px-3 py-1.5 text-sm rounded-full bg-blue-500 hover:bg-blue-400 text-white cursor-pointer font-medium"
                     >
                       Done
                     </button>
@@ -244,7 +244,7 @@
                         v-if="!shouldHideAnyDiveSiteChip(msg)"
                         type="button"
                         @click="sendMessage('any')"
-                        class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors cursor-pointer font-medium"
+                        class="self-start px-3 py-1.5 text-sm rounded-full bg-blue-500 hover:bg-blue-400 text-white cursor-pointer font-medium"
                       >
                         Any
                       </button>
@@ -253,7 +253,7 @@
                         :key="site.id"
                         type="button"
                         @click="sendMessage(site.name)"
-                        class="w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                        class="self-start px-3 py-1.5 text-sm rounded-full bg-blue-500 hover:bg-blue-400 text-white cursor-pointer font-medium"
                       >
                         {{ site.name }}
                       </button>
@@ -261,7 +261,7 @@
                     <button
                       type="button"
                       @click="sendMessage('done')"
-                      class="self-start px-3 py-1.5 text-sm rounded-full bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 transition-colors cursor-pointer font-medium"
+                      class="self-start px-3 py-1.5 text-sm rounded-full bg-blue-500 hover:bg-blue-400 text-white cursor-pointer font-medium"
                     >
                       Done
                     </button>
@@ -324,7 +324,7 @@
                   />
                   <div
                     data-detail-drawer-sheet
-                    class="relative z-10 mx-auto flex h-[95dvh] min-h-0 w-[99dvw] max-w-none flex-col overflow-hidden rounded-t-xl border border-b-0 border-zinc-200 bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.12)] dark:border-zinc-600 dark:bg-zinc-900 dark:shadow-[0_-8px_30px_rgba(0,0,0,0.4)]"
+                    class="relative z-10 mx-auto flex h-[95dvh] min-h-0 w-[99dvw] max-w-none flex-col overflow-hidden rounded-t-xl border border-b-0 border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
                     @click.stop
                   >
                     <ShopDetailPanel

@@ -33,7 +33,7 @@
             :key="tab.id"
             @click="activeTab = tab.id"
             :class="[
-              'flex flex-row gap-2 rounded-sm p-2 px-4 w-fit cursor-pointer transition-colors',
+              'flex flex-row gap-2 rounded-sm p-2 px-4 w-fit cursor-pointer ',
               activeTab === tab.id 
                 ? 'bg-zinc-50 text-zinc-900' 
                 : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
