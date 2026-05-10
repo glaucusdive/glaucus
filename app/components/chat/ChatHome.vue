@@ -113,7 +113,7 @@
                           :active="selectedShopId === shop.id"
                           :match-badges="msg.searchMatchBadges"
                           :search-filters="msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : undefined"
-                          @shop-selected="handleShopSelected"
+                          @start-booking="handleStartBookingFromCard"
                           @view-details="handleViewDetails"
                         />
                       </div>
@@ -2035,18 +2035,11 @@ const stepBack = () => {
   persistCache()
 }
 
-// Handle shop selection (card tap: select for booking; does not open detail drawer)
-const handleShopSelected = (shop) => {
+/** Explicit CTA on result card: same path as shop detail panel “Start booking”. */
+function handleStartBookingFromCard (shop) {
+  if (!shop?.id) return
   armShopDetailCloseGuard()
-  // Defer until after this click finishes so the new panel/backdrop never receives the same pointer gesture.
-  nextTick(() => {
-    if (detailDrawerShopId.value && detailDrawerShopId.value !== shop.id) {
-      detailDrawerShopId.value = null
-    }
-    selectedShopId.value = shop.id
-    // Selection does not push a new message — scroll the chat column so chips / bottom of results stay in view.
-    void scrollToBottom()
-  })
+  void handleStartBookingFromPanel(shop.id, shop.business_name ?? '')
 }
 
 // Handle detail affordance on card (opens bottom sheet)
