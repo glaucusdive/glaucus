@@ -37,7 +37,7 @@ Active search filters (JSON): ${filtersSummary}
 Shops we will show (only these — do not invent others):
 ${lines.map((l, i) => `${i + 1}. ${l}`).join('\n')}
 
-Write 2 short sentences: welcome-style guidance for a scuba diver and why these picks match what they said. Do not claim amenities not in the list. If a field is empty, do not guess. No bullet list.`
+Write one short paragraph, at most 2 sentences. First sentence: brief acknowledgment of what they asked for, in the past or present result (e.g. here are dive resorts in Bali matching your filters) — do not say you *will* search or *will* narrow; the results are already chosen. Second sentence (optional): why these numbered operators fit their request; you may name a few from the list. Do not repeat the same idea twice. Do not claim amenities not in the list. If a field is empty, do not guess. No bullet list.`
 
   try {
     const res = await fetch(OPENAI_CHAT_COMPLETIONS_URL, {
@@ -52,7 +52,7 @@ Write 2 short sentences: welcome-style guidance for a scuba diver and why these 
           {
             role: 'system',
             content:
-              'You are a concise scuba travel assistant. Only reference the numbered shops given. Never invent operators or locations.'
+              'You are a concise scuba travel assistant. Only reference the numbered shops given. Never invent operators or locations. Never add a second sentence that only restates the first (e.g. both "narrowing to resorts" and "matching Dive Resort").'
           },
           { role: 'user', content: user }
         ],

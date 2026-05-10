@@ -439,12 +439,9 @@ async function finalizeSearchPaginationApiResponse (
   const remaining = Math.max(0, resultCount - alreadyShown - rawLen)
 
   if (presentationShops.length > 0) {
-    const messageText = remaining > 0
-      ? `Here are the next ${presentationShops.length} results. ${remaining} more available.`
-      : `Here are the next ${presentationShops.length} results.`
     return {
       success: true as const,
-      message: messageText,
+      message: '',
       shops: presentationShops,
       totalResults: resultCount,
       hasMoreResults: remaining > 0,

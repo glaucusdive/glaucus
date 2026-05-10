@@ -1752,10 +1752,12 @@ const sendMessage = async (messageText, displayText) => {
         selectedShopId.value = null
         pendingBookingPayload.value = null
         detailDrawerShopId.value = null
+        const resetShops = response.shops || []
         const resetContent = (response.message && String(response.message).trim())
           ? response.message
-          : 'How can I help?'
-        const resetShops = response.shops || []
+          : resetShops.length > 0
+            ? ''
+            : 'How can I help?'
         const resetApiBadges = Array.isArray(response.searchMatchBadges)
           ? response.searchMatchBadges.filter((x) => typeof x === 'string' && String(x).trim())
           : []
@@ -1887,7 +1889,12 @@ const sendMessage = async (messageText, displayText) => {
           return
         }
       }
-      const content = (response.message && String(response.message).trim()) ? response.message : 'Got it — what would you like to tell me next?'
+      const shopsLen = (response.shops || []).length
+      const content = (response.message && String(response.message).trim())
+        ? response.message
+        : shopsLen > 0
+          ? ''
+          : 'Got it — what would you like to tell me next?'
 
       const shopsOut = response.shops || []
       const apiBadges = Array.isArray(response.searchMatchBadges)

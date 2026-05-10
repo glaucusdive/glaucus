@@ -605,11 +605,10 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
       responseShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
       const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
       if (alreadyShown === 0) {
-        finalMessage = `Here are the first 5 of ${resultCount} dive shops I found. ${followUpMessage}`
+        finalMessage = followUpMessage?.trim() || ''
       } else {
-        finalMessage = remaining > 0
-          ? `Here are the next ${responseShops.length} results. ${remaining} more available.`
-          : `Here are the next ${responseShops.length} results.`
+        // Cards + range label / chips carry context; avoid intro text below the grid.
+        finalMessage = ''
       }
       if (remaining > 0) {
         selectableOptions = [buildSearchPaginationSelectableOption(remaining)]
@@ -617,7 +616,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     } else {
       responseShops = shops || []
       if (resultCount > 0) {
-        finalMessage = `Here ${resultCount === 1 ? 'is' : 'are'} the ${resultCount} dive shop${resultCount === 1 ? '' : 's'} I found. ${followUpMessage}`
+        finalMessage = followUpMessage?.trim() || ''
       } else {
         finalMessage = `I didn't find any dive shops matching those criteria. ${followUpMessage}`
       }
@@ -626,7 +625,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     const alreadyShown = Math.min(Math.max(0, paginationOffset), resultCount)
     responseShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
     const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
-    finalMessage = `I found ${resultCount} dive shops that match your criteria. Here are ${responseShops.length} top results.${followUpMessage?.trim() ? ` ${followUpMessage}` : ''}`
+    finalMessage = followUpMessage?.trim() || ''
     if (remaining > 0) {
       selectableOptions = [buildSearchPaginationSelectableOption(remaining)]
     }
@@ -644,12 +643,8 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     responseShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
     const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
     if (resultCount > 5 || alreadyShown > 0) {
-      finalMessage =
-        alreadyShown === 0
-          ? `I found ${resultCount} dive shop${resultCount === 1 ? '' : 's'}. Here are the top results:`
-          : remaining > 0
-            ? `Here are the next ${responseShops.length} results (${remaining} more in this search).`
-            : `Here are the last ${responseShops.length} results.`
+      // UI shows cards first, then range ("Showing results …"); no intro line under the grid.
+      finalMessage = ''
       if (remaining > 0) {
         selectableOptions = [buildSearchPaginationSelectableOption(remaining)]
       }
@@ -679,7 +674,8 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
       signal: searchSignal
     })
     if (narration?.trim()) {
-      messagePreamble = messagePreamble ? `${narration.trim()}\n\n${messagePreamble}` : narration.trim()
+      // One lead-in only: the filter LLM MESSAGE ("I'll narrow…") duplicates the narrator; narration already opens with a brief ack.
+      messagePreamble = narration.trim()
     }
   }
 
