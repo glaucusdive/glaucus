@@ -7,20 +7,26 @@
         : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-600'
     ]"
   >
-    <!-- Main content: tap selects shop for booking -->
-    <div
-      class="flex flex-col gap-4 min-w-0 cursor-pointer"
-      @click="$emit('shop-selected', shop)"
-    >
-      <!-- Header with name and rating -->
+    <!-- Main content: not a single click target; use Book this or the detail chevron -->
+    <div class="flex flex-col gap-4 min-w-0">
+      <!-- Header: name + rating, Book this top-right -->
       <div class="flex flex-row justify-between items-start gap-2">
-        <h3 class="text-lg font-semibold text-zinc-900 dark:text-white hover:text-blue-600">
-          {{ shop.business_name }}
-        </h3>
-        <div v-if="shop.google_rating" class="flex items-center gap-1 shrink-0">
-          <Star class="w-4 h-4 text-yellow-500 fill-yellow-500" />
-          <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ shop.google_rating }}</span>
+        <div class="min-w-0 flex-1">
+          <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">
+            {{ shop.business_name }}
+          </h3>
+          <div v-if="shop.google_rating" class="mt-1 flex items-center gap-1">
+            <Star class="w-4 h-4 text-yellow-500 fill-yellow-500" />
+            <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ shop.google_rating }}</span>
+          </div>
         </div>
+        <button
+          type="button"
+          class="shrink-0 rounded-md border border-zinc-300 bg-transparent px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-transparent dark:text-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
+          @click.stop="$emit('start-booking', shop)"
+        >
+          Book this
+        </button>
       </div>
 
       <!-- Location -->
@@ -78,7 +84,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Star, MapPin, Languages, Globe, Phone, Mail, ChevronUp } from 'lucide-vue-next'
+import { Star, MapPin, Globe, Phone, Mail, ChevronUp } from 'lucide-vue-next'
 import { computeCardSearchPills } from '~~/shared/cardSearchPills'
 
 const props = defineProps({
@@ -102,7 +108,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['shop-selected', 'view-details'])
+defineEmits(['start-booking', 'view-details'])
 
 const cardPills = computed(() =>
   computeCardSearchPills({
