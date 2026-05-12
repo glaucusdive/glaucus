@@ -1,25 +1,26 @@
 <template>
-  <div class="px-1 py-0 min-h-[32px] max-w-full min-w-0 h-full flex flex-col justify-center gap-1">
-    <select
-      v-if="writeMode"
-      class="w-full min-w-0 rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-1.5 py-0.5 text-xs text-zinc-900 dark:text-white"
-      :value="currentId"
-      @change="onSelectChange"
-    >
-      <option value="">—</option>
-      <option
-        v-for="o in options"
-        :key="String(o.id)"
-        :value="String(o.id)"
-      >{{ o.label }}</option>
-    </select>
+  <div class="flex h-full min-h-0 max-w-full min-w-0 flex-col justify-center gap-1 px-0 py-0">
+    <div v-if="writeMode" :class="ADMIN_GRID_WRITE_WRAP">
+      <select
+        class="min-h-0 min-w-0 flex-1 cursor-pointer appearance-none border-0 bg-transparent px-0 py-0 text-xs text-zinc-900 outline-none ring-0 focus:ring-0 dark:text-white"
+        :value="currentId"
+        @change="onSelectChange"
+      >
+        <option value="">—</option>
+        <option
+          v-for="o in options"
+          :key="String(o.id)"
+          :value="String(o.id)"
+        >{{ o.label }}</option>
+      </select>
+    </div>
     <template v-else>
-      <span class="block truncate text-xs text-zinc-700 dark:text-zinc-200">{{ displayLabel }}</span>
+      <span :class="[ADMIN_GRID_READ_DATA, 'text-xs text-zinc-700 dark:text-zinc-200']">{{ displayLabel }}</span>
     </template>
     <button
       v-if="writeMode && isRegion"
       type="button"
-      class="shrink-0 self-start text-[10px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+      class="shrink-0 self-start px-1 text-[10px] text-blue-600 hover:underline dark:text-blue-400"
       @click="promptNewRegion"
     >
       + Add region
@@ -31,6 +32,7 @@
 import { computed } from 'vue'
 import type { ColumnDataSchemaModel } from '@revolist/vue3-datagrid'
 import type { AdminShopGridContext, ShopGridRow } from './adminShopGridContext'
+import { ADMIN_GRID_READ_DATA, ADMIN_GRID_WRITE_WRAP } from '~/components/admin/adminGridEditClasses'
 
 const props = defineProps<
   ColumnDataSchemaModel<ShopGridRow> & { gridContext: AdminShopGridContext }

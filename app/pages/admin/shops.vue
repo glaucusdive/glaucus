@@ -2,13 +2,8 @@
   <div class="flex flex-col h-full min-h-0">
     <!-- Top bar -->
     <div class="shrink-0 border-b border-zinc-200 dark:border-zinc-700 p-3 flex items-center justify-between gap-4 flex-wrap">
-      <div class="flex flex-col gap-0.5 min-w-0">
-        <div class="flex items-center gap-3 flex-wrap">
-          <h1 class="text-lg font-semibold text-zinc-900 dark:text-white">Admin · Dive Shops</h1>
-          <span class="text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
-            {{ shopTotal }} shops<span v-if="pageRangeLabel"> · {{ pageRangeLabel }}</span>
-          </span>
-        </div>
+      <div class="min-w-0">
+        <h1 class="text-lg font-semibold text-zinc-900 dark:text-white">Admin · Dive Shops</h1>
       </div>
 
       <div class="flex items-center gap-2 flex-wrap">
@@ -33,14 +28,6 @@
         </label>
 
         <AdminButton
-          variant="primary"
-          :disabled="!writeMode || !hasDirtyOnPage || anyRowSaving || saveAllSaving"
-          @click="saveAllDirty"
-        >
-          {{ saveAllSaving ? 'Saving…' : 'Save' }}
-        </AdminButton>
-
-        <AdminButton
           variant="secondary"
           :disabled="!writeMode"
           @click="newDrawerOpen = true"
@@ -49,18 +36,11 @@
         </AdminButton>
 
         <AdminButton
-          variant="secondary"
-          :disabled="currentPage <= 1"
-          @click="goPrevPage"
+          variant="primary"
+          :disabled="!writeMode || !hasDirtyOnPage || anyRowSaving || saveAllSaving"
+          @click="saveAllDirty"
         >
-          Previous
-        </AdminButton>
-        <AdminButton
-          variant="secondary"
-          :disabled="currentPage >= totalPages"
-          @click="goNextPage"
-        >
-          Next
+          {{ saveAllSaving ? 'Saving…' : 'Save' }}
         </AdminButton>
       </div>
     </div>
@@ -77,24 +57,48 @@
       <p class="text-sm text-red-600 dark:text-red-400">{{ loadError }}</p>
     </div>
 
-    <!-- Virtualized grid -->
-    <div v-else class="flex-1 min-h-0 min-w-0 flex flex-col relative border-t border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900">
-      <div v-if="rows.length === 0" class="flex-1 flex items-center justify-center p-8 text-sm text-zinc-500 dark:text-zinc-400">
-        No dive shops on this page.
+    <div v-else class="flex flex-1 min-h-0 min-w-0 flex-col bg-white dark:bg-zinc-900">
+      <!-- Virtualized grid -->
+      <div class="relative flex min-h-0 min-w-0 flex-1 flex-col border-t border-zinc-200 dark:border-zinc-700">
+        <div v-if="rows.length === 0" class="flex flex-1 items-center justify-center p-8 text-sm text-zinc-500 dark:text-zinc-400">
+          No dive shops on this page.
+        </div>
+        <ClientOnly v-else>
+          <RevoGrid
+            hide-attribution
+            class="admin-revo-grid h-full min-h-[320px] w-full min-w-0 flex-1"
+            :theme="gridTheme"
+            :columns="gridColumns"
+            :source="rows"
+            :row-size="36"
+          />
+          <template #fallback>
+            <div class="flex flex-1 items-center justify-center p-8 text-sm text-zinc-500 dark:text-zinc-400">Loading grid…</div>
+          </template>
+        </ClientOnly>
       </div>
-      <ClientOnly v-else>
-        <RevoGrid
-          hide-attribution
-          class="admin-revo-grid h-full min-h-[320px] w-full min-w-0 flex-1"
-          :theme="gridTheme"
-          :columns="gridColumns"
-          :source="rows"
-          :row-size="36"
-        />
-        <template #fallback>
-          <div class="flex flex-1 items-center justify-center p-8 text-sm text-zinc-500 dark:text-zinc-400">Loading grid…</div>
-        </template>
-      </ClientOnly>
+
+      <div class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-zinc-200 bg-zinc-50 px-3 py-2.5 dark:border-zinc-700 dark:bg-zinc-950">
+        <span class="text-xs text-zinc-600 dark:text-zinc-400">
+          {{ shopTotal }} shops<span v-if="pageRangeLabel"> · {{ pageRangeLabel }}</span>
+        </span>
+        <div class="flex items-center gap-2">
+          <AdminButton
+            variant="secondary"
+            :disabled="currentPage <= 1"
+            @click="goPrevPage"
+          >
+            Previous
+          </AdminButton>
+          <AdminButton
+            variant="secondary"
+            :disabled="currentPage >= totalPages"
+            @click="goNextPage"
+          >
+            Next
+          </AdminButton>
+        </div>
+      </div>
     </div>
 
     <AdminNewBusinessDrawer
@@ -692,6 +696,7 @@ onMounted(async () => {
   width: 100%;
   min-height: 320px;
   background: transparent !important;
+  overscroll-behavior: contain;
 }
 
 .admin-revo-grid :deep(.viewport-wrapper),
@@ -703,6 +708,7 @@ onMounted(async () => {
 .admin-revo-grid :deep(.revo-draggable),
 .admin-revo-grid :deep(.revo-drag) {
   background: transparent !important;
+  overscroll-behavior: contain;
 }
 
 .admin-revo-grid :deep(.row),
