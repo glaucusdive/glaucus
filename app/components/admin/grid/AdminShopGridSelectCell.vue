@@ -1,5 +1,8 @@
 <template>
-  <div class="flex h-full min-h-0 min-w-0 max-w-full items-center overflow-x-hidden overflow-y-hidden">
+  <div
+    class="flex h-full min-h-0 min-w-0 max-w-full items-center overflow-x-hidden overflow-y-hidden"
+    :class="writeMode ? 'rounded-none hover:bg-zinc-100 dark:hover:bg-zinc-800' : ''"
+  >
     <AdminMultiSelectCheckboxDropdown
       :model-value="chipValue"
       :options="optionsList"

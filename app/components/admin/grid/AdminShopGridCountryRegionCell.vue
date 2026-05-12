@@ -1,18 +1,23 @@
 <template>
   <div class="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col justify-center gap-1">
-    <div v-if="writeMode" :class="ADMIN_GRID_WRITE_WRAP">
-      <select
-        class="min-h-0 min-w-0 flex-1 cursor-pointer appearance-none border-0 bg-transparent px-0 py-0 text-sm font-normal text-zinc-900 outline-none ring-0 focus:ring-0 dark:text-white"
-        :value="currentId"
-        @change="onSelectChange"
-      >
-        <option value="">—</option>
-        <option
-          v-for="o in options"
-          :key="String(o.id)"
-          :value="String(o.id)"
-        >{{ o.label }}</option>
-      </select>
+    <div
+      v-if="writeMode"
+      class="flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-1 rounded-none hover:bg-zinc-100 dark:hover:bg-zinc-800"
+    >
+      <div :class="ADMIN_GRID_WRITE_WRAP">
+        <select
+          class="h-full min-h-0 w-full min-w-0 flex-1 cursor-pointer appearance-none border-0 bg-transparent px-0 py-0 text-sm font-normal text-zinc-900 outline-none ring-0 focus:ring-0 dark:text-white"
+          :value="currentId"
+          @change="onSelectChange"
+        >
+          <option value="">{{ emptyOptionLabel }}</option>
+          <option
+            v-for="o in options"
+            :key="String(o.id)"
+            :value="String(o.id)"
+          >{{ o.label }}</option>
+        </select>
+      </div>
     </div>
     <template v-else>
       <span :class="[ADMIN_GRID_READ_DATA, 'text-sm font-normal text-zinc-700 dark:text-zinc-200']">{{ displayLabel }}</span>
@@ -33,6 +38,7 @@ import { computed } from 'vue'
 import type { ColumnDataSchemaModel } from '@revolist/vue3-datagrid'
 import type { AdminShopGridContext, ShopGridRow } from './adminShopGridContext'
 import { ADMIN_GRID_READ_DATA, ADMIN_GRID_WRITE_WRAP } from '~/components/admin/adminGridEditClasses'
+import { normalizeAdminLookupId } from '~/utils/adminLookupIds'
 
 const props = defineProps<
   ColumnDataSchemaModel<ShopGridRow> & { gridContext: AdminShopGridContext }
@@ -46,6 +52,8 @@ const isRegion = computed(() => prop.value === 'region_id')
 
 const options = computed(() => ctx.value.optionsFor(prop.value) as { id: string; label: string }[])
 
+const emptyOptionLabel = computed(() => (writeMode.value ? 'Add option' : '—'))
+
 const currentId = computed(() => {
   const v = model.value[prop.value] as string | null | undefined
   return v == null || v === '' ? '' : String(v)
@@ -55,7 +63,8 @@ const displayLabel = computed(() => {
   const id = model.value[prop.value] as string | null | undefined
   if (id == null || id === '') return '—'
   const sid = String(id)
-  const o = options.value.find((x) => String(x.id) === sid)
+  const norm = normalizeAdminLookupId(sid)
+  const o = options.value.find((x) => normalizeAdminLookupId(x.id) === norm)
   return o?.label ?? '—'
 })
 
