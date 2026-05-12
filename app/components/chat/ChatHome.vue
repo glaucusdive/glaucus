@@ -308,41 +308,26 @@
 
           <!-- Shop detail: teleported full-viewport sheet (above layout chrome); booking form stays layout right drawer -->
           <ClientOnly>
-            <Teleport to="body">
-              <Transition @enter="onDetailDrawerEnter" @leave="onDetailDrawerLeave" :css="false">
-                <div
-                  v-if="detailDrawerShopId"
-                  class="fixed inset-0 z-[55] flex flex-col justify-end pointer-events-auto"
-                  role="dialog"
-                  aria-modal="true"
-                  :aria-label="detailDrawerAriaLabel"
-                >
-                  <div
-                    data-detail-drawer-backdrop
-                    class="absolute inset-0 bg-black/50"
-                    @click="closeShopDetail"
-                  />
-                  <div
-                    data-detail-drawer-sheet
-                    class="relative z-10 mx-auto flex h-[95dvh] min-h-0 w-[99dvw] max-w-none flex-col overflow-hidden rounded-t-xl border border-b-0 border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
-                    @click.stop
-                  >
-                    <ShopDetailPanel
-                      :key="detailDrawerShopId"
-                      :shop-lookup="detailDrawerShopId"
-                      :booking-cta-scroll-delay-ms="400"
-                      :show-booking-cta="false"
-                      :is-in-booking-flow="isInBookingFlowForShop(detailDrawerShopId)"
-                      :is-form-open="isBookingFormOpen"
-                      :on-start-booking="handleStartBookingFromPanel"
-                      :on-show-form="handleShowFormFromPanel"
-                      :on-hide-form="handleHideFormFromPanel"
-                      @close="closeShopDetail"
-                    />
-                  </div>
-                </div>
-              </Transition>
-            </Teleport>
+            <BottomSheetDrawer
+              :open="!!detailDrawerShopId"
+              :aria-label="detailDrawerAriaLabel"
+              z-index-class="z-[55]"
+              @update:open="(v) => { if (!v) closeShopDetail() }"
+            >
+              <ShopDetailPanel
+                v-if="detailDrawerShopId"
+                :key="detailDrawerShopId"
+                :shop-lookup="detailDrawerShopId"
+                :booking-cta-scroll-delay-ms="400"
+                :show-booking-cta="false"
+                :is-in-booking-flow="isInBookingFlowForShop(detailDrawerShopId)"
+                :is-form-open="isBookingFormOpen"
+                :on-start-booking="handleStartBookingFromPanel"
+                :on-show-form="handleShowFormFromPanel"
+                :on-hide-form="handleHideFormFromPanel"
+                @close="closeShopDetail"
+              />
+            </BottomSheetDrawer>
           </ClientOnly>
         </div>
       </div>
@@ -352,8 +337,8 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, watch, onUnmounted } from 'vue'
 import { Menu, ChevronRight } from 'lucide-vue-next'
-import gsap from 'gsap'
 import ChatComposer from '~/components/chat/ChatComposer.vue'
+import BottomSheetDrawer from '~/components/ui/BottomSheetDrawer.vue'
 import CardSearchResult from '~/components/CardSearchResult.vue'
 import ShopDetailPanel from '~/components/ShopDetailPanel.vue'
 import { useSearchCache, ensureChatsRoot, readChatsRoot, getActiveSession, persistActiveChatsRoot } from '~/composables/useSearchCache'
@@ -2084,47 +2069,6 @@ function openBookingFormDrawerFromMessage (msg) {
 const closeShopDetail = () => {
   if (Date.now() < shopDetailCloseGuardUntil) return
   detailDrawerShopId.value = null
-}
-
-// GSAP: shop detail bottom sheet
-function onDetailDrawerEnter (el, done) {
-  const backdrop = el.querySelector('[data-detail-drawer-backdrop]')
-  const sheet = el.querySelector('[data-detail-drawer-sheet]')
-  if (!backdrop || !sheet) {
-    done()
-    return
-  }
-  gsap.from(backdrop, {
-    opacity: 0,
-    duration: 0.25,
-    ease: 'power2.out'
-  })
-  gsap.from(sheet, {
-    y: '100%',
-    duration: 0.35,
-    ease: 'power3.out',
-    onComplete: done
-  })
-}
-
-function onDetailDrawerLeave (el, done) {
-  const backdrop = el.querySelector('[data-detail-drawer-backdrop]')
-  const sheet = el.querySelector('[data-detail-drawer-sheet]')
-  if (!backdrop || !sheet) {
-    done()
-    return
-  }
-  gsap.to(backdrop, {
-    opacity: 0,
-    duration: 0.2,
-    ease: 'power2.in'
-  })
-  gsap.to(sheet, {
-    y: '100%',
-    duration: 0.28,
-    ease: 'power3.in',
-    onComplete: done
-  })
 }
 
 useHead({ title: 'Dive Shop Search | Glaucus' })

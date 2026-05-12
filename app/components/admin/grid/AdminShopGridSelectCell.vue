@@ -1,15 +1,12 @@
 <template>
-  <div class="px-0.5 py-0 min-h-[32px] h-full max-w-full min-w-0 overflow-x-auto overflow-y-hidden flex items-center [&_.flex-col]:min-w-0">
-    <AdminSelectChip
+  <div class="flex h-full min-h-0 min-w-0 max-w-full items-center overflow-x-auto overflow-y-hidden px-0 py-0">
+    <AdminMultiSelectCheckboxDropdown
       :model-value="chipValue"
-      :options="options"
+      :options="optionsList"
       :disabled="!writeMode"
-      :multiple="config.multiple"
       :allow-add="config.allowAdd"
       :singular-label="config.singularLabel"
-      :on-create="onCreateFn"
-      compact
-      scroll-chips
+      :on-create="onCreateFn ?? undefined"
       @update:model-value="onChipUpdate"
       @created="onCreated"
     />
@@ -19,7 +16,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ColumnDataSchemaModel } from '@revolist/vue3-datagrid'
-import AdminSelectChip from '~/components/admin/AdminSelectChip.vue'
+import AdminMultiSelectCheckboxDropdown from '~/components/admin/AdminMultiSelectCheckboxDropdown.vue'
 import type { AdminShopGridContext, ShopGridRow } from './adminShopGridContext'
 
 const props = defineProps<
@@ -42,17 +39,24 @@ const config = computed(() => {
 
 const options = computed(() => ctx.value.optionsFor(prop.value))
 
+const optionsList = computed(() =>
+  (options.value as { id: string; label?: string; name?: string }[]).map((o) => ({
+    id: String(o.id),
+    label: o.label != null && String(o.label) !== '' ? String(o.label) : (o.name != null ? String(o.name) : String(o.id))
+  }))
+)
+
 const chipValue = computed(() => {
   const p = prop.value
   const v = model.value[p]
   if (config.value.multiple) {
-    return Array.isArray(v) ? v : []
+    return Array.isArray(v) ? v.map((x) => String(x)) : []
   }
   const id = v as string | null | undefined
-  return id ? [id] : []
+  return id ? [String(id)] : []
 })
 
-function onChipUpdate (v: unknown[]) {
+function onChipUpdate (v: string[]) {
   const p = prop.value
   if (config.value.multiple) {
     (model.value as Record<string, unknown>)[p] = Array.isArray(v) ? [...v] : []

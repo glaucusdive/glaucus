@@ -1,20 +1,21 @@
 <template>
-  <div class="px-1 flex items-center justify-center min-h-[32px] max-w-full min-w-0">
-    <AdminButton
-      variant="danger"
-      class="text-xs py-0.5 px-2"
+  <div class="flex h-full min-h-0 max-w-full min-w-0 items-center justify-center px-0 py-0">
+    <button
+      type="button"
+      class="rounded p-1.5 text-red-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-red-400 dark:hover:bg-zinc-800/50"
       :disabled="!writeMode || model.saving"
+      aria-label="Delete shop"
       @click="ctx.deleteRow(model)"
     >
-      Delete
-    </AdminButton>
+      <Trash2 class="h-4 w-4" aria-hidden="true" />
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Trash2 } from 'lucide-vue-next'
 import type { ColumnDataSchemaModel } from '@revolist/vue3-datagrid'
-import AdminButton from '~/components/admin/AdminButton.vue'
 import type { AdminShopGridContext, ShopGridRow } from './adminShopGridContext'
 
 const props = defineProps<

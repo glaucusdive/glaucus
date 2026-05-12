@@ -1,19 +1,24 @@
 <template>
-  <div class="px-1 py-0 min-h-[32px] max-w-full min-w-0 flex items-center">
-    <textarea
-      v-if="writeMode && multiline"
-      v-model="text"
-      rows="2"
-      class="w-full min-w-0 max-h-16 resize-y rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-1.5 py-0.5 text-xs text-zinc-900 dark:text-white leading-snug"
-    />
-    <input
-      v-else-if="writeMode"
-      v-model="text"
-      :type="inputType"
-      :step="inputType === 'number' ? 'any' : undefined"
-      class="w-full min-w-0 rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-1.5 py-0.5 text-xs text-zinc-900 dark:text-white"
-    />
-    <span v-else class="block w-full min-w-0 truncate text-xs text-zinc-700 dark:text-zinc-200">{{ displayRead }}</span>
+  <div class="flex h-full min-h-0 max-w-full min-w-0 items-stretch px-0 py-0">
+    <div v-if="writeMode" class="flex min-h-0 min-w-0 flex-1 items-stretch" :class="ADMIN_GRID_WRITE_WRAP">
+      <textarea
+        v-if="multiline"
+        v-model="text"
+        rows="2"
+        :class="ADMIN_GRID_WRITE_TEXTAREA"
+      />
+      <input
+        v-else
+        v-model="text"
+        :type="inputType"
+        :step="inputType === 'number' ? 'any' : undefined"
+        :class="ADMIN_GRID_WRITE_INPUT"
+      >
+    </div>
+    <span
+      v-else
+      :class="[ADMIN_GRID_READ_DATA, 'text-xs text-zinc-700 dark:text-zinc-200']"
+    >{{ displayRead }}</span>
   </div>
 </template>
 
@@ -21,6 +26,12 @@
 import { computed } from 'vue'
 import type { ColumnDataSchemaModel } from '@revolist/vue3-datagrid'
 import type { AdminShopGridContext, ShopGridRow } from './adminShopGridContext'
+import {
+  ADMIN_GRID_READ_DATA,
+  ADMIN_GRID_WRITE_INPUT,
+  ADMIN_GRID_WRITE_TEXTAREA,
+  ADMIN_GRID_WRITE_WRAP
+} from '~/components/admin/adminGridEditClasses'
 
 const props = defineProps<
   ColumnDataSchemaModel<ShopGridRow> & { gridContext: AdminShopGridContext }
