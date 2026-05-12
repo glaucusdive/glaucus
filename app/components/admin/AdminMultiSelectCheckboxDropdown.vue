@@ -137,6 +137,8 @@ const props = defineProps({
   options: { type: Array, default: () => [] },
   singularLabel: { type: String, default: 'item' },
   allowAdd: { type: Boolean, default: false },
+  /** When true, picking an option replaces the selection (single FK / single chip). */
+  singleSelect: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
   onCreate: { type: Function, default: null }
 })
@@ -184,7 +186,7 @@ function toggleOption (id) {
   if (isSelected(id)) {
     emitValue(props.modelValue.filter((x) => normalizeAdminLookupId(x) !== want))
   } else {
-    emitValue([...props.modelValue, sid])
+    emitValue(props.singleSelect ? [sid] : [...props.modelValue, sid])
   }
 }
 
@@ -277,7 +279,9 @@ async function confirmAdd () {
     if (created && created.id) {
       emit('created', created)
       const id = String(created.id).trim()
-      if (!props.modelValue.some((mid) => normalizeAdminLookupId(mid) === normalizeAdminLookupId(id))) {
+      if (props.singleSelect) {
+        emitValue([id])
+      } else if (!props.modelValue.some((mid) => normalizeAdminLookupId(mid) === normalizeAdminLookupId(id))) {
         emitValue([...props.modelValue, id])
       }
     }
