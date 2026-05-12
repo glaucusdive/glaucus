@@ -7,17 +7,12 @@ export type ShopGridRow = Record<string, unknown> & {
   dirty: boolean
   saving: boolean
   saveError: string
-  menuOpen: boolean
-  __actions: string
+  __delete: string
 }
 
 export interface AdminShopGridContext {
   writeMode: Ref<boolean>
-  saveRow: (row: ShopGridRow) => void | Promise<void>
   deleteRow: (row: ShopGridRow) => void | Promise<void>
-  discardRow: (row: ShopGridRow) => void
-  revertRow: (row: ShopGridRow) => void
-  toggleMenu: (row: ShopGridRow) => void
   setSingle: (row: ShopGridRow, field: string, value: unknown[]) => void
   createRegion: (name: string) => Promise<{ id: string; label: string }>
   createSimpleLookup: (kind: string, name: string) => Promise<{ id: string; label: string }>

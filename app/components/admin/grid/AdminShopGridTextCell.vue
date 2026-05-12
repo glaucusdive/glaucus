@@ -1,5 +1,5 @@
 <template>
-  <div class="px-1 py-0 min-h-[28px] max-w-full min-w-0 flex items-center">
+  <div class="px-1 py-0 min-h-[32px] max-w-full min-w-0 flex items-center">
     <textarea
       v-if="writeMode && multiline"
       v-model="text"

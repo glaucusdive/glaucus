@@ -1,6 +1,16 @@
 <template>
-  <div class="flex flex-col gap-1" :class="compact ? 'min-w-0 max-w-full' : 'min-w-[200px]'">
-    <div v-if="modelValue.length > 0" class="flex flex-wrap gap-1">
+  <div
+    class="flex flex-col gap-1"
+    :class="[
+      compact ? 'min-w-0 max-w-full' : 'min-w-[200px]',
+      compact ? 'min-h-full justify-center' : ''
+    ]"
+  >
+    <div
+      v-if="modelValue.length > 0"
+      class="flex gap-1 min-w-0 items-center"
+      :class="scrollChips ? 'flex-nowrap overflow-x-auto' : 'flex-wrap'"
+    >
       <span
         v-for="id in modelValue"
         :key="id"
@@ -93,6 +103,11 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  /** Single horizontal row of chips with horizontal scroll (e.g. grid cells) */
+  scrollChips: {
+    type: Boolean,
+    default: false
+  },
   /** Called when user picks "+ Add new …" and submits a name. Should return new option { id, label }. */
   onCreate: {
     type: Function,
@@ -111,17 +126,24 @@ const newInputRef = ref(null)
 
 const optionMap = computed(() => {
   const map = new Map()
-  for (const o of props.options) map.set(o.id, o.label)
+  for (const o of props.options) {
+    const k = String(o.id ?? '')
+    const label = o.label != null && o.label !== '' ? String(o.label) : (o.name != null ? String(o.name) : '')
+    map.set(k, label || k)
+  }
   return map
 })
 
 function labelFor (id) {
-  return optionMap.value.get(id) || id
+  const k = String(id ?? '')
+  return optionMap.value.get(k) ?? k
 }
 
 const unselectedOptions = computed(() => {
   if (props.multiple) {
-    return props.options.filter((o) => !props.modelValue.includes(o.id))
+    return props.options.filter(
+      (o) => !props.modelValue.some((mid) => String(mid) === String(o.id))
+    )
   }
   return props.options
 })
@@ -144,7 +166,7 @@ function onSelectChange () {
     return
   }
   if (props.multiple) {
-    if (!props.modelValue.includes(v)) {
+    if (!props.modelValue.some((mid) => String(mid) === String(v))) {
       emitValue([...props.modelValue, v])
     }
   } else {
@@ -154,7 +176,7 @@ function onSelectChange () {
 }
 
 function removeId (id) {
-  emitValue(props.modelValue.filter((x) => x !== id))
+  emitValue(props.modelValue.filter((x) => String(x) !== String(id)))
 }
 
 async function confirmAdd () {
@@ -171,7 +193,7 @@ async function confirmAdd () {
     if (created && created.id) {
       emit('created', created)
       if (props.multiple) {
-        if (!props.modelValue.includes(created.id)) {
+        if (!props.modelValue.some((mid) => String(mid) === String(created.id))) {
           emitValue([...props.modelValue, created.id])
         }
       } else {

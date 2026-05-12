@@ -1,5 +1,5 @@
 <template>
-  <div class="px-1 py-0 min-h-[28px] max-w-full min-w-0 flex flex-col justify-center gap-0.5">
+  <div class="px-1 py-0 min-h-[32px] max-w-full min-w-0 flex flex-col justify-center gap-0.5">
     <input
       v-if="writeMode"
       v-model="name"

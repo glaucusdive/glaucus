@@ -4,20 +4,29 @@ overview: Restyle the RevoGrid to match the default layout panel, raise row heig
 todos:
   - id: revo-theme-css
     content: Override RevoGrid row/cell backgrounds in shops.vue :deep() for light/dark panel match + transparent where possible
+    status: completed
   - id: pagination-api-ui
     content: Add limit/offset (page size 50) to GET /api/admin/shops + total count; wire shops.vue pagination and unsaved guard on page change
+    status: completed
   - id: toolbar-save-add
     content: "Toolbar: AdminButton Save (save all dirty on current page), Add new business opens drawer; remove inline addNewRow/hasUnsavedNew"
+    status: completed
   - id: drawer-form
     content: Teleport bottom sheet + AdminNewBusinessDrawer form (text + AdminSelectChip + POST) reusing shops API helpers
+    status: completed
   - id: row-height-tags
     content: row-size 36; AdminSelectChip nowrap + scroll; AdminShopGridSelectCell overflow-x
+    status: completed
   - id: delete-column
     content: Replace __actions with __delete column + AdminShopGridDeleteCell + AdminButton danger
+    status: completed
   - id: grid-context-cleanup
     content: Trim AdminShopGridContext / gridContext; remove AdminShopGridActionsCell import/column
+    status: completed
   - id: admin-button
     content: Add AdminButton.vue (primary/danger) and use for Save, Delete, drawer submit
+    status: completed
+isProject: false
 ---
 
 # Admin shops grid, drawer, and pagination
