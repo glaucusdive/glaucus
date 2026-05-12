@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-1 min-w-[200px]">
+  <div class="flex flex-col gap-1" :class="compact ? 'min-w-0 max-w-full' : 'min-w-[200px]'">
     <div v-if="modelValue.length > 0" class="flex flex-wrap gap-1">
       <span
         v-for="id in modelValue"
@@ -85,6 +85,11 @@ const props = defineProps({
     default: true
   },
   disabled: {
+    type: Boolean,
+    default: false
+  },
+  /** When true, drop min-width so the chip fits dense grid cells */
+  compact: {
     type: Boolean,
     default: false
   },

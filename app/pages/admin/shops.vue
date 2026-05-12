@@ -51,204 +51,43 @@
       <p class="text-sm text-red-600 dark:text-red-400">{{ loadError }}</p>
     </div>
 
-    <!-- Table -->
-    <div v-else class="flex-1 min-h-0 overflow-auto relative">
-      <table class="w-max border-collapse text-sm">
-        <thead>
-          <tr class="text-zinc-600 dark:text-zinc-300">
-            <th
-              v-for="col in columns"
-              :key="col.key"
-              class="px-2 py-2 text-left font-medium text-xs uppercase tracking-wide border-b border-zinc-200 dark:border-zinc-700 sticky top-0 whitespace-nowrap bg-zinc-100 dark:bg-zinc-800"
-              :class="col.headerSticky"
-            >{{ col.label }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="row in rows"
-            :key="row.uid"
-            class="border-b border-zinc-200 dark:border-zinc-700 group"
-            :class="rowBg(row)"
-          >
-            <!-- Business Name (sticky left) -->
-            <td class="px-2 py-1.5 sticky left-0 z-10 align-top max-w-[200px] w-[200px]" :class="rowBg(row)">
-              <input
-                v-if="writeMode"
-                v-model="row.draft.business_name"
-                type="text"
-                placeholder="Business name"
-                class="w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1 text-sm text-zinc-900 dark:text-white"
-              />
-              <span v-else class="block font-medium text-zinc-900 dark:text-white overflow-hidden truncate w-full">{{ row.draft.business_name || '—' }}</span>
-              <div v-if="row.saveError" class="block mt-1 text-xs text-red-600 dark:text-red-400 overflow-hidden truncate w-full">{{ row.saveError }}</div>
-            </td>
-
-            <!-- Text columns -->
-            <td v-for="col in textColumns" :key="col.key" class="px-2 py-1.5 align-top" :class="col.tdClass">
-              <textarea
-                v-if="writeMode && col.multiline"
-                v-model="row.draft[col.key]"
-                rows="1"
-                class="w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1 text-sm text-zinc-900 dark:text-white resize-y min-h-[28px]"
-              />
-              <input
-                v-else-if="writeMode"
-                v-model="row.draft[col.key]"
-                :type="col.inputType || 'text'"
-                :step="col.inputType === 'number' ? 'any' : undefined"
-                class="w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 py-1 text-sm text-zinc-900 dark:text-white"
-              />
-              <span v-else class="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap break-words">{{ row.draft[col.key] ?? '' }}</span>
-            </td>
-
-            <!-- Country select -->
-            <td class="px-2 py-1.5 align-top min-w-[180px]">
-              <AdminSelectChip
-                :model-value="row.draft.country_id ? [row.draft.country_id] : []"
-                :options="countryOptions"
-                :disabled="!writeMode"
-                :multiple="false"
-                :allow-add="false"
-                singular-label="country"
-                @update:model-value="v => setSingle(row, 'country_id', v)"
-              />
-            </td>
-
-            <!-- Region select with add -->
-            <td class="px-2 py-1.5 align-top min-w-[160px]">
-              <AdminSelectChip
-                :model-value="row.draft.region_id ? [row.draft.region_id] : []"
-                :options="regionOptions"
-                :disabled="!writeMode"
-                :multiple="false"
-                singular-label="region"
-                :on-create="createRegion"
-                @update:model-value="v => setSingle(row, 'region_id', v)"
-                @created="onLookupCreated('regions', $event)"
-              />
-            </td>
-
-            <!-- Courses multi -->
-            <td class="px-2 py-1.5 align-top min-w-[240px]">
-              <AdminSelectChip
-                v-model="row.draft.course_ids"
-                :options="courseOptions"
-                :disabled="!writeMode"
-                singular-label="course"
-                :allow-add="false"
-              />
-            </td>
-
-            <!-- Rental equipment -->
-            <td class="px-2 py-1.5 align-top min-w-[200px]">
-              <AdminSelectChip
-                v-model="row.draft.rental_equipment_ids"
-                :options="rentalOptions"
-                :disabled="!writeMode"
-                singular-label="rental"
-                :on-create="(name) => createSimpleLookup('rental_equipment', name)"
-                @created="onLookupCreated('rentalEquipment', $event)"
-              />
-            </td>
-
-            <!-- Gases -->
-            <td class="px-2 py-1.5 align-top min-w-[160px]">
-              <AdminSelectChip
-                v-model="row.draft.gas_ids"
-                :options="gasOptions"
-                :disabled="!writeMode"
-                singular-label="gas"
-                :on-create="(name) => createSimpleLookup('gases', name)"
-                @created="onLookupCreated('gases', $event)"
-              />
-            </td>
-
-            <!-- Dive Sites -->
-            <td class="px-2 py-1.5 align-top min-w-[260px]">
-              <AdminSelectChip
-                v-model="row.draft.dive_site_ids"
-                :options="diveSiteOptions"
-                :disabled="!writeMode"
-                singular-label="dive site"
-                :on-create="(name) => createDiveSite(name, row.draft.country_id)"
-                @created="onLookupCreated('diveSites', $event)"
-              />
-            </td>
-
-            <!-- Actions (sticky right) -->
-            <td class="px-2 py-1.5 sticky right-0 z-10 align-top min-w-[160px]" :class="rowBg(row)">
-              <div class="flex items-center gap-1">
-                <button
-                  type="button"
-                  class="rounded-md text-xs font-medium px-2.5 py-1 cursor-pointer disabled:opacity-50"
-                  :class="row.id ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'bg-amber-500 text-white'"
-                  :disabled="!writeMode || row.saving"
-                  @click="saveRow(row)"
-                >
-                  {{ row.saving ? '…' : (row.id ? 'Update' : 'Save') }}
-                </button>
-
-                <!-- Three-dot menu -->
-                <div class="relative">
-                  <button
-                    type="button"
-                    class="rounded-md p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer disabled:opacity-50"
-                    :disabled="!writeMode"
-                    :aria-expanded="row.menuOpen"
-                    aria-label="Row actions"
-                    @click="toggleMenu(row)"
-                  >
-                    <MoreVertical class="w-4 h-4 text-zinc-600 dark:text-zinc-300" stroke-width="2" />
-                  </button>
-                  <div
-                    v-if="row.menuOpen"
-                    class="absolute right-0 top-full mt-1 z-40 w-40 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg"
-                    @mouseleave="row.menuOpen = false"
-                  >
-                    <button
-                      v-if="row.id"
-                      type="button"
-                      class="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
-                      @click="deleteRow(row)"
-                    >Delete shop</button>
-                    <button
-                      v-if="!row.id"
-                      type="button"
-                      class="w-full text-left px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
-                      @click="discardRow(row)"
-                    >Discard</button>
-                    <button
-                      v-if="row.id"
-                      type="button"
-                      class="w-full text-left px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
-                      @click="revertRow(row)"
-                    >Revert changes</button>
-                  </div>
-                </div>
-              </div>
-            </td>
-          </tr>
-          <tr v-if="rows.length === 0">
-            <td :colspan="columns.length" class="p-6 text-center text-sm text-zinc-500 dark:text-zinc-400">No dive shops.</td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- Virtualized grid -->
+    <div v-else class="flex-1 min-h-0 min-w-0 flex flex-col relative border-t border-zinc-200 dark:border-zinc-700">
+      <div v-if="rows.length === 0" class="flex-1 flex items-center justify-center p-8 text-sm text-zinc-500 dark:text-zinc-400">
+        No dive shops.
+      </div>
+      <ClientOnly v-else>
+        <RevoGrid
+          hide-attribution
+          class="admin-revo-grid h-full min-h-[320px] w-full min-w-0 flex-1"
+          :theme="gridTheme"
+          :columns="gridColumns"
+          :source="rows"
+          :row-size="32"
+        />
+        <template #fallback>
+          <div class="flex flex-1 items-center justify-center p-8 text-sm text-zinc-500 dark:text-zinc-400">Loading grid…</div>
+        </template>
+      </ClientOnly>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, reactive, onMounted, watch } from 'vue'
-import { MoreVertical } from 'lucide-vue-next'
-import AdminSelectChip from '~/components/admin/AdminSelectChip.vue'
+import RevoGrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
+import { useTheme } from '~/composables/useTheme'
+import AdminShopGridBusinessCell from '~/components/admin/grid/AdminShopGridBusinessCell.vue'
+import AdminShopGridTextCell from '~/components/admin/grid/AdminShopGridTextCell.vue'
+import AdminShopGridSelectCell from '~/components/admin/grid/AdminShopGridSelectCell.vue'
+import AdminShopGridActionsCell from '~/components/admin/grid/AdminShopGridActionsCell.vue'
 
 definePageMeta({ layout: 'default', middleware: 'auth' })
 
 useSeoMeta({ robots: 'noindex, nofollow' })
 
-const route = useRoute()
 const { isAppAdmin, accessToken, init } = useAuth()
+const { isDark } = useTheme()
 
 const writeMode = ref(false)
 const loading = ref(true)
@@ -272,38 +111,61 @@ const rentalOptions = computed(() => lookups.value.rentalEquipment.map((r) => ({
 const gasOptions = computed(() => lookups.value.gases.map((g) => ({ id: g.id, label: g.name })))
 const diveSiteOptions = computed(() => lookups.value.diveSites.map((s) => ({ id: s.id, label: s.name })))
 
-const textColumns = [
-  { key: 'street_address', label: 'Address', multiline: true, tdClass: 'min-w-[240px]' },
-  { key: 'website_url', label: 'Website', tdClass: 'min-w-[180px]' },
-  { key: 'city', label: 'City', tdClass: 'min-w-[140px]' },
-  { key: 'state', label: 'State', tdClass: 'min-w-[140px]' },
-  { key: 'locale', label: 'Locale', tdClass: 'min-w-[160px]' },
-  { key: 'phone', label: 'Phone', tdClass: 'min-w-[150px]' },
-  { key: 'email', label: 'Email', tdClass: 'min-w-[180px]' },
-  { key: 'type', label: 'Type', tdClass: 'min-w-[180px]' },
-  { key: 'google_rating', label: 'Rating', inputType: 'number', tdClass: 'min-w-[100px]' }
+/** Shop field keys stored on each grid row (flat). */
+const SHOP_DATA_KEYS = [
+  'business_name',
+  'street_address',
+  'website_url',
+  'city',
+  'state',
+  'locale',
+  'phone',
+  'email',
+  'type',
+  'google_rating',
+  'country_id',
+  'region_id',
+  'course_ids',
+  'rental_equipment_ids',
+  'gas_ids',
+  'dive_site_ids'
 ]
 
-const columns = computed(() => [
-  { key: 'business_name', label: 'Business Name', headerSticky: 'sticky left-0 z-20' },
-  ...textColumns.map((c) => ({ key: c.key, label: c.label })),
-  { key: 'country_id', label: 'Country' },
-  { key: 'region_id', label: 'Region' },
-  { key: 'course_ids', label: 'Courses' },
-  { key: 'rental_equipment_ids', label: 'Rental Gear' },
-  { key: 'gas_ids', label: 'Gases' },
-  { key: 'dive_site_ids', label: 'Dive Sites' },
-  { key: 'actions', label: 'Actions', headerSticky: 'sticky right-0 z-20' }
-])
+const TEXT_GRID_COLS = [
+  { prop: 'street_address', name: 'Address', size: 240 },
+  { prop: 'website_url', name: 'Website', size: 180 },
+  { prop: 'city', name: 'City', size: 140 },
+  { prop: 'state', name: 'State', size: 140 },
+  { prop: 'locale', name: 'Locale', size: 160 },
+  { prop: 'phone', name: 'Phone', size: 150 },
+  { prop: 'email', name: 'Email', size: 180 },
+  { prop: 'type', name: 'Type', size: 180 },
+  { prop: 'google_rating', name: 'Rating', size: 96 }
+]
+
+const gridTheme = computed(() => (isDark.value ? 'darkCompact' : 'compact'))
 
 const rows = ref([])
 
 const hasUnsavedNew = computed(() => rows.value.some((r) => !r.id))
 
-function rowBg (row) {
-  if (!row.id) return 'bg-amber-50 dark:bg-amber-950/30'
-  if (row.dirty) return 'bg-blue-50 dark:bg-blue-950/30'
-  return 'bg-white dark:bg-zinc-900'
+function optionsFor (prop) {
+  switch (prop) {
+    case 'country_id':
+      return countryOptions.value
+    case 'region_id':
+      return regionOptions.value
+    case 'course_ids':
+      return courseOptions.value
+    case 'rental_equipment_ids':
+      return rentalOptions.value
+    case 'gas_ids':
+      return gasOptions.value
+    case 'dive_site_ids':
+      return diveSiteOptions.value
+    default:
+      return []
+  }
 }
 
 function makeDraft (shop) {
@@ -328,16 +190,17 @@ function makeDraft (shop) {
 }
 
 function makeRow (shop) {
-  const draft = makeDraft(shop)
+  const d = makeDraft(shop)
   return reactive({
+    ...d,
     uid: shop?.id || `new-${Math.random().toString(36).slice(2, 10)}`,
     id: shop?.id || null,
     original: shop || null,
-    draft,
-    dirty: false,
+    dirty: !shop,
     saving: false,
     saveError: '',
-    menuOpen: false
+    menuOpen: false,
+    __actions: ''
   })
 }
 
@@ -348,34 +211,34 @@ function rebuildRowsFromShops () {
 
 function watchRowDirty (row) {
   watch(
-    () => row.draft,
+    () => row,
     () => {
-      row.dirty = isDraftDifferent(row.draft, row.original)
+      row.dirty = isDraftDifferent(row, row.original)
     },
     { deep: true }
   )
 }
 
-function isDraftDifferent (draft, original) {
+function isDraftDifferent (row, original) {
   if (!original) return true
   const fieldsToCheck = [
     'business_name', 'street_address', 'website_url', 'city', 'state', 'locale', 'phone',
     'email', 'type', 'country_id', 'region_id'
   ]
   for (const f of fieldsToCheck) {
-    const a = draft[f] ?? ''
+    const a = row[f] ?? ''
     const b = original[f] ?? ''
     if (String(a) !== String(b)) return true
   }
   const numFields = ['google_rating']
   for (const f of numFields) {
-    const a = draft[f] === '' || draft[f] == null ? null : Number(draft[f])
+    const a = row[f] === '' || row[f] == null ? null : Number(row[f])
     const b = original[f] === '' || original[f] == null ? null : Number(original[f])
     if (a !== b) return true
   }
   const idArrays = ['course_ids', 'rental_equipment_ids', 'gas_ids', 'dive_site_ids']
   for (const f of idArrays) {
-    const a = [...(draft[f] || [])].sort()
+    const a = [...(row[f] || [])].sort()
     const b = [...(original[f] || [])].sort()
     if (a.length !== b.length) return true
     for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return true
@@ -384,7 +247,7 @@ function isDraftDifferent (draft, original) {
 }
 
 function setSingle (row, field, value) {
-  row.draft[field] = Array.isArray(value) && value.length > 0 ? value[0] : null
+  row[field] = Array.isArray(value) && value.length > 0 ? value[0] : null
 }
 
 function addNewRow () {
@@ -396,7 +259,7 @@ function addNewRow () {
 
 function toggleMenu (row) {
   const next = !row.menuOpen
-  rows.value.forEach((r) => { r.menuOpen = false })
+  rows.value.forEach((rr) => { rr.menuOpen = false })
   row.menuOpen = next
 }
 
@@ -405,9 +268,13 @@ function discardRow (row) {
 }
 
 function revertRow (row) {
-  row.draft = makeDraft(row.original)
+  const d = makeDraft(row.original)
+  for (const k of SHOP_DATA_KEYS) {
+    row[k] = d[k]
+  }
   row.dirty = false
   row.menuOpen = false
+  row.saveError = ''
 }
 
 function authHeaders () {
@@ -415,24 +282,24 @@ function authHeaders () {
   return { Authorization: `Bearer ${accessToken.value}` }
 }
 
-function draftToPayload (draft) {
+function rowToPayload (row) {
   return {
-    business_name: String(draft.business_name || '').trim(),
-    street_address: emptyToNull(draft.street_address),
-    website_url: emptyToNull(draft.website_url),
-    city: emptyToNull(draft.city),
-    state: emptyToNull(draft.state),
-    locale: emptyToNull(draft.locale),
-    phone: emptyToNull(draft.phone),
-    email: emptyToNull(draft.email),
-    type: emptyToNull(draft.type),
-    country_id: draft.country_id || null,
-    region_id: draft.region_id || null,
-    google_rating: numericOrNull(draft.google_rating),
-    course_ids: draft.course_ids || [],
-    rental_equipment_ids: draft.rental_equipment_ids || [],
-    gas_ids: draft.gas_ids || [],
-    dive_site_ids: draft.dive_site_ids || []
+    business_name: String(row.business_name || '').trim(),
+    street_address: emptyToNull(row.street_address),
+    website_url: emptyToNull(row.website_url),
+    city: emptyToNull(row.city),
+    state: emptyToNull(row.state),
+    locale: emptyToNull(row.locale),
+    phone: emptyToNull(row.phone),
+    email: emptyToNull(row.email),
+    type: emptyToNull(row.type),
+    country_id: row.country_id || null,
+    region_id: row.region_id || null,
+    google_rating: numericOrNull(row.google_rating),
+    course_ids: row.course_ids || [],
+    rental_equipment_ids: row.rental_equipment_ids || [],
+    gas_ids: row.gas_ids || [],
+    dive_site_ids: row.dive_site_ids || []
   }
 }
 
@@ -450,13 +317,13 @@ function numericOrNull (v) {
 
 async function saveRow (row) {
   row.saveError = ''
-  if (!row.draft.business_name || !row.draft.business_name.trim()) {
+  if (!row.business_name || !String(row.business_name).trim()) {
     row.saveError = 'Business name is required'
     return
   }
   row.saving = true
   try {
-    const payload = draftToPayload(row.draft)
+    const payload = rowToPayload(row)
     if (row.id) {
       await $fetch(`/api/admin/shops/${row.id}`, {
         method: 'PATCH',
@@ -486,7 +353,7 @@ async function deleteRow (row) {
     discardRow(row)
     return
   }
-  if (!confirm(`Delete "${row.draft.business_name}"? This also removes related bookings and reviews.`)) return
+  if (!confirm(`Delete "${row.business_name}"? This also removes related bookings and reviews.`)) return
   row.saving = true
   row.saveError = ''
   try {
@@ -513,14 +380,17 @@ async function refreshSingleShop (row) {
     })
     const fresh = list.find((s) => s.id === row.id)
     if (fresh) {
+      const d = makeDraft(fresh)
+      for (const k of SHOP_DATA_KEYS) {
+        row[k] = d[k]
+      }
       row.original = fresh
-      row.draft = makeDraft(fresh)
       const idx = shops.value.findIndex((s) => s.id === row.id)
       if (idx >= 0) shops.value[idx] = fresh
       else shops.value.push(fresh)
     }
   } catch {
-    // non-fatal: row was saved, list just won't refresh
+    // non-fatal
   }
 }
 
@@ -572,6 +442,99 @@ function onLookupCreated (kindKey, opt) {
   }
 }
 
+/** Passed into VGridVueTemplate (RevoGrid mounts cells outside parent provide scope). */
+const gridContext = {
+  writeMode,
+  saveRow,
+  deleteRow,
+  discardRow,
+  revertRow,
+  toggleMenu,
+  setSingle,
+  createRegion,
+  createSimpleLookup,
+  createDiveSite,
+  onLookupCreated,
+  optionsFor
+}
+
+const gridColumns = [
+  {
+    prop: 'business_name',
+    name: 'Business Name',
+    size: 200,
+    pin: 'colPinStart',
+    readonly: true,
+    resize: true,
+    cellTemplate: VGridVueTemplate(AdminShopGridBusinessCell, { gridContext })
+  },
+  ...TEXT_GRID_COLS.map((c) => ({
+    prop: c.prop,
+    name: c.name,
+    size: c.size,
+    readonly: true,
+    resize: true,
+    cellTemplate: VGridVueTemplate(AdminShopGridTextCell, { gridContext })
+  })),
+  {
+    prop: 'country_id',
+    name: 'Country',
+    size: 180,
+    readonly: true,
+    resize: true,
+    cellTemplate: VGridVueTemplate(AdminShopGridSelectCell, { gridContext })
+  },
+  {
+    prop: 'region_id',
+    name: 'Region',
+    size: 160,
+    readonly: true,
+    resize: true,
+    cellTemplate: VGridVueTemplate(AdminShopGridSelectCell, { gridContext })
+  },
+  {
+    prop: 'course_ids',
+    name: 'Courses',
+    size: 260,
+    readonly: true,
+    resize: true,
+    cellTemplate: VGridVueTemplate(AdminShopGridSelectCell, { gridContext })
+  },
+  {
+    prop: 'rental_equipment_ids',
+    name: 'Rental Gear',
+    size: 200,
+    readonly: true,
+    resize: true,
+    cellTemplate: VGridVueTemplate(AdminShopGridSelectCell, { gridContext })
+  },
+  {
+    prop: 'gas_ids',
+    name: 'Gases',
+    size: 160,
+    readonly: true,
+    resize: true,
+    cellTemplate: VGridVueTemplate(AdminShopGridSelectCell, { gridContext })
+  },
+  {
+    prop: 'dive_site_ids',
+    name: 'Dive Sites',
+    size: 280,
+    readonly: true,
+    resize: true,
+    cellTemplate: VGridVueTemplate(AdminShopGridSelectCell, { gridContext })
+  },
+  {
+    prop: '__actions',
+    name: 'Actions',
+    size: 168,
+    pin: 'colPinEnd',
+    readonly: true,
+    resize: true,
+    cellTemplate: VGridVueTemplate(AdminShopGridActionsCell, { gridContext })
+  }
+]
+
 async function loadAll () {
   loading.value = true
   loadError.value = ''
@@ -607,3 +570,10 @@ onMounted(async () => {
   await loadAll()
 })
 </script>
+
+<style scoped>
+.admin-revo-grid :deep(revo-grid) {
+  width: 100%;
+  min-height: 320px;
+}
+</style>
