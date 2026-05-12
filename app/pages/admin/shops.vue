@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full min-h-0">
     <!-- Top bar -->
-    <div class="shrink-0 border-b border-zinc-800 p-3 flex items-center justify-between gap-4 flex-wrap">
+    <div class="shrink-0 border-b border-solid border-[color:var(--admin-table-border)] p-3 flex items-center justify-between gap-4 flex-wrap">
       <div class="min-w-0">
         <h1 class="text-lg font-semibold text-zinc-900 dark:text-white">Admin · Dive Shops</h1>
       </div>
@@ -59,7 +59,7 @@
 
     <div v-else class="flex flex-1 min-h-0 min-w-0 flex-col bg-white dark:bg-zinc-900">
       <!-- Virtualized grid -->
-      <div class="relative flex min-h-0 min-w-0 flex-1 flex-col border-t border-zinc-800">
+      <div class="relative flex min-h-0 min-w-0 flex-1 flex-col border-t border-solid border-[color:var(--admin-table-border)]">
         <div v-if="rows.length === 0" class="flex flex-1 items-center justify-center p-8 text-sm text-zinc-500 dark:text-zinc-400">
           No dive shops on this page.
         </div>
@@ -79,7 +79,7 @@
         </ClientOnly>
       </div>
 
-      <div class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-zinc-800 bg-zinc-50 px-3 py-2.5 dark:bg-zinc-950">
+      <div class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-solid border-[color:var(--admin-table-border)] bg-zinc-50 px-3 py-2.5 dark:bg-zinc-950">
         <span class="text-xs text-zinc-600 dark:text-zinc-400">
           {{ shopTotal }} shops<span v-if="pageRangeLabel"> · {{ pageRangeLabel }}</span>
         </span>
@@ -326,8 +326,7 @@ const TEXT_GRID_COLS = [
   { prop: 'locale', name: 'Locale', size: 160 },
   { prop: 'phone', name: 'Phone', size: 150 },
   { prop: 'email', name: 'Email', size: 180 },
-  { prop: 'type', name: 'Type', size: 180 },
-  { prop: 'google_rating', name: 'Rating', size: 96 }
+  { prop: 'type', name: 'Type', size: 180 }
 ]
 
 const gridTheme = computed(() => (isDark.value ? 'darkCompact' : 'compact'))
@@ -415,12 +414,6 @@ function isDraftDifferent (row, original) {
     const a = row[f] ?? ''
     const b = original[f] ?? ''
     if (String(a) !== String(b)) return true
-  }
-  const numFields = ['google_rating']
-  for (const f of numFields) {
-    const a = row[f] === '' || row[f] == null ? null : Number(row[f])
-    const b = original[f] === '' || original[f] == null ? null : Number(original[f])
-    if (a !== b) return true
   }
   const idArrays = ['course_ids', 'rental_equipment_ids', 'gas_ids', 'dive_site_ids']
   for (const f of idArrays) {
@@ -817,12 +810,11 @@ onMounted(async () => {
 
 <style scoped>
 /*
- * RevoGrid dark themes set --revo-grid-cell-border to #424242 (lighter than zinc-800).
- * Force zinc-800 on both variables so header, .rgRow, pin shadows, and cells match Tailwind border-zinc-800.
+ * RevoGrid: map library variables to the global admin table border token (main.css).
  */
 .admin-revo-grid :deep(revo-grid) {
-  --revo-grid-header-border: rgb(39 39 42) !important;
-  --revo-grid-cell-border: rgb(39 39 42) !important;
+  --revo-grid-header-border: var(--admin-table-border) !important;
+  --revo-grid-cell-border: var(--admin-table-border) !important;
   width: 100%;
   min-height: 320px;
   background: transparent !important;
@@ -867,21 +859,7 @@ onMounted(async () => {
   box-shadow: none !important;
 }
 
-.admin-revo-grid :deep(revo-grid[theme='compact'] revogr-header .header-rgRow),
-.admin-revo-grid :deep(revo-grid[theme='darkCompact'] revogr-header .header-rgRow) {
-  height: 56px !important;
-  min-height: 56px !important;
-}
-
-.admin-revo-grid :deep(revo-grid[theme='compact'] revogr-header),
-.admin-revo-grid :deep(revo-grid[theme='darkCompact'] revogr-header) {
-  line-height: 1.25 !important;
-}
-
 .admin-revo-grid :deep(revo-grid revogr-header .rgHeaderCell) {
-  box-sizing: border-box;
-  border: none !important;
-  border-right: 1px solid var(--revo-grid-cell-border) !important;
   font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.25;
@@ -892,18 +870,6 @@ onMounted(async () => {
   align-items: stretch;
   align-self: stretch;
   box-shadow: none !important;
-}
-
-/*
- * RevoGrid often uses one revogr-viewport-scroll.rgCol per scroll column, so each .rgRow has only
- * one .rgHeaderCell / .rgCell (always :last-child). Do not strip border-right in that case or all
- * vertical dividers between scroll columns disappear. Only clear the outer edge when multiple
- * cells share one row in the same header/data strip.
- */
-.admin-revo-grid :deep(
-  revo-grid revogr-header .header-rgRow:has(.rgHeaderCell ~ .rgHeaderCell) .rgHeaderCell:last-child
-) {
-  border-right: none !important;
 }
 
 .admin-revo-grid :deep(revo-grid revogr-header .rgHeaderCell .header-content) {
@@ -917,30 +883,13 @@ onMounted(async () => {
 }
 
 /*
- * Body cells: borders + typography; uniform padding is set in the unscoped block below
- * (RevoGrid theme uses padding: 0 15px on .rgCell — scoped rules often do not override it).
+ * Body cells: typography only. Horizontal inset line + vertical borders + padding live in the unscoped
+ * block so they beat RevoGrid’s global compact/darkCompact stylesheet (scoped :deep loses on box-shadow too).
  */
 .admin-revo-grid :deep(revo-grid revogr-data .rgCell) {
   box-sizing: border-box;
-  border: none !important;
-  border-right: 1px solid var(--revo-grid-cell-border) !important;
   font-size: 0.875rem;
   font-weight: 400;
-  box-shadow: 0 -1px 0 0 var(--revo-grid-cell-border) inset !important;
-}
-
-/* Row index gutter: padding unscoped; keep border alignment here if needed */
-.admin-revo-grid :deep(revo-grid .rowHeaders revogr-data .rgCell) {
-  box-sizing: border-box;
-}
-
-.admin-revo-grid :deep(revo-grid revogr-data .rgRow:has(.rgCell ~ .rgCell) .rgCell:last-child) {
-  border-right: none !important;
-}
-
-.admin-revo-grid :deep(revo-grid revogr-viewport-scroll.colPinEnd revogr-data .rgCell),
-.admin-revo-grid :deep(revo-grid revogr-viewport-scroll.colPinEnd revogr-header .rgHeaderCell) {
-  border-right: none !important;
 }
 
 .admin-revo-grid :deep(revo-grid .footer-wrapper revogr-data) {
@@ -953,29 +902,99 @@ onMounted(async () => {
 }
 
 .admin-revo-grid.admin-revo-grid--write.admin-revo-grid--dark :deep(revo-grid revogr-data .rgCell:hover) {
-  background-color: rgb(39 39 42) !important;
+  background-color: var(--admin-table-border) !important;
 }
 </style>
 
 <style>
-/* RevoGrid compact themes set revogr-data .rgCell to padding: 0 15px (horizontal only) in a global
-   stylesheet. Scoped :deep() often loses that cascade. Unscoped + revo-grid.admin-revo-grid + !important
-   forces uniform padding (1rem = Tailwind p-4) on all sides for body cells, headers, and row index gutter. */
-revo-grid.admin-revo-grid[theme='compact'] revogr-data .rgCell,
-revo-grid.admin-revo-grid[theme='darkCompact'] revogr-data .rgCell {
-  box-sizing: border-box !important;
-  padding: 1rem !important;
+/*
+ * RevoGrid compact/darkCompact global stylesheet wins over many scoped :deep() rules.
+ * Unscoped + !important. Re-declare --admin-table-border on the host so it always resolves under the grid
+ * (some theme paths read vars / shadows as if the token were missing).
+ */
+revo-grid.admin-revo-grid[theme='compact'] {
+  --admin-table-border: rgb(228 228 231);
+}
+revo-grid.admin-revo-grid[theme='darkCompact'] {
+  --admin-table-border: rgb(42 38 39);
+}
+
+revo-grid.admin-revo-grid[theme='compact'] revogr-data .rgRow,
+revo-grid.admin-revo-grid[theme='darkCompact'] revogr-data .rgRow {
+  box-shadow: none !important;
+}
+
+/* Kill theme header lines (wrong color / double with first body row). */
+revo-grid.admin-revo-grid[theme='compact'] revogr-header,
+revo-grid.admin-revo-grid[theme='darkCompact'] revogr-header {
+  line-height: 1.25 !important;
+  box-shadow: none !important;
+  border-bottom: none !important;
+}
+
+revo-grid.admin-revo-grid[theme='compact'] revogr-header .header-rgRow:not(.group),
+revo-grid.admin-revo-grid[theme='darkCompact'] revogr-header .header-rgRow:not(.group),
+revo-grid.admin-revo-grid[theme='compact'] revogr-header .header-rgRow.group,
+revo-grid.admin-revo-grid[theme='darkCompact'] revogr-header .header-rgRow.group {
+  min-height: 56px !important;
+  height: 56px !important;
+  box-shadow: none !important;
+  border-bottom: none !important;
 }
 
 revo-grid.admin-revo-grid[theme='compact'] revogr-header .rgHeaderCell,
 revo-grid.admin-revo-grid[theme='darkCompact'] revogr-header .rgHeaderCell {
   box-sizing: border-box !important;
   padding: 1rem !important;
+  border: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-right: 1px solid var(--admin-table-border) !important;
+  box-shadow: none !important;
+}
+
+/* Body: horizontal rules via border-top only (one line between header and row 1; no double with header shadow). */
+revo-grid.admin-revo-grid[theme='compact'] revogr-data .rgCell,
+revo-grid.admin-revo-grid[theme='darkCompact'] revogr-data .rgCell {
+  box-sizing: border-box !important;
+  padding: 1rem !important;
+  border: none !important;
+  border-right: 1px solid var(--admin-table-border) !important;
+  border-top: 1px solid var(--admin-table-border) !important;
+  box-shadow: none !important;
 }
 
 revo-grid.admin-revo-grid[theme='compact'] .rowHeaders revogr-data .rgCell,
 revo-grid.admin-revo-grid[theme='darkCompact'] .rowHeaders revogr-data .rgCell {
   box-sizing: border-box !important;
   padding: 1rem !important;
+  border: none !important;
+  border-right: 1px solid var(--admin-table-border) !important;
+  border-top: 1px solid var(--admin-table-border) !important;
+  box-shadow: none !important;
+}
+
+revo-grid.admin-revo-grid[theme='compact'] revogr-data .rgRow:has(.rgCell ~ .rgCell) .rgCell:last-child,
+revo-grid.admin-revo-grid[theme='darkCompact'] revogr-data .rgRow:has(.rgCell ~ .rgCell) .rgCell:last-child {
+  border-right: none !important;
+}
+
+revo-grid.admin-revo-grid[theme='compact']
+  revogr-header
+  .header-rgRow:has(.rgHeaderCell ~ .rgHeaderCell)
+  .rgHeaderCell:last-child,
+revo-grid.admin-revo-grid[theme='darkCompact']
+  revogr-header
+  .header-rgRow:has(.rgHeaderCell ~ .rgHeaderCell)
+  .rgHeaderCell:last-child {
+  border-right: none !important;
+}
+
+revo-grid.admin-revo-grid[theme='compact'] revogr-viewport-scroll.colPinEnd revogr-data .rgCell,
+revo-grid.admin-revo-grid[theme='darkCompact'] revogr-viewport-scroll.colPinEnd revogr-data .rgCell,
+revo-grid.admin-revo-grid[theme='compact'] revogr-viewport-scroll.colPinEnd revogr-header .rgHeaderCell,
+revo-grid.admin-revo-grid[theme='darkCompact'] revogr-viewport-scroll.colPinEnd revogr-header .rgHeaderCell {
+  border-right: none !important;
 }
 </style>

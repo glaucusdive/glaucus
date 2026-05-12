@@ -44,7 +44,6 @@ const ICON_NODES: Record<AdminGridHeaderKind, [string, Record<string, string>][]
 export function adminHeaderKindForProp (prop: string): AdminGridHeaderKind {
   const p = String(prop)
   if (p === 'website_url') return 'url'
-  if (p === 'google_rating') return 'number'
   if (p === 'country_id' || p === 'region_id') return 'options'
   if (p === 'course_ids' || p === 'rental_equipment_ids' || p === 'gas_ids' || p === 'dive_site_ids') return 'options'
   if (p === '__delete') return 'delete'

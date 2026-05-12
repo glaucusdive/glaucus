@@ -65,8 +65,7 @@
       <div :class="ADMIN_GRID_WRITE_WRAP">
         <input
           v-model="textField"
-          :type="inputType"
-          :step="inputType === 'number' ? 'any' : undefined"
+          type="text"
           :class="ADMIN_GRID_WRITE_INPUT"
         >
       </div>
@@ -118,8 +117,6 @@ const businessName = computed({
     model.value.business_name = v
   }
 })
-
-const inputType = computed(() => (prop.value === 'google_rating' ? 'number' : 'text'))
 
 const textField = computed({
   get: () => {
