@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-full min-h-0 min-w-0 max-w-full items-center overflow-x-auto overflow-y-hidden px-0 py-0">
+  <div class="flex h-full min-h-0 min-w-0 max-w-full items-center overflow-x-hidden overflow-y-hidden">
     <AdminMultiSelectCheckboxDropdown
       :model-value="chipValue"
       :options="optionsList"

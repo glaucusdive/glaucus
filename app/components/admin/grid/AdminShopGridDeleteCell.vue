@@ -1,8 +1,8 @@
 <template>
-  <div class="flex h-full min-h-0 max-w-full min-w-0 items-center justify-center px-0 py-0">
+  <div class="flex h-full min-h-0 w-full min-w-0 max-w-full items-center justify-center">
     <button
       type="button"
-      class="rounded p-1.5 text-red-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-red-400 dark:hover:bg-zinc-800/50"
+      class="rounded p-0.5 text-red-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-red-400 dark:hover:bg-zinc-800/50"
       :disabled="!writeMode || model.saving"
       aria-label="Delete shop"
       @click="ctx.deleteRow(model)"
