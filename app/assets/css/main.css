@@ -6,6 +6,17 @@
     @apply text-black bg-zinc-50 dark:text-white dark:bg-black;
   }
 
+  /*
+   * One border color for admin tables (RevoGrid + matching chrome). Tied to html.dark like Tailwind dark:.
+   * Light ≈ border-zinc-200; dark ≈ border-zinc-800 (same RGB DevTools shows for dark:border-zinc-800).
+   */
+  :root {
+    --admin-table-border: rgb(228 228 231);
+  }
+  html.dark {
+    --admin-table-border: rgb(42 38 39);
+  }
+
   /* Actionable controls: native <button> defaults to arrow cursor in many resets. */
   button:enabled,
   [role='button']:not([aria-disabled='true']) {
