@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-full min-h-0 max-w-full min-w-0 flex-col justify-center gap-0.5 px-0 py-0">
+  <div class="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col justify-center gap-0.5">
     <div v-if="writeMode" :class="ADMIN_GRID_WRITE_WRAP">
       <input
         v-model="name"
@@ -10,9 +10,9 @@
     </div>
     <span
       v-else
-      :class="[ADMIN_GRID_READ_DATA, 'text-sm font-medium text-zinc-900 dark:text-white']"
+      :class="[ADMIN_GRID_READ_DATA, 'text-sm font-normal text-zinc-900 dark:text-white']"
     >{{ name || '—' }}</span>
-    <span v-if="model.saveError" class="block truncate px-1 text-[10px] leading-tight text-red-600 dark:text-red-400">{{ model.saveError }}</span>
+    <span v-if="model.saveError" class="block truncate text-xs leading-tight text-red-600 dark:text-red-400">{{ model.saveError }}</span>
   </div>
 </template>
 

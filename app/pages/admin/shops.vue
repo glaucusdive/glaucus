@@ -67,6 +67,7 @@
           <RevoGrid
             hide-attribution
             class="admin-revo-grid h-full min-h-[320px] w-full min-w-0 flex-1"
+            :class="{ 'admin-revo-grid--dark': isDark }"
             :theme="gridTheme"
             :columns="gridColumns"
             :source="rows"
@@ -721,5 +722,28 @@ onMounted(async () => {
 .admin-revo-grid :deep(.data-cell),
 .admin-revo-grid :deep(.rgCell) {
   background: transparent !important;
+}
+
+/* Uniform cell padding (single p-2); vertical column rules */
+.admin-revo-grid :deep(.rgCell),
+.admin-revo-grid :deep(.rgHeaderCell) {
+  box-sizing: border-box;
+  padding: 0.5rem !important;
+  border-right: 1px solid rgb(228 228 231);
+}
+
+.admin-revo-grid :deep(.rgCell) {
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.admin-revo-grid :deep(.rgHeaderCell) {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.admin-revo-grid--dark :deep(.rgCell),
+.admin-revo-grid--dark :deep(.rgHeaderCell) {
+  border-right-color: rgb(63 63 70);
 }
 </style>

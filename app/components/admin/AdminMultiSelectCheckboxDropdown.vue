@@ -1,13 +1,13 @@
 <template>
-  <div ref="rootRef" class="relative flex h-full min-h-0 min-w-0 max-w-full flex-col justify-center gap-1">
-    <div class="flex min-h-0 min-w-0 w-full flex-1 flex-wrap items-center gap-2">
+  <div ref="rootRef" class="relative flex h-full min-h-0 min-w-0 max-w-full flex-col justify-center gap-1 overflow-hidden">
+    <div class="flex min-h-0 min-w-0 w-full flex-1 flex-nowrap items-center gap-2 overflow-x-hidden">
       <template v-if="modelValue.length > 0">
         <span
           v-for="id in modelValue"
           :key="String(id)"
-          class="inline-flex max-w-full items-center gap-1 rounded bg-zinc-200 px-1.5 py-0.5 text-xs text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200"
+          class="inline-flex shrink-0 items-center gap-1 rounded bg-zinc-200 px-1 py-0 text-sm font-normal text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200"
         >
-          <span class="truncate">{{ labelFor(id) }}</span>
+          <span class="max-w-[12rem] truncate">{{ labelFor(id) }}</span>
           <button
             v-if="!disabled"
             type="button"
@@ -19,7 +19,7 @@
       </template>
       <span
         v-else-if="disabled"
-        class="flex min-h-0 min-w-0 flex-1 items-center px-1 text-xs text-zinc-400 dark:text-zinc-500"
+        class="flex min-h-0 min-w-0 flex-1 items-center text-sm font-normal text-zinc-400 dark:text-zinc-500"
       >—</span>
       <button
         v-if="!disabled"
@@ -45,6 +45,7 @@
             v-for="opt in options"
             :key="String(opt.id)"
             role="option"
+            class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm"
             :class="
               isSelected(opt.id)
                 ? 'bg-zinc-100 dark:bg-zinc-800'

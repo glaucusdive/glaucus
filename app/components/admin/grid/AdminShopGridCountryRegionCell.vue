@@ -1,8 +1,8 @@
 <template>
-  <div class="flex h-full min-h-0 max-w-full min-w-0 flex-col justify-center gap-1 px-0 py-0">
+  <div class="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col justify-center gap-1">
     <div v-if="writeMode" :class="ADMIN_GRID_WRITE_WRAP">
       <select
-        class="min-h-0 min-w-0 flex-1 cursor-pointer appearance-none border-0 bg-transparent px-0 py-0 text-xs text-zinc-900 outline-none ring-0 focus:ring-0 dark:text-white"
+        class="min-h-0 min-w-0 flex-1 cursor-pointer appearance-none border-0 bg-transparent px-0 py-0 text-sm font-normal text-zinc-900 outline-none ring-0 focus:ring-0 dark:text-white"
         :value="currentId"
         @change="onSelectChange"
       >
@@ -15,12 +15,12 @@
       </select>
     </div>
     <template v-else>
-      <span :class="[ADMIN_GRID_READ_DATA, 'text-xs text-zinc-700 dark:text-zinc-200']">{{ displayLabel }}</span>
+      <span :class="[ADMIN_GRID_READ_DATA, 'text-sm font-normal text-zinc-700 dark:text-zinc-200']">{{ displayLabel }}</span>
     </template>
     <button
       v-if="writeMode && isRegion"
       type="button"
-      class="shrink-0 self-start px-1 text-[10px] text-blue-600 hover:underline dark:text-blue-400"
+      class="shrink-0 self-start text-[10px] text-blue-600 hover:underline dark:text-blue-400"
       @click="promptNewRegion"
     >
       + Add region

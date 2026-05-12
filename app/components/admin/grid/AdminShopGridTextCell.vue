@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-full min-h-0 max-w-full min-w-0 items-stretch px-0 py-0">
+  <div class="flex h-full min-h-0 w-full min-w-0 max-w-full items-stretch">
     <div v-if="writeMode" class="flex min-h-0 min-w-0 flex-1 items-stretch" :class="ADMIN_GRID_WRITE_WRAP">
       <textarea
         v-if="multiline"
@@ -17,7 +17,7 @@
     </div>
     <span
       v-else
-      :class="[ADMIN_GRID_READ_DATA, 'text-xs text-zinc-700 dark:text-zinc-200']"
+      :class="[ADMIN_GRID_READ_DATA, 'text-sm font-normal text-zinc-700 dark:text-zinc-200']"
     >{{ displayRead }}</span>
   </div>
 </template>
