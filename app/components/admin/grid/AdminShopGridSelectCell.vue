@@ -1,5 +1,5 @@
 <template>
-  <div class="px-0.5 py-0 min-h-[28px] max-w-full min-w-0 overflow-hidden [&_.flex-col]:min-w-0">
+  <div class="px-0.5 py-0 min-h-[32px] h-full max-w-full min-w-0 overflow-x-auto overflow-y-hidden flex items-center [&_.flex-col]:min-w-0">
     <AdminSelectChip
       :model-value="chipValue"
       :options="options"
@@ -9,6 +9,7 @@
       :singular-label="config.singularLabel"
       :on-create="onCreateFn"
       compact
+      scroll-chips
       @update:model-value="onChipUpdate"
       @created="onCreated"
     />
@@ -32,8 +33,6 @@ const model = computed(() => props.model as ShopGridRow)
 
 const config = computed(() => {
   const p = prop.value
-  if (p === 'country_id') return { multiple: false, singularLabel: 'country', allowAdd: false, kind: null as string | null }
-  if (p === 'region_id') return { multiple: false, singularLabel: 'region', allowAdd: true, kind: 'regions' as const }
   if (p === 'course_ids') return { multiple: true, singularLabel: 'course', allowAdd: false, kind: null }
   if (p === 'rental_equipment_ids') return { multiple: true, singularLabel: 'rental', allowAdd: true, kind: 'rental_equipment' as const }
   if (p === 'gas_ids') return { multiple: true, singularLabel: 'gas', allowAdd: true, kind: 'gases' as const }
@@ -81,8 +80,7 @@ const onCreateFn = computed(() => {
 function onCreated (opt: { id: string; label: string }) {
   const p = prop.value
   const c = ctx.value
-  if (p === 'region_id') c.onLookupCreated('regions', opt)
-  else if (p === 'rental_equipment_ids') c.onLookupCreated('rentalEquipment', opt)
+  if (p === 'rental_equipment_ids') c.onLookupCreated('rentalEquipment', opt)
   else if (p === 'gas_ids') c.onLookupCreated('gases', opt)
   else if (p === 'dive_site_ids') c.onLookupCreated('diveSites', opt)
 }
