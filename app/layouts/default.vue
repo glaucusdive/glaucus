@@ -56,23 +56,29 @@
               </div>
             </ClientOnly>
             <!-- <NavLink to="/community" disabled>Community</NavLink> -->
-            <NavLink v-if="isSignedIn" to="/profile" @click="handleCloseMobileMenu">
-              <CircleUser class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
-              Profile
-            </NavLink>
-            <NavLink v-else to="/auth" @click="handleCloseMobileMenu">
-              <LogIn class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" />
-              Sign in
-            </NavLink>
-            <button
-              v-if="isSignedIn"
-              type="button"
-              class="w-full flex items-center gap-2 text-left px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200 rounded-sm  cursor-pointer bg-transparent"
-              @click="handleSignOut"
-            >
-              <LogOut class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" />
-              Sign out
-            </button>
+            <ClientOnly>
+              <NavLink v-if="isSignedIn" to="/profile" @click="handleCloseMobileMenu">
+                <CircleUser class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                Profile
+              </NavLink>
+              <NavLink v-if="isSignedIn && isAppAdmin" to="/admin/shops" @click="handleCloseMobileMenu">
+                <Shield class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                Admin
+              </NavLink>
+              <NavLink v-else to="/auth" @click="handleCloseMobileMenu">
+                <LogIn class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" />
+                Sign in
+              </NavLink>
+              <button
+                v-if="isSignedIn"
+                type="button"
+                class="w-full flex items-center gap-2 text-left px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200 rounded-sm  cursor-pointer bg-transparent"
+                @click="handleSignOut"
+              >
+                <LogOut class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" />
+                Sign out
+              </button>
+            </ClientOnly>
           </nav>
 
           <!-- Theme Toggle Button -->
@@ -151,7 +157,7 @@
 <script setup>
 import gsap from 'gsap'
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { X, Sun, Moon, FilePlus, CircleUser, LogIn, LogOut, CircleHelp } from 'lucide-vue-next'
+import { X, Sun, Moon, FilePlus, CircleUser, LogIn, LogOut, CircleHelp, Shield } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
 import { useTheme } from '~/composables/useTheme'
 import { useAuth } from '~/composables/useAuth'
@@ -173,7 +179,7 @@ const showChatInSidebar = computed(() => {
   return p === '/' || p.startsWith('/auth') || p.startsWith('/profile')
 })
 const { sidebarChats, requestNewChat, requestSwitchSession } = useChatSessions()
-const { isSignedIn, signOut, onAuthStateChange, accessToken } = useAuth()
+const { isSignedIn, isAppAdmin, signOut, onAuthStateChange, accessToken } = useAuth()
 
 async function runChatActionFromSidebar (action) {
   const guest = !isSignedIn.value

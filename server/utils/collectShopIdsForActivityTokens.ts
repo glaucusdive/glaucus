@@ -38,7 +38,7 @@ async function shopIdsFromJunction (
  * - `dive_sites.name` ILIKE `%token%`
  * - `dive_site_types.name` ILIKE `%token%` → sites → junction
  *
- * Does **not** match diveshop marketing text (notes / business_name / type), so operators
+ * Does **not** match diveshop marketing text (business_name / type), so operators
  * cannot appear in wreck search without at least one qualifying linked site.
  *
  * When `diveSiteCountryIds` is provided, only sites in those countries count (aligns with

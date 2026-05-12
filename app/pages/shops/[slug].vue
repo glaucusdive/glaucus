@@ -9,8 +9,8 @@
     <div class="text-center">
       <h1 class="text-2xl font-bold text-red-600 dark:text-red-500 mb-2">Error</h1>
       <p class="text-zinc-600 dark:text-zinc-400">{{ error.message || 'Failed to load dive shop' }}</p>
-      <button @click="navigateTo('/shops')" class="mt-4 px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded hover:bg-blue-600 dark:hover:bg-blue-700">
-        Back to Dive Shops
+      <button @click="navigateTo('/')" class="mt-4 px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded hover:bg-blue-600 dark:hover:bg-blue-700">
+        Back to Home
       </button>
     </div>
   </div>
@@ -47,6 +47,6 @@ function goBackToShops () {
     return
   }
 
-  navigateTo('/shops')
+  navigateTo('/')
 }
 </script>

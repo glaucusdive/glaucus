@@ -868,7 +868,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 ...formatEntitySearchResponse(
                   actFilters,
                   actList as unknown[],
-                  `Here are shops that match “${label}” in our data (notes, site types, or linked sites). Which one would you like to book?`
+                  `Here are shops that match “${label}” in our data (site types, shop type, or linked sites). Which one would you like to book?`
                 ),
                 intent: 'search' as const
               })

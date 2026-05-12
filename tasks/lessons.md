@@ -10,3 +10,4 @@
 - For cross-route "New Chat", use a durable one-time flag (sessionStorage) and consume it in index `onMounted`; watcher-only triggers can be missed during navigation timing.
 - When planning user-facing guided flows, avoid vague internal labels like "search mode"; name the exact user choice, e.g. "Search dive businesses by location, certification course, or business name."
 - For repeated booking sections such as multiple divers, define the loop explicitly with an active index, per-item field order, and exit condition; include all per-item fields in the loop (for divers: name, certification number, dives, height/unit, weight/unit, rental gear), not after the loop.
+- When runtime evidence shows a missing DB column, first confirm whether the product actually wants that column before treating an unapplied migration as the fix.
