@@ -67,11 +67,11 @@
           <RevoGrid
             hide-attribution
             class="admin-revo-grid h-full min-h-[320px] w-full min-w-0 flex-1"
-            :class="{ 'admin-revo-grid--dark': isDark }"
+            :class="{ 'admin-revo-grid--dark': isDark, 'admin-revo-grid--write': writeMode }"
             :theme="gridTheme"
             :columns="gridColumns"
             :source="rows"
-            :row-size="36"
+            :row-size="56"
           />
           <template #fallback>
             <div class="flex flex-1 items-center justify-center p-8 text-sm text-zinc-500 dark:text-zinc-400">Loading grid…</div>
@@ -126,11 +126,7 @@ import RevoGrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import { useTheme } from '~/composables/useTheme'
 import { normalizeAdminLookupId } from '~/utils/adminLookupIds'
 import { adminColumnHeaderTemplate } from '~/utils/revoGridAdminColumnHeader'
-import AdminShopGridBusinessCell from '~/components/admin/grid/AdminShopGridBusinessCell.vue'
-import AdminShopGridTextCell from '~/components/admin/grid/AdminShopGridTextCell.vue'
-import AdminShopGridSelectCell from '~/components/admin/grid/AdminShopGridSelectCell.vue'
-import AdminShopGridCountryRegionCell from '~/components/admin/grid/AdminShopGridCountryRegionCell.vue'
-import AdminShopGridDeleteCell from '~/components/admin/grid/AdminShopGridDeleteCell.vue'
+import AdminShopGridCell from '~/components/admin/grid/AdminShopGridCell.vue'
 import AdminButton from '~/components/admin/AdminButton.vue'
 import AdminNewBusinessDrawer from '~/components/admin/AdminNewBusinessDrawer.vue'
 
@@ -174,12 +170,52 @@ const pageRangeLabel = computed(() => {
 const hasDirtyOnPage = computed(() => rows.value.some((r) => r.dirty))
 const anyRowSaving = computed(() => rows.value.some((r) => r.saving))
 
-const countryOptions = computed(() =>
-  lookups.value.countries.map((c) => ({ id: String(c.id), label: c.name ?? 'Unnamed' }))
-)
-const regionOptions = computed(() =>
-  lookups.value.regions.map((r) => ({ id: String(r.id), label: r.name ?? 'Unnamed' }))
-)
+const countryOptions = computed(() => {
+  const map = new Map()
+  for (const c of lookups.value.countries) {
+    const id = String(c.id ?? '').trim()
+    if (!id) continue
+    const norm = normalizeAdminLookupId(id)
+    map.set(norm, { id, label: c.name ?? 'Unnamed' })
+  }
+  for (const row of rows.value) {
+    const id = row.country_id
+    if (id == null || id === '') continue
+    const sid = String(id)
+    const norm = normalizeAdminLookupId(sid)
+    if (!map.has(norm)) {
+      const label =
+        row.country_name != null && String(row.country_name).trim() !== ''
+          ? String(row.country_name).trim()
+          : `Country (${sid.slice(0, 8)}…)`
+      map.set(norm, { id: sid, label })
+    }
+  }
+  return [...map.values()]
+})
+const regionOptions = computed(() => {
+  const map = new Map()
+  for (const r of lookups.value.regions) {
+    const id = String(r.id ?? '').trim()
+    if (!id) continue
+    const norm = normalizeAdminLookupId(id)
+    map.set(norm, { id, label: r.name ?? 'Unnamed' })
+  }
+  for (const row of rows.value) {
+    const id = row.region_id
+    if (id == null || id === '') continue
+    const sid = String(id)
+    const norm = normalizeAdminLookupId(sid)
+    if (!map.has(norm)) {
+      const label =
+        row.region_name != null && String(row.region_name).trim() !== ''
+          ? String(row.region_name).trim()
+          : `Region (${sid.slice(0, 8)}…)`
+      map.set(norm, { id: sid, label })
+    }
+  }
+  return [...map.values()]
+})
 const courseOptions = computed(() =>
   lookups.value.courses.map((c) => ({
     id: String(c.id),
@@ -274,6 +310,8 @@ const SHOP_DATA_KEYS = [
   'google_rating',
   'country_id',
   'region_id',
+  'country_name',
+  'region_name',
   'course_ids',
   'rental_equipment_ids',
   'gas_ids',
@@ -329,6 +367,8 @@ function makeDraft (shop) {
     google_rating: shop?.google_rating ?? '',
     country_id: shop?.country_id ?? null,
     region_id: shop?.region_id ?? null,
+    country_name: shop?.country_name ?? null,
+    region_name: shop?.region_name ?? null,
     course_ids: Array.isArray(shop?.course_ids) ? [...shop.course_ids] : [],
     rental_equipment_ids: Array.isArray(shop?.rental_equipment_ids) ? [...shop.rental_equipment_ids] : [],
     gas_ids: Array.isArray(shop?.gas_ids) ? [...shop.gas_ids] : [],
@@ -394,6 +434,29 @@ function isDraftDifferent (row, original) {
 
 function setSingle (row, field, value) {
   row[field] = Array.isArray(value) && value.length > 0 ? value[0] : null
+  const v = row[field]
+  if (field === 'country_id') {
+    if (v == null || v === '') {
+      row.country_name = null
+      return
+    }
+    const sid = String(v)
+    const found = countryOptions.value.find(
+      (o) => normalizeAdminLookupId(o.id) === normalizeAdminLookupId(sid)
+    )
+    row.country_name = found?.label ?? row.country_name ?? null
+  }
+  if (field === 'region_id') {
+    if (v == null || v === '') {
+      row.region_name = null
+      return
+    }
+    const sid = String(v)
+    const found = regionOptions.value.find(
+      (o) => normalizeAdminLookupId(o.id) === normalizeAdminLookupId(sid)
+    )
+    row.region_name = found?.label ?? row.region_name ?? null
+  }
 }
 
 function confirmLeavePage () {
@@ -618,7 +681,7 @@ const gridColumns = [
     pin: 'colPinStart',
     readonly: true,
     resize: true,
-    cellTemplate: VGridVueTemplate(AdminShopGridBusinessCell, { gridContext })
+    cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
   }),
   ...TEXT_GRID_COLS.map((c) =>
     withAdminHeader({
@@ -627,7 +690,7 @@ const gridColumns = [
       size: c.size,
       readonly: true,
       resize: true,
-      cellTemplate: VGridVueTemplate(AdminShopGridTextCell, { gridContext })
+      cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
     })
   ),
   withAdminHeader({
@@ -636,7 +699,7 @@ const gridColumns = [
     size: 180,
     readonly: true,
     resize: true,
-    cellTemplate: VGridVueTemplate(AdminShopGridCountryRegionCell, { gridContext })
+    cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
   }),
   withAdminHeader({
     prop: 'region_id',
@@ -644,7 +707,7 @@ const gridColumns = [
     size: 160,
     readonly: true,
     resize: true,
-    cellTemplate: VGridVueTemplate(AdminShopGridCountryRegionCell, { gridContext })
+    cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
   }),
   withAdminHeader({
     prop: 'course_ids',
@@ -652,7 +715,7 @@ const gridColumns = [
     size: 260,
     readonly: true,
     resize: true,
-    cellTemplate: VGridVueTemplate(AdminShopGridSelectCell, { gridContext })
+    cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
   }),
   withAdminHeader({
     prop: 'rental_equipment_ids',
@@ -660,7 +723,7 @@ const gridColumns = [
     size: 200,
     readonly: true,
     resize: true,
-    cellTemplate: VGridVueTemplate(AdminShopGridSelectCell, { gridContext })
+    cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
   }),
   withAdminHeader({
     prop: 'gas_ids',
@@ -668,7 +731,7 @@ const gridColumns = [
     size: 160,
     readonly: true,
     resize: true,
-    cellTemplate: VGridVueTemplate(AdminShopGridSelectCell, { gridContext })
+    cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
   }),
   withAdminHeader({
     prop: 'dive_site_ids',
@@ -676,7 +739,7 @@ const gridColumns = [
     size: 280,
     readonly: true,
     resize: true,
-    cellTemplate: VGridVueTemplate(AdminShopGridSelectCell, { gridContext })
+    cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
   }),
   withAdminHeader({
     prop: '__delete',
@@ -684,7 +747,7 @@ const gridColumns = [
     size: 100,
     readonly: true,
     resize: true,
-    cellTemplate: VGridVueTemplate(AdminShopGridDeleteCell, { gridContext })
+    cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
   })
 ]
 
@@ -753,10 +816,13 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* One line color for all RevoGrid chrome (matches Tailwind zinc-800 #27272a) */
+/*
+ * RevoGrid dark themes set --revo-grid-cell-border to #424242 (lighter than zinc-800).
+ * Force zinc-800 on both variables so header, .rgRow, pin shadows, and cells match Tailwind border-zinc-800.
+ */
 .admin-revo-grid :deep(revo-grid) {
-  --revo-grid-header-border: rgb(39 39 42);
-  --revo-grid-cell-border: rgb(39 39 42);
+  --revo-grid-header-border: rgb(39 39 42) !important;
+  --revo-grid-cell-border: rgb(39 39 42) !important;
   width: 100%;
   min-height: 320px;
   background: transparent !important;
@@ -787,6 +853,11 @@ onMounted(async () => {
   background: transparent !important;
 }
 
+/* One horizontal line per row boundary: cells only (RevoGrid also draws .rgRow top inset — doubles the line). */
+.admin-revo-grid :deep(revo-grid revogr-data .rgRow) {
+  box-shadow: none !important;
+}
+
 /*
  * Header: do not stack extra borders on .rgHeaderCell — RevoGrid + .header-rgRow already use box-shadow.
  * One left-edge inset per header cell + stretch inner .header-content to full row height.
@@ -798,19 +869,19 @@ onMounted(async () => {
 
 .admin-revo-grid :deep(revo-grid[theme='compact'] revogr-header .header-rgRow),
 .admin-revo-grid :deep(revo-grid[theme='darkCompact'] revogr-header .header-rgRow) {
-  height: 36px !important;
-  min-height: 36px !important;
+  height: 56px !important;
+  min-height: 56px !important;
 }
 
 .admin-revo-grid :deep(revo-grid[theme='compact'] revogr-header),
 .admin-revo-grid :deep(revo-grid[theme='darkCompact'] revogr-header) {
-  line-height: 36px !important;
+  line-height: 1.25 !important;
 }
 
 .admin-revo-grid :deep(revo-grid revogr-header .rgHeaderCell) {
   box-sizing: border-box;
-  padding: 0 0.5rem !important;
   border: none !important;
+  border-right: 1px solid var(--revo-grid-cell-border) !important;
   font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.25;
@@ -820,7 +891,19 @@ onMounted(async () => {
   display: flex !important;
   align-items: stretch;
   align-self: stretch;
-  box-shadow: -1px 0 0 0 var(--revo-grid-header-border) inset !important;
+  box-shadow: none !important;
+}
+
+/*
+ * RevoGrid often uses one revogr-viewport-scroll.rgCol per scroll column, so each .rgRow has only
+ * one .rgHeaderCell / .rgCell (always :last-child). Do not strip border-right in that case or all
+ * vertical dividers between scroll columns disappear. Only clear the outer edge when multiple
+ * cells share one row in the same header/data strip.
+ */
+.admin-revo-grid :deep(
+  revo-grid revogr-header .header-rgRow:has(.rgHeaderCell ~ .rgHeaderCell) .rgHeaderCell:last-child
+) {
+  border-right: none !important;
 }
 
 .admin-revo-grid :deep(revo-grid revogr-header .rgHeaderCell .header-content) {
@@ -833,15 +916,66 @@ onMounted(async () => {
   height: 100%;
 }
 
-/* Body cells: single box-shadow stack (compact theme omits the default theme cell shadows) */
+/*
+ * Body cells: borders + typography; uniform padding is set in the unscoped block below
+ * (RevoGrid theme uses padding: 0 15px on .rgCell — scoped rules often do not override it).
+ */
 .admin-revo-grid :deep(revo-grid revogr-data .rgCell) {
   box-sizing: border-box;
-  padding: 0.5rem !important;
   border: none !important;
+  border-right: 1px solid var(--revo-grid-cell-border) !important;
   font-size: 0.875rem;
   font-weight: 400;
-  box-shadow:
-    0 -1px 0 0 var(--revo-grid-cell-border) inset,
-    -1px 0 0 0 var(--revo-grid-cell-border) inset !important;
+  box-shadow: 0 -1px 0 0 var(--revo-grid-cell-border) inset !important;
+}
+
+/* Row index gutter: padding unscoped; keep border alignment here if needed */
+.admin-revo-grid :deep(revo-grid .rowHeaders revogr-data .rgCell) {
+  box-sizing: border-box;
+}
+
+.admin-revo-grid :deep(revo-grid revogr-data .rgRow:has(.rgCell ~ .rgCell) .rgCell:last-child) {
+  border-right: none !important;
+}
+
+.admin-revo-grid :deep(revo-grid revogr-viewport-scroll.colPinEnd revogr-data .rgCell),
+.admin-revo-grid :deep(revo-grid revogr-viewport-scroll.colPinEnd revogr-header .rgHeaderCell) {
+  border-right: none !important;
+}
+
+.admin-revo-grid :deep(revo-grid .footer-wrapper revogr-data) {
+  box-shadow: none !important;
+}
+
+/* Write mode: row hover on the real gridcell (after default transparent bg so :hover wins). */
+.admin-revo-grid.admin-revo-grid--write :deep(revo-grid revogr-data .rgCell:hover) {
+  background-color: rgb(244 244 245) !important;
+}
+
+.admin-revo-grid.admin-revo-grid--write.admin-revo-grid--dark :deep(revo-grid revogr-data .rgCell:hover) {
+  background-color: rgb(39 39 42) !important;
+}
+</style>
+
+<style>
+/* RevoGrid compact themes set revogr-data .rgCell to padding: 0 15px (horizontal only) in a global
+   stylesheet. Scoped :deep() often loses that cascade. Unscoped + revo-grid.admin-revo-grid + !important
+   forces uniform padding (1rem = Tailwind p-4) on all sides for body cells, headers, and row index gutter. */
+revo-grid.admin-revo-grid[theme='compact'] revogr-data .rgCell,
+revo-grid.admin-revo-grid[theme='darkCompact'] revogr-data .rgCell {
+  box-sizing: border-box !important;
+  padding: 1rem !important;
+}
+
+revo-grid.admin-revo-grid[theme='compact'] revogr-header .rgHeaderCell,
+revo-grid.admin-revo-grid[theme='darkCompact'] revogr-header .rgHeaderCell {
+  box-sizing: border-box !important;
+  padding: 1rem !important;
+}
+
+revo-grid.admin-revo-grid[theme='compact'] .rowHeaders revogr-data .rgCell,
+revo-grid.admin-revo-grid[theme='darkCompact'] .rowHeaders revogr-data .rgCell {
+  box-sizing: border-box !important;
+  padding: 1rem !important;
 }
 </style>
