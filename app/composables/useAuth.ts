@@ -4,11 +4,30 @@ import type { User, Session } from '@supabase/supabase-js'
 const user = ref<User | null>(null)
 const session = ref<Session | null>(null)
 const loading = ref(true)
+const userRole = ref<'standard' | 'admin'>('standard')
 
 export const useAuth = () => {
   const { client } = useSupabase()
 
   const isSignedIn = computed(() => !!user.value)
+
+  async function loadUserRole () {
+    const id = user.value?.id
+    if (!id) {
+      userRole.value = 'standard'
+      return
+    }
+    try {
+      const { data } = await client
+        .from('profiles')
+        .select('role')
+        .eq('id', id)
+        .maybeSingle()
+      userRole.value = data?.role === 'admin' ? 'admin' : 'standard'
+    } catch {
+      userRole.value = 'standard'
+    }
+  }
 
   async function init () {
     loading.value = true
@@ -16,6 +35,7 @@ export const useAuth = () => {
       const { data: { session: s } } = await client.auth.getSession()
       session.value = s
       user.value = s?.user ?? null
+      await loadUserRole()
     } finally {
       loading.value = false
     }
@@ -25,6 +45,7 @@ export const useAuth = () => {
     const { data: { subscription } } = client.auth.onAuthStateChange((event, s) => {
       session.value = s
       user.value = s?.user ?? null
+      void loadUserRole()
       callback(event, s)
     })
     return () => subscription.unsubscribe()
@@ -81,19 +102,14 @@ export const useAuth = () => {
     if (error) throw error
     user.value = null
     session.value = null
+    userRole.value = 'standard'
   }
 
   /** Access token for API calls (Authorization: Bearer <token>) */
   const accessToken = computed(() => session.value?.access_token ?? null)
 
-  /** Matches RLS public.is_app_admin(): set app_metadata.role = "admin" or is_admin = true in Supabase Auth */
-  const isAppAdmin = computed(() => {
-    const m = user.value?.app_metadata as Record<string, unknown> | undefined
-    if (!m) return false
-    if (m.role === 'admin') return true
-    if (m.is_admin === true || m.is_admin === 'true') return true
-    return false
-  })
+  /** Matches RLS public.is_app_admin(): set profiles.role = 'admin' in the Supabase Table Editor */
+  const isAppAdmin = computed(() => userRole.value === 'admin')
 
   return {
     user,
@@ -104,6 +120,7 @@ export const useAuth = () => {
     accessToken,
     init,
     onAuthStateChange,
+    refreshUserRole: loadUserRole,
     signInWithGoogle,
     signUpWithEmail,
     signInWithEmail,

@@ -509,9 +509,9 @@ const testMode = useTestMode()
 // Demo mode: Live/Demo toggle only when test mode is on; sample data uses showDemoData
 const { isDemoMode, showDemoData, toggleDemoMode } = useDemoMode()
 
-// Computed properties for dynamic truncation (description from notes)
+// Computed properties for dynamic truncation
 const paragraphs = computed(() => {
-  const description = showDemoData.value ? demoDescription : (shopData.value?.notes ?? shopData.value?.description)
+  const description = showDemoData.value ? demoDescription : shopData.value?.description
   if (!description) return []
   return description.split('\n\n').filter(para => para.trim() !== '')
 })

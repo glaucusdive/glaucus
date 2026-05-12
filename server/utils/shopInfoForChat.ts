@@ -105,7 +105,6 @@ export type ShopInfoBundle = {
   email: string | null
   phone: string | null
   website_url: string | null
-  notes: string | null
   locale: string | null
   google_rating: number | null
   country?: { name?: string | null } | null
@@ -130,7 +129,6 @@ export async function fetchShopInfoBundle (
       email,
       phone,
       website_url,
-      notes,
       locale,
       google_rating,
       country:countries(name),
@@ -158,9 +156,6 @@ function formatOverview (shop: ShopInfoBundle): string {
   const loc = [shop.locale, shop.region?.name, shop.country?.name].filter(Boolean).join(', ')
   if (loc) lines.push(`- Location: ${loc}`)
   if (shop.google_rating != null) lines.push(`- Google rating: ${shop.google_rating}`)
-  if (shop.notes?.trim()) {
-    lines.push(`- Notes: ${clip(shop.notes.replace(/\s+/g, ' '), 500)}`)
-  }
   if (lines.length === 0) {
     lines.push('- We only have the basics on file; pick **Contact** for phone/email/website if available.')
   }

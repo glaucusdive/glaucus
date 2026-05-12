@@ -1,3 +1,19 @@
+# Admin Shops Runtime Debug — in progress
+
+- [x] Inspect admin shops API, schema migrations, auth/layout hydration paths
+- [x] Define runtime hypotheses for `diveshops.notes` 500 and sidebar hydration mismatch
+- [x] Add focused instrumentation without changing behavior
+- [x] Reproduce and analyze debug logs
+- [x] Apply only evidence-backed fix
+- [ ] Verify post-fix logs and remove instrumentation after success
+
+## Review
+
+Runtime logs confirmed `public.diveshops.notes` is missing in the live Glaucus Supabase project (`42703`) and the layout SSR/client auth state differs on `/admin/shops`. MCP schema inspection confirmed the app and MCP point at the same Supabase project and that `notes`, `latitude`, and `longitude` are absent. MCP is read-only, so schema application must use CLI/dashboard access.
+User clarified `notes` is not part of the intended schema. Removed admin/shop-info code references to `notes` and renamed the pending migration to coordinates-only.
+
+---
+
 # Chat home search-path examples — done
 
 - [x] Restore the pre-search chat home landing prompt
