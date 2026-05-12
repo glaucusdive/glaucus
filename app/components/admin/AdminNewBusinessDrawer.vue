@@ -3,7 +3,6 @@
     :open="open"
     aria-label="Add new business"
     z-index-class="z-[60]"
-    max-width-class="max-w-lg"
     @update:open="$emit('update:open', $event)"
   >
     <header class="flex shrink-0 items-center justify-between gap-2 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">

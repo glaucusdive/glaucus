@@ -1,12 +1,17 @@
 <template>
   <div class="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col justify-center gap-0.5">
-    <div v-if="writeMode" :class="ADMIN_GRID_WRITE_WRAP">
-      <input
-        v-model="name"
-        type="text"
-        placeholder="Business name"
-        :class="ADMIN_GRID_WRITE_INPUT"
-      >
+    <div
+      v-if="writeMode"
+      class="flex min-h-0 min-w-0 flex-1 flex-col justify-center rounded-none hover:bg-zinc-100 dark:hover:bg-zinc-800"
+    >
+      <div :class="ADMIN_GRID_WRITE_WRAP">
+        <input
+          v-model="name"
+          type="text"
+          placeholder="Business name"
+          :class="ADMIN_GRID_WRITE_INPUT"
+        >
+      </div>
     </div>
     <span
       v-else

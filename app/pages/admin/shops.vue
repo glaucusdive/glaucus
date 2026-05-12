@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full min-h-0">
     <!-- Top bar -->
-    <div class="shrink-0 border-b border-zinc-200 dark:border-zinc-700 p-3 flex items-center justify-between gap-4 flex-wrap">
+    <div class="shrink-0 border-b border-zinc-800 p-3 flex items-center justify-between gap-4 flex-wrap">
       <div class="min-w-0">
         <h1 class="text-lg font-semibold text-zinc-900 dark:text-white">Admin · Dive Shops</h1>
       </div>
@@ -59,7 +59,7 @@
 
     <div v-else class="flex flex-1 min-h-0 min-w-0 flex-col bg-white dark:bg-zinc-900">
       <!-- Virtualized grid -->
-      <div class="relative flex min-h-0 min-w-0 flex-1 flex-col border-t border-zinc-200 dark:border-zinc-700">
+      <div class="relative flex min-h-0 min-w-0 flex-1 flex-col border-t border-zinc-800">
         <div v-if="rows.length === 0" class="flex flex-1 items-center justify-center p-8 text-sm text-zinc-500 dark:text-zinc-400">
           No dive shops on this page.
         </div>
@@ -79,7 +79,7 @@
         </ClientOnly>
       </div>
 
-      <div class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-zinc-200 bg-zinc-50 px-3 py-2.5 dark:border-zinc-700 dark:bg-zinc-950">
+      <div class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-zinc-800 bg-zinc-50 px-3 py-2.5 dark:bg-zinc-950">
         <span class="text-xs text-zinc-600 dark:text-zinc-400">
           {{ shopTotal }} shops<span v-if="pageRangeLabel"> · {{ pageRangeLabel }}</span>
         </span>
@@ -124,6 +124,8 @@
 import { ref, computed, reactive, onMounted, watch } from 'vue'
 import RevoGrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import { useTheme } from '~/composables/useTheme'
+import { normalizeAdminLookupId } from '~/utils/adminLookupIds'
+import { adminColumnHeaderTemplate } from '~/utils/revoGridAdminColumnHeader'
 import AdminShopGridBusinessCell from '~/components/admin/grid/AdminShopGridBusinessCell.vue'
 import AdminShopGridTextCell from '~/components/admin/grid/AdminShopGridTextCell.vue'
 import AdminShopGridSelectCell from '~/components/admin/grid/AdminShopGridSelectCell.vue'
@@ -190,23 +192,73 @@ const rentalOptions = computed(() =>
 const gasOptions = computed(() =>
   lookups.value.gases.map((g) => ({ id: String(g.id), label: g.name ?? 'Unnamed' }))
 )
-/** Includes every dive_site id on the current page so labels never fall back to raw UUIDs when ids match lookups. */
+/** Dive site labels for chips: keys normalized; merge page ids + lookups; gaps filled via /api/admin/dive-sites/resolve. */
 const diveSiteOptions = computed(() => {
-  const fromLookups = lookups.value.diveSites.map((s) => ({
-    id: String(s.id),
-    label: s.name != null && String(s.name).trim() !== '' ? String(s.name) : 'Unnamed dive site'
-  }))
-  const byId = new Map(fromLookups.map((o) => [o.id, o.label]))
+  const map = new Map()
+  for (const s of lookups.value.diveSites) {
+    const id = String(s.id ?? '').trim()
+    if (!id) continue
+    const norm = normalizeAdminLookupId(id)
+    const label = s.name != null && String(s.name).trim() !== '' ? String(s.name) : 'Unnamed dive site'
+    if (!map.has(norm)) map.set(norm, { id, label })
+  }
   for (const row of rows.value) {
     for (const raw of row.dive_site_ids || []) {
-      const sid = String(raw)
-      if (!byId.has(sid)) {
-        byId.set(sid, `Unknown site (${sid.slice(0, 8)}…)`)
+      const id = String(raw ?? '').trim()
+      if (!id) continue
+      const norm = normalizeAdminLookupId(id)
+      if (!map.has(norm)) {
+        // Not in bulk lookups yet (stale FK, casing drift, or not loaded); resolve fetch may fill name — avoid implying DB has no row.
+        map.set(norm, { id, label: `Dive site (${id.slice(0, 8)}…)` })
       }
     }
   }
-  return [...byId.entries()].map(([id, label]) => ({ id, label }))
+  return [...map.values()]
 })
+
+async function mergeResolvedDiveSites (ids) {
+  if (!ids.length) return
+  try {
+    const { sites } = await $fetch('/api/admin/dive-sites/resolve', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { ids }
+    })
+    const list = lookups.value.diveSites
+    const seen = new Set(list.map((s) => normalizeAdminLookupId(s.id)))
+    for (const s of sites || []) {
+      const id = s.id != null ? String(s.id).trim() : ''
+      if (!id) continue
+      const norm = normalizeAdminLookupId(id)
+      if (seen.has(norm)) continue
+      seen.add(norm)
+      list.push({ id: s.id, name: s.name })
+    }
+  } catch {
+    // non-fatal
+  }
+}
+
+async function fetchMissingDiveSitesForCurrentPage () {
+  const known = new Set(
+    lookups.value.diveSites.map((s) => normalizeAdminLookupId(s.id))
+  )
+  const missing = []
+  const seenMissing = new Set()
+  for (const row of rows.value) {
+    for (const raw of row.dive_site_ids || []) {
+      const id = String(raw ?? '').trim()
+      if (!id) continue
+      const norm = normalizeAdminLookupId(id)
+      if (known.has(norm)) continue
+      if (seenMissing.has(norm)) continue
+      seenMissing.add(norm)
+      missing.push(id)
+    }
+  }
+  const slice = missing.slice(0, 500)
+  if (slice.length) await mergeResolvedDiveSites(slice)
+}
 
 /** Shop field keys stored on each grid row (flat). */
 const SHOP_DATA_KEYS = [
@@ -554,8 +606,12 @@ const gridContext = {
   optionsFor
 }
 
+function withAdminHeader (col) {
+  return { ...col, columnTemplate: adminColumnHeaderTemplate }
+}
+
 const gridColumns = [
-  {
+  withAdminHeader({
     prop: 'business_name',
     name: 'Business Name',
     size: 200,
@@ -563,71 +619,73 @@ const gridColumns = [
     readonly: true,
     resize: true,
     cellTemplate: VGridVueTemplate(AdminShopGridBusinessCell, { gridContext })
-  },
-  ...TEXT_GRID_COLS.map((c) => ({
-    prop: c.prop,
-    name: c.name,
-    size: c.size,
-    readonly: true,
-    resize: true,
-    cellTemplate: VGridVueTemplate(AdminShopGridTextCell, { gridContext })
-  })),
-  {
+  }),
+  ...TEXT_GRID_COLS.map((c) =>
+    withAdminHeader({
+      prop: c.prop,
+      name: c.name,
+      size: c.size,
+      readonly: true,
+      resize: true,
+      cellTemplate: VGridVueTemplate(AdminShopGridTextCell, { gridContext })
+    })
+  ),
+  withAdminHeader({
     prop: 'country_id',
     name: 'Country',
     size: 180,
     readonly: true,
     resize: true,
     cellTemplate: VGridVueTemplate(AdminShopGridCountryRegionCell, { gridContext })
-  },
-  {
+  }),
+  withAdminHeader({
     prop: 'region_id',
     name: 'Region',
     size: 160,
     readonly: true,
     resize: true,
     cellTemplate: VGridVueTemplate(AdminShopGridCountryRegionCell, { gridContext })
-  },
-  {
+  }),
+  withAdminHeader({
     prop: 'course_ids',
     name: 'Courses',
     size: 260,
     readonly: true,
     resize: true,
     cellTemplate: VGridVueTemplate(AdminShopGridSelectCell, { gridContext })
-  },
-  {
+  }),
+  withAdminHeader({
     prop: 'rental_equipment_ids',
     name: 'Rental Gear',
     size: 200,
     readonly: true,
     resize: true,
     cellTemplate: VGridVueTemplate(AdminShopGridSelectCell, { gridContext })
-  },
-  {
+  }),
+  withAdminHeader({
     prop: 'gas_ids',
     name: 'Gases',
     size: 160,
     readonly: true,
     resize: true,
     cellTemplate: VGridVueTemplate(AdminShopGridSelectCell, { gridContext })
-  },
-  {
+  }),
+  withAdminHeader({
     prop: 'dive_site_ids',
     name: 'Dive Sites',
     size: 280,
     readonly: true,
     resize: true,
     cellTemplate: VGridVueTemplate(AdminShopGridSelectCell, { gridContext })
-  },
-  {
+  }),
+  withAdminHeader({
     prop: '__delete',
     name: 'Delete',
     size: 100,
     readonly: true,
     resize: true,
     cellTemplate: VGridVueTemplate(AdminShopGridDeleteCell, { gridContext })
-  }
+  })
 ]
 
 async function loadShopsPage () {
@@ -642,6 +700,7 @@ async function loadShopsPage () {
     shops.value = shopsRes.shops || []
     shopTotal.value = typeof shopsRes.total === 'number' ? shopsRes.total : shops.value.length
     rebuildRowsFromShops()
+    await fetchMissingDiveSitesForCurrentPage()
   } catch (e) {
     loadError.value = extractErrorMessage(e)
   }
@@ -670,6 +729,7 @@ async function loadInitial () {
     shops.value = shopsRes.shops || []
     shopTotal.value = typeof shopsRes.total === 'number' ? shopsRes.total : shops.value.length
     rebuildRowsFromShops()
+    await fetchMissingDiveSitesForCurrentPage()
   } catch (e) {
     loadError.value = extractErrorMessage(e)
   } finally {
@@ -693,7 +753,10 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* One line color for all RevoGrid chrome (matches Tailwind zinc-800 #27272a) */
 .admin-revo-grid :deep(revo-grid) {
+  --revo-grid-header-border: rgb(39 39 42);
+  --revo-grid-cell-border: rgb(39 39 42);
   width: 100%;
   min-height: 320px;
   background: transparent !important;
@@ -724,26 +787,61 @@ onMounted(async () => {
   background: transparent !important;
 }
 
-/* Uniform cell padding (single p-2); vertical column rules */
-.admin-revo-grid :deep(.rgCell),
-.admin-revo-grid :deep(.rgHeaderCell) {
+/*
+ * Header: do not stack extra borders on .rgHeaderCell — RevoGrid + .header-rgRow already use box-shadow.
+ * One left-edge inset per header cell + stretch inner .header-content to full row height.
+ */
+.admin-revo-grid :deep(revo-grid revogr-header .header-rgRow:not(.group)),
+.admin-revo-grid :deep(revo-grid revogr-header .header-rgRow.group) {
+  box-shadow: none !important;
+}
+
+.admin-revo-grid :deep(revo-grid[theme='compact'] revogr-header .header-rgRow),
+.admin-revo-grid :deep(revo-grid[theme='darkCompact'] revogr-header .header-rgRow) {
+  height: 36px !important;
+  min-height: 36px !important;
+}
+
+.admin-revo-grid :deep(revo-grid[theme='compact'] revogr-header),
+.admin-revo-grid :deep(revo-grid[theme='darkCompact'] revogr-header) {
+  line-height: 36px !important;
+}
+
+.admin-revo-grid :deep(revo-grid revogr-header .rgHeaderCell) {
   box-sizing: border-box;
-  padding: 0.5rem !important;
-  border-right: 1px solid rgb(228 228 231);
-}
-
-.admin-revo-grid :deep(.rgCell) {
-  font-size: 0.875rem;
-  font-weight: 400;
-}
-
-.admin-revo-grid :deep(.rgHeaderCell) {
+  padding: 0 0.5rem !important;
+  border: none !important;
   font-size: 0.875rem;
   font-weight: 600;
+  line-height: 1.25;
+  min-height: 0;
+  height: 100%;
+  max-height: none;
+  display: flex !important;
+  align-items: stretch;
+  align-self: stretch;
+  box-shadow: -1px 0 0 0 var(--revo-grid-header-border) inset !important;
 }
 
-.admin-revo-grid--dark :deep(.rgCell),
-.admin-revo-grid--dark :deep(.rgHeaderCell) {
-  border-right-color: rgb(63 63 70);
+.admin-revo-grid :deep(revo-grid revogr-header .rgHeaderCell .header-content) {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+}
+
+/* Body cells: single box-shadow stack (compact theme omits the default theme cell shadows) */
+.admin-revo-grid :deep(revo-grid revogr-data .rgCell) {
+  box-sizing: border-box;
+  padding: 0.5rem !important;
+  border: none !important;
+  font-size: 0.875rem;
+  font-weight: 400;
+  box-shadow:
+    0 -1px 0 0 var(--revo-grid-cell-border) inset,
+    -1px 0 0 0 var(--revo-grid-cell-border) inset !important;
 }
 </style>

@@ -1,6 +1,42 @@
 <template>
-  <div ref="rootRef" class="relative flex h-full min-h-0 min-w-0 max-w-full flex-col justify-center gap-1 overflow-hidden">
-    <div class="flex min-h-0 min-w-0 w-full flex-1 flex-nowrap items-center gap-2 overflow-x-hidden">
+  <div ref="rootRef" class="relative flex h-full min-h-0 w-full min-w-0 max-w-full flex-col justify-center gap-1 overflow-hidden">
+    <button
+      v-if="!disabled"
+      type="button"
+      class="flex min-h-0 min-w-0 w-full flex-1 flex-nowrap items-center justify-between gap-2 overflow-x-hidden rounded-none text-left"
+      :aria-expanded="open"
+      aria-haspopup="listbox"
+      @click.stop="toggleOpen()"
+    >
+      <div class="flex min-h-0 min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-hidden">
+        <template v-if="modelValue.length > 0">
+          <span
+            v-for="id in modelValue"
+            :key="String(id)"
+            class="inline-flex shrink-0 items-center gap-1 rounded bg-zinc-200 px-1 py-0 text-sm font-normal text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200"
+          >
+            <span class="max-w-[12rem] truncate">{{ labelFor(id) }}</span>
+            <span
+              role="button"
+              tabindex="0"
+              class="shrink-0 cursor-pointer leading-none hover:text-red-600 dark:hover:text-red-400"
+              aria-label="Remove"
+              @click.stop.prevent="removeId(id)"
+              @keydown.enter.prevent="removeId(id)"
+            >×</span>
+          </span>
+        </template>
+        <span
+          v-else
+          class="flex min-h-0 min-w-0 flex-1 items-center text-sm font-normal text-zinc-500 dark:text-zinc-400"
+        >Add option</span>
+      </div>
+      <ChevronDown class="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-400" :class="open ? 'rotate-180' : ''" />
+    </button>
+    <div
+      v-else
+      class="flex min-h-0 min-w-0 w-full flex-1 flex-nowrap items-center gap-2 overflow-x-hidden"
+    >
       <template v-if="modelValue.length > 0">
         <span
           v-for="id in modelValue"
@@ -8,29 +44,12 @@
           class="inline-flex shrink-0 items-center gap-1 rounded bg-zinc-200 px-1 py-0 text-sm font-normal text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200"
         >
           <span class="max-w-[12rem] truncate">{{ labelFor(id) }}</span>
-          <button
-            v-if="!disabled"
-            type="button"
-            class="shrink-0 cursor-pointer leading-none hover:text-red-600 dark:hover:text-red-400"
-            aria-label="Remove"
-            @click.stop="removeId(id)"
-          >×</button>
         </span>
       </template>
       <span
-        v-else-if="disabled"
+        v-else
         class="flex min-h-0 min-w-0 flex-1 items-center text-sm font-normal text-zinc-400 dark:text-zinc-500"
       >—</span>
-      <button
-        v-if="!disabled"
-        type="button"
-        class="ml-auto shrink-0 rounded p-0.5 text-zinc-500 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:bg-zinc-700"
-        :aria-expanded="open"
-        aria-haspopup="listbox"
-        @click.stop="toggleOpen()"
-      >
-        <ChevronDown class="h-4 w-4" :class="open ? 'rotate-180' : ''" />
-      </button>
     </div>
 
     <Teleport to="body">
@@ -111,6 +130,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
+import { normalizeAdminLookupId } from '~/utils/adminLookupIds'
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
@@ -136,20 +156,22 @@ const newInputRef = ref(null)
 const optionMap = computed(() => {
   const map = new Map()
   for (const o of props.options) {
-    const k = String(o.id ?? '')
+    const rawId = String(o.id ?? '').trim()
+    const k = normalizeAdminLookupId(rawId)
     const label = o.label != null && o.label !== '' ? String(o.label) : (o.name != null ? String(o.name) : '')
-    map.set(k, label || k)
+    map.set(k, label || rawId)
   }
   return map
 })
 
 function labelFor (id) {
-  const k = String(id ?? '')
-  return optionMap.value.get(k) ?? k
+  const k = normalizeAdminLookupId(id)
+  return optionMap.value.get(k) ?? String(id ?? '')
 }
 
 function isSelected (id) {
-  return props.modelValue.some((mid) => String(mid) === String(id))
+  const want = normalizeAdminLookupId(id)
+  return props.modelValue.some((mid) => normalizeAdminLookupId(mid) === want)
 }
 
 function emitValue (next) {
@@ -157,16 +179,18 @@ function emitValue (next) {
 }
 
 function toggleOption (id) {
-  const sid = String(id)
+  const sid = String(id).trim()
+  const want = normalizeAdminLookupId(sid)
   if (isSelected(id)) {
-    emitValue(props.modelValue.filter((x) => String(x) !== sid))
+    emitValue(props.modelValue.filter((x) => normalizeAdminLookupId(x) !== want))
   } else {
     emitValue([...props.modelValue, sid])
   }
 }
 
 function removeId (id) {
-  emitValue(props.modelValue.filter((x) => String(x) !== String(id)))
+  const want = normalizeAdminLookupId(id)
+  emitValue(props.modelValue.filter((x) => normalizeAdminLookupId(x) !== want))
 }
 
 function positionPanel () {
@@ -252,8 +276,8 @@ async function confirmAdd () {
     const created = await props.onCreate(name)
     if (created && created.id) {
       emit('created', created)
-      const id = String(created.id)
-      if (!props.modelValue.some((mid) => String(mid) === id)) {
+      const id = String(created.id).trim()
+      if (!props.modelValue.some((mid) => normalizeAdminLookupId(mid) === normalizeAdminLookupId(id))) {
         emitValue([...props.modelValue, id])
       }
     }
