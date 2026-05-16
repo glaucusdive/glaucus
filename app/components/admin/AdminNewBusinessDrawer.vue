@@ -61,13 +61,22 @@
             <input v-model="form.email" type="email" class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white">
           </label>
           <label class="block">
-            <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Type</span>
-            <input v-model="form.type" type="text" class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white">
-          </label>
-          <label class="block">
             <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Google rating</span>
             <input v-model="form.google_rating" type="number" step="any" class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white">
           </label>
+        </div>
+
+        <div>
+          <span class="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Business type</span>
+          <AdminSelectChip
+            v-model="form.business_type_ids"
+            :options="businessTypeOptions"
+            :multiple="true"
+            :allow-add="true"
+            singular-label="business type"
+            :on-create="(n) => createSimpleLookup('dive_business_types', n)"
+            @created="onLookupCreated('diveBusinessTypes', $event)"
+          />
         </div>
 
         <div class="border-t border-zinc-200 pt-3 dark:border-zinc-800">
@@ -162,6 +171,10 @@ import { reactive, ref, watch, computed } from 'vue'
 import BottomSheetDrawer from '~/components/ui/BottomSheetDrawer.vue'
 import AdminSelectChip from '~/components/admin/AdminSelectChip.vue'
 import AdminButton from '~/components/admin/AdminButton.vue'
+import {
+  businessTypeNamesFromIds,
+  serializeDiveBusinessTypes
+} from '~~/shared/diveBusinessTypes'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -171,6 +184,7 @@ const props = defineProps({
   rentalOptions: { type: Array, default: () => [] },
   gasOptions: { type: Array, default: () => [] },
   diveSiteOptions: { type: Array, default: () => [] },
+  businessTypeOptions: { type: Array, default: () => [] },
   authHeaders: { type: Function, required: true },
   createRegion: { type: Function, required: true },
   createSimpleLookup: { type: Function, required: true },
@@ -192,7 +206,7 @@ const emptyForm = () => ({
   locale: '',
   phone: '',
   email: '',
-  type: '',
+  business_type_ids: [],
   google_rating: '',
   country_id: null,
   region_id: null,
@@ -241,7 +255,15 @@ function numericOrNull (v) {
   return Number.isFinite(n) ? n : null
 }
 
+function businessTypeLookupOptions () {
+  return props.businessTypeOptions.map((o) => ({
+    id: String(o.id),
+    name: String(o.name ?? o.label ?? '')
+  }))
+}
+
 function buildPayload () {
+  const typeNames = businessTypeNamesFromIds(form.business_type_ids || [], businessTypeLookupOptions())
   return {
     business_name: String(form.business_name || '').trim(),
     street_address: emptyToNull(form.street_address),
@@ -251,7 +273,7 @@ function buildPayload () {
     locale: emptyToNull(form.locale),
     phone: emptyToNull(form.phone),
     email: emptyToNull(form.email),
-    type: emptyToNull(form.type),
+    type: serializeDiveBusinessTypes(typeNames),
     country_id: form.country_id || null,
     region_id: form.region_id || null,
     google_rating: numericOrNull(form.google_rating),
