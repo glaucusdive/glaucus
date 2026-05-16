@@ -4,7 +4,7 @@ import { requireAdminUser } from '../../../utils/requireAdminUser'
  * Create a new lookup item from the admin table's "Add new …" select option.
  * Returns the newly inserted row so the UI can select it.
  *
- * Supported kinds: regions, rental_equipment, gases, dive_sites, courses, countries.
+ * Supported kinds: regions, rental_equipment, gases, dive_sites, courses, countries, dive_business_types.
  * Some kinds require extra fields:
  *   - dive_sites: country_id
  *   - courses: agency_id + course_level_id + certification_name
@@ -16,7 +16,8 @@ const ALLOWED_KINDS = new Set([
   'gases',
   'dive_sites',
   'courses',
-  'countries'
+  'countries',
+  'dive_business_types'
 ])
 
 export default defineEventHandler(async (event) => {
@@ -36,6 +37,15 @@ export default defineEventHandler(async (event) => {
     const { data, error } = await client.from('regions').insert({ name }).select('id, name').single()
     if (error) throw createError({ statusCode: 400, statusMessage: error.message })
     return { item: data }
+  }
+  if (kind === 'dive_business_types') {
+    const { data, error } = await client
+      .from('dive_business_types')
+      .insert({ name })
+      .select('id, name')
+      .single()
+    if (error) throw createError({ statusCode: 400, statusMessage: error.message })
+    return { item: { ...data, label: data?.name } }
   }
   if (kind === 'rental_equipment') {
     const { data, error } = await client.from('rental_equipment').insert({ name }).select('id, name').single()

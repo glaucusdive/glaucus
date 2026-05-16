@@ -88,6 +88,7 @@ import { ADMIN_GRID_READ_DATA, ADMIN_GRID_WRITE_INPUT, ADMIN_GRID_WRITE_WRAP } f
 const SELECT_PROPS = new Set([
   'country_id',
   'region_id',
+  'business_type_ids',
   'course_ids',
   'rental_equipment_ids',
   'gas_ids',
@@ -136,12 +137,15 @@ const displayRead = computed(() => {
   return String(v)
 })
 
-type SelectKind = 'regions' | 'rental_equipment' | 'gases' | 'dive_sites' | null
+type SelectKind = 'regions' | 'rental_equipment' | 'gases' | 'dive_sites' | 'dive_business_types' | null
 
 const selectConfig = computed(() => {
   const p = prop.value
   if (p === 'country_id') return { multiple: false, singularLabel: 'country', allowAdd: false, kind: null as SelectKind }
   if (p === 'region_id') return { multiple: false, singularLabel: 'region', allowAdd: true, kind: 'regions' as const }
+  if (p === 'business_type_ids') {
+    return { multiple: true, singularLabel: 'business type', allowAdd: true, kind: 'dive_business_types' as const }
+  }
   if (p === 'course_ids') return { multiple: true, singularLabel: 'course', allowAdd: false, kind: null as SelectKind }
   if (p === 'rental_equipment_ids') return { multiple: true, singularLabel: 'rental', allowAdd: true, kind: 'rental_equipment' as const }
   if (p === 'gas_ids') return { multiple: true, singularLabel: 'gas', allowAdd: true, kind: 'gases' as const }
@@ -184,7 +188,7 @@ const onCreateFn = computed(() => {
   if (k === 'regions') {
     return (name: string) => c.createRegion(name)
   }
-  if (k === 'rental_equipment' || k === 'gases') {
+  if (k === 'rental_equipment' || k === 'gases' || k === 'dive_business_types') {
     return (name: string) => c.createSimpleLookup(k, name)
   }
   if (k === 'dive_sites') {
@@ -197,6 +201,7 @@ function onSelectCreated (opt: { id: string; label: string }) {
   const p = prop.value
   const c = ctx.value
   if (p === 'region_id') c.onLookupCreated('regions', opt)
+  else if (p === 'business_type_ids') c.onLookupCreated('diveBusinessTypes', opt)
   else if (p === 'rental_equipment_ids') c.onLookupCreated('rentalEquipment', opt)
   else if (p === 'gas_ids') c.onLookupCreated('gases', opt)
   else if (p === 'dive_site_ids') c.onLookupCreated('diveSites', opt)

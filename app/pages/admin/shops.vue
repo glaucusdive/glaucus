@@ -61,7 +61,12 @@
       <!-- Virtualized grid -->
       <div class="relative flex min-h-0 min-w-0 flex-1 flex-col border-t border-solid border-[color:var(--admin-table-border)]">
         <div v-if="rows.length === 0" class="flex flex-1 items-center justify-center p-8 text-sm text-zinc-500 dark:text-zinc-400">
-          No dive shops on this page.
+          <template v-if="appliedSearch">
+            No shops match "{{ appliedSearch }}".
+          </template>
+          <template v-else>
+            No dive shops on this page.
+          </template>
         </div>
         <ClientOnly v-else>
           <RevoGrid
@@ -79,11 +84,36 @@
         </ClientOnly>
       </div>
 
-      <div class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-solid border-[color:var(--admin-table-border)] bg-zinc-50 px-3 py-2.5 dark:bg-zinc-950">
-        <span class="text-xs text-zinc-600 dark:text-zinc-400">
-          {{ shopTotal }} shops<span v-if="pageRangeLabel"> · {{ pageRangeLabel }}</span>
+      <div class="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-t border-solid border-[color:var(--admin-table-border)] bg-zinc-50 px-3 py-2.5 dark:bg-zinc-950">
+        <span class="min-w-0 text-xs text-zinc-600 dark:text-zinc-400">
+          <template v-if="appliedSearch">
+            {{ shopTotal }} matching "{{ appliedSearch }}"<span v-if="pageRangeLabel"> · {{ pageRangeLabel }}</span>
+          </template>
+          <template v-else>
+            {{ shopTotal }} shops<span v-if="pageRangeLabel"> · {{ pageRangeLabel }}</span>
+          </template>
         </span>
-        <div class="flex items-center gap-2">
+        <form class="flex w-full max-w-lg items-center gap-2 justify-self-center" @submit.prevent="runSearch">
+          <input
+            v-model="searchDraft"
+            type="search"
+            placeholder="Search shops…"
+            class="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
+            @keydown.enter.prevent="runSearch"
+          >
+          <AdminButton type="submit" variant="primary">
+            Go
+          </AdminButton>
+          <AdminButton
+            v-if="appliedSearch"
+            type="button"
+            variant="secondary"
+            @click="clearSearch"
+          >
+            Clear
+          </AdminButton>
+        </form>
+        <div class="flex items-center justify-end gap-2">
           <AdminButton
             variant="secondary"
             :disabled="currentPage <= 1"
@@ -110,6 +140,7 @@
       :rental-options="rentalOptions"
       :gas-options="gasOptions"
       :dive-site-options="diveSiteOptions"
+      :business-type-options="businessTypeOptions"
       :auth-headers="authHeaders"
       :create-region="createRegion"
       :create-simple-lookup="createSimpleLookup"
@@ -129,6 +160,12 @@ import { adminColumnHeaderTemplate } from '~/utils/revoGridAdminColumnHeader'
 import AdminShopGridCell from '~/components/admin/grid/AdminShopGridCell.vue'
 import AdminButton from '~/components/admin/AdminButton.vue'
 import AdminNewBusinessDrawer from '~/components/admin/AdminNewBusinessDrawer.vue'
+import {
+  businessTypeIdsFromStored,
+  businessTypeNamesFromIds,
+  formatDiveBusinessTypeLabel,
+  serializeDiveBusinessTypes
+} from '~~/shared/diveBusinessTypes'
 
 definePageMeta({ layout: 'default', middleware: 'auth' })
 
@@ -148,6 +185,8 @@ const newDrawerOpen = ref(false)
 const shops = ref([])
 const shopTotal = ref(0)
 const currentPage = ref(1)
+const searchDraft = ref('')
+const appliedSearch = ref('')
 const lookups = ref({
   countries: [],
   regions: [],
@@ -155,7 +194,8 @@ const lookups = ref({
   rentalEquipment: [],
   gases: [],
   agencies: [],
-  diveSites: []
+  diveSites: [],
+  diveBusinessTypes: []
 })
 
 const totalPages = computed(() => Math.max(1, Math.ceil(shopTotal.value / PAGE_SIZE)))
@@ -228,6 +268,26 @@ const rentalOptions = computed(() =>
 const gasOptions = computed(() =>
   lookups.value.gases.map((g) => ({ id: String(g.id), label: g.name ?? 'Unnamed' }))
 )
+const businessTypeOptions = computed(() =>
+  lookups.value.diveBusinessTypes.map((t) => ({
+    id: String(t.id),
+    name: t.name ?? 'Unnamed',
+    label: formatDiveBusinessTypeLabel(t.name ?? 'Unnamed')
+  }))
+)
+
+function businessTypeLookupOptions () {
+  return businessTypeOptions.value.map((o) => ({ id: o.id, name: o.name }))
+}
+
+function businessTypeIdsForShop (typeRaw) {
+  return businessTypeIdsFromStored(typeRaw, businessTypeLookupOptions())
+}
+
+function serializeTypeFromIds (ids) {
+  const names = businessTypeNamesFromIds(ids || [], businessTypeLookupOptions())
+  return serializeDiveBusinessTypes(names)
+}
 /** Dive site labels for chips: keys normalized; merge page ids + lookups; gaps filled via /api/admin/dive-sites/resolve. */
 const diveSiteOptions = computed(() => {
   const map = new Map()
@@ -306,7 +366,7 @@ const SHOP_DATA_KEYS = [
   'locale',
   'phone',
   'email',
-  'type',
+  'business_type_ids',
   'google_rating',
   'country_id',
   'region_id',
@@ -325,8 +385,7 @@ const TEXT_GRID_COLS = [
   { prop: 'state', name: 'State', size: 140 },
   { prop: 'locale', name: 'Locale', size: 160 },
   { prop: 'phone', name: 'Phone', size: 150 },
-  { prop: 'email', name: 'Email', size: 180 },
-  { prop: 'type', name: 'Type', size: 180 }
+  { prop: 'email', name: 'Email', size: 180 }
 ]
 
 const gridTheme = computed(() => (isDark.value ? 'darkCompact' : 'compact'))
@@ -347,6 +406,8 @@ function optionsFor (prop) {
       return gasOptions.value
     case 'dive_site_ids':
       return diveSiteOptions.value
+    case 'business_type_ids':
+      return businessTypeOptions.value
     default:
       return []
   }
@@ -362,7 +423,7 @@ function makeDraft (shop) {
     locale: shop?.locale ?? '',
     phone: shop?.phone ?? '',
     email: shop?.email ?? '',
-    type: shop?.type ?? '',
+    business_type_ids: businessTypeIdsForShop(shop?.type),
     google_rating: shop?.google_rating ?? '',
     country_id: shop?.country_id ?? null,
     region_id: shop?.region_id ?? null,
@@ -408,17 +469,17 @@ function isDraftDifferent (row, original) {
   if (!original) return true
   const fieldsToCheck = [
     'business_name', 'street_address', 'website_url', 'city', 'state', 'locale', 'phone',
-    'email', 'type', 'country_id', 'region_id'
+    'email', 'country_id', 'region_id'
   ]
   for (const f of fieldsToCheck) {
     const a = row[f] ?? ''
     const b = original[f] ?? ''
     if (String(a) !== String(b)) return true
   }
-  const idArrays = ['course_ids', 'rental_equipment_ids', 'gas_ids', 'dive_site_ids']
+  const idArrays = ['business_type_ids', 'course_ids', 'rental_equipment_ids', 'gas_ids', 'dive_site_ids']
   for (const f of idArrays) {
     const a = [...(row[f] || [])].sort()
-    const b = [...(original[f] || [])].sort()
+    const b = [...(f === 'business_type_ids' ? businessTypeIdsForShop(original.type) : (original[f] || []))].sort()
     if (a.length !== b.length) return true
     for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return true
   }
@@ -471,6 +532,29 @@ function goNextPage () {
   void loadShopsPage()
 }
 
+function shopsListQuery () {
+  const offset = (currentPage.value - 1) * PAGE_SIZE
+  const query = { limit: PAGE_SIZE, offset }
+  const q = appliedSearch.value.trim()
+  if (q) query.q = q
+  return query
+}
+
+function runSearch () {
+  if (!confirmLeavePage()) return
+  appliedSearch.value = searchDraft.value.trim()
+  currentPage.value = 1
+  void loadShopsPage()
+}
+
+function clearSearch () {
+  if (!confirmLeavePage()) return
+  searchDraft.value = ''
+  appliedSearch.value = ''
+  currentPage.value = 1
+  void loadShopsPage()
+}
+
 function authHeaders () {
   if (!accessToken.value) return {}
   return { Authorization: `Bearer ${accessToken.value}` }
@@ -486,7 +570,7 @@ function rowToPayload (row) {
     locale: emptyToNull(row.locale),
     phone: emptyToNull(row.phone),
     email: emptyToNull(row.email),
-    type: emptyToNull(row.type),
+    type: serializeTypeFromIds(row.business_type_ids),
     country_id: row.country_id || null,
     region_id: row.region_id || null,
     google_rating: numericOrNull(row.google_rating),
@@ -643,7 +727,7 @@ async function createDiveSite (name, country_id) {
 function onLookupCreated (kindKey, opt) {
   const list = lookups.value[kindKey]
   if (!list) return
-  if (kindKey === 'rentalEquipment' || kindKey === 'gases' || kindKey === 'regions' || kindKey === 'diveSites' || kindKey === 'countries') {
+  if (kindKey === 'rentalEquipment' || kindKey === 'gases' || kindKey === 'regions' || kindKey === 'diveSites' || kindKey === 'countries' || kindKey === 'diveBusinessTypes') {
     list.push({ id: opt.id, name: opt.label })
   } else {
     list.push(opt)
@@ -686,6 +770,14 @@ const gridColumns = [
       cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
     })
   ),
+  withAdminHeader({
+    prop: 'business_type_ids',
+    name: 'Business type',
+    size: 220,
+    readonly: true,
+    resize: true,
+    cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
+  }),
   withAdminHeader({
     prop: 'country_id',
     name: 'Country',
@@ -745,12 +837,11 @@ const gridColumns = [
 ]
 
 async function loadShopsPage () {
-  const offset = (currentPage.value - 1) * PAGE_SIZE
   try {
     const shopsRes = await $fetch('/api/admin/shops', {
       method: 'GET',
       headers: authHeaders(),
-      query: { limit: PAGE_SIZE, offset }
+      query: shopsListQuery()
     })
     loadError.value = ''
     shops.value = shopsRes.shops || []
@@ -770,7 +861,7 @@ async function loadInitial () {
       $fetch('/api/admin/lookups', { headers: authHeaders() }),
       $fetch('/api/admin/shops', {
         headers: authHeaders(),
-        query: { limit: PAGE_SIZE, offset: (currentPage.value - 1) * PAGE_SIZE }
+        query: shopsListQuery()
       })
     ])
     lookups.value = {
@@ -780,7 +871,8 @@ async function loadInitial () {
       rentalEquipment: lookupsRes.rentalEquipment || [],
       gases: lookupsRes.gases || [],
       agencies: lookupsRes.agencies || [],
-      diveSites: lookupsRes.diveSites || []
+      diveSites: lookupsRes.diveSites || [],
+      diveBusinessTypes: lookupsRes.diveBusinessTypes || []
     }
     shops.value = shopsRes.shops || []
     shopTotal.value = typeof shopsRes.total === 'number' ? shopsRes.total : shops.value.length
@@ -914,9 +1006,11 @@ onMounted(async () => {
  */
 revo-grid.admin-revo-grid[theme='compact'] {
   --admin-table-border: rgb(228 228 231);
+  border-right: 1px solid var(--admin-table-border);
 }
 revo-grid.admin-revo-grid[theme='darkCompact'] {
   --admin-table-border: rgb(42 38 39);
+  border-right: 1px solid var(--admin-table-border);
 }
 
 revo-grid.admin-revo-grid[theme='compact'] revogr-data .rgRow,
@@ -973,28 +1067,5 @@ revo-grid.admin-revo-grid[theme='darkCompact'] .rowHeaders revogr-data .rgCell {
   border-right: 1px solid var(--admin-table-border) !important;
   border-top: 1px solid var(--admin-table-border) !important;
   box-shadow: none !important;
-}
-
-revo-grid.admin-revo-grid[theme='compact'] revogr-data .rgRow:has(.rgCell ~ .rgCell) .rgCell:last-child,
-revo-grid.admin-revo-grid[theme='darkCompact'] revogr-data .rgRow:has(.rgCell ~ .rgCell) .rgCell:last-child {
-  border-right: none !important;
-}
-
-revo-grid.admin-revo-grid[theme='compact']
-  revogr-header
-  .header-rgRow:has(.rgHeaderCell ~ .rgHeaderCell)
-  .rgHeaderCell:last-child,
-revo-grid.admin-revo-grid[theme='darkCompact']
-  revogr-header
-  .header-rgRow:has(.rgHeaderCell ~ .rgHeaderCell)
-  .rgHeaderCell:last-child {
-  border-right: none !important;
-}
-
-revo-grid.admin-revo-grid[theme='compact'] revogr-viewport-scroll.colPinEnd revogr-data .rgCell,
-revo-grid.admin-revo-grid[theme='darkCompact'] revogr-viewport-scroll.colPinEnd revogr-data .rgCell,
-revo-grid.admin-revo-grid[theme='compact'] revogr-viewport-scroll.colPinEnd revogr-header .rgHeaderCell,
-revo-grid.admin-revo-grid[theme='darkCompact'] revogr-viewport-scroll.colPinEnd revogr-header .rgHeaderCell {
-  border-right: none !important;
 }
 </style>

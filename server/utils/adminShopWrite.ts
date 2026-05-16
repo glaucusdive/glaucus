@@ -1,4 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  parseDiveBusinessTypesFromStored,
+  serializeDiveBusinessTypes
+} from '../../shared/diveBusinessTypes'
 
 export interface ShopWritePayload {
   business_name?: string
@@ -34,12 +38,22 @@ const SHOP_COLUMNS = [
   'google_rating'
 ] as const
 
+function normalizeShopTypeField (value: unknown): string | null {
+  if (value == null || value === '') return null
+  const parsed = parseDiveBusinessTypesFromStored(String(value))
+  return serializeDiveBusinessTypes(parsed)
+}
+
 export function pickShopCoreFields (payload: ShopWritePayload): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const col of SHOP_COLUMNS) {
     if (col in payload) {
       const v = payload[col]
-      out[col] = v === '' ? null : v
+      if (col === 'type') {
+        out[col] = normalizeShopTypeField(v)
+      } else {
+        out[col] = v === '' ? null : v
+      }
     }
   }
   return out
