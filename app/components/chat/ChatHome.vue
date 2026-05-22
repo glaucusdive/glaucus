@@ -374,6 +374,8 @@ import {
   BOOKING_AUTH_RESUME_REDIRECT
 } from '~/composables/useBookingAuthResume'
 import { patchLatestBookingPayloadInMessages } from '~/utils/bookingAuthResumeMerge'
+import { mergeProfileContactIntoBookingPayload } from '~~/shared/mergeProfileContactIntoBookingPayload'
+import { advanceStaleContactPromptsAfterProfileMerge } from '~/utils/advanceBookingChatAfterProfileMerge'
 import { buildSearchMatchBadges } from '~~/shared/searchMatchBadges'
 import {
   chatLoadingLinesForKind,
@@ -393,7 +395,7 @@ const profilePrefillSnapshot = ref(null)
 async function loadProfilePrefill () {
   if (!isSignedIn.value) {
     profilePrefillSnapshot.value = null
-    return
+    return null
   }
   try {
     const { data } = await client.from('profiles').select('display_name, email, default_diver, default_divers').single()
@@ -412,9 +414,10 @@ async function loadProfilePrefill () {
           }))
         : null
       const dd = data.default_diver && typeof data.default_diver === 'object' ? data.default_diver : null
+      const authEmail = user.value?.email?.trim() || undefined
       profilePrefillSnapshot.value = {
         name: data.display_name ?? undefined,
-        email: data.email ?? undefined,
+        email: (data.email && String(data.email).trim()) || authEmail,
         defaultDivers: defaultDivers ?? undefined,
         defaultDiver: !defaultDivers && dd ? {
           name: dd.name,
@@ -426,10 +429,19 @@ async function loadProfilePrefill () {
           weight_unit: dd.weight_unit
         } : undefined
       }
+      return profilePrefillSnapshot.value
+    }
+    if (user.value?.email) {
+      profilePrefillSnapshot.value = {
+        name: undefined,
+        email: user.value.email
+      }
+      return profilePrefillSnapshot.value
     }
   } catch {
     profilePrefillSnapshot.value = null
   }
+  return profilePrefillSnapshot.value
 }
 
 watch(isSignedIn, async (signedIn) => {
@@ -439,6 +451,22 @@ watch(isSignedIn, async (signedIn) => {
   }
   await loadProfilePrefill()
 }, { immediate: true })
+
+function onProfilePrefillRefresh () {
+  void loadProfilePrefill()
+}
+
+onMounted(() => {
+  if (import.meta.client) {
+    window.addEventListener('glaucus-profile-prefill-refresh', onProfilePrefillRefresh)
+  }
+})
+
+onUnmounted(() => {
+  if (import.meta.client) {
+    window.removeEventListener('glaucus-profile-prefill-refresh', onProfilePrefillRefresh)
+  }
+})
 
 /** Incremental: merge chat bookingPayload into profiles.default_divers (no times_used bump). */
 async function syncProfileFromChatPayload (payload) {
@@ -1044,7 +1072,7 @@ function applyPendingDraftResumeFromProfile () {
 
 // Restore cache or run initial query
 onMounted(async () => {
-  if (import.meta.client && tryRestoreBookingSessionAfterAuth()) {
+  if (import.meta.client && await tryRestoreBookingSessionAfterAuth()) {
     isRestoringCache.value = false
     notifyChatSidebarUpdated()
     return
@@ -1329,7 +1357,7 @@ function stripBookingResumeQuery () {
 }
 
 /** Restore chat after returning from /auth with ?bookingResume=1 */
-function tryRestoreBookingSessionAfterAuth () {
+async function tryRestoreBookingSessionAfterAuth () {
   if (import.meta.server || route.query.bookingResume !== '1') return false
   stripBookingResumeQuery()
   const snap = readBookingResumeSnapshot()
@@ -1342,14 +1370,20 @@ function tryRestoreBookingSessionAfterAuth () {
     if (snapDetail != null) detailDrawerShopId.value = snapDetail
     pendingBookingPayload.value = snap.pendingBookingPayload ?? null
 
+    await loadProfilePrefill()
+
     const merged = mergedBookingPayloadFromResumeSnapshot(snap)
-    const p = merged?.payload ?? getLatestBookingPayloadFromMessages(messages.value)
+    let p = merged?.payload ?? getLatestBookingPayloadFromMessages(messages.value)
     const lastBookingAssist = [...messages.value].reverse().find(m => m.role === 'assistant' && m.intent === 'booking' && m.shopName)
     const sid = merged?.shopId || selectedShopId.value || p?.shopId || lastBookingAssist?.shopId
     const shopName = snap.drawerShopName || lastBookingAssist?.shopName || 'Dive shop'
 
     if (sid && p) {
+      if (profilePrefillSnapshot.value) {
+        p = mergeProfileContactIntoBookingPayload(p, profilePrefillSnapshot.value)
+      }
       patchLatestBookingPayloadInMessages(messages.value, p, sid, shopName)
+      advanceStaleContactPromptsAfterProfileMerge(messages.value, p, sid)
     }
 
     const hadPreSendReady = messages.value.some(
@@ -1520,7 +1554,10 @@ const sendMessage = async (messageText, displayText) => {
     const liveDrawerPayload = (isOpen.value && contentType.value === 'booking-form' && drawerData.value?.liveBookingPayload)
       ? drawerData.value.liveBookingPayload
       : null
-    const lastPayload = liveDrawerPayload || lastBookingPayload.value
+    let lastPayload = liveDrawerPayload || lastBookingPayload.value
+    if (inBookingFlow && lastPayload && profilePrefillSnapshot.value) {
+      lastPayload = mergeProfileContactIntoBookingPayload(lastPayload, profilePrefillSnapshot.value)
+    }
 
     const arr = messages.value
     const lastUserIndex = arr.length - 1

@@ -268,7 +268,12 @@ onMounted(() => {
     }
     await initSignedInChatsFromRemote(client, session.user.id)
     // Mid-session sign-in (e.g. OAuth): index may already be mounted — refresh UI from merged storage.
-    if (event === 'SIGNED_IN') requestChatRemoteHydrate()
+    if (event === 'SIGNED_IN') {
+      requestChatRemoteHydrate()
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('glaucus-profile-prefill-refresh'))
+      }
+    }
   })
 })
 onUnmounted(() => {
