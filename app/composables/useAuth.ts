@@ -1,5 +1,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { User, Session } from '@supabase/supabase-js'
+import { normalizeAuthRedirect } from '~/utils/authRedirect'
 
 const user = ref<User | null>(null)
 const session = ref<Session | null>(null)
@@ -53,7 +54,8 @@ export const useAuth = () => {
 
   async function signInWithGoogle (redirectPath?: string) {
     const base = typeof window !== 'undefined' ? window.location.origin : ''
-    const redirectTo = redirectPath ? `${base}${redirectPath.startsWith('/') ? redirectPath : '/' + redirectPath}` : `${base}/`
+    const path = normalizeAuthRedirect(redirectPath)
+    const redirectTo = `${base}${path}`
     const { error } = await client.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo }

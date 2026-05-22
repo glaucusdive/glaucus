@@ -23,6 +23,7 @@ definePageMeta({ layout: false })
 const LazyChatHome = defineAsyncComponent(() => import('~/components/chat/ChatHome.vue'))
 
 const route = useRoute()
+const router = useRouter()
 const { init, isSignedIn } = useAuth()
 
 /** False until client `init()` finishes. */
@@ -46,5 +47,13 @@ const layoutName = computed(() => {
 onMounted(async () => {
   await init()
   authResolved.value = true
+})
+
+/** Any sign-out on home should keep chat shell (guest mode), not marketing landing. */
+watch(isSignedIn, (signedIn) => {
+  if (!authResolved.value || signedIn) return
+  if (route.path === '/' && route.query.chat !== '1') {
+    void router.replace({ path: '/', query: { ...route.query, chat: '1' } })
+  }
 })
 </script>

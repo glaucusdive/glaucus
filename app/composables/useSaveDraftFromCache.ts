@@ -9,24 +9,19 @@
  */
 
 import { readChatsRoot } from '~/composables/useSearchCache'
+import { extractBookingFromCache } from '~/utils/extractBookingFromCache'
+import { readBookingResumeSnapshot } from '~/composables/useBookingAuthResume'
+import { mergedBookingPayloadFromResumeSnapshot } from '~/utils/bookingAuthResumeMerge'
 
 const draftStorageKey = (sessionId: string) => `glaucus-cache-saved-as-draft:${sessionId}`
 
-/** Extract latest booking shopId + payload from cached messages (same shape as index.vue lastBookingPayload). */
-function extractBookingFromCache (cache: { messages?: unknown[] } | null): { shopId: string; payload: Record<string, unknown> } | null {
-  if (!cache?.messages || !Array.isArray(cache.messages)) return null
-  const messages = cache.messages as Array<{ role?: string; intent?: string; shopId?: string; payload?: Record<string, unknown>; bookingPayload?: Record<string, unknown> }>
-  const last = [...messages].reverse().find(m => {
-    if (m?.role !== 'assistant' || m?.intent !== 'booking') return false
-    const p = m.payload ?? m.bookingPayload
-    const sid = m.shopId ?? p?.shopId
-    return sid && p && typeof p === 'object'
-  })
-  if (!last) return null
-  const payload = (last.payload ?? last.bookingPayload) as Record<string, unknown>
-  const shopId = (last.shopId ?? payload?.shopId) as string
-  if (!shopId || typeof shopId !== 'string' || !payload || typeof payload !== 'object') return null
-  return { shopId, payload }
+function bookingForDraftFromClient (): { shopId: string, payload: Record<string, unknown> } | null {
+  const snap = readBookingResumeSnapshot()
+  if (snap) {
+    const merged = mergedBookingPayloadFromResumeSnapshot(snap)
+    if (merged) return merged
+  }
+  return null
 }
 
 /** If cache has draft-worthy booking state, save or update one draft for this chat session. */
@@ -38,9 +33,7 @@ export function useSaveDraftFromCache () {
     const root = readChatsRoot()
     const sessionId = root?.activeSessionId
     if (!sessionId) return false
-    const cache = getCache()
-    if (!cache) return false
-    const booking = extractBookingFromCache(cache)
+    const booking = bookingForDraftFromClient() ?? extractBookingFromCache(getCache())
     if (!booking) return false
     const key = draftStorageKey(sessionId)
     const existingDraftId = typeof window !== 'undefined' ? window.sessionStorage.getItem(key) : null
@@ -63,5 +56,7 @@ export function useSaveDraftFromCache () {
     }
   }
 
-  return { saveDraftFromCacheIfNeeded, extractBookingFromCache }
+  return { saveDraftFromCacheIfNeeded }
 }
+
+export { extractBookingFromCache } from '~/utils/extractBookingFromCache'

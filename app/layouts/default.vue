@@ -219,6 +219,11 @@ const { client } = useSupabase()
 const { saveDraftFromCacheIfNeeded } = useSaveDraftFromCache()
 
 async function handleSignOut () {
+  // Stay on chat as guest (`/?chat=1`) instead of dropping to the landing page.
+  if (route.path === '/') {
+    await navigateTo({ path: '/', query: { ...route.query, chat: '1' } })
+    await nextTick()
+  }
   await signOut()
   handleCloseMobileMenu()
 }

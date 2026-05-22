@@ -183,9 +183,14 @@
 
         <!-- Save draft (signed in) or Sign in to save draft (guest) -->
         <div class="mx-2 flex gap-2">
-          <NuxtLink v-if="!isSignedIn" to="/auth" class="flex-1 text-center py-2 px-3 rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800  cursor-pointer">
+          <button
+            v-if="!isSignedIn"
+            type="button"
+            class="flex-1 text-center py-2 px-3 rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+            @click="goSignInToSaveDraft"
+          >
             Sign in to save draft
-          </NuxtLink>
+          </button>
           <button v-else type="button" @click="saveDraft" :disabled="draftLoading || draftSaved"
             class="flex-1 py-2 px-3 rounded-md border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ">
             {{ draftLoading ? 'Saving…' : (draftSaved ? 'Draft saved' : 'Save as draft') }}
@@ -210,6 +215,10 @@ import { readChatsRoot } from '~/composables/useSearchCache'
 import { X } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
 import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst } from '~/utils/mergeProfileDefaultDivers'
+import {
+  persistBookingResumeBeforeAuth,
+  BOOKING_AUTH_RESUME_REDIRECT
+} from '~/composables/useBookingAuthResume'
 
 interface BookingApiResponse {
   sent: boolean
@@ -561,6 +570,15 @@ function buildPayload () {
       gear: (d.gear || []).map(g => ({ gearType: g.gearType || '' }))
     }))
   }
+}
+
+async function goSignInToSaveDraft () {
+  persistBookingResumeBeforeAuth({
+    liveBookingPayload: buildPayload(),
+    drawerShopId: props.shopId,
+    drawerShopName: props.shopName
+  })
+  await navigateTo({ path: '/auth', query: { redirect: BOOKING_AUTH_RESUME_REDIRECT } })
 }
 
 async function saveDraft () {

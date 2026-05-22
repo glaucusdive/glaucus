@@ -366,6 +366,14 @@ import {
   BOOKING_PRESEND_OPEN_FORM,
   BOOKING_RESUME_SESSION_KEY
 } from '~~/shared/bookingPreSendTokens'
+import {
+  persistBookingResumeBeforeAuth,
+  mergedBookingPayloadFromResumeSnapshot,
+  clearBookingResumeSnapshot,
+  readBookingResumeSnapshot,
+  BOOKING_AUTH_RESUME_REDIRECT
+} from '~/composables/useBookingAuthResume'
+import { patchLatestBookingPayloadInMessages } from '~/utils/bookingAuthResumeMerge'
 import { buildSearchMatchBadges } from '~~/shared/searchMatchBadges'
 import {
   chatLoadingLinesForKind,
@@ -1004,7 +1012,7 @@ function applyPendingDraftResumeFromProfile () {
     { role: 'user', content: `Book with ${shopName}` },
     {
       role: 'assistant',
-      content: 'Resume your saved booking. Use the form on the right to continue where you left off.',
+      content: `Welcome back — let's continue your booking with ${shopName}. Reply in the chat to pick up where you left off.`,
       intent: 'booking',
       shopId,
       shopName,
@@ -1024,25 +1032,13 @@ function applyPendingDraftResumeFromProfile () {
     lastQuery: null,
     selectedShopId: shopId,
     detailDrawerShopId: null,
-    drawerOpen: true,
-    drawerShopId: shopId,
-    drawerShopName: shopName
+    drawerOpen: false,
+    drawerShopId: null,
+    drawerShopName: null
   })
 
   isRestoringCache.value = false
   notifyChatSidebarUpdated()
-  void nextTick(() => {
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        openDrawer('booking-form', {
-          shopId,
-          shopName,
-          bookingPayload: mergedPayload,
-          ...(draftId ? { draftId } : {})
-        })
-      }, 300)
-    })
-  })
   return true
 }
 
@@ -1307,19 +1303,22 @@ function openBookingFormDrawerFromPreSend () {
 
 function persistBookingResumeSnapshot () {
   if (import.meta.server) return
-  try {
-    const snap = {
-      v: 1,
-      messages: JSON.parse(JSON.stringify(messages.value)),
-      selectedShopId: selectedShopId.value,
-      detailDrawerShopId: detailDrawerShopId.value,
-      pendingBookingPayload: pendingBookingPayload.value
-        ? JSON.parse(JSON.stringify(pendingBookingPayload.value))
-        : null
+  const live = (isOpen.value && contentType.value === 'booking-form' && drawerData.value?.liveBookingPayload)
+    ? drawerData.value.liveBookingPayload
+    : null
+  persistBookingResumeBeforeAuth({
+    liveBookingPayload: live,
+    drawerShopId: drawerData.value?.shopId,
+    drawerShopName: drawerData.value?.shopName
+  })
+  if (pendingBookingPayload.value) {
+    const snap = readBookingResumeSnapshot()
+    if (snap) {
+      try {
+        snap.pendingBookingPayload = JSON.parse(JSON.stringify(pendingBookingPayload.value))
+        sessionStorage.setItem(BOOKING_RESUME_SESSION_KEY, JSON.stringify(snap))
+      } catch { /* ignore */ }
     }
-    sessionStorage.setItem(BOOKING_RESUME_SESSION_KEY, JSON.stringify(snap))
-  } catch (e) {
-    console.warn('[booking resume] persist failed', e)
   }
 }
 
@@ -1333,22 +1332,34 @@ function stripBookingResumeQuery () {
 function tryRestoreBookingSessionAfterAuth () {
   if (import.meta.server || route.query.bookingResume !== '1') return false
   stripBookingResumeQuery()
-  const raw = sessionStorage.getItem(BOOKING_RESUME_SESSION_KEY)
-  if (!raw) return false
+  const snap = readBookingResumeSnapshot()
+  if (!snap) return false
   try {
-    const snap = JSON.parse(raw)
-    if (!snap?.v || !Array.isArray(snap.messages)) return false
-    sessionStorage.removeItem(BOOKING_RESUME_SESSION_KEY)
+    clearBookingResumeSnapshot()
     messages.value = snap.messages
     if (snap.selectedShopId) selectedShopId.value = snap.selectedShopId
-    const snapDetail = snap.detailDrawerShopId ?? snap.mobileDetailShopId
+    const snapDetail = snap.detailDrawerShopId
     if (snapDetail != null) detailDrawerShopId.value = snapDetail
     pendingBookingPayload.value = snap.pendingBookingPayload ?? null
-    const p = getLatestBookingPayloadFromMessages(messages.value)
+
+    const merged = mergedBookingPayloadFromResumeSnapshot(snap)
+    const p = merged?.payload ?? getLatestBookingPayloadFromMessages(messages.value)
     const lastBookingAssist = [...messages.value].reverse().find(m => m.role === 'assistant' && m.intent === 'booking' && m.shopName)
-    const sid = selectedShopId.value || p?.shopId || lastBookingAssist?.shopId
-    const shopName = lastBookingAssist?.shopName || 'Dive shop'
+    const sid = merged?.shopId || selectedShopId.value || p?.shopId || lastBookingAssist?.shopId
+    const shopName = snap.drawerShopName || lastBookingAssist?.shopName || 'Dive shop'
+
     if (sid && p) {
+      patchLatestBookingPayloadInMessages(messages.value, p, sid, shopName)
+    }
+
+    const hadPreSendReady = messages.value.some(
+      (m) => m.role === 'assistant' && m.intent === 'booking' && (m.bookingReady || m.selectableOptions?.some?.(
+        (o) => o?.value === BOOKING_PRESEND_CONFIRM_SEND
+      ))
+    )
+
+    // Pre-send review only: one chat line to confirm send. Mid-flow: keep existing assistant step (e.g. name).
+    if (sid && p && hadPreSendReady) {
       messages.value.push({
         role: 'assistant',
         content: 'Welcome back — you\'re signed in. Tap Send booking request to email the dive shop.',
@@ -1363,6 +1374,22 @@ function tryRestoreBookingSessionAfterAuth () {
         selectableOptions: [{ label: 'Send booking request', value: BOOKING_PRESEND_CONFIRM_SEND }]
       })
     }
+
+    closeDrawer()
+    const root = readChatsRoot() ?? ensureChatsRoot()
+    persistActiveChatsRoot(root, {
+      messages: messages.value,
+      userInput: userInput.value,
+      lastQuery: typeof route.query.q === 'string' ? route.query.q : null,
+      selectedShopId: selectedShopId.value,
+      detailDrawerShopId: detailDrawerShopId.value,
+      drawerOpen: false,
+      drawerShopId: null,
+      drawerShopName: null,
+      guidedSearchState: guidedSearchState.value,
+      guidedBookingHints: guidedBookingHints.value,
+      preferGuidedThisSession: preferGuidedThisSession.value
+    })
     persistCache()
     return true
   } catch (e) {
@@ -1456,8 +1483,7 @@ const sendMessage = async (messageText, displayText) => {
     userInput.value = ''
     await scrollToBottom()
     persistBookingResumeSnapshot()
-    const redirect = encodeURIComponent('/?bookingResume=1')
-    await navigateTo({ path: '/auth/signup', query: { signup: '1', redirect } })
+    await navigateTo({ path: '/auth/signup', query: { signup: '1', redirect: BOOKING_AUTH_RESUME_REDIRECT } })
     persistCache()
     return
   }
