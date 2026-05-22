@@ -13,7 +13,14 @@ import { getShopById } from '../utils/resolveShop'
 import { getDiveSitesForShop } from '../utils/getDiveSitesForShop'
 import { getCoursesForShop } from '../utils/getCoursesForShop'
 import { getRentalEquipmentForShop } from '../utils/getRentalEquipmentForShop'
-import { clampBookingPayloadToNextStep, getNextBookingStep, tryFastPath, tryFastPathUnitOnly, profileDiverSelectableChipsFromPrefill, type BookingPayloadLocal, type NextStepResult, type PendingReviewEdit } from '../utils/bookingFastPath'
+import { clampBookingPayloadToNextStep, getBookingMultiSelectAdvanceCopy, getNextBookingStep, isBookingOptionalClearSelectionToken, isBookingOptionalStepToken, tryFastPath, tryFastPathUnitOnly, profileDiverSelectableChipsFromPrefill, type BookingPayloadLocal, type NextStepResult, type PendingReviewEdit } from '../utils/bookingFastPath'
+import {
+  bookingCoursesStepMessage,
+  bookingDiveSitesStepMessage,
+  bookingGearStepMessage,
+  BOOKING_GEAR_ADD_HINT,
+  bookingMultiSelectChipHint
+} from '../../shared/bookingMultiSelectPrompts'
 import { tryHandleBookingReviewEditTurn } from '../utils/bookingReviewEdit'
 import { canImmediateSendBookingReply, isConfirmSendMessage } from '../utils/bookingSendIntentGate'
 import { inclusiveTripDays } from '../utils/parseTripDates'
@@ -145,22 +152,18 @@ function formatReplyAfterAppliedTripDates (
   p: BookingPayload,
   parsedDates: { startDate: string; endDate: string },
   coursesLen: number,
-  diveSitesLen: number,
-  coursesDateAckPartsFn: (p: BookingPayload, s: string, e: string) => { messagePreamble: string; message: string },
-  diveSitesLine: string
+  diveSitesLen: number
 ): { message: string; messagePreamble?: string } {
   const nextAfter = getNextBookingStep(p as BookingPayloadLocal)
   let msg = `Got it — diving ${parsedDates.startDate} to ${parsedDates.endDate}.`
   let dateStepPreamble: string | undefined
   if (nextAfter?.step === 'courses' && coursesLen > 0) {
-    const parts = coursesDateAckPartsFn(p, parsedDates.startDate, parsedDates.endDate)
+    const parts = bookingCoursesDateAckParts(p, parsedDates.startDate, parsedDates.endDate)
     dateStepPreamble = parts.messagePreamble
     msg = parts.message
   } else if (nextAfter?.step === 'diveSites' && diveSitesLen > 0) {
     dateStepPreamble = `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}.`
-    msg = p.desiredCourses?.length
-      ? `I noted ${p.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive? ${diveSitesLine}`
-      : `Which dive sites would you like to dive? ${diveSitesLine}`
+    msg = bookingDiveSitesStepMessage(p)
   } else if (nextAfter?.step === 'numberOfDivers') {
     dateStepPreamble = `Got it — ${parsedDates.startDate} to ${parsedDates.endDate}.`
     msg = p.desiredCourses?.length && coursesLen > 0
@@ -170,17 +173,10 @@ function formatReplyAfterAppliedTripDates (
   return { message: msg, messagePreamble: dateStepPreamble }
 }
 
-function bookingCoursesDateAckParts (p: BookingPayload, startDate: string, endDate: string, coursesLine: string) {
-  const messagePreamble = `Got it — ${startDate} to ${endDate}.`
-  if (p.desiredCourses?.length && p.coursesSelectionComplete === false) {
-    return {
-      messagePreamble,
-      message: `I noted ${p.desiredCourses.join(', ')} from your search. ${coursesLine}`
-    }
-  }
+function bookingCoursesDateAckParts (p: BookingPayload, startDate: string, endDate: string) {
   return {
-    messagePreamble,
-    message: `Are you interested in any courses on this trip? ${coursesLine}`
+    messagePreamble: `Got it — ${startDate} to ${endDate}.`,
+    message: bookingCoursesStepMessage(p)
   }
 }
 
@@ -193,11 +189,9 @@ function orchestratorSplitBookingCopyForStep (
   opts: {
     shopCourseCount: number
     shopDiveSiteCount: number
-    coursesLine: string
-    diveSitesLine: string
   }
 ): { message: string; messagePreamble?: string } | null {
-  const { shopCourseCount, shopDiveSiteCount, coursesLine, diveSitesLine } = opts
+  const { shopCourseCount, shopDiveSiteCount } = opts
   if (next.step === 'numberOfDivers') {
     const preamble = buildBookingAckSummaryForPayload(p)
     return {
@@ -206,14 +200,10 @@ function orchestratorSplitBookingCopyForStep (
     }
   }
   if (next.step === 'courses' && shopCourseCount > 0 && p.startDate && p.endDate) {
-    return bookingCoursesDateAckParts(p, p.startDate, p.endDate, coursesLine)
+    return bookingCoursesDateAckParts(p, p.startDate, p.endDate)
   }
-  if (next.step === 'diveSites' && shopDiveSiteCount > 0 && p.startDate && p.endDate) {
-    const messagePreamble = `Got it — ${p.startDate} to ${p.endDate}.`
-    const message = p.desiredCourses?.length
-      ? `I noted ${p.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive? ${diveSitesLine}`
-      : `Which dive sites would you like to dive? ${diveSitesLine}`
-    return { messagePreamble, message }
+  if (next.step === 'diveSites' && shopDiveSiteCount > 0) {
+    return { message: bookingDiveSitesStepMessage(p) }
   }
 
   const di = next.diverIndex ?? 0
@@ -233,7 +223,7 @@ function orchestratorSplitBookingCopyForStep (
     return { message: `What's ${displayName}'s weight? Please include the unit (lbs or kg).` }
   }
   if (next.step === 'gear') {
-    return { message: `Does ${displayName} need any rental gear?` }
+    return { message: bookingGearStepMessage(displayName) }
   }
 
   return null
@@ -265,6 +255,7 @@ export interface BookingPayload {
   desiredCourses?: string[]
   coursesSelectionComplete?: boolean
   desiredDiveSites?: string[]
+  diveSitesSelectionComplete?: boolean
   /** Chat state only — not sent to /api/booking. */
   preSendReviewAck?: boolean
   /** Guest skipped before-send signup (not sent to /api/booking). */
@@ -303,7 +294,9 @@ function listIncompleteBookingTasks (
   if (options.shopCourseCount > 0 && coursesSelectionPending) {
     tasks.push('Choose courses (or mark none)')
   }
-  if (options.shopDiveSiteCount > 0 && p.desiredDiveSites === undefined) {
+  const diveSitesSelectionPending =
+    p.diveSitesSelectionComplete === false || p.desiredDiveSites === undefined
+  if (options.shopDiveSiteCount > 0 && diveSitesSelectionPending) {
     tasks.push('Choose desired dive sites (or mark none)')
   }
 
@@ -523,7 +516,7 @@ function buildBookingSystemPrompt (
     numberOfDives: 'number of dives completed',
     height: 'height (with unit)',
     weight: 'weight (with unit: lbs or kg)',
-    gear: 'rental gear (or "none")',
+    gear: 'rental gear (pick chips or say "done" to finish)',
     courses: 'which courses they are interested in (optional)',
     diveSites: 'which dive sites they want',
     ready: 'nothing — output BOOKING_READY when all fields are in COLLECTED'
@@ -535,13 +528,13 @@ function buildBookingSystemPrompt (
 
 Names: For the booking contact and for each diver, you need a full name (first and last). If the user gives only one name (e.g. just "Chris" or "Smith"), politely ask for their full name before moving on — e.g. "Could you give me your full name (first and last)?"
 
-Ask for ONE piece of information at a time in this order: 1) name (the person making the booking), 2) email, 3) start date and end date for diving, 4) which courses they want (optional — they can say "any" or pick from the chips; do not list course names in your message), 5) which dive sites they want (optional — they can say "any" or pick from the chips; do not list the site names in your message), 6) number of divers, 7) confirm whether the person whose name you have is Diver 1 or not: ask "Is [name] one of the divers? I'll use that name for Diver 1 if yes — otherwise tell me Diver 1's full name." If they say yes (or that they are Diver 1), set Diver 1's name to that name. If they say no, ask for Diver 1's full name. 8) For each diver: certification number, number of dives completed, height (with unit: ft-in or cm), weight (with unit: lbs or kg), and any rental gear they need.
+Ask for ONE piece of information at a time in this order: 1) name (the person making the booking), 2) email, 3) start date and end date for diving, 4) which courses they want (optional — pick from chips or say "done" / "no" / "none" to skip; do not list course names in your message), 5) which dive sites they want (optional — same; do not list site names in your message), 6) number of divers, 7) confirm whether the person whose name you have is Diver 1 or not: ask "Is [name] one of the divers? I'll use that name for Diver 1 if yes — otherwise tell me Diver 1's full name." If they say yes (or that they are Diver 1), set Diver 1's name to that name. If they say no, ask for Diver 1's full name. 8) For each diver: certification number, number of dives completed, height (with unit: ft-in or cm), weight (with unit: lbs or kg), and any rental gear they need.
 
 When "Already collected" includes diver details from a previous booking (e.g. numberOfDives or gear already filled): (1) For number of dives — briefly confirm or ask to update, e.g. "Last time you had 21 dives — is this trip still 21 or have they done another?" or "Is this still 21 dives or 22 now?" so the count stays accurate. (2) For rental gear — mention what they had last time and that they can add or remove for this trip, e.g. "Last time you had Wetsuit and BCD. This shop offers [list from rental equipment]. Add or remove any for this trip?" Then let them pick from the chips or say "same" / "none" / etc.
 
 Dates (step 3): The server parses most trip date formats (numeric ranges, month names, ISO, and many natural phrases). Do not spend tokens re-explaining parsing rules. If the user’s dates are still ambiguous after their message, put startDate and endDate in COLLECTED as YYYY-MM-DD. For trips longer than 21 days the server asks for confirmation first — follow its lead if the user is in that flow. Do not ask the user to type YYYY-MM-DD.
 
-Optional steps: For desiredCourses and desiredDiveSites, omit these keys from COLLECTED until you have asked that step and the user answered (or use a non-empty array when they picked courses/sites). Do not send empty arrays [] for those fields until the user has completed that step — otherwise use omit or null in COLLECTED if your JSON schema allows. For courses: if the user is still adding courses, set coursesSelectionComplete to false; when they are done (including "any" or "none"), set coursesSelectionComplete to true.
+Optional steps: For desiredCourses and desiredDiveSites, omit these keys from COLLECTED until you have asked that step and the user answered (or use a non-empty array when they picked courses/sites). Do not send empty arrays [] for those fields until the user has completed that step — otherwise use omit or null in COLLECTED if your JSON schema allows. For courses: if the user is still adding courses, set coursesSelectionComplete to false; when they are done, set coursesSelectionComplete to true. For dive sites: same with diveSitesSelectionComplete (false while adding sites, true when done).
 
 Weight (step 8): If the user gives only a number for weight (e.g. "200" or "85") with no unit (lbs or kg), do NOT assume a unit. Ask for clarification: "Is that [number] lbs or [number] kg?" and only set weightUnit in COLLECTED when they specify. Never record weight as e.g. "200 lbs" unless the user said "kg" or "lbs".
 
@@ -571,7 +564,8 @@ The JSON must have this shape (use empty string "" for missing optional fields, 
   ],
   "desiredCourses": ["string"],
   "coursesSelectionComplete": true,
-  "desiredDiveSites": ["string"]
+  "desiredDiveSites": ["string"],
+  "diveSitesSelectionComplete": true
 }
 
 Do not output BOOKING_READY until every required field is present. If the user corrects something, update and continue.
@@ -579,7 +573,7 @@ Do not output BOOKING_READY until every required field is present. If the user c
 The app shows a mandatory review (and optional account prompt) on the server before any booking email is sent — do not say the request was already sent until the user completes those steps.
 
 After every reply you must output the current collected state so we can pre-fill the form. IMPORTANT: always write your full conversational reply first (ask the next question or confirm — e.g. "Thanks, got the gear. What's Diver 2's full name?"). Then on a new line, output only:
-COLLECTED: {"name":"...","email":"...","startDate":"...","endDate":"...","numberOfDivers":1,"divers":[...],"desiredCourses":[...],"coursesSelectionComplete":true,"desiredDiveSites":[...]}
+COLLECTED: {"name":"...","email":"...","startDate":"...","endDate":"...","numberOfDivers":1,"divers":[...],"desiredCourses":[...],"coursesSelectionComplete":true,"desiredDiveSites":[...],"diveSitesSelectionComplete":true}
 Never put COLLECTED in the middle of your reply — your message to the user must come first, then COLLECTED on its own line. Include every field you have collected so far (use empty string or [] for not yet collected). Use the exact same JSON shape as BOOKING_READY. Always proceed to the next empty field question (e.g. after dates ask for courses; after courses ask for dive sites; after dive sites ask for number of divers; after gear for last diver, output BOOKING_READY).`
 }
 
@@ -996,18 +990,8 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
         const startingFreshBooking = (effectiveWantsToBook || resolvedByNamedShop) && !continuingBooking
         const noPayloadYet = !bookingPayload || !(bookingPayload.name && String(bookingPayload.name).trim())
 
-        /** Copy for courses step (same UX as dive sites). */
-        const COURSES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.'
-        /** Copy for dive-sites step: makes multi-select and "done" obvious so users don't think one tap commits. */
-        const DIVE_SITES_LINE = 'Pick one or more below, or say "any". Add another or say "done" when finished.'
-        const coursesIntroMessage = (shopName: string, p: BookingPayload) => {
-          if (p.desiredCourses?.length && p.coursesSelectionComplete === false) {
-            return `Great — I'll help you book with ${shopName}. I noted ${p.desiredCourses.join(', ')} from your search. ${COURSES_LINE}`
-          }
-          return `Great — I'll help you book with ${shopName}. Are you interested in any courses on this trip? ${COURSES_LINE}`
-        }
-        const coursesDateAckParts = (p: BookingPayload, startDate: string, endDate: string) =>
-          bookingCoursesDateAckParts(p, startDate, endDate, COURSES_LINE)
+        const coursesIntroMessage = (shopName: string, p: BookingPayload) =>
+          `Great — I'll help you book with ${shopName}. ${bookingCoursesStepMessage(p)}`
 
         // If shop has no rental gear and user is just starting booking, tell them and offer to continue or pick another shop
         if (startingFreshBooking && noPayloadYet && rentalEquipment.length === 0) {
@@ -1066,9 +1050,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 : nextHint?.step === 'courses'
                   ? coursesIntroMessage(resolvedShop.business_name, initialPayload)
                   : nextHint?.step === 'diveSites'
-                    ? (initialPayload.desiredCourses?.length
-                      ? `Great — I'll help you book with ${resolvedShop.business_name}. I noted ${initialPayload.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive?`
-                      : `Great — I'll help you book with ${resolvedShop.business_name}. Which dive sites would you like to dive?`)
+                    ? `Great — I'll help you book with ${resolvedShop.business_name}. ${bookingDiveSitesStepMessage(initialPayload)}`
                     : `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`
           return withAgentMeta({
             success: true,
@@ -1091,14 +1073,8 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           getNextBookingStep(payload)?.step === 'courses' && courses.length > 0 ? courses : undefined
         const addDiveSiteOptions = (payload: BookingPayload) =>
           getNextBookingStep(payload)?.step === 'diveSites' && diveSites.length > 0 ? diveSites : undefined
-        /** When true, frontend hides "None" for gear step (user already selected at least one item). */
-        const hideNoneForGear = (payload: BookingPayload | undefined): boolean => {
-          if (!payload) return false
-          const next = getNextBookingStep(payload)
-          if (next?.step !== 'gear' || next.diverIndex == null) return false
-          const gear = payload.divers?.[next.diverIndex]?.gear
-          return Array.isArray(gear) && gear.length > 0
-        }
+        /** Gear step uses Done only (no separate "None" chip). */
+        const hideNoneForGear = (_payload: BookingPayload | undefined): boolean => true
 
         const tryMidBookingShopSwitchResponse = async (switchPhrase: string | null) => {
           if (!switchPhrase?.trim() || !supabaseUrl || !supabaseKey) return null
@@ -1187,13 +1163,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                     : nextSw?.step === 'dates'
                       ? `Switching to ${newShop.business_name}. What are your trip dates (start and end)?`
                       : nextSw?.step === 'courses'
-                        ? (mergedSw.desiredCourses?.length && mergedSw.coursesSelectionComplete === false
-                          ? `Switching to ${newShop.business_name}. I noted ${mergedSw.desiredCourses.join(', ')} from your search. ${COURSES_LINE}`
-                          : `Switching to ${newShop.business_name}. Are you interested in any courses on this trip? ${COURSES_LINE}`)
+                        ? `Switching to ${newShop.business_name}. ${bookingCoursesStepMessage(mergedSw)}`
                         : nextSw?.step === 'diveSites'
-                          ? (mergedSw.desiredCourses?.length
-                            ? `Switching to ${newShop.business_name}. I noted ${mergedSw.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive? ${DIVE_SITES_LINE}`
-                            : `Switching to ${newShop.business_name}. Which dive sites would you like to dive? ${DIVE_SITES_LINE}`)
+                          ? `Switching to ${newShop.business_name}. ${bookingDiveSitesStepMessage(mergedSw)}`
                           : `Switching to ${newShop.business_name}. What's the name for the booking?`
               return withAgentMeta({
                 success: true,
@@ -1218,9 +1190,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               const sameCopy = sameNext
                 ? orchestratorSplitBookingCopyForStep(sameNext, bookingPayload, {
                   shopCourseCount: courses.length,
-                  shopDiveSiteCount: diveSites.length,
-                  coursesLine: COURSES_LINE,
-                  diveSitesLine: DIVE_SITES_LINE
+                  shopDiveSiteCount: diveSites.length
                 })
                 : null
               return withAgentMeta({
@@ -1322,9 +1292,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   : nextHint?.step === 'courses'
                     ? coursesIntroMessage(resolvedShop.business_name, initialPayload)
                     : nextHint?.step === 'diveSites'
-                      ? (initialPayload.desiredCourses?.length
-                        ? `Great — I'll help you book with ${resolvedShop.business_name}. I noted ${initialPayload.desiredCourses.join(', ')} from your search. Which dive sites would you like to dive?`
-                        : `Great — I'll help you book with ${resolvedShop.business_name}. Which dive sites would you like to dive?`)
+                      ? `Great — I'll help you book with ${resolvedShop.business_name}. ${bookingDiveSitesStepMessage(initialPayload)}`
                       : `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`
             return withAgentMeta({
               success: true,
@@ -1498,9 +1466,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             if (finishTasksIntent && nextStepBeforeInput) {
               const stepCopy = orchestratorSplitBookingCopyForStep(nextStepBeforeInput, bookingPayload, {
                 shopCourseCount: courses.length,
-                shopDiveSiteCount: diveSites.length,
-                coursesLine: COURSES_LINE,
-                diveSitesLine: DIVE_SITES_LINE
+                shopDiveSiteCount: diveSites.length
               })
               return withAgentMeta({
                 success: true,
@@ -1544,9 +1510,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   p,
                   pend,
                   courses.length,
-                  diveSites.length,
-                  coursesDateAckParts,
-                  DIVE_SITES_LINE
+                  diveSites.length
                 )
                 return withAgentMeta({
                   success: true,
@@ -1667,9 +1631,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 pPending,
                 parsedDatesFromPending,
                 courses.length,
-                diveSites.length,
-                coursesDateAckParts,
-                DIVE_SITES_LINE
+                diveSites.length
               )
               return withAgentMeta({
                 success: true,
@@ -1749,9 +1711,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 p,
                 parsedDates,
                 courses.length,
-                diveSites.length,
-                coursesDateAckParts,
-                DIVE_SITES_LINE
+                diveSites.length
               )
               return withAgentMeta({
                 success: true,
@@ -1865,7 +1825,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   success: true,
                   intent: 'booking' as const,
                   bookingReady: false,
-                  message: `Does ${name} need any rental gear?`,
+                  message: bookingGearStepMessage(name),
                   shopId: resolvedShop.id,
                   shopName: resolvedShop.business_name,
                   bookingPayload: p,
@@ -2064,7 +2024,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   success: true,
                   intent: 'booking' as const,
                   bookingReady: false,
-                  message: `Added ${matched} for ${name}. Add another or say "done" when finished.`,
+                  message: `Added ${matched} for ${name}. ${BOOKING_GEAR_ADD_HINT}`,
                   shopId: resolvedShop.id,
                   shopName: resolvedShop.business_name,
                   bookingPayload: p,
@@ -2093,7 +2053,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
-                message: `Added ${matchedCourse.name}. ${COURSES_LINE}`,
+                message: `Added ${matchedCourse.name}. ${bookingMultiSelectChipHint('courses', true)}`,
                 shopId: resolvedShop.id,
                 shopName: resolvedShop.business_name,
                 bookingPayload: p,
@@ -2103,46 +2063,44 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 diveSiteOptions: undefined
               })
             }
-            const isDoneCourse = /^(done|that's all|finish|that's it|no more)$/i.test(msgTrim)
-            const isAnyCourse = /^any$/i.test(msgTrim)
-            if (isDoneCourse || isAnyCourse) {
-              const p = {
-                ...workingPayload,
-                desiredCourses: isAnyCourse ? [] : (workingPayload.desiredCourses || []),
-                coursesSelectionComplete: true
-              }
-              const nextAfterCourses = getNextBookingStep(p)
-              if (nextAfterCourses?.step === 'diveSites') {
-                if (diveSites.length === 0) {
-                  const p2 = { ...p, desiredDiveSites: [] }
+            if (isBookingOptionalStepToken(msgTrim)) {
+              let p = clampBookingPayloadToNextStep(
+                {
+                  ...workingPayload,
+                  desiredCourses: isBookingOptionalClearSelectionToken(msgTrim)
+                    ? []
+                    : (workingPayload.desiredCourses || []),
+                  coursesSelectionComplete: true
+                },
+                { shopCourseCount: courses.length, shopDiveSiteCount: diveSites.length }
+              ) as BookingPayload
+              const nextAfterCourses = getNextBookingStep(p as BookingPayloadLocal)
+              if (nextAfterCourses && nextAfterCourses.step !== 'courses') {
+                if (nextAfterCourses.step === 'diveSites' && diveSites.length === 0) {
+                  p = clampBookingPayloadToNextStep(
+                    { ...p, desiredDiveSites: [], diveSitesSelectionComplete: true } as BookingPayloadLocal,
+                    { shopCourseCount: courses.length, shopDiveSiteCount: diveSites.length }
+                  ) as BookingPayload
+                }
+                const next = getNextBookingStep(p as BookingPayloadLocal)
+                if (next && next.step !== 'courses') {
+                  const copy = getBookingMultiSelectAdvanceCopy(next, p as BookingPayloadLocal)
                   return withAgentMeta({
                     success: true,
                     intent: 'booking' as const,
                     bookingReady: false,
-                    messagePreamble: 'No specific dive sites for this shop.',
-                    message: 'How many divers will be on the trip?',
+                    message: copy.message,
+                    ...(copy.messagePreamble ? { messagePreamble: copy.messagePreamble } : {}),
                     shopId: resolvedShop.id,
                     shopName: resolvedShop.business_name,
-                    bookingPayload: p2,
+                    bookingPayload: p,
                     selectableOptions: undefined,
-                    rentalEquipmentOptions: undefined,
-                    courseOptions: undefined,
-                    diveSiteOptions: undefined
+                    rentalEquipmentOptions: addGearOptions(p),
+                    hideNoneForGear: hideNoneForGear(p),
+                    courseOptions: addCourseOptions(p),
+                    diveSiteOptions: addDiveSiteOptions(p)
                   })
                 }
-                return withAgentMeta({
-                  success: true,
-                  intent: 'booking' as const,
-                  bookingReady: false,
-                  message: `Which dive sites would you like to dive? ${DIVE_SITES_LINE}`,
-                  shopId: resolvedShop.id,
-                  shopName: resolvedShop.business_name,
-                  bookingPayload: p,
-                  selectableOptions: undefined,
-                  rentalEquipmentOptions: undefined,
-                  courseOptions: undefined,
-                  diveSiteOptions: diveSites
-                })
               }
             }
           }
@@ -2150,7 +2108,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           const nextStepForDive = getNextBookingStep(workingPayload)
           if (nextStepForDive?.step === 'diveSites') {
             if (diveSites.length === 0) {
-              const p = { ...workingPayload, desiredDiveSites: [] }
+              const p = { ...workingPayload, desiredDiveSites: [], diveSitesSelectionComplete: true }
               return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
@@ -2172,12 +2130,16 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             if (matchedSite) {
               const sites = [...(workingPayload.desiredDiveSites || [])]
               if (!sites.includes(matchedSite)) sites.push(matchedSite)
-              const p = { ...workingPayload, desiredDiveSites: sites }
+              const p = {
+                ...workingPayload,
+                desiredDiveSites: sites,
+                diveSitesSelectionComplete: false
+              }
               return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
-                message: `Added ${matchedSite}. ${DIVE_SITES_LINE}`,
+                message: `Added ${matchedSite}. ${bookingMultiSelectChipHint('diveSites', true)}`,
                 shopId: resolvedShop.id,
                 shopName: resolvedShop.business_name,
                 bookingPayload: p,
@@ -2187,20 +2149,34 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 diveSiteOptions: diveSites
               })
             }
-            const isDone = /^(done|that's all|finish|that's it|no more)$/i.test(msgTrim)
-            const isAny = /^any$/i.test(msgTrim)
-            if (isDone || isAny) {
-              const p = { ...workingPayload, desiredDiveSites: isAny ? [] : (workingPayload.desiredDiveSites || []) }
+            if (isBookingOptionalStepToken(msgTrim)) {
+              let p = clampBookingPayloadToNextStep(
+                {
+                  ...workingPayload,
+                  desiredDiveSites: isBookingOptionalClearSelectionToken(msgTrim)
+                    ? []
+                    : (workingPayload.desiredDiveSites || []),
+                  diveSitesSelectionComplete: true
+                },
+                { shopCourseCount: courses.length, shopDiveSiteCount: diveSites.length }
+              ) as BookingPayload
+              const next = getNextBookingStep(p as BookingPayloadLocal)
+              const copy =
+                next && next.step !== 'diveSites'
+                  ? getBookingMultiSelectAdvanceCopy(next, p as BookingPayloadLocal)
+                  : { message: 'How many divers will be on the trip?' }
               return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
-                message: 'How many divers will be on the trip?',
+                message: copy.message,
+                ...(copy.messagePreamble ? { messagePreamble: copy.messagePreamble } : {}),
                 shopId: resolvedShop.id,
                 shopName: resolvedShop.business_name,
                 bookingPayload: p,
                 selectableOptions: undefined,
-                rentalEquipmentOptions: undefined,
+                rentalEquipmentOptions: addGearOptions(p),
+                hideNoneForGear: hideNoneForGear(p),
                 courseOptions: undefined,
                 diveSiteOptions: undefined
               })
@@ -2209,7 +2185,11 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           // "Done" (or "none") when last diver has gear: ask if they want to add another diver (don't assume Diver 3)
           const numDiversForDone = Math.max(1, bookingPayload.numberOfDivers ?? 1)
           const lastDiverForDone = bookingPayload.divers?.[numDiversForDone - 1]
-          if (lastDiverForDone?.gear?.length && (/^(done|that's all|finish|that's it)$/i.test(msgTrim) || msgTrim.toLowerCase() === 'none')) {
+          if (
+            lastDiverForDone?.gear?.length &&
+            isBookingOptionalStepToken(msgTrim) &&
+            !isBookingOptionalClearSelectionToken(msgTrim)
+          ) {
             const name = lastDiverForDone.name || 'They'
             const payloadWithGearAsked = { ...bookingPayload, divers: [...(bookingPayload.divers || [])] }
             const lastIdx = numDiversForDone - 1
@@ -2688,21 +2668,15 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             .replace(/\s{2,}/g, ' ')
             .trim()
         }
-        const willShowCourseOptions = (collectedPayload ? addCourseOptions(collectedPayload) : undefined) ||
-          (messageAsksForCourses(replyMessage) && courseChips ? courseChips : undefined) ||
-          (bookingPayload && addCourseOptions(bookingPayload) ? courseChips : undefined)
+        const willShowCourseOptions = collectedPayload ? addCourseOptions(collectedPayload) : undefined
         if (willShowCourseOptions && replyMessage === genericFallback) {
           const cp = collectedPayload ?? bookingPayload
-          replyMessage = cp?.desiredCourses?.length && cp.coursesSelectionComplete === false
-            ? `I noted ${cp.desiredCourses!.join(', ')} from your search. ${COURSES_LINE}`
-            : `Are you interested in any courses on this trip? ${COURSES_LINE}`
+          replyMessage = bookingCoursesStepMessage(cp)
         }
         // If we're showing dive site chips but the message is still the generic fallback (e.g. AI reply was stripped to empty), show context
-        const willShowDiveSiteOptions = (collectedPayload ? addDiveSiteOptions(collectedPayload) : undefined) ||
-          (messageAsksForDiveSites(replyMessage) && diveSiteChips ? diveSiteChips : undefined) ||
-          (bookingPayload && addDiveSiteOptions(bookingPayload) ? diveSiteChips : undefined)
+        const willShowDiveSiteOptions = collectedPayload ? addDiveSiteOptions(collectedPayload) : undefined
         if (willShowDiveSiteOptions && replyMessage === genericFallback && !willShowCourseOptions) {
-          replyMessage = 'Which dive sites would you like to dive?'
+          replyMessage = bookingDiveSitesStepMessage((collectedPayload ?? bookingPayload) ?? {})
         }
         // Same for gear: if canonical next step is gear and message was stripped to generic fallback, ask for rental gear
         const mergedForGearUi = (collectedPayload ?? bookingPayload) as BookingPayload | undefined
@@ -2712,7 +2686,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           const divers = mergedForGearUi?.divers ?? []
           const idx = getNextBookingStep(mergedForGearUi as BookingPayloadLocal)?.diverIndex ?? numDivers - 1
           const nm = divers[idx]?.name?.trim() || `Diver ${idx + 1}`
-          replyMessage = `Does ${nm} need any rental gear?`
+          replyMessage = bookingGearStepMessage(nm)
         }
         const finalGearOptions = gearOptionsFromStep
         const mergedForDiverChips = (collectedPayload ?? bookingPayload) ?? ({} as BookingPayloadLocal)
@@ -2733,9 +2707,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           nextForClientUi && mergedForClientUi
             ? orchestratorSplitBookingCopyForStep(nextForClientUi, mergedForClientUi, {
                 shopCourseCount: courses.length,
-                shopDiveSiteCount: diveSites.length,
-                coursesLine: COURSES_LINE,
-                diveSitesLine: DIVE_SITES_LINE
+                shopDiveSiteCount: diveSites.length
               })
             : null
         const messageForClient = orchestratorBubbles ? orchestratorBubbles.message : replyMessage
@@ -2752,12 +2724,8 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           selectableOptions: profileDiverOptionsFromLlm?.length ? profileDiverOptionsFromLlm : undefined,
           rentalEquipmentOptions: finalGearOptions?.length ? finalGearOptions : undefined,
           hideNoneForGear: hideNoneForGear(collectedPayload ?? bookingPayload),
-          courseOptions: (collectedPayload ? addCourseOptions(collectedPayload) : undefined) ||
-            (messageAsksForCourses(replyMessage) && courses.length > 0 ? courses : undefined) ||
-            (bookingPayload && addCourseOptions(bookingPayload) ? courses : undefined),
-          diveSiteOptions: (collectedPayload ? addDiveSiteOptions(collectedPayload) : undefined) ||
-            (messageAsksForDiveSites(replyMessage) && diveSiteChips ? diveSiteChips : undefined) ||
-            (bookingPayload && addDiveSiteOptions(bookingPayload) ? diveSiteChips : undefined)
+          courseOptions: collectedPayload ? addCourseOptions(collectedPayload) : undefined,
+          diveSiteOptions: collectedPayload ? addDiveSiteOptions(collectedPayload) : undefined
         })
       }
 

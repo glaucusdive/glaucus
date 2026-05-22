@@ -26,7 +26,7 @@ export function applyParsedTripDatesToBookingPayload (
     p = applyInferredCoursesToPayloadIfEligible(p, ctx.history, ctx.userMessage, ctx.courses)
   }
   if (getNextBookingStep(p)?.step === 'diveSites' && ctx.shopDiveSiteCount === 0) {
-    p = { ...p, desiredDiveSites: [] }
+    p = { ...p, desiredDiveSites: [], diveSitesSelectionComplete: true }
   }
   return clampBookingPayloadToNextStep(p, {
     shopCourseCount: ctx.shopCourseCount,

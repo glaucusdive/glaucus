@@ -163,35 +163,30 @@
                     </button>
                   </div>
 
-                  <!-- Rental gear: equipment chips when available; selected = filled style, click toggles add/remove; past = faded -->
+                  <!-- Rental gear: pick items or Done (no gear); click selected chip again to remove -->
                   <div
                     v-if="Array.isArray(msg.rentalEquipmentOptions)"
-                    class="flex flex-wrap gap-2 p-2 transition-opacity duration-200"
+                    class="flex flex-col gap-4 p-2 transition-opacity duration-200"
                     :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
                   >
-                    <button
-                      v-for="eq in msg.rentalEquipmentOptions"
-                      :key="eq.id"
-                      type="button"
-                      @click="sendMessage(getGearChipClickValue(msg, eq))"
-                      :class="isGearChipSelected(msg, eq)
-                        ? 'px-3 py-1.5 text-sm rounded-full border border-black dark:border-white text-black dark:text-white  cursor-pointer font-medium'
-                        : 'px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-300 hover:border-zinc-500 dark:hover:border-zinc-400 dark:hover:text-white  cursor-pointer'"
-                    >
-                      {{ eq.name }}
-                    </button>
-                    <button
-                      v-if="!msg.hideNoneForGear"
-                      type="button"
-                      @click="sendMessage('none')"
-                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600  cursor-pointer font-medium"
-                    >
-                      None
-                    </button>
+                    <div class="flex w-full flex-wrap gap-2">
+                      <button
+                        v-for="eq in msg.rentalEquipmentOptions"
+                        :key="eq.id"
+                        type="button"
+                        @click="sendMessage(getGearChipClickValue(msg, eq))"
+                        :class="[
+                          'px-3 py-1.5 text-sm',
+                          isGearChipSelected(msg, eq) ? bookingChipSelectedClass : bookingChipUnselectedClass
+                        ]"
+                      >
+                        {{ eq.name }}
+                      </button>
+                    </div>
                     <button
                       type="button"
                       @click="sendMessage('done')"
-                      class="px-3 py-1.5 text-sm rounded-full bg-blue-500 hover:bg-blue-400 text-white cursor-pointer font-medium"
+                      class="self-start px-3 py-1.5 text-sm rounded-full bg-blue-500 hover:bg-blue-400 text-white cursor-pointer font-medium"
                     >
                       Done
                     </button>
@@ -217,9 +212,10 @@
                         :key="course.id"
                         type="button"
                         @click="sendMessage(course.name)"
-                        :class="isCourseChipSelected(msg, course)
-                          ? 'w-fit px-3 py-1.5 text-sm rounded-full border border-black dark:border-white bg-white dark:bg-zinc-900 text-black dark:text-white font-medium  cursor-pointer'
-                          : 'w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700  cursor-pointer'"
+                        :class="[
+                          'w-fit px-3 py-1.5 text-sm',
+                          isCourseChipSelected(msg, course) ? bookingChipSelectedClass : bookingChipUnselectedClass
+                        ]"
                       >
                         {{ course.name }}
                       </button>
@@ -253,9 +249,10 @@
                         :key="site.id"
                         type="button"
                         @click="sendMessage(site.name)"
-                        :class="isDiveSiteChipSelected(msg, site)
-                          ? 'w-fit px-3 py-1.5 text-sm rounded-full border border-black dark:border-white bg-white dark:bg-zinc-900 text-black dark:text-white font-medium  cursor-pointer'
-                          : 'w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700  cursor-pointer'"
+                        :class="[
+                          'w-fit px-3 py-1.5 text-sm',
+                          isDiveSiteChipSelected(msg, site) ? bookingChipSelectedClass : bookingChipUnselectedClass
+                        ]"
                       >
                         {{ site.name }}
                       </button>
@@ -623,6 +620,7 @@ async function handleStartBookingFromPanel (shopId, shopName) {
       const sites = await diveSiteNamesMatchingTypeForShop(shopId, hints.diveSiteTypeLabel)
       if (sites.length) {
         pre.desiredDiveSites = sites
+        pre.diveSitesSelectionComplete = false
         hasExtra = true
       }
     }
@@ -1243,6 +1241,12 @@ function isGearChipSelected (msg, eq) {
   return getSelectedGearNamesForMessage(msg).has((eq.name ?? '').toString().trim().toLowerCase())
 }
 
+/** Multi-select booking chips: high-contrast selected state in light and dark mode. */
+const bookingChipSelectedClass =
+  'rounded-full border font-medium cursor-pointer bg-zinc-200 text-black border-zinc-400 dark:bg-white dark:text-black dark:border-white'
+const bookingChipUnselectedClass =
+  'rounded-full border cursor-pointer border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
+
 /** Course chips reflect bookingPayload.desiredCourses (e.g. search-inferred prefill). */
 function getSelectedCourseNamesForMessage (msg) {
   const payload = msg.payload ?? msg.bookingPayload
@@ -1254,11 +1258,9 @@ function isCourseChipSelected (msg, course) {
   return getSelectedCourseNamesForMessage(msg).has((course.name ?? '').toString().trim().toLowerCase())
 }
 
-/** Hide “Any” when courses were already chosen (e.g. search inference) — redundant with pre-selected chips. */
-function shouldHideAnyCourseChip (msg) {
-  const payload = msg.payload ?? msg.bookingPayload
-  const dc = payload?.desiredCourses
-  return Array.isArray(dc) && dc.length > 0
+/** “Any” chip removed — use Done to skip or finish multi-select steps. */
+function shouldHideAnyCourseChip () {
+  return true
 }
 
 function getSelectedDiveSiteNamesForMessage (msg) {
@@ -1271,11 +1273,8 @@ function isDiveSiteChipSelected (msg, site) {
   return getSelectedDiveSiteNamesForMessage(msg).has((site.name ?? '').toString().trim().toLowerCase())
 }
 
-/** Hide “Any” when dive sites were pre-filled (e.g. guided type → site names). */
-function shouldHideAnyDiveSiteChip (msg) {
-  const payload = msg.payload ?? msg.bookingPayload
-  const ds = payload?.desiredDiveSites
-  return Array.isArray(ds) && ds.length > 0
+function shouldHideAnyDiveSiteChip () {
+  return true
 }
 
 /** When user taps entity clarification chip, backend needs the original phrase from the prior assistant message. */
