@@ -5,9 +5,11 @@ import {
   parseBookingReviewEditChip
 } from '../../shared/bookingReviewEditTokens'
 import { formatBookingReviewSummary } from '../../shared/formatBookingReviewSummary'
+import { bookingGearStepMessage, bookingMultiSelectChipHint } from '../../shared/bookingMultiSelectPrompts'
 import {
   clampBookingPayloadToNextStep,
   getNextBookingStep,
+  isBookingOptionalClearSelectionToken,
   type BookingPayloadLocal,
   type BookingDiverLocal,
   type PendingReviewEdit
@@ -376,7 +378,7 @@ export function tryHandleBookingReviewEditTurn (
       const cur = divers[di] || emptyDiverRow()
       if (field === 'gear') {
         const low = raw.trim().toLowerCase()
-        if (/^(none|no|nothing|nope)$/i.test(low)) {
+        if (isBookingOptionalClearSelectionToken(raw)) {
           divers[di] = { ...cur, gear: [], gearAsked: true }
         } else {
           const match = input.rentalEquipment.find(
@@ -414,7 +416,7 @@ export function tryHandleBookingReviewEditTurn (
       const field = pending.field
       if (field === 'gear') {
         const low = raw.trim().toLowerCase()
-        if (/^(none|no|nothing|nope)$/i.test(low)) {
+        if (isBookingOptionalClearSelectionToken(raw)) {
           pendingAck = `Cleared Diver ${di + 1}'s rental gear.`
         } else {
           const matchGear = input.rentalEquipment.find(
@@ -837,7 +839,7 @@ export function tryHandleBookingReviewEditTurn (
       intent: 'booking' as const,
       bookingReady: false,
       message: input.shopCourseCount > 0
-        ? 'Let’s update courses. Pick below, or say "any" / "none" / "done" when finished.'
+        ? `Let’s update courses. ${bookingMultiSelectChipHint('courses', false)}`
         : 'This shop has no listed courses — nothing to change. Say "show my booking" to review again.',
       shopId: input.shopId,
       shopName: input.shopName,
@@ -848,6 +850,7 @@ export function tryHandleBookingReviewEditTurn (
   if (/(?:dive\s+)?sites?\b/i.test(msgTrim) && wantsEditVerb(msgTrim)) {
     const p = clearBookingPreSendFlags(p0) as BookingPayloadLocal
     delete p.desiredDiveSites
+    delete p.diveSitesSelectionComplete
     const clamped = clampBookingPayloadToNextStep(p, {
       shopCourseCount: input.shopCourseCount,
       shopDiveSiteCount: input.shopDiveSiteCount
@@ -857,7 +860,7 @@ export function tryHandleBookingReviewEditTurn (
       intent: 'booking' as const,
       bookingReady: false,
       message: input.shopDiveSiteCount > 0
-        ? 'Let’s update dive sites. Pick below, or say "any" / "none" / "done" when finished.'
+        ? `Let’s update dive sites. ${bookingMultiSelectChipHint('diveSites', false)}`
         : 'This shop has no listed dive sites — nothing to change. Say "show my booking" to review again.',
       shopId: input.shopId,
       shopName: input.shopName,
@@ -947,7 +950,7 @@ export function tryHandleBookingReviewEditTurn (
               ? `What is ${who}'s height?`
               : diverFieldShot.field === 'weight'
                 ? `What is ${who}'s weight (with unit, lbs or kg)?`
-                : `Does ${who} need any rental gear?`
+                : bookingGearStepMessage(who)
       return {
         success: true,
         intent: 'booking' as const,

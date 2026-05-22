@@ -1,3 +1,10 @@
+import {
+  bookingCoursesStepMessage,
+  bookingDiveSitesStepMessage,
+  BOOKING_GEAR_ADD_HINT,
+  BOOKING_GEAR_MULTI_SELECT_HINT,
+  bookingGearStepMessage
+} from '../../shared/bookingMultiSelectPrompts'
 import { extractMidBookingShopSwitchPhrase } from './bookingFlowEscape'
 import { contactNameInputLikelyNotAPlainName } from './bookingFieldReplyHeuristics'
 
@@ -30,6 +37,8 @@ export interface BookingPayloadLocal {
   /** When false, user is still adding courses (multi-select); when true, advance past courses. Omit = legacy (desiredCourses alone completes the step). */
   coursesSelectionComplete?: boolean
   desiredDiveSites?: string[]
+  /** When false, user is still adding dive sites (multi-select); when true, advance past dive sites. Omit = legacy (empty array only completes without flag). */
+  diveSitesSelectionComplete?: boolean
   /** Chat/orchestrator only: user saw pre-send review and confirmed (not sent to /api/booking). */
   preSendReviewAck?: boolean
   /** Guest skipped before-send signup prompt (not sent to /api/booking). */
@@ -89,6 +98,14 @@ export function isCoursesStepComplete (p: BookingPayloadLocal): boolean {
   return p.desiredCourses !== undefined
 }
 
+/** Dive-sites step is complete when user tapped Done (or legacy empty skip). */
+export function isDiveSitesStepComplete (p: BookingPayloadLocal): boolean {
+  if (p.diveSitesSelectionComplete === false) return false
+  if (p.diveSitesSelectionComplete === true) return true
+  if (p.desiredDiveSites === undefined) return false
+  return p.desiredDiveSites.length === 0
+}
+
 /** Determine which field we're waiting for based on current payload. Order: name → email → dates → courses → diveSites → numberOfDivers → (per-diver details + gear). */
 export function getNextBookingStep (payload: BookingPayloadLocal): NextStepResult | null {
   if (!payload) return null
@@ -96,7 +113,7 @@ export function getNextBookingStep (payload: BookingPayloadLocal): NextStepResul
   if (!payload.email || String(payload.email).trim() === '') return { step: 'email' }
   if (!payload.startDate || !payload.endDate) return { step: 'dates' }
   if (!isCoursesStepComplete(payload)) return { step: 'courses' }
-  if (payload.desiredDiveSites === undefined) return { step: 'diveSites' }
+  if (!isDiveSitesStepComplete(payload)) return { step: 'diveSites' }
   // Number of divers
   if (payload.numberOfDivers == null || payload.numberOfDivers < 1) return { step: 'numberOfDivers' }
   const numDivers = payload.numberOfDivers
@@ -165,6 +182,7 @@ export function clampBookingPayloadToNextStep (
       if (p.desiredCourses !== undefined) delete p.desiredCourses
       if (p.coursesSelectionComplete !== undefined) delete p.coursesSelectionComplete
       if (p.desiredDiveSites !== undefined) delete p.desiredDiveSites
+      if (p.diveSitesSelectionComplete !== undefined) delete p.diveSitesSelectionComplete
       if (p.numberOfDivers !== undefined) delete p.numberOfDivers
       if (p.divers?.length) p.divers = undefined
       continue
@@ -176,6 +194,7 @@ export function clampBookingPayloadToNextStep (
       if (p.desiredCourses !== undefined) delete p.desiredCourses
       if (p.coursesSelectionComplete !== undefined) delete p.coursesSelectionComplete
       if (p.desiredDiveSites !== undefined) delete p.desiredDiveSites
+      if (p.diveSitesSelectionComplete !== undefined) delete p.diveSitesSelectionComplete
       if (p.numberOfDivers !== undefined) delete p.numberOfDivers
       if (p.divers?.length) p.divers = undefined
       continue
@@ -184,6 +203,7 @@ export function clampBookingPayloadToNextStep (
       if (p.desiredCourses !== undefined) delete p.desiredCourses
       if (p.coursesSelectionComplete !== undefined) delete p.coursesSelectionComplete
       if (p.desiredDiveSites !== undefined) delete p.desiredDiveSites
+      if (p.diveSitesSelectionComplete !== undefined) delete p.diveSitesSelectionComplete
       if (p.numberOfDivers !== undefined) delete p.numberOfDivers
       if (p.divers?.length) p.divers = undefined
       continue
@@ -197,6 +217,10 @@ export function clampBookingPayloadToNextStep (
       let changed = false
       if (p.desiredDiveSites !== undefined) {
         delete p.desiredDiveSites
+        changed = true
+      }
+      if (p.diveSitesSelectionComplete !== undefined) {
+        delete p.diveSitesSelectionComplete
         changed = true
       }
       if (p.numberOfDivers !== undefined) {
@@ -218,6 +242,7 @@ export function clampBookingPayloadToNextStep (
     if (next.step === 'diveSites') {
       if (shopDiveSiteCount === 0) {
         p.desiredDiveSites = []
+        p.diveSitesSelectionComplete = true
         continue
       }
       let changed = false
@@ -231,6 +256,7 @@ export function clampBookingPayloadToNextStep (
       }
       if (Array.isArray(p.desiredDiveSites) && p.desiredDiveSites.length === 0) {
         p.desiredDiveSites = undefined
+        if (p.diveSitesSelectionComplete !== undefined) delete p.diveSitesSelectionComplete
         changed = true
       }
       if (!changed) break
@@ -381,8 +407,30 @@ function looksLikeSingleName (s: string): boolean {
 }
 
 /** Course/dive-site multi-select and gear "done" — never a literal certification number. */
-function isBookingOptionalStepToken (msg: string): boolean {
+export function isBookingOptionalStepToken (msg: string): boolean {
   return /^(done|none|any|no|skip|nothing|no more|that's all|finish|that's it)$/i.test(msg.trim())
+}
+
+/** "any" / "no" / "none" on courses or dive sites — clear selection instead of keeping picks. */
+export function isBookingOptionalClearSelectionToken (msg: string): boolean {
+  return /^(any|no|none|skip|nothing)$/i.test(msg.trim())
+}
+
+/** User finished a chip multi-select step (courses or dive sites); copy for the next required step. */
+export function getBookingMultiSelectAdvanceCopy (
+  next: NextStepResult,
+  p: BookingPayloadLocal
+): { message: string; messagePreamble?: string } {
+  if (next.step === 'diveSites') {
+    return { message: bookingDiveSitesStepMessage(p) }
+  }
+  if (next.step === 'numberOfDivers') {
+    return { message: 'How many divers will be on the trip?' }
+  }
+  if (next.step === 'courses') {
+    return { message: bookingCoursesStepMessage(p) }
+  }
+  return { message: 'How many divers will be on the trip?' }
 }
 
 export interface FastPathResult {
@@ -557,7 +605,7 @@ function followUpAfterDiverMeasurementAck (
         ]
       }
     }
-    return { messagePreamble: ackLine, message: `Does ${n} need any rental gear?`, payload: p }
+    return { messagePreamble: ackLine, message: bookingGearStepMessage(n), payload: p }
   }
   if (next?.step === 'ready') {
     return { messagePreamble: ackLine, message: 'All set — ready to send your booking request.', payload: p }
@@ -685,7 +733,7 @@ export function tryFastPath (
             if (next?.step === 'gear') {
               return {
                 messagePreamble: `Thanks — I've added ${name} from your profile.`,
-                message: `Does ${name} need any rental gear?`,
+                message: bookingGearStepMessage(name),
                 payload: p
               }
             }
@@ -829,8 +877,10 @@ export function tryFastPath (
     }
     case 'gear': {
       const lower = msg.toLowerCase()
-      const isDone = /\b(done|that's all|finish|that's it)\b/.test(lower)
-      const isNone = /\b(none|no|nope|nothing|n\/a)\b/.test(lower) || (msg.trim() === '' && !isDone)
+      const completesGearStep = isBookingOptionalStepToken(msg)
+      const clearsGearSelection = isBookingOptionalClearSelectionToken(msg)
+      const isDone = completesGearStep && !clearsGearSelection
+      const isNone = clearsGearSelection || (msg.trim() === '' && !completesGearStep)
       // "I understand" (after no-rental-gear message) → same as none, continue
       const isIUnderstand = /\b(i understand|understood|got it|ok|okay)\b/i.test(msg)
       if (isIUnderstand && (!divers[i]?.gear || divers[i].gear.length === 0)) {
@@ -880,7 +930,7 @@ export function tryFastPath (
         }
         return {
           messagePreamble: `Got it — ${n} will need rental gear.`,
-          message: `What would ${n} like to rent? Pick from the options below or say "none" when done.`,
+          message: bookingGearStepMessage(n),
           payload: p
         }
       }
@@ -952,7 +1002,7 @@ export function tryFastPath (
             if (divers[i].gear.length < before) {
               p.divers = divers
               const n = divers[i].name || 'They'
-              const rest = divers[i].gear.length ? ' Add another or say "done" when finished.' : ' Do they need any other rental gear, or say "none" / "done"?'
+              const rest = divers[i].gear.length ? ` ${BOOKING_GEAR_ADD_HINT}` : ` ${BOOKING_GEAR_MULTI_SELECT_HINT}`
               return { message: `Removed ${matchedName} for ${n}.${rest}`, payload: p }
             }
           }
@@ -964,7 +1014,7 @@ export function tryFastPath (
           if (!already) divers[i].gear.push({ gearType: matched })
           p.divers = divers
           const n = divers[i].name || 'They'
-          return { message: `Added ${matched} for ${n}. Add another or say "done" when finished.`, payload: p }
+          return { message: `Added ${matched} for ${n}. ${BOOKING_GEAR_ADD_HINT}`, payload: p }
         }
       }
       return null
@@ -1003,7 +1053,7 @@ export function tryFastPathUnitOnly (
   const n = d[targetIdx].name || 'They'
   return {
     messagePreamble: `Got it — recorded ${n}'s weight as ${d[targetIdx].weight} ${unit}.`,
-    message: `Does ${n} need any rental gear?`,
+    message: bookingGearStepMessage(n),
     payload: p
   }
 }

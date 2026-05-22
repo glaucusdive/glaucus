@@ -1,4 +1,10 @@
-import { clampBookingPayloadToNextStep, getNextBookingStep, type BookingDiverLocal, type BookingPayloadLocal } from './bookingFastPath'
+import {
+  clampBookingPayloadToNextStep,
+  getNextBookingStep,
+  isBookingOptionalStepToken,
+  type BookingDiverLocal,
+  type BookingPayloadLocal
+} from './bookingFastPath'
 
 /** Merge LLM COLLECTED JSON into the existing booking payload (never replace wholesale). */
 export function mergeCollectedIntoBookingPayload (
@@ -42,6 +48,9 @@ export function mergeCollectedIntoBookingPayload (
   if (parsed.desiredDiveSites !== undefined) {
     out.desiredDiveSites = parsed.desiredDiveSites
   }
+  if (parsed.diveSitesSelectionComplete !== undefined) {
+    out.diveSitesSelectionComplete = parsed.diveSitesSelectionComplete
+  }
 
   if (parsed.divers && Array.isArray(parsed.divers)) {
     const baseDivers = out.divers || []
@@ -82,7 +91,7 @@ function sanitizePrematureEmptyOptionals (
   options: { shopCourseCount: number; shopDiveSiteCount: number; userMessage: string }
 ): void {
   const msg = options.userMessage.trim()
-  const userFinishedOptionalStep = /^(done|none|any|no|skip|nothing)$/i.test(msg)
+  const userFinishedOptionalStep = isBookingOptionalStepToken(msg)
 
   if (
     options.shopCourseCount > 0 &&
@@ -104,6 +113,7 @@ function sanitizePrematureEmptyOptionals (
     const probe = { ...merged, desiredDiveSites: undefined as string[] | undefined }
     if (getNextBookingStep(probe)?.step === 'diveSites' && !userFinishedOptionalStep) {
       merged.desiredDiveSites = undefined
+      delete merged.diveSitesSelectionComplete
     }
   }
 }
