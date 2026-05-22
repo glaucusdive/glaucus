@@ -3,11 +3,11 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   readChatsRoot,
   writeChatsRoot,
-  ensureChatsRoot,
   normalizeRoot,
-  clearAllChatsStorage,
+  getActiveSession,
   type ChatsRoot
 } from '~/composables/useSearchCache'
+import { extractBookingFromCache, hasBookingResumeSnapshot } from '~/utils/extractBookingFromCache'
 
 export const chatRemoteHydrateTick = ref(0)
 
@@ -82,6 +82,12 @@ export async function flushPushUserChats (userId: string, root: ChatsRoot) {
  * Signed-in: prefer server when it has any messages; else promote local sessionStorage to server;
  * else empty shell. Guests should not call this (use ensureChatsRoot only).
  */
+function activeSessionHasBookingInProgress (root: ChatsRoot | null | undefined): boolean {
+  const active = root ? getActiveSession(root) : null
+  if (!active) return false
+  return extractBookingFromCache({ messages: active.messages }) != null
+}
+
 export async function initSignedInChatsFromRemote (client: SupabaseClient, userId: string) {
   if (!import.meta.client || !userId) return
 
@@ -90,6 +96,16 @@ export async function initSignedInChatsFromRemote (client: SupabaseClient, userI
 
   const remote = parseRemoteRoot(data?.root)
   const localRaw = readChatsRoot()
+
+  // Guest → signed-in: keep in-progress booking chat; post-auth restore will rehydrate UI from snapshot.
+  if (hasBookingResumeSnapshot() || activeSessionHasBookingInProgress(localRaw)) {
+    if (rootHasMessages(localRaw)) {
+      const normalized = normalizeRoot(localRaw!)
+      writeChatsRoot(normalized, { skipRemote: true })
+      await flushPushUserChats(userId, normalized)
+      return
+    }
+  }
 
   if (rootHasMessages(remote)) {
     writeChatsRoot(normalizeRoot(remote!), { skipRemote: true })
@@ -113,7 +129,6 @@ export async function onSignedInSyncChats (client: SupabaseClient, userId: strin
 
 export function clearLocalChatsAfterSignOut () {
   cancelPendingUserChatsPush()
-  clearAllChatsStorage()
-  ensureChatsRoot()
+  // Keep sessionStorage chats so sign-out from `/` stays in the same conversation as a guest.
   requestChatRemoteHydrate()
 }

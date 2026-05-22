@@ -63,6 +63,8 @@
 </template>
 
 <script setup lang="ts">
+import { normalizeAuthRedirect } from '~/utils/authRedirect'
+
 definePageMeta({ layout: 'default' })
 
 const route = useRoute()
@@ -70,6 +72,10 @@ const router = useRouter()
 const isSignUp = computed(() => route.path === '/auth/signup' || route.query.signup === '1')
 
 const { signInWithGoogle, signUpWithEmail, signInWithEmail, signInWithMagicLink } = useAuth()
+
+function authRedirectTarget (): string {
+  return normalizeAuthRedirect(route.query.redirect as string | undefined)
+}
 
 const email = ref('')
 const password = ref('')
@@ -100,9 +106,8 @@ async function handleGoogle () {
   loading.value = true
   message.value = ''
   try {
-    const redirect = (route.query.redirect as string) || '/'
+    const redirect = authRedirectTarget()
     await signInWithGoogle(redirect)
-    await router.push(redirect)
   } catch (e: unknown) {
     const err = e as Error
     setMessage(err?.message ?? 'Sign in with Google failed', 'error')
@@ -130,8 +135,7 @@ async function handleEmail () {
       }
     } else {
       await signInWithEmail(email.value, password.value)
-      const redirect = (route.query.redirect as string) || '/'
-      await router.push(redirect)
+      await router.push(authRedirectTarget())
     }
   } catch (e: unknown) {
     const err = e as Error
