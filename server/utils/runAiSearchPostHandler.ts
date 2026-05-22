@@ -13,6 +13,7 @@ import { getShopById } from '../utils/resolveShop'
 import { getDiveSitesForShop } from '../utils/getDiveSitesForShop'
 import { getCoursesForShop } from '../utils/getCoursesForShop'
 import { getRentalEquipmentForShop } from '../utils/getRentalEquipmentForShop'
+import { mergeProfileContactIntoBookingPayload } from '~~/shared/mergeProfileContactIntoBookingPayload'
 import { clampBookingPayloadToNextStep, getBookingMultiSelectAdvanceCopy, getNextBookingStep, isBookingOptionalClearSelectionToken, isBookingOptionalStepToken, tryFastPath, tryFastPathUnitOnly, profileDiverSelectableChipsFromPrefill, type BookingPayloadLocal, type NextStepResult, type PendingReviewEdit } from '../utils/bookingFastPath'
 import {
   bookingCoursesStepMessage,
@@ -957,6 +958,12 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           getCoursesForShop(supabaseUrl, supabaseKey, resolvedShop.id)
         ])
         if (continuingBooking && bookingPayload) {
+          if (profilePrefill) {
+            bookingPayload = mergeProfileContactIntoBookingPayload(
+              bookingPayload as Record<string, unknown>,
+              profilePrefill
+            ) as BookingPayload
+          }
           bookingPayload = clampBookingPayloadToNextStep(bookingPayload as BookingPayloadLocal, {
             shopCourseCount: courses.length,
             shopDiveSiteCount: diveSites.length
