@@ -191,13 +191,13 @@
                     <button
                       type="button"
                       @click="sendMessage('done')"
-                      class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white text-zinc-900 hover:bg-zinc-100  cursor-pointer font-medium"
+                      class="px-3 py-1.5 text-sm rounded-full bg-blue-500 hover:bg-blue-400 text-white cursor-pointer font-medium"
                     >
                       Done
                     </button>
                   </div>
 
-                  <!-- Courses: optional Any (hidden when search already inferred picks); course chips; Done = white CTA row below (flex gap) -->
+                  <!-- Courses: optional Any (hidden when search already inferred picks); course chips; Done = primary blue CTA below -->
                   <div
                     v-if="msg.courseOptions && msg.courseOptions.length > 0"
                     class="flex flex-col gap-4 p-2 transition-opacity duration-200"
@@ -219,7 +219,7 @@
                         @click="sendMessage(course.name)"
                         :class="isCourseChipSelected(msg, course)
                           ? 'w-fit px-3 py-1.5 text-sm rounded-full border border-black dark:border-white bg-white dark:bg-zinc-900 text-black dark:text-white font-medium  cursor-pointer'
-                          : 'w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700  cursor-pointer'"
+                          : 'w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700  cursor-pointer'"
                       >
                         {{ course.name }}
                       </button>
@@ -233,7 +233,7 @@
                     </button>
                   </div>
 
-                  <!-- Dive sites: optional Any; site chips; Done = white CTA below -->
+                  <!-- Dive sites: optional Any; site chips; Done = primary blue CTA below -->
                   <div
                     v-if="msg.diveSiteOptions && msg.diveSiteOptions.length > 0"
                     class="flex flex-col gap-4 p-2 transition-opacity duration-200"
@@ -244,7 +244,7 @@
                         v-if="!shouldHideAnyDiveSiteChip(msg)"
                         type="button"
                         @click="sendMessage('any')"
-                        class="self-start px-3 py-1.5 text-sm rounded-full bg-blue-500 hover:bg-blue-400 text-white cursor-pointer font-medium"
+                        class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600  cursor-pointer font-medium"
                       >
                         Any
                       </button>
@@ -253,7 +253,9 @@
                         :key="site.id"
                         type="button"
                         @click="sendMessage(site.name)"
-                        class="self-start px-3 py-1.5 text-sm rounded-full bg-blue-500 hover:bg-blue-400 text-white cursor-pointer font-medium"
+                        :class="isDiveSiteChipSelected(msg, site)
+                          ? 'w-fit px-3 py-1.5 text-sm rounded-full border border-black dark:border-white bg-white dark:bg-zinc-900 text-black dark:text-white font-medium  cursor-pointer'
+                          : 'w-fit px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-800 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700  cursor-pointer'"
                       >
                         {{ site.name }}
                       </button>
@@ -1257,6 +1259,16 @@ function shouldHideAnyCourseChip (msg) {
   const payload = msg.payload ?? msg.bookingPayload
   const dc = payload?.desiredCourses
   return Array.isArray(dc) && dc.length > 0
+}
+
+function getSelectedDiveSiteNamesForMessage (msg) {
+  const payload = msg.payload ?? msg.bookingPayload
+  const list = payload?.desiredDiveSites
+  if (!Array.isArray(list)) return new Set()
+  return new Set(list.map(s => String(s).trim().toLowerCase()).filter(Boolean))
+}
+function isDiveSiteChipSelected (msg, site) {
+  return getSelectedDiveSiteNamesForMessage(msg).has((site.name ?? '').toString().trim().toLowerCase())
 }
 
 /** Hide “Any” when dive sites were pre-filled (e.g. guided type → site names). */
