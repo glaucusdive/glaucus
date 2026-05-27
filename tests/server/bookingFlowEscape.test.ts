@@ -17,6 +17,13 @@ describe('extractMidBookingShopSwitchPhrase', () => {
     expect(extractMidBookingShopSwitchPhrase('Jane Smith')).toBeNull()
     expect(extractMidBookingShopSwitchPhrase('Chris')).toBeNull()
   })
+
+  it('extracts shop with location after nevermind', () => {
+    const p = extractMidBookingShopSwitchPhrase(
+      'Nevermind, can I book at Explorer Ventures in Bali'
+    )
+    expect(p).toBe('Explorer Ventures in Bali')
+  })
 })
 
 describe('userMessageWantsResumeSearchDuringBooking', () => {

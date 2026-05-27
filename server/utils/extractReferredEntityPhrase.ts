@@ -67,10 +67,10 @@ export function cleanReferentPhraseForProbe (phrase: string): string {
  */
 export function extractReferredEntityPhrase (message: string): string | null {
   const trimmed = message.trim()
-  // "let's book at X", "book at X", "booking at the X", "reserve at X"
-  let m = trimmed.match(/(?:let'?s\s+)?book(?:ing)?\s+at\s+(?:the\s+)?([^.?!]+)/i)
+  // "let's book at X", "can I book at X", "book at X", "booking at the X", "reserve at X"
+  let m = trimmed.match(/(?:(?:can\s+i\s+)?(?:let'?s\s+)?)?book(?:ing)?\s+at\s+(?:the\s+)?([^.?!]+)/i)
   if (m?.[1]) return normalizePhrase(m[1])
-  m = trimmed.match(/(?:let'?s\s+)?reserve(?:\s+a\s+dive)?\s+at\s+(?:the\s+)?([^.?!]+)/i)
+  m = trimmed.match(/(?:(?:can\s+i\s+)?(?:let'?s\s+)?)?reserve(?:\s+a\s+dive)?\s+at\s+(?:the\s+)?([^.?!]+)/i)
   if (m?.[1]) return normalizePhrase(m[1])
   // "book with X", "reserve with X", "book a dive/trip/dive trip/reservation with X"
   m = trimmed.match(
@@ -144,8 +144,8 @@ export function extractBookingTargetFallback (message: string): string | null {
   const trimmed = message.trim()
   // Specific at/with before generic "book <anything>" so "book a trip with X" does not capture "a trip with X".
   const patterns: RegExp[] = [
-    /^(?:let'?s\s+)?book(?:ing)?\s+at\s+(?:the\s+)?([^.?!]+)$/i,
-    /^(?:let'?s\s+)?reserve(?:\s+a\s+dive)?\s+at\s+(?:the\s+)?([^.?!]+)$/i,
+    /^(?:(?:can\s+i\s+)?(?:let'?s\s+)?)?book(?:ing)?\s+at\s+(?:the\s+)?([^.?!]+)$/i,
+    /^(?:(?:can\s+i\s+)?(?:let'?s\s+)?)?reserve(?:\s+a\s+dive)?\s+at\s+(?:the\s+)?([^.?!]+)$/i,
     /^(?:let'?s\s+)?(?:book|reserve)(?:ing)?(?:\s+(?:(?:a\s+)?dive(?:\s+trip)?|a\s+trip|a\s+reservation))?\s+with\s+([^.?!]+)$/i,
     /^i\s+want\s+to\s+book\s+(?:at|with)\s+(?:the\s+)?([^.?!]+)$/i,
     /^i(?:'d|\s+would)\s+like\s+to\s+book\s+(?:at|with)\s+(?:the\s+)?([^.?!]+)$/i,

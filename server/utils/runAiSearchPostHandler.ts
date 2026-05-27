@@ -28,6 +28,11 @@ import { inclusiveTripDays } from '../utils/parseTripDates'
 import { resolveTripDatesUserMessage } from '../utils/tripDateUserInput'
 import { applyParsedTripDatesToBookingPayload } from '../utils/bookingApplyParsedTripDates'
 import { mergeCollectedIntoBookingPayload } from '../utils/mergeBookingCollected'
+import {
+  bookingNounHintsFromInterpret,
+  collectBookingNounHints,
+  mergeBookingNounHints
+} from '../../shared/bookingNounResolve'
 import { parseBookShopPickMessage, shopDisambiguationSelectableOptions } from '../../shared/bookShopPick'
 import { formatBookingReviewSummary } from '../../shared/formatBookingReviewSummary'
 import { extractBookingTargetFallback, extractReferredEntityPhrase, extractShopSelectionPhrase } from '../utils/extractReferredEntityPhrase'
@@ -894,7 +899,19 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
         if (referredPhrase && !resolvedShop && !skipEntityProbeFromGeo && !skipEntityProbeFromActivity) {
           let skipEntityProbe = false
           if (effectiveWantsToBook) {
-            const target = await resolveBookingTargetFromPhrase(referredPhrase, lastShops, supabaseUrl, supabaseKey)
+            const bookingNouns = interpretTurn
+              ? mergeBookingNounHints(
+                collectBookingNounHints(referredPhrase),
+                bookingNounHintsFromInterpret(interpretTurn)
+              )
+              : collectBookingNounHints(referredPhrase)
+            const target = await resolveBookingTargetFromPhrase(
+              referredPhrase,
+              lastShops,
+              supabaseUrl,
+              supabaseKey,
+              bookingNouns
+            )
             if (target.kind === 'single') {
               resolvedShop = await getShopById(supabaseUrl, supabaseKey, target.shop.id)
               resolvedByNamedShop = !!resolvedShop
@@ -1091,11 +1108,48 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
         /** Gear step uses Done only (no separate "None" chip). */
         const hideNoneForGear = (_payload: BookingPayload | undefined): boolean => true
 
-        const tryMidBookingShopSwitchResponse = async (switchPhrase: string | null) => {
-          if (!switchPhrase?.trim() || !supabaseUrl || !supabaseKey) return null
-          const sp = switchPhrase.trim()
-          let target = await resolveBookingTargetFromPhrase(sp, lastShops, supabaseUrl, supabaseKey)
-          if (target.kind === 'none') {
+        const tryMidBookingShopSwitchResponse = async (
+          switchPhrase: string | null,
+          directShopId?: string | null,
+          premergedNouns?: { operatorName: string | null, placeName: string | null } | null
+        ) => {
+          if (!supabaseUrl || !supabaseKey) return null
+          let target: Awaited<ReturnType<typeof resolveBookingTargetFromPhrase>> | null = null
+          const pickId = directShopId?.trim() || null
+          if (pickId) {
+            const picked = await getShopById(supabaseUrl, supabaseKey, pickId)
+            target = picked ? { kind: 'single', shop: picked } : { kind: 'none', phrase: pickId }
+          } else if (switchPhrase?.trim()) {
+            const sp = switchPhrase.trim()
+            let nounHints = mergeBookingNounHints(collectBookingNounHints(sp), premergedNouns)
+            if (openaiApiKey && !chatAiOff) {
+              const irSwitch = await interpretUserTurn({
+                message: message.trim(),
+                history: history || [],
+                openaiApiKey,
+                signal: searchAbortSignal
+              })
+              if (irSwitch.ok) {
+                nounHints = mergeBookingNounHints(nounHints, bookingNounHintsFromInterpret(irSwitch.data))
+                if (irSwitch.data.reasoning_summary?.trim()) {
+                  agentMeta.reasoningSummary = irSwitch.data.reasoning_summary.trim()
+                }
+                const switchInterpretLine = formatInterpretActivityLine(irSwitch.data, true)
+                if (switchInterpretLine) pushActivity('interpret', switchInterpretLine)
+              }
+            }
+            target = await resolveBookingTargetFromPhrase(
+              sp,
+              lastShops,
+              supabaseUrl,
+              supabaseKey,
+              nounHints
+            )
+          } else {
+            return null
+          }
+          const sp = switchPhrase?.trim() || pickId || ''
+          if (target.kind === 'none' && switchPhrase?.trim()) {
             const probeSw = await probeReferentPhrase(supabaseUrl, supabaseKey, sp)
             const routedSw = await routeReferentFromProbe(supabaseUrl, supabaseKey, probeSw)
             if (routedSw.type === 'booking') {
@@ -1409,7 +1463,10 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             })
           }
 
-          const switchOut = await tryMidBookingShopSwitchResponse(extractMidBookingShopSwitchPhrase(msgTrim))
+          const switchOut = await tryMidBookingShopSwitchResponse(
+            extractMidBookingShopSwitchPhrase(msgTrim),
+            parseBookShopPickMessage(msgTrim)
+          )
           if (switchOut) return switchOut
 
           const sendIntent = isConfirmSendMessage(msgTrim)
@@ -2384,7 +2441,14 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 const hinted = classified.shop_name_hint.trim()
                 const synthetic =
                   extractMidBookingShopSwitchPhrase(`Let's book with ${hinted}`) ?? hinted
-                const switchFromHint = await tryMidBookingShopSwitchResponse(synthetic)
+                const switchFromHint = await tryMidBookingShopSwitchResponse(
+                  synthetic,
+                  null,
+                  mergeBookingNounHints(collectBookingNounHints(msgTrim), {
+                    operatorName: hinted,
+                    placeName: classified.place_hint?.trim() || null
+                  })
+                )
                 if (switchFromHint) return switchFromHint
               }
               if (classified.intent === 'contact_name') {

@@ -5,7 +5,9 @@ import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from './openAiChatMode
 const ClassifierSchema = z.object({
   intent: z.enum(['contact_name', 'switch_shop', 'exit_to_search', 'unclear']),
   contact_name: z.string().max(160).nullable().optional(),
-  shop_name_hint: z.string().max(160).nullable().optional()
+  shop_name_hint: z.string().max(160).nullable().optional(),
+  /** Geographic place when switching operator (e.g. "Bali" from "Explorer Ventures in Bali"). */
+  place_hint: z.string().max(120).nullable().optional()
 })
 
 export type BookingContactReplyClass = z.infer<typeof ClassifierSchema>
@@ -13,11 +15,11 @@ export type BookingContactReplyClass = z.infer<typeof ClassifierSchema>
 const SYSTEM = `You classify ONE user message during scuba dive shop booking when the app asked for the booking CONTACT NAME (the person organizing the trip, not a diver yet).
 
 Return ONLY JSON with this exact shape:
-{"intent":"contact_name"|"switch_shop"|"exit_to_search"|"unclear","contact_name":string|null,"shop_name_hint":string|null}
+{"intent":"contact_name"|"switch_shop"|"exit_to_search"|"unclear","contact_name":string|null,"shop_name_hint":string|null,"place_hint":string|null}
 
 Definitions:
 - contact_name: they are giving their real name (or nickname) for that field. Put a cleaned full name in contact_name when obvious; if the whole line is the name, you may put it in contact_name or null (null means "verbatim line is the name").
-- switch_shop: they want a different dive operator / business than the current booking. Put a short operator name in shop_name_hint (e.g. "Dive Porter"). Not a country-only reply unless they clearly mean an operator named that way.
+- switch_shop: they want a different dive operator / business than the current booking. Put the operator name in shop_name_hint (e.g. "Explorer Ventures") and any location in place_hint (e.g. "Bali" from "book at Explorer Ventures in Bali"). Split nouns; do not put "X in Bali" only in shop_name_hint.
 - exit_to_search: they want to stop this booking and browse or search for more shops, compare options, not ready to book, go back to looking — not providing a name.
 - unclear: you cannot tell which of the above fits.
 
@@ -43,7 +45,12 @@ export async function classifyBookingContactReply (input: {
   openaiApiKey: string
   signal?: AbortSignal
 }): Promise<BookingContactReplyClass> {
-  const fallback: BookingContactReplyClass = { intent: 'unclear', contact_name: null, shop_name_hint: null }
+  const fallback: BookingContactReplyClass = {
+    intent: 'unclear',
+    contact_name: null,
+    shop_name_hint: null,
+    place_hint: null
+  }
   const { message, openaiApiKey, signal } = input
   const t = message.trim()
   if (!t || !openaiApiKey) return fallback
