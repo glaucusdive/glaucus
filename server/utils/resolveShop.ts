@@ -4,8 +4,13 @@ export interface ResolvedShop {
   id: string
   business_name: string
   email: string | null
+  city?: string | null
+  state?: string | null
+  locale?: string | null
   [key: string]: unknown
 }
+
+const SHOP_LIST_SELECT = 'id, business_name, email, city, state, locale'
 
 /**
  * Get a dive shop by ID.
@@ -18,7 +23,7 @@ export async function getShopById (
   const client = createClient(supabaseUrl, supabaseKey)
   const { data, error } = await client
     .from('diveshops')
-    .select('id, business_name, email')
+    .select(SHOP_LIST_SELECT)
     .eq('id', shopId)
     .single()
   if (error || !data) return null
@@ -38,7 +43,7 @@ export async function resolveShopByName (
   const client = createClient(supabaseUrl, supabaseKey)
   const { data, error } = await client
     .from('diveshops')
-    .select('id, business_name, email')
+    .select(SHOP_LIST_SELECT)
     .ilike('business_name', `%${nameQuery.trim()}%`)
     .limit(1)
     .order('google_rating', { ascending: false, nullsFirst: false })
@@ -59,7 +64,7 @@ export async function listShopsMatchingName (
   const client = createClient(supabaseUrl, supabaseKey)
   const { data, error } = await client
     .from('diveshops')
-    .select('id, business_name, email')
+    .select(SHOP_LIST_SELECT)
     .ilike('business_name', `%${nameQuery.trim()}%`)
     .limit(limit)
     .order('google_rating', { ascending: false, nullsFirst: false })

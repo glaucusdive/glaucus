@@ -4,6 +4,20 @@ function sanitizePhrase (s: string): string {
   return s.trim().replace(/[%_\\]/g, '')
 }
 
+function normalizeShopName (s: string): string {
+  return s.trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+/** Full business name match (trimmed, case-insensitive) — e.g. disambiguation chip "Reef Divers" vs substring "Bali Reef Divers". */
+export function pickShopsWithExactBusinessName<T extends { business_name: string }> (
+  phrase: string,
+  candidates: T[]
+): T[] {
+  const p = normalizeShopName(phrase)
+  if (!p) return []
+  return candidates.filter(c => normalizeShopName(c.business_name) === p)
+}
+
 /** Case-insensitive: name contains phrase, or a word starts with phrase (for short tokens like "Aqua"). */
 function shopNameMatchesFragment (businessName: string, phrase: string): boolean {
   const n = businessName.trim().toLowerCase()
@@ -34,10 +48,24 @@ export async function resolveBookingTargetFromPhrase (
   }
 
   const lastList = lastShops || []
+  const lastAsResolved: ResolvedShop[] = lastList.map(row => ({
+    id: row.id,
+    business_name: row.business_name,
+    email: null
+  }))
+
+  const exactFromLast = pickShopsWithExactBusinessName(phrase, lastAsResolved)
+  if (exactFromLast.length === 1) {
+    return { kind: 'single', shop: exactFromLast[0]! }
+  }
+  if (exactFromLast.length > 1) {
+    return { kind: 'ambiguous', shops: exactFromLast, phrase }
+  }
+
   const fromLast: ResolvedShop[] = []
-  for (const row of lastList) {
+  for (const row of lastAsResolved) {
     if (shopNameMatchesFragment(row.business_name, phrase)) {
-      fromLast.push({ id: row.id, business_name: row.business_name, email: null })
+      fromLast.push(row)
     }
   }
 
@@ -49,6 +77,15 @@ export async function resolveBookingTargetFromPhrase (
   }
 
   const dbShops = await listShopsMatchingName(supabaseUrl, supabaseKey, phrase, 5)
+
+  const exactDb = pickShopsWithExactBusinessName(phrase, dbShops)
+  if (exactDb.length === 1) {
+    return { kind: 'single', shop: exactDb[0]! }
+  }
+  if (exactDb.length > 1) {
+    return { kind: 'ambiguous', shops: exactDb, phrase }
+  }
+
   const lastIds = new Set(lastList.map(s => s.id))
   const intersect = dbShops.filter(s => lastIds.has(s.id))
 

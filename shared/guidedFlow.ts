@@ -263,6 +263,7 @@ export function guidedPostResultsFilterChips (state: GuidedSearchState): { label
 export function isBookingHandoffUserMessage (message: string): boolean {
   const t = String(message || '').trim()
   if (!t) return false
+  if (t.startsWith('book_shop:')) return true
   if (/^\s*(let[\u2019']s|lets)\s+book\b/i.test(t)) return true
   if (/^\s*book\s+(with|at)\b/i.test(t)) return true
   return false

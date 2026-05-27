@@ -19,6 +19,7 @@ import {
 describe('isBookingHandoffUserMessage', () => {
   it('matches panel / chip copy so guided-flow is skipped for booking', () => {
     expect(isBookingHandoffUserMessage("Let's book Ceningan Divers")).toBe(true)
+    expect(isBookingHandoffUserMessage('book_shop:11111111-2222-4333-8444-555555555555')).toBe(true)
     expect(isBookingHandoffUserMessage('Lets book Ceningan Divers')).toBe(true)
     expect(isBookingHandoffUserMessage("Let's book this")).toBe(true)
     expect(isBookingHandoffUserMessage('Book with Aqua')).toBe(true)

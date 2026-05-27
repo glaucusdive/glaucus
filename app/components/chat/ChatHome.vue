@@ -1544,7 +1544,13 @@ const sendMessage = async (messageText, displayText) => {
   try {
     // Call API with abort signal
     const lastShopsFromHistory = messages.value.filter(m => m.role === 'assistant' && m.shops?.length).pop()?.shops
-    const lastShops = lastShopsFromHistory?.map(s => ({ id: s.id, business_name: s.business_name })) ?? undefined
+    const lastShops = lastShopsFromHistory?.map(s => ({
+      id: s.id,
+      business_name: s.business_name,
+      city: s.city,
+      state: s.state,
+      locale: s.locale
+    })) ?? undefined
 
     const lastAssistantMessage = [...messages.value].reverse().find(m => m.role === 'assistant')
     const inBookingFlow = lastAssistantMessage?.intent === 'booking' && lastAssistantMessage?.shopId

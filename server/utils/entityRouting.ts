@@ -4,8 +4,10 @@ import { cleanReferentPhraseForProbe } from './extractReferredEntityPhrase'
 import type { EntityClarifyKind } from './entityClarify'
 import { entityClarifySelectableOptions } from './entityClarify'
 import type { ResolvedShop } from './resolveShop'
+import { pickShopsWithExactBusinessName } from './resolveBookingTarget'
 import { listShopsMatchingName } from './resolveShop'
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
+import { shopDisambiguationSelectableOptions } from '../../shared/bookShopPick'
 import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
 
 /** Avoid ilike metacharacters from user input. */
@@ -181,6 +183,10 @@ export async function routeReferentFromProbe (
     if (probe.shops.length === 1) {
       return { type: 'booking', shop: probe.shops[0]! }
     }
+    const exact = pickShopsWithExactBusinessName(phrase, probe.shops)
+    if (exact.length === 1) {
+      return { type: 'booking', shop: exact[0]! }
+    }
     return { type: 'shop_disambiguation', shops: probe.shops, phrase }
   }
 
@@ -283,6 +289,10 @@ export async function handleForcedEntityClarify (
     if (shops.length === 1) {
       return { kind: 'booking', shop: shops[0]! }
     }
+    const exact = pickShopsWithExactBusinessName(phrase, shops)
+    if (exact.length === 1) {
+      return { kind: 'booking', shop: exact[0]! }
+    }
     return { kind: 'shop_disambiguation', shops, phrase }
   }
 
@@ -365,9 +375,6 @@ export function shopDisambiguationResponsePayload (phrase: string, shops: Resolv
     totalResults: 0,
     hasMoreResults: false,
     filters: {} as SearchFilters,
-    selectableOptions: shops.map(s => ({
-      label: s.business_name,
-      value: `Let's book ${s.business_name}`
-    }))
+    selectableOptions: shopDisambiguationSelectableOptions(shops)
   }
 }
