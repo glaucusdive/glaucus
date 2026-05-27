@@ -77,7 +77,7 @@ export function extractReferredEntityPhrase (message: string): string | null {
     /(?:let'?s\s+)?(?:book|reserve)(?:ing)?(?:\s+(?:(?:a\s+)?dive(?:\s+trip)?|a\s+trip|a\s+reservation))?\s+with\s+([^.?!]+)/i
   )
   if (m?.[1]) return normalizePhrase(m[1])
-  // "Let's book [full shop name]" — chip value from disambiguation (no "at" / "with")
+  // "Let's book [full shop name]" — legacy chip text (prefer book_shop:<id> chips for duplicate names)
   m = trimmed.match(/^(?:let'?s\s+)?book(?:ing)?\s+(?!with\b|at\b)([^.?!]+)$/i)
   if (m?.[1]) return normalizePhrase(m[1])
   // "I want to dive with X", "dive with X", "diving with X", "go diving with X"

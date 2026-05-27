@@ -28,6 +28,7 @@ import { inclusiveTripDays } from '../utils/parseTripDates'
 import { resolveTripDatesUserMessage } from '../utils/tripDateUserInput'
 import { applyParsedTripDatesToBookingPayload } from '../utils/bookingApplyParsedTripDates'
 import { mergeCollectedIntoBookingPayload } from '../utils/mergeBookingCollected'
+import { parseBookShopPickMessage, shopDisambiguationSelectableOptions } from '../../shared/bookShopPick'
 import { formatBookingReviewSummary } from '../../shared/formatBookingReviewSummary'
 import { extractBookingTargetFallback, extractReferredEntityPhrase, extractShopSelectionPhrase } from '../utils/extractReferredEntityPhrase'
 import { parseEntityClarifyMessage } from '../utils/entityClarify'
@@ -341,7 +342,7 @@ export interface RequestBody {
   message: string
   history: Message[]
   selectedShopId?: string
-  lastShops?: { id: string; business_name: string }[]
+  lastShops?: { id: string, business_name: string, city?: string | null, state?: string | null, locale?: string | null }[]
   /** Total number of shop cards already shown in this conversation (for pagination). */
   shopsAlreadyShownCount?: number
   bookingPayload?: BookingPayload
@@ -674,6 +675,16 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
       let resolvedShop: Awaited<ReturnType<typeof getShopById>> = null
       let resolvedByNamedShop = false
 
+      const bookShopPickId = parseBookShopPickMessage(message)
+      if (bookShopPickId && supabaseUrl && supabaseKey) {
+        const picked = await getShopById(supabaseUrl, supabaseKey, bookShopPickId)
+        if (picked) {
+          resolvedShop = picked
+          resolvedByNamedShop = true
+          effectiveWantsToBook = true
+        }
+      }
+
       // --- Entity-aware routing: "dive with X", clarification chips (orchestrator; see .cursor/rules/ai-agent-structure.mdc) ---
       const clarifyChoice = parseEntityClarifyMessage(message)
 
@@ -880,7 +891,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           }
         }
 
-        if (referredPhrase && !skipEntityProbeFromGeo && !skipEntityProbeFromActivity) {
+        if (referredPhrase && !resolvedShop && !skipEntityProbeFromGeo && !skipEntityProbeFromActivity) {
           let skipEntityProbe = false
           if (effectiveWantsToBook) {
             const target = await resolveBookingTargetFromPhrase(referredPhrase, lastShops, supabaseUrl, supabaseKey)
@@ -902,10 +913,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             }
             if (routed.type === 'search') {
               if (effectiveWantsToBook) {
-                const pickFromRecent = (lastShops || []).slice(0, 8).map(s => ({
-                  label: s.business_name,
-                  value: `Let's book ${s.business_name}`
-                }))
+                const pickFromRecent = shopDisambiguationSelectableOptions((lastShops || []).slice(0, 8))
                 return withAgentMeta({
                   success: true,
                   intent: 'search' as const,
@@ -1105,10 +1113,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 shopName: undefined,
                 bookingPayload: undefined,
                 pendingBookingPayload: carryAmb,
-                selectableOptions: routedSw.shops.map(s => ({
-                  label: s.business_name,
-                  value: `Let's book ${s.business_name}`
-                })),
+                selectableOptions: shopDisambiguationSelectableOptions(routedSw.shops),
                 rentalEquipmentOptions: undefined,
                 courseOptions: undefined,
                 diveSiteOptions: undefined
@@ -1129,10 +1134,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               shopName: undefined,
               bookingPayload: undefined,
               pendingBookingPayload: carryAmb,
-              selectableOptions: target.shops.map(s => ({
-                label: s.business_name,
-                value: `Let's book ${s.business_name}`
-              })),
+              selectableOptions: shopDisambiguationSelectableOptions(target.shops),
               rentalEquipmentOptions: undefined,
               courseOptions: undefined,
               diveSiteOptions: undefined
@@ -2934,10 +2936,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
 
       // Booking intent but no shop resolved — do not run trip-type or generic search
       if (effectiveWantsToBook && !continuingBooking && !resolvedShop && !clarifyChoice) {
-        const pickFromRecent = (lastShops || []).slice(0, 8).map(s => ({
-          label: s.business_name,
-          value: `Let's book ${s.business_name}`
-        }))
+        const pickFromRecent = shopDisambiguationSelectableOptions((lastShops || []).slice(0, 8))
         return withAgentMeta({
           success: true,
           intent: 'search' as const,
