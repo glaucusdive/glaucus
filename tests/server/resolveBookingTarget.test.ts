@@ -41,4 +41,53 @@ describe('resolveBookingTargetFromPhrase', () => {
     )
     expect(result.kind).toBe('single')
   })
+
+  it('resolves via merged NLU noun hints without in/at in phrase', async () => {
+    const result = await resolveBookingTargetFromPhrase(
+      'Explorer Ventures',
+      [
+        {
+          id: 'pr',
+          business_name: 'Explorer Ventures Diving Fleet',
+          locale: 'Silver Bank, Puerto Plata'
+        },
+        {
+          id: 'bali',
+          business_name: 'Explorer Ventures Diving Fleet',
+          locale: 'Indonesia, Bali'
+        }
+      ],
+      '',
+      '',
+      { operatorName: 'Explorer Ventures', placeName: 'Bali' }
+    )
+    expect(result.kind).toBe('single')
+    if (result.kind === 'single') {
+      expect(result.shop.id).toBe('bali')
+    }
+  })
+
+  it('resolves operator name + place from recent disambiguation list', async () => {
+    const result = await resolveBookingTargetFromPhrase(
+      'Explorer Ventures in Bali',
+      [
+        {
+          id: 'pr',
+          business_name: 'Explorer Ventures Diving Fleet',
+          locale: 'Silver Bank, Puerto Plata'
+        },
+        {
+          id: 'bali',
+          business_name: 'Explorer Ventures Diving Fleet',
+          locale: 'Indonesia, Bali'
+        }
+      ],
+      '',
+      ''
+    )
+    expect(result.kind).toBe('single')
+    if (result.kind === 'single') {
+      expect(result.shop.id).toBe('bali')
+    }
+  })
 })

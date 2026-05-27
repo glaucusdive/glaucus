@@ -41,6 +41,12 @@ describe('extractReferredEntityPhrase', () => {
     expect(extractReferredEntityPhrase('book with Dive Porter')).toBe('Dive Porter')
     expect(extractReferredEntityPhrase('book a dive with Dive Porter')).toBe('Dive Porter')
   })
+
+  it('extracts shop after can I book at', () => {
+    expect(extractReferredEntityPhrase('can I book at Explorer Ventures in Bali')).toBe(
+      'Explorer Ventures in Bali'
+    )
+  })
 })
 
 describe('stripTrailingReferentNoise', () => {

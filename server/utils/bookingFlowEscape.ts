@@ -43,6 +43,7 @@ export function extractMidBookingShopSwitchPhrase (message: string): string | nu
   // Need a clear "different operator" signal so we do not steal real human names on the name step.
   const hasSwitchSignal =
     /\b(?:let'?s\s+)?(?:book|reserve)(?:ing)?\b/i.test(delead) ||
+    /\bcan\s+i\s+book\b/i.test(delead) ||
     /\bbook(?:ing)?\s+with\b/i.test(delead) ||
     /\bgo\s+with\b/i.test(delead) ||
     /\b(?:switch|change)\s+to\b/i.test(delead) ||
