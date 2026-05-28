@@ -43,6 +43,7 @@ import { formatBookingReviewSummary } from '../../shared/formatBookingReviewSumm
 import { extractBookingTargetFallback, extractReferredEntityPhrase, extractShopSelectionPhrase } from '../utils/extractReferredEntityPhrase'
 import { parseEntityClarifyMessage } from '../utils/entityClarify'
 import {
+  closestShopSuggestionResponsePayload,
   clarifyResponsePayload,
   formatEntitySearchResponse,
   handleForcedEntityClarify,
@@ -930,6 +931,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             pushActivity('probe', formatProbeDirectoryLine(referredPhrase))
             const probe = await probeReferentPhrase(supabaseUrl, supabaseKey, referredPhrase)
             const routed = await routeReferentFromProbe(supabaseUrl, supabaseKey, probe)
+            if (routed.type === 'closest_shop_suggestion') {
+              return withAgentMeta({ ...closestShopSuggestionResponsePayload(routed.phrase, routed.shop), intent: 'search' as const })
+            }
             if (routed.type === 'clarify') {
               return withAgentMeta({ ...clarifyResponsePayload(routed.phrase), intent: 'search' as const })
             }

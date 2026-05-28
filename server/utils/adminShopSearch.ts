@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sanitizeTermForPostgrestOrFragment } from './buildDiveShopQuery'
+import { fuzzyNameScore, normalizeSearchText } from './searchText'
 
 const JUNCTION_CHUNK = 120
 
@@ -87,6 +88,23 @@ async function collectScalarShopIds (client: SupabaseClient, term: string): Prom
   return (data as { id: string }[]).map((r) => r.id).filter(Boolean)
 }
 
+async function collectBusinessNameFuzzyIds (client: SupabaseClient, term: string, limit = 50): Promise<string[]> {
+  const normalizedNeedle = normalizeSearchText(term)
+  if (!normalizedNeedle) return []
+  const { data, error } = await client
+    .from('diveshops')
+    .select('id, business_name')
+    .order('business_name')
+    .limit(5000)
+  if (error || !data?.length) return []
+  return (data as { id: string, business_name: string }[])
+    .map((row) => ({ id: row.id, score: fuzzyNameScore(normalizedNeedle, row.business_name) }))
+    .filter(x => x.score >= 0.56)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(x => x.id)
+}
+
 /**
  * Ordered shop IDs matching admin search across scalars, country/region names, and junction lookup labels.
  */
@@ -140,7 +158,11 @@ export async function searchAdminShopIds (client: SupabaseClient, rawTerm: strin
     ...diveSiteShopIds
   ])
 
-  if (union.size === 0) return []
+  if (union.size === 0) {
+    const fuzzyBusinessIds = await collectBusinessNameFuzzyIds(client, term)
+    if (!fuzzyBusinessIds.length) return []
+    return fuzzyBusinessIds
+  }
 
   const ids = [...union]
   const { data, error } = await client

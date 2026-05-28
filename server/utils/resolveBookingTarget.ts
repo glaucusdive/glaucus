@@ -2,13 +2,14 @@ import type { BookingNounHints } from '../../shared/bookingNounResolve'
 import { collectBookingNounHints, mergeBookingNounHints } from '../../shared/bookingNounResolve'
 import { filterShopsByPlaceHint } from '../../shared/shopNamePlaceHint'
 import { listShopsMatchingName, type ResolvedShop } from './resolveShop'
+import { normalizeSearchText } from './searchText'
 
 function sanitizePhrase (s: string): string {
   return s.trim().replace(/[%_\\]/g, '')
 }
 
 function normalizeShopName (s: string): string {
-  return s.trim().replace(/\s+/g, ' ').toLowerCase()
+  return normalizeSearchText(s)
 }
 
 /** Full business name match (trimmed, case-insensitive) — e.g. disambiguation chip "Reef Divers" vs substring "Bali Reef Divers". */
@@ -23,8 +24,8 @@ export function pickShopsWithExactBusinessName<T extends { business_name: string
 
 /** Case-insensitive: name contains phrase, or a word starts with phrase (for short tokens like "Aqua"). */
 function shopNameMatchesFragment (businessName: string, phrase: string): boolean {
-  const n = businessName.trim().toLowerCase()
-  const p = phrase.trim().toLowerCase()
+  const n = normalizeSearchText(businessName)
+  const p = normalizeSearchText(phrase)
   if (!p || p.length < 2) return false
   if (n.includes(p)) return true
   const words = n.split(/[\s\-–—,]+/).filter(Boolean)

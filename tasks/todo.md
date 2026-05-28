@@ -1,5 +1,19 @@
 # Admin Shops Runtime Debug — in progress
 
+# Case/accent-insensitive shop matching + closest match prompt — in progress
+
+- [x] Add shared normalization + fuzzy scoring helper for names
+- [x] Apply tolerant matching to shop-name lookup and booking target comparisons
+- [x] Add closest-match fallback prompt when entity probe has no direct hits
+- [x] Add admin shop-search fuzzy fallback when strict query returns no IDs
+- [x] Verify targeted tests and sanity-check lint on edited files
+
+## Review
+
+Implemented accent-insensitive normalization and fuzzy scoring so name matching works when users omit accents, vary capitalization, or miss a connector word (for example, "Coco View Resort" vs "CoCo View Dive Resort"). Added a closest-match clarification response that asks "Did you mean ...?" and provides stable yes/no chips. Verified with targeted Vitest (`26 passed`) and `ReadLints` on edited files.
+
+---
+
 - [x] Inspect admin shops API, schema migrations, auth/layout hydration paths
 - [x] Define runtime hypotheses for `diveshops.notes` 500 and sidebar hydration mismatch
 - [x] Add focused instrumentation without changing behavior
