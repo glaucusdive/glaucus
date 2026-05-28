@@ -5,7 +5,7 @@ import type { EntityClarifyKind } from './entityClarify'
 import { entityClarifySelectableOptions } from './entityClarify'
 import type { ResolvedShop } from './resolveShop'
 import { pickShopsWithExactBusinessName } from './resolveBookingTarget'
-import { listShopsMatchingName } from './resolveShop'
+import { findClosestShopNameMatch, listShopsMatchingName } from './resolveShop'
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 import { shopDisambiguationSelectableOptions } from '../../shared/bookShopPick'
 import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
@@ -161,6 +161,7 @@ export function formatEntitySearchResponse (
 
 export type EntityRouteResult =
   | { type: 'clarify', phrase: string }
+  | { type: 'closest_shop_suggestion', phrase: string, shop: ResolvedShop }
   | { type: 'booking', shop: ResolvedShop }
   | { type: 'shop_disambiguation', shops: ResolvedShop[], phrase: string }
   | { type: 'search', response: ReturnType<typeof formatEntitySearchResponse> }
@@ -173,8 +174,15 @@ export async function routeReferentFromProbe (
   const cats = activeCategories(probe)
   const phrase = probe.phrase
 
-  if (cats.length === 0 || cats.length > 1) {
+  if (cats.length > 1) {
     return { type: 'clarify', phrase: probe.phrase }
+  }
+  if (cats.length === 0) {
+    const closestShop = await findClosestShopNameMatch(supabaseUrl, supabaseKey, phrase)
+    if (closestShop) {
+      return { type: 'closest_shop_suggestion', phrase, shop: closestShop }
+    }
+    return { type: 'clarify', phrase }
   }
 
   const only = cats[0]
@@ -362,6 +370,22 @@ export function clarifyResponsePayload (phrase: string) {
     hasMoreResults: false,
     filters: {} as SearchFilters,
     selectableOptions: entityClarifySelectableOptions(),
+    entityClarifyPending: { phrase }
+  }
+}
+
+export function closestShopSuggestionResponsePayload (phrase: string, shop: ResolvedShop) {
+  return {
+    success: true as const,
+    message: `I couldn't find an exact directory match for "${phrase}". Did you mean "${shop.business_name}"?`,
+    shops: [] as ShopRow[],
+    totalResults: 0,
+    hasMoreResults: false,
+    filters: {} as SearchFilters,
+    selectableOptions: [
+      { label: `Yes — ${shop.business_name}`, value: `book_shop:${shop.id}` },
+      { label: "No — help me find options", value: 'entity_clarify:browse' }
+    ],
     entityClarifyPending: { phrase }
   }
 }
