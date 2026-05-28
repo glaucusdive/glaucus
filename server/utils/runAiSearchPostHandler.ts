@@ -9,6 +9,11 @@ import {
   type BookingSignupTiming
 } from '../utils/bookingPreSend'
 import { buildDiveShopQuery, type SearchFilters } from '../utils/buildDiveShopQuery'
+import {
+  bookingGotItWithShopMessage,
+  bookingShopFieldsForClient,
+  shopDisplayLabel
+} from '../utils/shopDisplayForClient'
 import { getShopById } from '../utils/resolveShop'
 import { getDiveSitesForShop } from '../utils/getDiveSitesForShop'
 import { getCoursesForShop } from '../utils/getCoursesForShop'
@@ -1017,13 +1022,15 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
         const courseNames = courses.map(c => c.name)
         const diveSiteNames = diveSites.map(d => d.name)
         const rentalEquipmentNames = rentalEquipment.map(e => e.name)
+        const shopClient = bookingShopFieldsForClient(resolvedShop)
+        const shopLabel = shopClient.shopDisplayName
 
         // When user explicitly named a shop and we resolved it: go straight to form details (first question: name)
         const startingFreshBooking = (effectiveWantsToBook || resolvedByNamedShop) && !continuingBooking
         const noPayloadYet = !bookingPayload || !(bookingPayload.name && String(bookingPayload.name).trim())
 
-        const coursesIntroMessage = (shopName: string, p: BookingPayload) =>
-          `Great — I'll help you book with ${shopName}. ${bookingCoursesStepMessage(p)}`
+        const coursesIntroMessage = (displayName: string, p: BookingPayload) =>
+          bookingGotItWithShopMessage(displayName, bookingCoursesStepMessage(p))
 
         // If shop has no rental gear and user is just starting booking, tell them and offer to continue or pick another shop
         if (startingFreshBooking && noPayloadYet && rentalEquipment.length === 0) {
@@ -1031,9 +1038,11 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             success: true,
             intent: 'booking' as const,
             bookingReady: false,
-            message: `${resolvedShop.business_name} doesn't offer rental gear. You can still book with them (arrange gear elsewhere) or choose a different dive shop.`,
+            message: `${shopLabel} doesn't offer rental gear. You can still book with them (arrange gear elsewhere) or choose a different dive shop.`,
             shopId: resolvedShop.id,
-            shopName: resolvedShop.business_name,
+            shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
             bookingPayload: undefined,
             selectableOptions: [
               { label: 'Continue with this shop', value: 'Continue with this shop' },
@@ -1074,23 +1083,25 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           ) as BookingPayload
           nextHint = getNextBookingStep(initialPayload)
           const firstMessage = nextHint?.step === 'name'
-            ? `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`
+            ? bookingGotItWithShopMessage(shopLabel, "What's the name for the booking?")
             : nextHint?.step === 'email'
-              ? `Great — I'll help you book with ${resolvedShop.business_name}. What email should we use for the booking?`
+              ? bookingGotItWithShopMessage(shopLabel, 'What email should we use for the booking?')
               : nextHint?.step === 'dates'
-                ? `Great — I'll help you book with ${resolvedShop.business_name}. What are your trip dates (start and end)?`
+                ? bookingGotItWithShopMessage(shopLabel, 'What are your trip dates (start and end)?')
                 : nextHint?.step === 'courses'
-                  ? coursesIntroMessage(resolvedShop.business_name, initialPayload)
+                  ? coursesIntroMessage(shopLabel, initialPayload)
                   : nextHint?.step === 'diveSites'
-                    ? `Great — I'll help you book with ${resolvedShop.business_name}. ${bookingDiveSitesStepMessage(initialPayload)}`
-                    : `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`
+                    ? bookingGotItWithShopMessage(shopLabel, bookingDiveSitesStepMessage(initialPayload))
+                    : bookingGotItWithShopMessage(shopLabel, "What's the name for the booking?")
           return withAgentMeta({
             success: true,
             intent: 'booking' as const,
             bookingReady: false,
             message: firstMessage,
             shopId: resolvedShop.id,
-            shopName: resolvedShop.business_name,
+            shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
             bookingPayload: initialPayload,
             selectableOptions: undefined,
             rentalEquipmentOptions: undefined,
@@ -1218,25 +1229,26 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 coSw
               ) as BookingPayload
               const nextSw = getNextBookingStep(mergedSw)
+              const switchedClient = bookingShopFieldsForClient(newShop)
+              const switchedLabel = switchedClient.shopDisplayName
               const switchOpen =
                 nextSw?.step === 'name'
-                  ? `Switching to ${newShop.business_name}. What's the name for the booking?`
+                  ? bookingGotItWithShopMessage(switchedLabel, "What's the name for the booking?")
                   : nextSw?.step === 'email'
-                    ? `Switching to ${newShop.business_name}. What email should we use for the booking?`
+                    ? bookingGotItWithShopMessage(switchedLabel, 'What email should we use for the booking?')
                     : nextSw?.step === 'dates'
-                      ? `Switching to ${newShop.business_name}. What are your trip dates (start and end)?`
+                      ? bookingGotItWithShopMessage(switchedLabel, 'What are your trip dates (start and end)?')
                       : nextSw?.step === 'courses'
-                        ? `Switching to ${newShop.business_name}. ${bookingCoursesStepMessage(mergedSw)}`
+                        ? bookingGotItWithShopMessage(switchedLabel, bookingCoursesStepMessage(mergedSw))
                         : nextSw?.step === 'diveSites'
-                          ? `Switching to ${newShop.business_name}. ${bookingDiveSitesStepMessage(mergedSw)}`
-                          : `Switching to ${newShop.business_name}. What's the name for the booking?`
+                          ? bookingGotItWithShopMessage(switchedLabel, bookingDiveSitesStepMessage(mergedSw))
+                          : bookingGotItWithShopMessage(switchedLabel, "What's the name for the booking?")
               return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
                 message: switchOpen,
-                shopId: newShop.id,
-                shopName: newShop.business_name,
+                ...switchedClient,
                 bookingPayload: mergedSw,
                 selectableOptions: undefined,
                 rentalEquipmentOptions:
@@ -1260,10 +1272,12 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
-                message: `You're already booking ${newShop.business_name}. ${sameCopy?.message ?? 'Continue with your booking below.'}`,
+                message: `You're already booking ${shopDisplayLabel(newShop)}. ${sameCopy?.message ?? 'Continue with your booking below.'}`,
                 ...(sameCopy?.messagePreamble ? { messagePreamble: sameCopy.messagePreamble } : {}),
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: addGearOptions(bookingPayload),
@@ -1280,7 +1294,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             bookingReady: false,
             message: `I couldn't find "${sp}" in our directory. Try another spelling, search first, or say "go back to search" to browse without this booking.`,
             shopId: resolvedShop.id,
-            shopName: resolvedShop.business_name,
+            shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
             bookingPayload,
             selectableOptions: [
               { label: 'Pick a new diveshop', value: 'Pick a new diveshop' },
@@ -1347,23 +1363,25 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             ) as BookingPayload
             nextHint = getNextBookingStep(initialPayload)
             const firstMessage = nextHint?.step === 'name'
-              ? `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`
+              ? bookingGotItWithShopMessage(shopLabel, "What's the name for the booking?")
               : nextHint?.step === 'email'
-                ? `Great — I'll help you book with ${resolvedShop.business_name}. What email should we use for the booking?`
+                ? bookingGotItWithShopMessage(shopLabel, 'What email should we use for the booking?')
                 : nextHint?.step === 'dates'
-                  ? `Great — I'll help you book with ${resolvedShop.business_name}. What are your trip dates (start and end)?`
+                  ? bookingGotItWithShopMessage(shopLabel, 'What are your trip dates (start and end)?')
                   : nextHint?.step === 'courses'
-                    ? coursesIntroMessage(resolvedShop.business_name, initialPayload)
+                    ? coursesIntroMessage(shopLabel, initialPayload)
                     : nextHint?.step === 'diveSites'
-                      ? `Great — I'll help you book with ${resolvedShop.business_name}. ${bookingDiveSitesStepMessage(initialPayload)}`
-                      : `Great — I'll help you book with ${resolvedShop.business_name}. What's the name for the booking?`
+                      ? bookingGotItWithShopMessage(shopLabel, bookingDiveSitesStepMessage(initialPayload))
+                      : bookingGotItWithShopMessage(shopLabel, "What's the name for the booking?")
             return withAgentMeta({
               success: true,
               intent: 'booking' as const,
               bookingReady: false,
               message: firstMessage,
               shopId: resolvedShop.id,
-              shopName: resolvedShop.business_name,
+              shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
               bookingPayload: initialPayload,
               selectableOptions: undefined,
               rentalEquipmentOptions: undefined,
@@ -1389,7 +1407,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             const gatedChip = resolvePreSendWhenPayloadReady({
               payload: pChip as BookingPayloadLocal,
               shopId: resolvedShop.id,
-              shopName: resolvedShop.business_name,
+              shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
               hasAuthUser: !!authUser,
               timing: bookingSignupTiming
             })
@@ -1412,7 +1432,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 messagePreamble: 'Thanks — got your name.',
                 message: "What's the best email address for the booking?",
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: fp,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: undefined,
@@ -1431,7 +1453,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               message:
                 'No problem — say the dive shop you want to switch to (e.g. “Let’s book with …”), or say you want to go back to search. I will not use your last message as the contact name.',
               shopId: resolvedShop.id,
-              shopName: resolvedShop.business_name,
+              shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
               bookingPayload: pElse,
               selectableOptions: undefined,
               rentalEquipmentOptions: addGearOptions(pElse),
@@ -1485,7 +1509,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             const gatedRev = resolvePreSendWhenPayloadReady({
               payload: pRev as BookingPayloadLocal,
               shopId: resolvedShop.id,
-              shopName: resolvedShop.business_name,
+              shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
               hasAuthUser: !!authUser,
               timing: bookingSignupTiming
             })
@@ -1501,7 +1527,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   const gatedAnyway = resolvePreSendWhenPayloadReady({
                     payload: p as BookingPayloadLocal,
                     shopId: resolvedShop.id,
-                    shopName: resolvedShop.business_name,
+                    shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                     hasAuthUser: !!authUser,
                     timing: bookingSignupTiming
                   })
@@ -1514,14 +1542,18 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   payload: p,
                   message: 'Understood — sending your booking request now.',
                   shopId: resolvedShop.id,
-                  shopName: resolvedShop.business_name,
+                  shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                   selectableOptions: undefined
                 })
               }
               const gatedSend = resolvePreSendWhenPayloadReady({
                 payload: p as BookingPayloadLocal,
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 hasAuthUser: !!authUser,
                 timing: bookingSignupTiming
               })
@@ -1541,7 +1573,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 message: stepCopy?.message ?? 'No problem — let’s finish the remaining details.',
                 ...(stepCopy?.messagePreamble ? { messagePreamble: stepCopy.messagePreamble } : {}),
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: payloadForSendCheck,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: addGearOptions(payloadForSendCheck),
@@ -1585,7 +1619,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   message: copy.message,
                   ...(copy.messagePreamble ? { messagePreamble: copy.messagePreamble } : {}),
                   shopId: resolvedShop.id,
-                  shopName: resolvedShop.business_name,
+                  shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                   bookingPayload: p,
                   selectableOptions: undefined,
                   rentalEquipmentOptions: addGearOptions(p),
@@ -1605,7 +1641,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   bookingReady: false,
                   message: 'No problem — what are your diving start and end dates?',
                   shopId: resolvedShop.id,
-                  shopName: resolvedShop.business_name,
+                  shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                   bookingPayload: cleared,
                   selectableOptions: undefined,
                   rentalEquipmentOptions: undefined,
@@ -1625,7 +1663,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                     ? { selectableOptions: pendingDateRes.selectableOptions }
                     : {}),
                   shopId: resolvedShop.id,
-                  shopName: resolvedShop.business_name,
+                  shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                   bookingPayload: bp,
                   rentalEquipmentOptions: undefined,
                   hideNoneForGear: hideNoneForGear(bp),
@@ -1640,7 +1680,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   bookingReady: false,
                   message: pendingDateRes.message,
                   shopId: resolvedShop.id,
-                  shopName: resolvedShop.business_name,
+                  shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                   bookingPayload: bp,
                   selectableOptions: undefined,
                   rentalEquipmentOptions: undefined,
@@ -1657,7 +1699,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   bookingReady: false,
                   message: `That's ${days} days (${pend.startDate} to ${pend.endDate}). Most dive trips are a week or two — is that the window you want? Reply yes to keep it, no to change dates, or type new dates.`,
                   shopId: resolvedShop.id,
-                  shopName: resolvedShop.business_name,
+                  shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                   bookingPayload: bp,
                   selectableOptions: undefined,
                   rentalEquipmentOptions: undefined,
@@ -1683,7 +1727,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   bookingReady: false,
                   message: `That's ${daysFromPending} days (${parsedDatesFromPending.startDate} to ${parsedDatesFromPending.endDate}). Most dive trips are a few days to a week or two — is that correct? Reply yes to confirm or no / new dates to adjust.`,
                   shopId: resolvedShop.id,
-                  shopName: resolvedShop.business_name,
+                  shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                   bookingPayload: pendingPayload,
                   selectableOptions: undefined,
                   rentalEquipmentOptions: undefined,
@@ -1706,7 +1752,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 message: copyPending.message,
                 ...(copyPending.messagePreamble ? { messagePreamble: copyPending.messagePreamble } : {}),
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: pPending,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: addGearOptions(pPending),
@@ -1725,7 +1773,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 message: dateRes.message,
                 ...(dateRes.selectableOptions?.length ? { selectableOptions: dateRes.selectableOptions } : {}),
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: bp,
                 rentalEquipmentOptions: undefined,
                 hideNoneForGear: hideNoneForGear(bp),
@@ -1740,7 +1790,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 bookingReady: false,
                 message: dateRes.message,
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: bp,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: undefined,
@@ -1763,7 +1815,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   bookingReady: false,
                   message: `That's ${days} days (${parsedDates.startDate} to ${parsedDates.endDate}). Most dive trips are a few days to a week or two — is that correct? Reply yes to confirm or no / new dates to adjust.`,
                   shopId: resolvedShop.id,
-                  shopName: resolvedShop.business_name,
+                  shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                   bookingPayload: pendingPayload,
                   selectableOptions: undefined,
                   rentalEquipmentOptions: undefined,
@@ -1786,7 +1840,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 message: copy.message,
                 ...(copy.messagePreamble ? { messagePreamble: copy.messagePreamble } : {}),
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: p,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: addGearOptions(p),
@@ -1802,7 +1858,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             message: msgTrim,
             bookingPayload: bookingPayload as BookingPayloadLocal,
             shopId: resolvedShop.id,
-            shopName: resolvedShop.business_name,
+            shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
             hasAuthUser: !!authUser,
             bookingSignupTiming,
             shopCourseCount: courses.length,
@@ -1835,7 +1893,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             const gatedLast = resolvePreSendWhenPayloadReady({
               payload: p as BookingPayloadLocal,
               shopId: resolvedShop.id,
-              shopName: resolvedShop.business_name,
+              shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
               hasAuthUser: !!authUser,
               timing: bookingSignupTiming
             })
@@ -1893,7 +1953,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   bookingReady: false,
                   message: bookingGearStepMessage(name),
                   shopId: resolvedShop.id,
-                  shopName: resolvedShop.business_name,
+                  shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                   bookingPayload: p,
                   selectableOptions: undefined,
                   rentalEquipmentOptions: rentalEquipment.length > 0 ? rentalEquipment : undefined,
@@ -1911,7 +1973,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 bookingReady: false,
                 message: "No problem — what's the best email address for the booking?",
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: p,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: undefined,
@@ -1928,7 +1992,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 bookingReady: false,
                 message: "What's the name for the booking?",
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: p,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: undefined,
@@ -1947,7 +2013,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 bookingReady: false,
                 message: 'What are your diving start and end dates? You can say them in any format (e.g. April 4–20, 2026).',
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: p,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: undefined,
@@ -1966,7 +2034,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 bookingReady: false,
                 message: `Does ${name} need any rental gear?`,
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: p,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: rentalEquipment.length > 0 ? rentalEquipment : undefined,
@@ -1984,7 +2054,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 bookingReady: false,
                 message: `Does ${name} need any rental gear?`,
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: p,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: rentalEquipment.length > 0 ? rentalEquipment : undefined,
@@ -2000,7 +2072,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 const gatedReview = resolvePreSendWhenPayloadReady({
                   payload: pReady as BookingPayloadLocal,
                   shopId: resolvedShop.id,
-                  shopName: resolvedShop.business_name,
+                  shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                   hasAuthUser: !!authUser,
                   timing: bookingSignupTiming
                 })
@@ -2014,7 +2088,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   } as Record<string, unknown>)
                 }
               }
-              const { messagePreamble, message } = formatBookingReviewSummary(resolvedShop.business_name, p)
+              const { messagePreamble, message } = formatBookingReviewSummary(shopLabel, p)
               return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
@@ -2022,7 +2096,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 message: `${message}\n\nYou can say "change my email", "update diver 1's gear", or "edit dates" to change something, or keep answering the questions above.`,
                 messagePreamble,
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: p,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: undefined,
@@ -2059,7 +2135,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 bookingReady: false,
                 message: editMsg,
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: pEdit,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: addGearOptions(pEdit),
@@ -2092,7 +2170,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   bookingReady: false,
                   message: `Added ${matched} for ${name}. ${BOOKING_GEAR_ADD_HINT}`,
                   shopId: resolvedShop.id,
-                  shopName: resolvedShop.business_name,
+                  shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                   bookingPayload: p,
                   selectableOptions: undefined,
                   rentalEquipmentOptions: gearChipsForFast,
@@ -2121,7 +2201,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 bookingReady: false,
                 message: `Added ${matchedCourse.name}. ${bookingMultiSelectChipHint('courses', true)}`,
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: p,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: undefined,
@@ -2158,7 +2240,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                     message: copy.message,
                     ...(copy.messagePreamble ? { messagePreamble: copy.messagePreamble } : {}),
                     shopId: resolvedShop.id,
-                    shopName: resolvedShop.business_name,
+                    shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                     bookingPayload: p,
                     selectableOptions: undefined,
                     rentalEquipmentOptions: addGearOptions(p),
@@ -2182,7 +2266,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 messagePreamble: 'No specific dive sites for this shop.',
                 message: 'How many divers will be on the trip?',
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: p,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: undefined,
@@ -2207,7 +2293,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 bookingReady: false,
                 message: `Added ${matchedSite}. ${bookingMultiSelectChipHint('diveSites', true)}`,
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: p,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: undefined,
@@ -2238,7 +2326,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 message: copy.message,
                 ...(copy.messagePreamble ? { messagePreamble: copy.messagePreamble } : {}),
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: p,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: addGearOptions(p),
@@ -2269,7 +2359,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               messagePreamble: `Got it — ${name}'s gear is set.`,
               message: 'Do you want to add another diver? (yes/no)',
               shopId: resolvedShop.id,
-              shopName: resolvedShop.business_name,
+              shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
               bookingPayload: payloadWithGearAsked,
               selectableOptions: [{ label: 'No — just these divers', value: 'no' }, { label: 'Yes — add another', value: 'yes' }],
               rentalEquipmentOptions: undefined,
@@ -2287,7 +2379,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               const gatedNoMore = resolvePreSendWhenPayloadReady({
                 payload: p as BookingPayloadLocal,
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 hasAuthUser: !!authUser,
                 timing: bookingSignupTiming
               })
@@ -2311,7 +2405,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   ? `Use an existing diver from your profile or create a new one for Diver ${newNum}?`
                   : `What's Diver ${newNum}'s full name?`,
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: p,
                 selectableOptions,
                 rentalEquipmentOptions: undefined,
@@ -2322,7 +2418,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             }
           }
           if (/^(lbs?|kg|pounds)$/i.test(msgTrim)) {
-            const fastUnit = tryFastPathUnitOnly(message, bookingPayload, resolvedShop.business_name)
+            const fastUnit = tryFastPathUnitOnly(message, bookingPayload, shopLabel)
             if (fastUnit) {
               return withAgentMeta({
                 success: true,
@@ -2331,7 +2427,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 message: fastUnit.message,
                 ...(fastUnit.messagePreamble ? { messagePreamble: fastUnit.messagePreamble } : {}),
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: fastUnit.payload,
                 selectableOptions: undefined,
                 rentalEquipmentOptions: addGearOptions(fastUnit.payload),
@@ -2350,7 +2448,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               const gatedConfirm = resolvePreSendWhenPayloadReady({
                 payload: p as BookingPayloadLocal,
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 hasAuthUser: !!authUser,
                 timing: bookingSignupTiming
               })
@@ -2361,7 +2461,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             const fastOptions: { rentalEquipmentNames?: string[]; profilePrefill?: typeof body.profilePrefill } = {}
             fastOptions.rentalEquipmentNames = rentalEquipmentNames
             if (profilePrefill) fastOptions.profilePrefill = profilePrefill
-            const fast = tryFastPath(nextStep, message, bookingPayload, resolvedShop.business_name, fastOptions)
+            const fast = tryFastPath(nextStep, message, bookingPayload, shopLabel, fastOptions)
             if (fast) {
               const fp = clampBookingPayloadToNextStep(fast.payload as BookingPayloadLocal, {
                 shopCourseCount: courses.length,
@@ -2373,7 +2473,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 const gatedFast = resolvePreSendWhenPayloadReady({
                   payload: p as BookingPayloadLocal,
                   shopId: resolvedShop.id,
-                  shopName: resolvedShop.business_name,
+                  shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                   hasAuthUser: !!authUser,
                   timing: bookingSignupTiming
                 })
@@ -2396,7 +2498,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 message: fast.message,
                 ...(fast.messagePreamble ? { messagePreamble: fast.messagePreamble } : {}),
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: fp,
                 selectableOptions: noRentalGearOptions ?? undefined,
                 rentalEquipmentOptions: showGearChips ?? undefined,
@@ -2471,7 +2575,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                     messagePreamble: 'Thanks — got your name.',
                     message: "What's the best email address for the booking?",
                     shopId: resolvedShop.id,
-                    shopName: resolvedShop.business_name,
+                    shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                     bookingPayload: fp,
                     selectableOptions: undefined,
                     rentalEquipmentOptions: undefined,
@@ -2488,7 +2594,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 message:
                   'I’m not sure how to read that line. Should I use it as the name for this booking, or were you switching to another dive shop / going back to browse?',
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 bookingPayload: pPending,
                 selectableOptions: [
                   { label: 'Use that as my contact name', value: BOOKING_CONTACT_USE_PENDING_VERBATIM },
@@ -2508,16 +2616,18 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             intent: 'booking' as const,
             bookingReady: false,
             message:
-              `Chat booking assistant (GPT-5.5) is turned off. Use Show form in the shop panel to finish with ${resolvedShop.business_name}, or set NUXT_PUBLIC_DISABLE_CHAT_AI=false and configure NUXT_OPENAI_API_KEY.`,
+              `Chat booking assistant (GPT-5.5) is turned off. Use Show form in the shop panel to finish with ${shopLabel}, or set NUXT_PUBLIC_DISABLE_CHAT_AI=false and configure NUXT_OPENAI_API_KEY.`,
             shopId: resolvedShop.id,
-            shopName: resolvedShop.business_name,
+            shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
             bookingPayload: bookingPayload ?? { shopId: resolvedShop.id },
             selectableOptions: [{ label: 'Open booking form', value: BOOKING_PRESEND_OPEN_FORM }]
           })
         }
 
         const nextStepHint = bookingPayload ? getNextBookingStep(bookingPayload) : null
-        const systemPrompt = buildBookingSystemPrompt(resolvedShop.business_name, courseNames, diveSiteNames, bookingPayload, nextStepHint, rentalEquipmentNames)
+        const systemPrompt = buildBookingSystemPrompt(shopLabel, courseNames, diveSiteNames, bookingPayload, nextStepHint, rentalEquipmentNames)
         const messages = [
           { role: 'system' as const, content: systemPrompt },
           ...(history || []),
@@ -2570,7 +2680,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               const gatedLlm = resolvePreSendWhenPayloadReady({
                 payload: payload as BookingPayloadLocal,
                 shopId: resolvedShop.id,
-                shopName: resolvedShop.business_name,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
                 hasAuthUser: !!authUser,
                 timing: bookingSignupTiming
               })
@@ -2792,7 +2904,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           message: messageForClient,
           ...(messagePreambleForClient ? { messagePreamble: messagePreambleForClient } : {}),
           shopId: resolvedShop.id,
-          shopName: resolvedShop.business_name,
+          shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
           bookingPayload: collectedPayload,
           selectableOptions: profileDiverOptionsFromLlm?.length ? profileDiverOptionsFromLlm : undefined,
           rentalEquipmentOptions: finalGearOptions?.length ? finalGearOptions : undefined,

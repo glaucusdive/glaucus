@@ -47,6 +47,12 @@ describe('extractReferredEntityPhrase', () => {
       'Explorer Ventures in Bali'
     )
   })
+
+  it('extracts shop after want to book without at/with', () => {
+    expect(
+      extractReferredEntityPhrase('sorry, i want to book explorer ventures in bali')
+    ).toBe('explorer ventures in bali')
+  })
 })
 
 describe('stripTrailingReferentNoise', () => {

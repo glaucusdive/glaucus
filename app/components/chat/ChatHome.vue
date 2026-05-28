@@ -347,6 +347,7 @@ import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/composables/useSupabase'
 import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst } from '~/utils/mergeProfileDefaultDivers'
 import { getLatestBookingPayloadFromMessages, bookingPayloadHasNamedDiver } from '~/utils/chatBookingPayload'
+import { shopDisplayLabelForUi } from '~/utils/shopDisplayLabel'
 import { isSearchPaginationUserMessage } from '~/utils/searchPaginationIntent'
 import {
   findAnchorAssistantIndexForPagination,
@@ -581,14 +582,15 @@ const guidedSearchState = ref(initialGuidedSearchState())
 /** From last guided search results — merged into booking when user taps Start booking */
 const guidedBookingHints = ref(null)
 
-// Selected shop name for "Book for [name]" chip (from results list or booking message)
+// Selected shop label for booking UI (includes location when known)
 const selectedShopName = computed(() => {
   if (!selectedShopId.value) return null
   const msgWithShops = [...messages.value].reverse().find(m => m.shops?.length)
   const shop = msgWithShops?.shops?.find(s => s.id === selectedShopId.value)
-  if (shop?.business_name) return shop.business_name
-  const bookingMsg = [...messages.value].reverse().find(m => m.shopId === selectedShopId.value && m.shopName)
-  return bookingMsg?.shopName ?? null
+  if (shop) return shopDisplayLabelForUi(shop)
+  const bookingMsg = [...messages.value].reverse().find(m => m.shopId === selectedShopId.value)
+  if (bookingMsg) return shopDisplayLabelForUi(bookingMsg)
+  return null
 })
 
 const detailDrawerAriaLabel = computed(() => {
@@ -611,11 +613,13 @@ const lastBookingPayload = computed(() => {
 
 // Shop to use for booking-form drawer (selected shop, or from any message in conversation)
 const bookingShopForDrawer = computed(() => {
-  if (selectedShopId.value && selectedShopName.value) return { id: selectedShopId.value, name: selectedShopName.value }
+  if (selectedShopId.value && selectedShopName.value) {
+    return { id: selectedShopId.value, name: selectedShopName.value }
+  }
   const m = [...messages.value].reverse().find(m => m.role === 'assistant' && (m.shopId || m.shops?.length))
-  if (m?.shopId && m?.shopName) return { id: m.shopId, name: m.shopName }
+  if (m?.shopId) return { id: m.shopId, name: shopDisplayLabelForUi(m) }
   const shop = m?.shops?.[0]
-  if (shop) return { id: shop.id, name: shop.business_name }
+  if (shop) return { id: shop.id, name: shopDisplayLabelForUi(shop) }
   return null
 })
 
@@ -1987,6 +1991,8 @@ const sendMessage = async (messageText, displayText) => {
         payload: storedPayload,
         shopId: response.shopId,
         shopName: response.shopName,
+        shopLocation: response.shopLocation,
+        shopDisplayName: response.shopDisplayName,
         selectableOptions: response.selectableOptions,
         rentalEquipmentOptions: response.rentalEquipmentOptions || undefined,
         hideNoneForGear: response.hideNoneForGear ?? false,
