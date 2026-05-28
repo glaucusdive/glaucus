@@ -24,6 +24,14 @@ describe('extractMidBookingShopSwitchPhrase', () => {
     )
     expect(p).toBe('Explorer Ventures in Bali')
   })
+
+  it('extracts want to book operator in place without at/with', () => {
+    const p = extractMidBookingShopSwitchPhrase(
+      'sorry, i want to book explorer ventures in bali'
+    )
+    expect(p?.toLowerCase()).toContain('explorer ventures')
+    expect(p?.toLowerCase()).toContain('bali')
+  })
 })
 
 describe('userMessageWantsResumeSearchDuringBooking', () => {

@@ -1,4 +1,6 @@
+import { parseShopNameAndPlaceHint } from '../../shared/shopNamePlaceHint'
 import {
+  cleanReferentPhraseForProbe,
   extractBookingTargetFallback,
   extractReferredEntityPhrase,
   extractShopSelectionPhrase
@@ -43,6 +45,7 @@ export function extractMidBookingShopSwitchPhrase (message: string): string | nu
   // Need a clear "different operator" signal so we do not steal real human names on the name step.
   const hasSwitchSignal =
     /\b(?:let'?s\s+)?(?:book|reserve)(?:ing)?\b/i.test(delead) ||
+    /\b(?:i\s+)?want\s+to\s+book\b/i.test(delead) ||
     /\bcan\s+i\s+book\b/i.test(delead) ||
     /\bbook(?:ing)?\s+with\b/i.test(delead) ||
     /\bgo\s+with\b/i.test(delead) ||
@@ -52,9 +55,19 @@ export function extractMidBookingShopSwitchPhrase (message: string): string | nu
     /\b(?:i\s*'?ll\s+)(?:take|pick)\b/i.test(delead) ||
     /\b(?:different|another|other)\s+(?:dive\s+)?shop\b/i.test(delead)
   if (!hasSwitchSignal) return null
-  return (
+
+  const fromExtractors =
     extractBookingTargetFallback(delead) ||
     extractShopSelectionPhrase(delead) ||
-    extractReferredEntityPhrase(delead)
-  )
+    extractReferredEntityPhrase(delead) ||
+    extractReferredEntityPhrase(trimmed)
+  if (fromExtractors) return fromExtractors
+
+  const namePlace = parseShopNameAndPlaceHint(delead)
+  if (namePlace) {
+    const phrase = cleanReferentPhraseForProbe(`${namePlace.namePart} in ${namePlace.placeHint}`)
+    if (phrase.length >= 2) return phrase
+  }
+
+  return null
 }

@@ -77,6 +77,9 @@ export function extractReferredEntityPhrase (message: string): string | null {
     /(?:let'?s\s+)?(?:book|reserve)(?:ing)?(?:\s+(?:(?:a\s+)?dive(?:\s+trip)?|a\s+trip|a\s+reservation))?\s+with\s+([^.?!]+)/i
   )
   if (m?.[1]) return normalizePhrase(m[1])
+  // "I want to book Explorer Ventures in Bali" (no at/with)
+  m = trimmed.match(/(?:i\s+)?want\s+to\s+book\s+(?!with\b|at\b)([^.?!]+)/i)
+  if (m?.[1]) return normalizePhrase(m[1])
   // "Let's book [full shop name]" — legacy chip text (prefer book_shop:<id> chips for duplicate names)
   m = trimmed.match(/^(?:let'?s\s+)?book(?:ing)?\s+(?!with\b|at\b)([^.?!]+)$/i)
   if (m?.[1]) return normalizePhrase(m[1])
@@ -148,6 +151,7 @@ export function extractBookingTargetFallback (message: string): string | null {
     /^(?:(?:can\s+i\s+)?(?:let'?s\s+)?)?reserve(?:\s+a\s+dive)?\s+at\s+(?:the\s+)?([^.?!]+)$/i,
     /^(?:let'?s\s+)?(?:book|reserve)(?:ing)?(?:\s+(?:(?:a\s+)?dive(?:\s+trip)?|a\s+trip|a\s+reservation))?\s+with\s+([^.?!]+)$/i,
     /^i\s+want\s+to\s+book\s+(?:at|with)\s+(?:the\s+)?([^.?!]+)$/i,
+    /^i\s+want\s+to\s+book\s+(?!with\b|at\b)([^.?!]+)$/i,
     /^i(?:'d|\s+would)\s+like\s+to\s+book\s+(?:at|with)\s+(?:the\s+)?([^.?!]+)$/i,
     /^(?:let'?s\s+)?book(?:ing)?\s+(?!with\b|at\b)([^.?!]+)$/i
   ]
