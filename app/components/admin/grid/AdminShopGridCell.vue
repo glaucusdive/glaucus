@@ -11,6 +11,7 @@
           type="text"
           placeholder="Business name"
           :class="ADMIN_GRID_WRITE_INPUT"
+          @keydown="onAdminGridInputKeydown"
         >
       </div>
     </div>
@@ -67,6 +68,7 @@
           v-model="textField"
           type="text"
           :class="ADMIN_GRID_WRITE_INPUT"
+          @keydown="onAdminGridInputKeydown"
         >
       </div>
     </div>
@@ -84,6 +86,7 @@ import type { ColumnDataSchemaModel } from '@revolist/vue3-datagrid'
 import AdminMultiSelectCheckboxDropdown from '~/components/admin/AdminMultiSelectCheckboxDropdown.vue'
 import type { AdminShopGridContext, ShopGridRow } from './adminShopGridContext'
 import { ADMIN_GRID_READ_DATA, ADMIN_GRID_WRITE_INPUT, ADMIN_GRID_WRITE_WRAP } from '~/components/admin/adminGridEditClasses'
+import { onAdminGridInputKeydown } from '~/utils/adminGridInputKeydown'
 
 const SELECT_PROPS = new Set([
   'country_id',
