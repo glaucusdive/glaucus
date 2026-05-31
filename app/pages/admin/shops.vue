@@ -77,6 +77,7 @@
             :columns="gridColumns"
             :source="rows"
             :row-size="56"
+            @beforekeydown="onGridBeforeKeydown"
           />
           <template #fallback>
             <div class="flex flex-1 items-center justify-center p-8 text-sm text-zinc-500 dark:text-zinc-400">Loading grid…</div>
@@ -156,6 +157,7 @@ import { ref, computed, reactive, onMounted, watch } from 'vue'
 import RevoGrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import { useTheme } from '~/composables/useTheme'
 import { normalizeAdminLookupId } from '~/utils/adminLookupIds'
+import { shouldKeepArrowInInput } from '~/utils/adminGridInputKeydown'
 import { adminColumnHeaderTemplate } from '~/utils/revoGridAdminColumnHeader'
 import AdminShopGridCell from '~/components/admin/grid/AdminShopGridCell.vue'
 import AdminButton from '~/components/admin/AdminButton.vue'
@@ -748,6 +750,19 @@ const gridContext = {
 
 function withAdminHeader (col) {
   return { ...col, columnTemplate: adminColumnHeaderTemplate }
+}
+
+/** Let arrow/home/end move the caret inside grid text inputs instead of changing cells. */
+function onGridBeforeKeydown (e) {
+  if (!writeMode.value) return
+  const original = e?.detail?.original
+  if (!(original instanceof KeyboardEvent)) return
+  const target = original.target
+  if (!(target instanceof HTMLInputElement)) return
+  if (!target.closest('.admin-revo-grid')) return
+  if (shouldKeepArrowInInput(original, target)) {
+    e.preventDefault()
+  }
 }
 
 const gridColumns = [

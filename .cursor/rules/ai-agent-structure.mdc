@@ -1,5 +1,5 @@
 ---
-description: Abstract structure for AI agents — tools, decisions, retries, steps, state
+description: 
 alwaysApply: true
 ---
 
@@ -56,7 +56,7 @@ Concrete instance: `server/utils/runAiSearchPostHandler.ts` (POST `/api/guided-o
 ### Tools (contract)
 
 | Tool / read | Input | Side effects | Triggered by |
-|-------------|--------|--------------|--------------|
+|----|-----|-----|-----|
 | `interpretUserTurn` | user message + short history | OpenAI GPT-5.5 JSON | Orchestrator when `shouldRunInterpretNlu` (not booking continuation; clarify chips use `handleForcedEntityClarify` without NLU on that branch) |
 | `extractReferredEntityPhrase` | user message text | none | Orchestrator when not in booking continuation |
 | `probeReferentPhrase` | phrase string | read: diveshops, dive_sites, countries, country_aliases, regions, diveshops locale/city/state | Orchestrator |
