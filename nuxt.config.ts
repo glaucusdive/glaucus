@@ -53,12 +53,18 @@ export default defineNuxtConfig({
        * dive shop Live/Demo toggle, chat “Step back”. Flip to `false` to turn off.
        * Deploys can set `NUXT_PUBLIC_TEST_MODE` without editing this file (string `true` / `false`).
        */
-      testMode: true,
+      /** Off when `NUXT_PUBLIC_TEST_MODE=false` at build (Netlify). Default on if unset. */
+      testMode: process.env.NUXT_PUBLIC_TEST_MODE !== 'false',
       /** Set NUXT_PUBLIC_POSTHOG_ENABLED=true on Netlify prod only. */
       posthogEnabled: process.env.NUXT_PUBLIC_POSTHOG_ENABLED === 'true',
       posthogKey: process.env.NUXT_PUBLIC_POSTHOG_KEY || '',
       /** Ingest host from PostHog project settings; set via NUXT_PUBLIC_POSTHOG_HOST (not hardcoded — Netlify secrets scan). */
-      posthogHost: process.env.NUXT_PUBLIC_POSTHOG_HOST || ''
+      posthogHost: process.env.NUXT_PUBLIC_POSTHOG_HOST || '',
+      /**
+       * When `true`, tag events with test_mode (for dashboards that exclude test traffic).
+       * Default off so KPI dashboards work while app test mode may still be on.
+       */
+      posthogMarkTestTraffic: process.env.NUXT_PUBLIC_POSTHOG_MARK_TEST_TRAFFIC === 'true'
     }
   },
 

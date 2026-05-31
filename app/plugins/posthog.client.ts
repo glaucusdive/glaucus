@@ -14,7 +14,10 @@ export default defineNuxtPlugin(() => {
 
   posthog?.opt_in_capturing()
 
+  const markTestTraffic =
+    config.public.posthogMarkTestTraffic === true &&
+    isTestModeEnabled(config.public.testMode)
   registerSuperProperties({
-    test_mode: isTestModeEnabled(config.public.testMode)
+    test_mode: markTestTraffic
   })
 })
