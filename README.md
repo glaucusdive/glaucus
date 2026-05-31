@@ -74,6 +74,25 @@ bun run preview
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
 
+## Environment variables
+
+Copy a root `.env` for local dev (never commit it). Set the same names in **Netlify → Environment variables** for production.
+
+| Variable | Purpose |
+|----------|---------|
+| `NUXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NUXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `NUXT_OPENAI_API_KEY` or `OPENAI_API_KEY` | GPT-5.5 chat / NLU |
+| `RESEND_API_KEY` | Booking emails |
+| `BOOKING_FROM_EMAIL` | Optional verified sender |
+| `NUXT_PUBLIC_POSTHOG_ENABLED` | `true` on prod only |
+| `NUXT_PUBLIC_POSTHOG_KEY` | PostHog project token (`phc_…`) |
+| `NUXT_PUBLIC_POSTHOG_HOST` | Ingest host from PostHog project settings |
+| `NUXT_PUBLIC_POSTHOG_MARK_TEST_TRAFFIC` | Optional `true` to tag events `test_mode` (only if dashboards exclude test traffic) |
+| `NUXT_PUBLIC_TEST_MODE` | `false` on prod to turn off app test mode (amber shell, booking whitelist) |
+
+PostHog dashboards: [docs/posthog-dashboard-prompts.md](docs/posthog-dashboard-prompts.md). Supabase CLI: `supabase login`, `supabase link`, `supabase db push` (use the glaucus account; omit `--profile glaucus`).
+
 ## Dive shop chat (optional AI-first search)
 
 - **`NUXT_PUBLIC_AI_SEARCH_FIRST`** — when `true`, pre-booking search uses the guided orchestrator (NLU + search LLM + Supabase) instead of chip-first `/api/guided-flow`. Default is `false` (guided remains primary).

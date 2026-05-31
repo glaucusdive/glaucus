@@ -1,4 +1,5 @@
 import type { User } from '@supabase/supabase-js'
+import { isTestModeEnabled } from '~~/shared/testMode'
 
 /** Stable event names for PostHog insights and AI dashboard prompts. */
 export const AnalyticsEvents = {
@@ -24,9 +25,19 @@ export function useAnalytics () {
     () => config.public.posthogEnabled === true && Boolean(config.public.posthogKey)
   )
 
+  function testModeProperty (): boolean {
+    return (
+      config.public.posthogMarkTestTraffic === true &&
+      isTestModeEnabled(config.public.testMode)
+    )
+  }
+
   function capture (event: AnalyticsEventName | string, properties?: Record<string, unknown>) {
     if (!import.meta.client || !isEnabled.value) return
-    posthog?.capture(event, properties)
+    posthog?.capture(event, {
+      ...properties,
+      test_mode: testModeProperty()
+    })
   }
 
   function registerSuperProperties (props: Record<string, unknown>) {

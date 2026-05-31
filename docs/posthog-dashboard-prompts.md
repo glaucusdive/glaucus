@@ -9,9 +9,9 @@ Use these prompts in **PostHog AI** (sidebar chat in the PostHog app) after depl
 3. Open PostHog → AI chat → paste a prompt below.
 4. Refine with follow-ups (e.g. “last 7 days only”, “24 hour funnel window”).
 
-Include this line in every prompt until production turns off test mode:
+**If dashboards are empty but Activity shows events:** Edit each insight and remove the filter `test_mode is not true` / “exclude test traffic”. Older events may still have `test_mode: true` from before a deploy; new events default to `test_mode: false` unless you set `NUXT_PUBLIC_POSTHOG_MARK_TEST_TRAFFIC=true` on Netlify.
 
-> Exclude events where property `test_mode` is true.
+**Do not** add “exclude test_mode” to new dashboard prompts unless you explicitly enable test tagging on Netlify.
 
 ## Master dashboard
 
@@ -19,7 +19,6 @@ Creates **Glaucus — Product KPIs** with core tiles:
 
 ```
 Create a dashboard named "Glaucus — Product KPIs" for our dive-booking app.
-Exclude events where test_mode = true.
 
 Include these insights:
 1. Trend: unique users per day for event chat_opened, last 30 days.
@@ -34,9 +33,9 @@ Include these insights:
 
 | Goal | Prompt |
 |------|--------|
-| Search quality | `Funnel from chat_message_sent to search_results_shown in the last 7 days. Break down search_results_shown by shop_count buckets 0, 1-5, 6+. Exclude test_mode = true.` |
-| Entity clarify | `Trend of entity_clarify_selected by clarify_kind, last 30 days. Exclude test_mode = true.` |
-| Pre-send drop-off | `Funnel booking_started → booking_presend_review → booking_submitted, 24 hour window. Exclude test_mode = true.` |
+| Search quality | `Funnel from chat_message_sent to search_results_shown in the last 7 days. Break down search_results_shown by shop_count buckets 0, 1-5, 6+.` |
+| Entity clarify | `Trend of entity_clarify_selected by clarify_kind, last 30 days.` |
+| Pre-send drop-off | `Funnel booking_started → booking_presend_review → booking_submitted, 24 hour window.` |
 | Web traffic | `Create a dashboard tile: pageviews and unique visitors by path for the last 7 days.` |
 | Session replay playlist | `Create a playlist of session recordings where users triggered booking_started but did not trigger booking_submitted in the same session, last 7 days.` |
 | Hog function (optional) | `Create a Hog function that drops events where test_mode = true or environment is staging.` |
