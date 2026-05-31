@@ -72,6 +72,7 @@ const router = useRouter()
 const isSignUp = computed(() => route.path === '/auth/signup' || route.query.signup === '1')
 
 const { signInWithGoogle, signUpWithEmail, signInWithEmail, signInWithMagicLink } = useAuth()
+const { capture, AnalyticsEvents } = useAnalytics()
 
 function authRedirectTarget (): string {
   return normalizeAuthRedirect(route.query.redirect as string | undefined)
@@ -131,6 +132,7 @@ async function handleEmail () {
           'caution'
         )
       } else {
+        capture(AnalyticsEvents.AUTH_SIGNED_UP, { method: 'email' })
         setMessage('Check your email to confirm your account, then sign in.', 'success')
       }
     } else {

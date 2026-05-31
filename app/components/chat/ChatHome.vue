@@ -383,6 +383,7 @@ import {
   mapOrchestratorActivityToStatusLine
 } from '~/utils/chatLoadingStatus'
 import { shouldRouteMessageToGuidedFlow } from '~/utils/chatGuidedFlowRouting'
+import { trackOrchestratorResponseAnalytics } from '~/utils/orchestratorAnalytics'
 
 // Get route to check for initial query
 const route = useRoute()
@@ -390,6 +391,26 @@ const router = useRouter()
 const runtimeConfig = useRuntimeConfig()
 const { isSignedIn, accessToken, user } = useAuth()
 const { client } = useSupabase()
+const { capture, AnalyticsEvents } = useAnalytics()
+
+function trackOutgoingChatMessage (rawTrim, displayText, messageText, inBookingFlow) {
+  let message_kind = 'text'
+  if (/^entity_clarify:/i.test(rawTrim)) {
+    message_kind = 'entity_clarify'
+    const clarify_kind = rawTrim.replace(/^entity_clarify:/i, '').trim()
+    capture(AnalyticsEvents.ENTITY_CLARIFY_SELECTED, { clarify_kind })
+  } else if (isSearchPaginationUserMessage(rawTrim)) {
+    message_kind = 'pagination'
+  } else if (isBookingHandoffUserMessage(messageText ?? rawTrim)) {
+    message_kind = 'booking_handoff'
+  }
+  const is_chip = displayText != null && String(displayText).trim() !== String(rawTrim).trim()
+  capture(AnalyticsEvents.CHAT_MESSAGE_SENT, {
+    in_booking_flow: Boolean(inBookingFlow),
+    is_chip,
+    message_kind
+  })
+}
 /** Profile snapshot for agent prefill (name, email, defaultDiver); set when signed in. */
 const profilePrefillSnapshot = ref(null)
 
@@ -646,8 +667,9 @@ function isInBookingFlowForShop (shopId) {
 }
 
 // Start booking via AI agent (from "Start Booking" in right panel)
-async function handleStartBookingFromPanel (shopId, shopName) {
+async function handleStartBookingFromPanel (shopId, shopName, source = 'panel') {
   selectedShopId.value = shopId
+  capture(AnalyticsEvents.BOOKING_STARTED, { shop_id: shopId, source })
   if (useGuidedSearch.value && guidedBookingHints.value && shopId) {
     const hints = guidedBookingHints.value
     const pre = { shopId }
@@ -1495,6 +1517,12 @@ const sendMessage = async (messageText, displayText) => {
 
   const rawTrim = String(message).trim()
 
+  const lastAssistForAnalytics = [...messages.value].reverse().find((m) => m.role === 'assistant')
+  const inBookingFlowForAnalytics = Boolean(
+    lastAssistForAnalytics?.intent === 'booking' && lastAssistForAnalytics?.shopId
+  )
+  trackOutgoingChatMessage(rawTrim, displayText, messageText, inBookingFlowForAnalytics)
+
   // Cancel any in-progress request
   if (abortController.value) {
     abortController.value.abort()
@@ -1740,6 +1768,16 @@ const sendMessage = async (messageText, displayText) => {
           guidedBookingHintsSnapshot: hintsSnap,
           ...(searchMatchBadges.length ? { searchMatchBadges } : {})
         })
+        trackOrchestratorResponseAnalytics(
+          {
+            intent: 'search',
+            shops: guidedRes.shops,
+            totalResults: guidedRes.totalResults,
+            hasMoreResults: guidedRes.hasMoreResults,
+            selectableOptions: guidedRes.selectableOptions
+          },
+          capture
+        )
       } else {
         messages.value.push({
           role: 'assistant',
@@ -1910,6 +1948,12 @@ const sendMessage = async (messageText, displayText) => {
             ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {})
           })
           if (bookRes?.sent) {
+            capture(AnalyticsEvents.BOOKING_SUBMITTED, {
+              shop_id: storedPayload.shopId,
+              diver_count: Array.isArray(storedPayload.divers) ? storedPayload.divers.length : 0,
+              source: 'chat',
+              is_guest: !isSignedIn.value
+            })
             messages.value.push({
               role: 'assistant',
               content: 'Request sent. Check your email for confirmation.',
@@ -1942,6 +1986,11 @@ const sendMessage = async (messageText, displayText) => {
         } catch (bookErr) {
           const err = bookErr && typeof bookErr === 'object' ? bookErr : {}
           const data = err.data && typeof err.data === 'object' ? err.data : {}
+          capture(AnalyticsEvents.BOOKING_SUBMIT_FAILED, {
+            shop_id: storedPayload?.shopId,
+            source: 'chat',
+            error_code: data.statusCode ?? err.statusCode ?? 'unknown'
+          })
           const errMsg = data.resendError ?? data.message ?? data.statusMessage ?? err.statusMessage ?? err.message ?? 'Failed to send email to the dive shop.'
           messages.value.push({
             role: 'assistant',
@@ -2002,6 +2051,7 @@ const sendMessage = async (messageText, displayText) => {
         ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {}),
         ...(searchMatchBadges.length ? { searchMatchBadges } : {})
       })
+      trackOrchestratorResponseAnalytics(response, capture)
       if (
         shopsOut.length &&
         shopsOut.some(s => s && s.id && !Array.isArray(s.cardCourseNames))
@@ -2110,7 +2160,7 @@ const stepBack = () => {
 function handleStartBookingFromCard (shop) {
   if (!shop?.id) return
   armShopDetailCloseGuard()
-  void handleStartBookingFromPanel(shop.id, shop.business_name ?? '')
+  void handleStartBookingFromPanel(shop.id, shop.business_name ?? '', 'card')
 }
 
 // Handle detail affordance on card (opens bottom sheet)

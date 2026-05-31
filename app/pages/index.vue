@@ -25,6 +25,9 @@ const LazyChatHome = defineAsyncComponent(() => import('~/components/chat/ChatHo
 const route = useRoute()
 const router = useRouter()
 const { init, isSignedIn } = useAuth()
+const { capture, AnalyticsEvents } = useAnalytics()
+
+const chatOpenedTracked = ref(false)
 
 /** False until client `init()` finishes. */
 const authResolved = ref(false)
@@ -48,6 +51,19 @@ onMounted(async () => {
   await init()
   authResolved.value = true
 })
+
+watch(
+  showChatShell,
+  (show) => {
+    if (!show || !authResolved.value || chatOpenedTracked.value) return
+    chatOpenedTracked.value = true
+    capture(AnalyticsEvents.CHAT_OPENED, {
+      is_guest: !isSignedIn.value,
+      entry: route.query.chat === '1' ? 'landing' : 'direct'
+    })
+  },
+  { immediate: true }
+)
 
 /** Any sign-out on home should keep chat shell (guest mode), not marketing landing. */
 watch(isSignedIn, (signedIn) => {

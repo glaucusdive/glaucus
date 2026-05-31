@@ -1,6 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  modules: ['@nuxt/ui'],
+  modules: ['@nuxt/ui', '@posthog/nuxt'],
   css: ['~/assets/css/main.css'],
   nitro: {
     preset: 'netlify'
@@ -53,7 +53,25 @@ export default defineNuxtConfig({
        * dive shop Live/Demo toggle, chat “Step back”. Flip to `false` to turn off.
        * Deploys can set `NUXT_PUBLIC_TEST_MODE` without editing this file (string `true` / `false`).
        */
-      testMode: true
+      testMode: true,
+      /** Set NUXT_PUBLIC_POSTHOG_ENABLED=true on Netlify prod only. */
+      posthogEnabled: process.env.NUXT_PUBLIC_POSTHOG_ENABLED === 'true',
+      posthogKey: process.env.NUXT_PUBLIC_POSTHOG_KEY || '',
+      posthogHost: process.env.NUXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com'
+    }
+  },
+
+  posthogConfig: {
+    publicKey: process.env.NUXT_PUBLIC_POSTHOG_KEY || '',
+    host: process.env.NUXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
+    clientConfig: {
+      person_profiles: 'identified_only',
+      capture_pageview: true,
+      capture_pageleave: true,
+      session_recording: {
+        maskAllInputs: true,
+        maskTextSelector: '[data-ph-mask]'
+      }
     }
   }
 })
