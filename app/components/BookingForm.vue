@@ -250,6 +250,7 @@ const props = defineProps({
 const { closeDrawer, updateDraftIdIfOpen, updateLiveBookingPayloadIfOpen } = useDrawer()
 const { client } = useSupabase()
 const { isSignedIn, accessToken, user } = useAuth()
+const { capture, AnalyticsEvents } = useAnalytics()
 
 // Get today's date in YYYY-MM-DD format for date inputs
 const today = computed(() => {
@@ -629,6 +630,12 @@ const handleSubmit = async () => {
       ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {})
     }) as BookingApiResponse
     if (res?.sent) {
+      capture(AnalyticsEvents.BOOKING_SUBMITTED, {
+        shop_id: payload.shopId,
+        diver_count: Array.isArray(payload.divers) ? payload.divers.length : 0,
+        source: 'form',
+        is_guest: !isSignedIn.value
+      })
       clearStoredBookingDraftId()
       if (isSignedIn.value && user.value?.id && Array.isArray(payload.divers) && payload.divers.length > 0) {
         try {
@@ -648,7 +655,18 @@ const handleSubmit = async () => {
       closeDrawer()
     }
   } catch (e: unknown) {
-    const err = e as { data?: { message?: string; statusMessage?: string }; statusMessage?: string; message?: string }
+    const err = e as {
+      data?: { message?: string; statusMessage?: string; statusCode?: number }
+      statusCode?: number
+      statusMessage?: string
+      message?: string
+    }
+    const payload = buildPayload()
+    capture(AnalyticsEvents.BOOKING_SUBMIT_FAILED, {
+      shop_id: payload.shopId,
+      source: 'form',
+      error_code: err?.data?.statusCode ?? err?.statusCode ?? 'unknown'
+    })
     submitError.value = err?.data?.message || err?.data?.statusMessage || err?.statusMessage || err?.message || 'Failed to send booking request. Please try again.'
   } finally {
     submitLoading.value = false
