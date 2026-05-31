@@ -2,3 +2,7 @@
   command = "npm run build"
   publish = "dist"
 
+# Public PostHog ingest URL is not a secret; omit from scan so env value is not matched in docs/config.
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "NUXT_PUBLIC_POSTHOG_HOST"
+

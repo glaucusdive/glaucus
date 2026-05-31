@@ -57,13 +57,14 @@ export default defineNuxtConfig({
       /** Set NUXT_PUBLIC_POSTHOG_ENABLED=true on Netlify prod only. */
       posthogEnabled: process.env.NUXT_PUBLIC_POSTHOG_ENABLED === 'true',
       posthogKey: process.env.NUXT_PUBLIC_POSTHOG_KEY || '',
-      posthogHost: process.env.NUXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com'
+      /** Ingest host from PostHog project settings; set via NUXT_PUBLIC_POSTHOG_HOST (not hardcoded — Netlify secrets scan). */
+      posthogHost: process.env.NUXT_PUBLIC_POSTHOG_HOST || ''
     }
   },
 
   posthogConfig: {
     publicKey: process.env.NUXT_PUBLIC_POSTHOG_KEY || '',
-    host: process.env.NUXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
+    host: process.env.NUXT_PUBLIC_POSTHOG_HOST || '',
     clientConfig: {
       person_profiles: 'identified_only',
       capture_pageview: true,
