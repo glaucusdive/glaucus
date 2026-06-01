@@ -24,20 +24,43 @@
         <!-- Email form -->
         <form @submit.prevent="handleEmail" class="space-y-3">
           <div v-if="isSignUp" class="flex flex-col gap-1">
-            <label for="displayName" class="text-xs font-medium text-zinc-700 dark:text-zinc-300">Display name (optional)</label>
-            <input id="displayName" v-model="displayName" type="text" autocomplete="name"
-              class="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-zinc-900 dark:text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-500" />
+            <FormField label="Display name (optional)" variant="admin" label-style="auth" field-id="displayName">
+              <FormInput
+                id="displayName"
+                v-model="displayName"
+                type="text"
+                variant="admin"
+                size="md"
+                focus-ring
+                autocomplete="name"
+              />
+            </FormField>
           </div>
-          <div class="flex flex-col gap-1">
-            <label for="email" class="text-xs font-medium text-zinc-700 dark:text-zinc-300">Email</label>
-            <input id="email" v-model="email" type="email" required autocomplete="email"
-              class="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-zinc-900 dark:text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-500" placeholder="you@example.com" />
-          </div>
-          <div v-if="!magicLinkOnly" class="flex flex-col gap-1">
-            <label for="password" class="text-xs font-medium text-zinc-700 dark:text-zinc-300">Password</label>
-            <input id="password" v-model="password" type="password" :required="!magicLinkOnly" autocomplete="password"
-              class="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-zinc-900 dark:text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-500" />
-          </div>
+          <FormField label="Email" variant="admin" label-style="auth" field-id="email">
+            <FormInput
+              id="email"
+              v-model="email"
+              type="email"
+              variant="admin"
+              size="md"
+              focus-ring
+              required
+              autocomplete="email"
+              placeholder="you@example.com"
+            />
+          </FormField>
+          <FormField v-if="!magicLinkOnly" label="Password" variant="admin" label-style="auth" field-id="password">
+            <FormInput
+              id="password"
+              v-model="password"
+              type="password"
+              variant="admin"
+              size="md"
+              focus-ring
+              :required="!magicLinkOnly"
+              autocomplete="password"
+            />
+          </FormField>
           <div class="flex flex-col gap-2">
             <button type="submit" :disabled="loading"
               class="w-full py-3 px-4 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 cursor-pointer ">

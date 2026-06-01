@@ -17,131 +17,131 @@
         <h3 class="text-base font-bold px-2 text-zinc-900 dark:text-white">Trip Information</h3>
 
         <!-- Name -->
-        <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2">
-          <label for="name" class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Name</label>
-          <input type="text" id="name" v-model="formData.name" required
-            class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
-        </fieldset>
+        <FormFieldset label="Name" field-id="name">
+          <FormInput id="name" v-model="formData.name" type="text" variant="panel" required />
+        </FormFieldset>
 
         <!-- Email -->
-        <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2">
-          <label for="email" class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Email</label>
-          <input type="email" id="email" v-model="formData.email" required
-            class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
-        </fieldset>
+        <FormFieldset label="Email" field-id="email">
+          <FormInput id="email" v-model="formData.email" type="email" variant="panel" required />
+        </FormFieldset>
 
         <!-- Dates -->
-        <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-2 p-2 mx-2">
-          <label class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Dates for Diving</label>
-
-          <div class="flex flex-col gap-1">
-            <label for="startDate" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Start Date</label>
-            <input type="date" id="startDate" v-model="formData.startDate" :min="today" required
-              class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
-          </div>
-
-          <div class="flex flex-col gap-1">
-            <label for="endDate" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">End Date</label>
-            <input type="date" id="endDate" v-model="formData.endDate" :min="formData.startDate || today" required
-              class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
-          </div>
-        </fieldset>
+        <FormFieldset label="Dates for Diving" wide-gap>
+          <FormField label="Start Date" variant="panel" label-tone="sub" field-id="startDate">
+            <FormInput
+              id="startDate"
+              v-model="formData.startDate"
+              type="date"
+              variant="panel"
+              :min="today"
+              required
+            />
+          </FormField>
+          <FormField label="End Date" variant="panel" label-tone="sub" field-id="endDate">
+            <FormInput
+              id="endDate"
+              v-model="formData.endDate"
+              type="date"
+              variant="panel"
+              :min="formData.startDate || today"
+              required
+            />
+          </FormField>
+        </FormFieldset>
 
         <!-- Courses (from Supabase for this shop) -->
-        <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2">
-          <label class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Courses (optional)</label>
+        <FormFieldset label="Courses (optional)">
           <div v-if="coursesLoading" class="px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">Loading courses…</div>
           <div v-else-if="courses.length === 0" class="px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">No courses listed for this shop.</div>
           <div v-else class="flex flex-col gap-1 px-2">
-            <label v-for="course in courses" :key="course.id"
-              class="flex items-center gap-2 p-1 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 rounded-sm cursor-pointer">
-              <input type="checkbox" :value="course.name" v-model="formData.desiredCourses" class="cursor-pointer" />
+            <FormCheckbox
+              v-for="course in courses"
+              :key="course.id"
+              v-model="formData.desiredCourses"
+              :value="course.name"
+              variant="panel"
+            >
               <span class="text-sm text-zinc-900 dark:text-white">{{ course.name }}</span>
-            </label>
+            </FormCheckbox>
           </div>
-        </fieldset>
+        </FormFieldset>
 
         <!-- Desired Dive Sites (from Supabase for this shop) -->
-        <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2">
-          <label class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Desired Dive Sites (optional)</label>
+        <FormFieldset label="Desired Dive Sites (optional)">
           <div v-if="diveSitesLoading" class="px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">Loading dive sites…</div>
           <div v-else-if="diveSites.length === 0" class="px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">No dive sites listed for this shop.</div>
           <div v-else class="flex flex-col gap-1 px-2">
-            <label v-for="site in diveSites" :key="site.id"
-              class="flex items-center gap-2 p-1 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 rounded-sm cursor-pointer">
-              <input type="checkbox" :value="site.name" v-model="formData.desiredDiveSites" class="cursor-pointer" />
+            <FormCheckbox
+              v-for="site in diveSites"
+              :key="site.id"
+              v-model="formData.desiredDiveSites"
+              :value="site.name"
+              variant="panel"
+            >
               <span class="text-sm text-zinc-900 dark:text-white">{{ site.name }}</span>
-            </label>
+            </FormCheckbox>
           </div>
-        </fieldset>
+        </FormFieldset>
 
         <hr class="border-zinc-300 dark:border-zinc-700" />
 
         <h3 class="text-base font-bold px-2 text-zinc-900 dark:text-white">Diver Information</h3>
 
         <!-- Number of Divers -->
-        <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2">
-          <label for="numberOfDivers" class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Number of Divers</label>
-          <input type="number" id="numberOfDivers" v-model.number="formData.numberOfDivers"
-            @input="updateDiversCount(formData.numberOfDivers)" min="1" required
-            class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
-        </fieldset>
+        <FormFieldset label="Number of Divers" field-id="numberOfDivers">
+          <FormInput
+            id="numberOfDivers"
+            v-model="formData.numberOfDivers"
+            type="number"
+            variant="panel"
+            min="1"
+            required
+            @update:model-value="updateDiversCount"
+          />
+        </FormFieldset>
 
         <!-- Divers Details -->
         <div v-for="(diver, index) in formData.divers" :key="index"
           class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-2 p-2 mx-2">
           <h3 class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Diver {{ index + 1 }}</h3>
 
-          <div class="flex flex-col gap-1">
-            <label :for="`diver-name-${index}`" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Name</label>
-            <input type="text" :id="`diver-name-${index}`" v-model="diver.name" required
-              class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
-          </div>
+          <FormField label="Name" variant="panel" label-tone="sub" :field-id="`diver-name-${index}`">
+            <FormInput :id="`diver-name-${index}`" v-model="diver.name" type="text" variant="panel" required />
+          </FormField>
 
-          <div class="flex flex-col gap-1">
-            <label :for="`diver-cert-${index}`" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Certification Number</label>
-            <input type="text" :id="`diver-cert-${index}`" v-model="diver.certificationNumber" required
-              class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
-          </div>
+          <FormField label="Certification Number" variant="panel" label-tone="sub" :field-id="`diver-cert-${index}`">
+            <FormInput :id="`diver-cert-${index}`" v-model="diver.certificationNumber" type="text" variant="panel" required />
+          </FormField>
 
-          <div class="flex flex-col gap-1">
-            <label :for="`diver-dives-${index}`" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Number of Dives Completed</label>
-            <input type="text" :id="`diver-dives-${index}`" v-model="diver.numberOfDives" required
-              class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
-          </div>
+          <FormField label="Number of Dives Completed" variant="panel" label-tone="sub" :field-id="`diver-dives-${index}`">
+            <FormInput :id="`diver-dives-${index}`" v-model="diver.numberOfDives" type="text" variant="panel" required />
+          </FormField>
 
           <!-- Height -->
           <div class="flex gap-2 items-end">
-            <div class="flex flex-col gap-1 flex-1 min-w-0">
-              <label :for="`diver-height-${index}`" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Height</label>
-              <input type="text" :id="`diver-height-${index}`" v-model="diver.height" required
-                class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
-            </div>
-            <div class="flex flex-col gap-1 w-24 shrink-0">
-              <label :for="`diver-height-unit-${index}`" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Unit</label>
-              <select :id="`diver-height-unit-${index}`" v-model="diver.heightUnit"
-                class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-tight outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">
+            <FormField label="Height" variant="panel" label-tone="sub" :field-id="`diver-height-${index}`" class="flex-1 min-w-0">
+              <FormInput :id="`diver-height-${index}`" v-model="diver.height" type="text" variant="panel" required />
+            </FormField>
+            <FormField label="Unit" variant="panel" label-tone="sub" :field-id="`diver-height-unit-${index}`" class="w-24 shrink-0">
+              <FormSelect :id="`diver-height-unit-${index}`" v-model="diver.heightUnit" variant="panel">
                 <option value="ft-in">ft' in"</option>
                 <option value="cm">cm</option>
-              </select>
-            </div>
+              </FormSelect>
+            </FormField>
           </div>
 
           <!-- Weight -->
           <div class="flex gap-2 items-end">
-            <div class="flex flex-col gap-1 flex-1 min-w-0">
-              <label :for="`diver-weight-${index}`" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Weight</label>
-              <input type="text" :id="`diver-weight-${index}`" v-model="diver.weight" required
-                class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-none outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white" />
-            </div>
-            <div class="flex flex-col gap-1 w-24 shrink-0">
-              <label :for="`diver-weight-unit-${index}`" class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Unit</label>
-              <select :id="`diver-weight-unit-${index}`" v-model="diver.weightUnit"
-                class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-tight outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">
+            <FormField label="Weight" variant="panel" label-tone="sub" :field-id="`diver-weight-${index}`" class="flex-1 min-w-0">
+              <FormInput :id="`diver-weight-${index}`" v-model="diver.weight" type="text" variant="panel" required />
+            </FormField>
+            <FormField label="Unit" variant="panel" label-tone="sub" :field-id="`diver-weight-unit-${index}`" class="w-24 shrink-0">
+              <FormSelect :id="`diver-weight-unit-${index}`" v-model="diver.weightUnit" variant="panel">
                 <option value="lbs">lbs</option>
                 <option value="kg">kg</option>
-              </select>
-            </div>
+              </FormSelect>
+            </FormField>
           </div>
 
           <!-- Rental Gear -->
@@ -164,14 +164,18 @@
                 </button>
               </div>
 
-              <div class="flex flex-col gap-1">
-                <label :for="`diver-${index}-gear-type-${gearIndex}`" class="text-xs text-zinc-600 dark:text-zinc-400">Gear Type</label>
-                <select :id="`diver-${index}-gear-type-${gearIndex}`" v-model="gear.gearType" required
-                  class="h-10 min-h-10 w-full rounded-sm px-2 py-0 text-sm leading-tight outline-none hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 focus:bg-zinc-200 dark:focus:bg-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white">
+              <FormField label="Gear Type" variant="panel" label-tone="sub" :field-id="`diver-${index}-gear-type-${gearIndex}`">
+                <FormSelect
+                  :id="`diver-${index}-gear-type-${gearIndex}`"
+                  v-model="gear.gearType"
+                  variant="panel"
+                  muted
+                  required
+                >
                   <option value="">Select gear type</option>
                   <option v-for="type in gearTypes" :key="type" :value="type">{{ type }}</option>
-                </select>
-              </div>
+                </FormSelect>
+              </FormField>
             </div>
           </div>
         </div>

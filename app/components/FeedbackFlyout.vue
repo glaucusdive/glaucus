@@ -54,80 +54,85 @@
       </div>
 
       <form v-else class="flex flex-col gap-4 p-2" @submit.prevent="handleSubmit">
-        <div class="flex flex-col gap-1">
-          <legend class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400 px-0.5">Type</legend>
-          <select
-            id="feedback-kind"
-            v-model="kind"
-            class="rounded-md w-full p-2 text-sm bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-600 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-500"
-          >
+        <FormField label="Type" variant="admin" label-style="uppercase" field-id="feedback-kind">
+          <FormSelect id="feedback-kind" v-model="kind" variant="admin" muted focus-ring>
             <option value="bug">Bug</option>
             <option value="feature">Feature</option>
             <option value="correction">Dive Shop Inquiries</option>
-          </select>
-        </div>
+          </FormSelect>
+        </FormField>
 
         <hr class="border-zinc-200 dark:border-zinc-800" />
 
-        <div class="flex flex-col gap-1">
-          <label for="feedback-name" class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">Name</label>
-          <input
+        <FormField label="Name" variant="admin" label-style="uppercase" field-id="feedback-name">
+          <FormInput
             id="feedback-name"
             v-model="name"
             type="text"
+            variant="admin"
+            muted
+            focus-ring
             required
             autocomplete="name"
             maxlength="200"
-            class="rounded-md w-full p-2 text-sm bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-600 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-500"
-          >
-        </div>
+          />
+        </FormField>
 
-        <div class="flex flex-col gap-1">
-          <label for="feedback-email" class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">Email</label>
-          <input
+        <FormField label="Email" variant="admin" label-style="uppercase" field-id="feedback-email">
+          <FormInput
             id="feedback-email"
             v-model="email"
             type="email"
+            variant="admin"
+            muted
+            focus-ring
             required
             autocomplete="email"
-            class="rounded-md w-full p-2 text-sm bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-600 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-500"
-          >
-        </div>
+          />
+        </FormField>
 
         <hr class="border-zinc-200 dark:border-zinc-800" />
 
-        <div class="flex flex-col gap-1">
-          <label for="feedback-subject"
-            class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">Subject</label>
-          <input id="feedback-subject" v-model="subject" type="text" required minlength="3" maxlength="200"
+        <FormField label="Subject" variant="admin" label-style="uppercase" field-id="feedback-subject">
+          <FormInput
+            id="feedback-subject"
+            v-model="subject"
+            type="text"
+            variant="admin"
+            muted
+            focus-ring
+            required
+            minlength="3"
+            maxlength="200"
             placeholder="Short summary for the issue title"
-            class="rounded-md w-full p-2 text-sm bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-600 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-500">
-        </div>
+          />
+        </FormField>
 
-        <div class="flex flex-col gap-1">
-          <label for="feedback-message" class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">Message</label>
-          <textarea
+        <FormField label="Message" variant="admin" label-style="uppercase" field-id="feedback-message">
+          <FormTextarea
             id="feedback-message"
             v-model="message"
+            variant="admin"
+            muted
+            focus-ring
+            :rows="5"
             required
-            rows="5"
             minlength="10"
             maxlength="10000"
             :placeholder="messagePlaceholder"
-            class="rounded-md w-full p-2 text-sm resize-y min-h-[100px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-600 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-500"
           />
-        </div>
+        </FormField>
 
-        <div class="flex flex-col gap-1">
-          <label for="feedback-photo" class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">Screenshot (optional)</label>
-          <input
+        <FormField label="Screenshot (optional)" variant="admin" label-style="uppercase" field-id="feedback-photo">
+          <FormInput
             id="feedback-photo"
             ref="fileInputRef"
             type="file"
+            variant="admin"
             accept="image/jpeg,image/png,image/webp,image/gif"
             class="block w-full text-sm text-zinc-600 dark:text-zinc-400 file:mr-2 file:rounded-md file:border file:border-zinc-300 file:bg-white file:px-2 file:py-1.5 file:text-sm file:font-medium file:text-zinc-900 hover:file:bg-zinc-50 dark:file:border-zinc-600 dark:file:bg-zinc-800 dark:file:text-zinc-100 dark:hover:file:bg-zinc-700 cursor-pointer"
             @change="onFileSelected"
-          >
+          />
           <p class="text-[11px] text-zinc-500 dark:text-zinc-500 leading-snug">
             JPEG, PNG, WebP, or GIF, up to 4&nbsp;MB. Shown inline on the Linear issue.
           </p>
@@ -141,7 +146,7 @@
               Remove
             </button>
           </div>
-        </div>
+        </FormField>
 
         <p v-if="submitError" class="text-sm text-red-600 dark:text-red-400">{{ submitError }}</p>
 
@@ -231,8 +236,8 @@ function revokePreview () {
 function clearAttachment () {
   revokePreview()
   selectedFile.value = null
-  if (fileInputRef.value) {
-    fileInputRef.value.value = ''
+  if (fileInputRef.value?.inputEl) {
+    fileInputRef.value.inputEl.value = ''
   }
 }
 

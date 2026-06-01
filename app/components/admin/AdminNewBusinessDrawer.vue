@@ -25,17 +25,16 @@
             Basic info
           </h3>
           <div class="flex min-w-0 flex-col gap-4">
-            <label class="block w-full">
-              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Business name *</span>
-              <input
+            <FormField label="Business name" variant="admin" required field-id="new-business-name">
+              <FormInput
+                id="new-business-name"
                 v-model="form.business_name"
                 type="text"
+                variant="admin"
                 required
-                class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
-              >
-            </label>
-            <div class="w-full">
-              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Business type</span>
+              />
+            </FormField>
+            <FormField label="Business type" variant="admin">
               <AdminSelectChip
                 v-model="form.business_type_ids"
                 full-width
@@ -46,31 +45,31 @@
                 :on-create="(n) => createSimpleLookup('dive_business_types', n)"
                 @created="onLookupCreated('diveBusinessTypes', $event)"
               />
-            </div>
-            <label class="block w-full">
-              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Website</span>
-              <input
+            </FormField>
+            <FormField label="Website" variant="admin" field-id="new-business-website">
+              <FormInput
+                id="new-business-website"
                 v-model="form.website_url"
                 type="url"
-                class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
-              >
-            </label>
-            <label class="block w-full">
-              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Email</span>
-              <input
+                variant="admin"
+              />
+            </FormField>
+            <FormField label="Email" variant="admin" field-id="new-business-email">
+              <FormInput
+                id="new-business-email"
                 v-model="form.email"
                 type="email"
-                class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
-              >
-            </label>
-            <label class="block w-full">
-              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Phone</span>
-              <input
+                variant="admin"
+              />
+            </FormField>
+            <FormField label="Phone" variant="admin" field-id="new-business-phone">
+              <FormInput
+                id="new-business-phone"
                 v-model="form.phone"
                 type="text"
-                class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
-              >
-            </label>
+                variant="admin"
+              />
+            </FormField>
           </div>
 
           <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -78,32 +77,22 @@
           </h3>
 
           <div class="flex min-w-0 flex-col gap-4">
-            <label class="block w-full">
-              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Street address</span>
-              <textarea
+            <FormField label="Street address" variant="admin" field-id="new-business-address">
+              <FormTextarea
+                id="new-business-address"
                 v-model="form.street_address"
-                rows="2"
-                class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
+                :rows="2"
+                variant="admin"
+                :resize="false"
               />
-            </label>
-            <label class="block w-full">
-              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">City</span>
-              <input
-                v-model="form.city"
-                type="text"
-                class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
-              >
-            </label>
-            <label class="block w-full">
-              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">State</span>
-              <input
-                v-model="form.state"
-                type="text"
-                class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
-              >
-            </label>
-            <div class="w-full">
-              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Country</span>
+            </FormField>
+            <FormField label="City" variant="admin" field-id="new-business-city">
+              <FormInput id="new-business-city" v-model="form.city" type="text" variant="admin" />
+            </FormField>
+            <FormField label="State" variant="admin" field-id="new-business-state">
+              <FormInput id="new-business-state" v-model="form.state" type="text" variant="admin" />
+            </FormField>
+            <FormField label="Country" variant="admin">
               <AdminSelectChip
                 :model-value="countryChip"
                 full-width
@@ -113,9 +102,8 @@
                 singular-label="country"
                 @update:model-value="onCountryChip"
               />
-            </div>
-            <div class="w-full">
-              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Region</span>
+            </FormField>
+            <FormField label="Region" variant="admin">
               <AdminSelectChip
                 :model-value="regionChip"
                 full-width
@@ -127,7 +115,7 @@
                 @update:model-value="onRegionChip"
                 @created="onLookupCreated('regions', $event)"
               />
-            </div>
+            </FormField>
           </div>
 
           <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -135,8 +123,7 @@
           </h3>
 
           <div class="flex min-w-0 flex-col gap-4">
-            <div class="w-full">
-              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Dive sites</span>
+            <FormField label="Dive sites" variant="admin">
               <AdminSelectChip
                 v-model="form.dive_site_ids"
                 full-width
@@ -147,9 +134,8 @@
                 :on-create="(n) => createDiveSite(n, form.country_id)"
                 @created="onLookupCreated('diveSites', $event)"
               />
-            </div>
-            <div class="w-full">
-              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Courses</span>
+            </FormField>
+            <FormField label="Courses" variant="admin">
               <AdminSelectChip
                 v-model="form.course_ids"
                 full-width
@@ -158,9 +144,8 @@
                 :allow-add="false"
                 singular-label="course"
               />
-            </div>
-            <div class="w-full">
-              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Rental gear</span>
+            </FormField>
+            <FormField label="Rental gear" variant="admin">
               <AdminSelectChip
                 v-model="form.rental_equipment_ids"
                 full-width
@@ -171,9 +156,8 @@
                 :on-create="(n) => createSimpleLookup('rental_equipment', n)"
                 @created="onLookupCreated('rentalEquipment', $event)"
               />
-            </div>
-            <div class="w-full">
-              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Gases</span>
+            </FormField>
+            <FormField label="Gases" variant="admin">
               <AdminSelectChip
                 v-model="form.gas_ids"
                 full-width
@@ -184,8 +168,7 @@
                 :on-create="(n) => createSimpleLookup('gases', n)"
                 @created="onLookupCreated('gases', $event)"
               />
-            </div>
-            
+            </FormField>
           </div>
 
         </section>

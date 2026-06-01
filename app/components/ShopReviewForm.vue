@@ -47,18 +47,17 @@
           </div>
         </fieldset>
 
-        <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-2 p-2">
-          <label for="review-body" class="text-xs uppercase font-medium px-1 text-zinc-900 dark:text-white">Comment</label>
-          <textarea
+        <FormFieldset label="Comment" field-id="review-body" embedded wide-gap>
+          <FormTextarea
             id="review-body"
             v-model="body"
-            rows="6"
+            variant="panel"
+            :rows="6"
             required
             minlength="1"
             placeholder="Share your experience…"
-            class="rounded-sm w-full p-2 outline-none dark:bg-zinc-900 hover:bg-zinc-200/50 dark:hover:bg-zinc-900 focus:bg-zinc-200 dark:focus:bg-zinc-900 bg-white  text-zinc-900 dark:text-white text-sm resize-y min-h-[120px]"
           />
-        </fieldset>
+        </FormFieldset>
 
         <p v-if="submitError" class="text-sm text-red-600 dark:text-red-400 px-1">{{ submitError }}</p>
 
