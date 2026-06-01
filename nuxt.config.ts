@@ -1,6 +1,16 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   modules: ['@nuxt/ui', '@posthog/nuxt'],
+  components: [
+    {
+      path: '~/components',
+      ignore: ['**/ui/**'],
+    },
+    {
+      path: '~/components/ui',
+      pathPrefix: false,
+    },
+  ],
   css: ['~/assets/css/main.css'],
   nitro: {
     preset: 'netlify'

@@ -11,16 +11,26 @@
       <form v-else @submit.prevent="saveDefaults" class="space-y-4 max-w-xl">
         <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4 space-y-3">
           <h2 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Contact</h2>
-          <div>
-            <label for="profile-name" class="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Name</label>
-            <input id="profile-name" v-model="defaultsForm.name" type="text"
-              class="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white text-sm" placeholder="Your name" />
-          </div>
-          <div>
-            <label for="profile-email" class="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Email</label>
-            <input id="profile-email" v-model="defaultsForm.email" type="email"
-              class="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white text-sm" placeholder="you@example.com" />
-          </div>
+          <FormField label="Name" variant="admin" label-style="auth" field-id="profile-name" class="space-y-1">
+            <FormInput
+              id="profile-name"
+              v-model="defaultsForm.name"
+              type="text"
+              variant="admin"
+              size="md"
+              placeholder="Your name"
+            />
+          </FormField>
+          <FormField label="Email" variant="admin" label-style="auth" field-id="profile-email" class="space-y-1">
+            <FormInput
+              id="profile-email"
+              v-model="defaultsForm.email"
+              type="email"
+              variant="admin"
+              size="md"
+              placeholder="you@example.com"
+            />
+          </FormField>
         </div>
         <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4 space-y-4">
           <div class="flex items-center justify-between">
@@ -35,43 +45,36 @@
                 class="text-xs text-red-600 dark:text-red-400 hover:underline cursor-pointer">Remove</button>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">Name</label>
-                <input v-model="diver.name" type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white" />
-              </div>
-              <div>
-                <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">Certification #</label>
-                <input v-model="diver.certificationNumber" type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white" />
-              </div>
-              <div>
-                <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">Number of dives</label>
-                <input v-model="diver.numberOfDives" type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white" placeholder="e.g. 21" />
-              </div>
-              <div class="flex gap-2 items-end">
-                <div class="flex-1 min-w-0">
-                  <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">Height</label>
-                  <input v-model="diver.height" type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white" />
-                </div>
-                <div class="w-24 shrink-0">
-                  <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">Unit</label>
-                  <select v-model="diver.heightUnit" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-tight text-zinc-900 dark:text-white">
+              <FormField label="Name" variant="admin" label-style="auth">
+                <FormInput v-model="diver.name" type="text" variant="admin" size="sm" />
+              </FormField>
+              <FormField label="Certification #" variant="admin" label-style="auth">
+                <FormInput v-model="diver.certificationNumber" type="text" variant="admin" size="sm" />
+              </FormField>
+              <FormField label="Number of dives" variant="admin" label-style="auth">
+                <FormInput v-model="diver.numberOfDives" type="text" variant="admin" size="sm" placeholder="e.g. 21" />
+              </FormField>
+              <div class="flex gap-2 items-end sm:col-span-2">
+                <FormField label="Height" variant="admin" label-style="auth" class="flex-1 min-w-0">
+                  <FormInput v-model="diver.height" type="text" variant="admin" size="sm" />
+                </FormField>
+                <FormField label="Unit" variant="admin" label-style="auth" class="w-24 shrink-0">
+                  <FormSelect v-model="diver.heightUnit" variant="admin" size="sm">
                     <option value="ft-in">ft & in</option>
                     <option value="cm">cm</option>
-                  </select>
-                </div>
+                  </FormSelect>
+                </FormField>
               </div>
-              <div class="flex gap-2 items-end">
-                <div class="flex-1 min-w-0">
-                  <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">Weight</label>
-                  <input v-model="diver.weight" type="text" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-none text-zinc-900 dark:text-white" />
-                </div>
-                <div class="w-24 shrink-0">
-                  <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">Unit</label>
-                  <select v-model="diver.weightUnit" class="h-9 w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-sm leading-tight text-zinc-900 dark:text-white">
+              <div class="flex gap-2 items-end sm:col-span-2">
+                <FormField label="Weight" variant="admin" label-style="auth" class="flex-1 min-w-0">
+                  <FormInput v-model="diver.weight" type="text" variant="admin" size="sm" />
+                </FormField>
+                <FormField label="Unit" variant="admin" label-style="auth" class="w-24 shrink-0">
+                  <FormSelect v-model="diver.weightUnit" variant="admin" size="sm">
                     <option value="lbs">lbs</option>
                     <option value="kg">kg</option>
-                  </select>
-                </div>
+                  </FormSelect>
+                </FormField>
               </div>
             </div>
             <div>
@@ -81,10 +84,15 @@
                   {{ g.gearType || 'Gear' }}
                   <button type="button" @click="removeDiverGear(idx, gi)" class="hover:text-red-600 dark:hover:text-red-400 cursor-pointer" aria-label="Remove">×</button>
                 </span>
-                <select v-model="diver.gearToAdd" @change="addDiverGearFromSelect(idx)" class="h-8 min-w-[7.5rem] rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2 text-xs leading-tight text-zinc-900 dark:text-white">
+                <FormSelect
+                  v-model="diver.gearToAdd"
+                  variant="admin"
+                  size="xs"
+                  @change="addDiverGearFromSelect(idx)"
+                >
                   <option value="">Add gear…</option>
                   <option v-for="t in gearTypes" :key="t" :value="t">{{ t }}</option>
-                </select>
+                </FormSelect>
               </div>
             </div>
           </div>

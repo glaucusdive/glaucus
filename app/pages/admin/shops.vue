@@ -85,7 +85,7 @@
         </ClientOnly>
       </div>
 
-      <div class="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-t border-solid border-[color:var(--admin-table-border)] bg-zinc-50 px-3 py-2.5 dark:bg-zinc-950">
+      <div class="grid shrink-0 grid-cols-[minmax(0,1fr)_minmax(12rem,32rem)_minmax(0,1fr)] items-center gap-3 border-t border-solid border-[color:var(--admin-table-border)] bg-zinc-50 px-3 py-2.5 dark:bg-zinc-950">
         <span class="min-w-0 text-xs text-zinc-600 dark:text-zinc-400">
           <template v-if="appliedSearch">
             {{ shopTotal }} matching "{{ appliedSearch }}"<span v-if="pageRangeLabel"> · {{ pageRangeLabel }}</span>
@@ -94,14 +94,16 @@
             {{ shopTotal }} shops<span v-if="pageRangeLabel"> · {{ pageRangeLabel }}</span>
           </template>
         </span>
-        <form class="flex w-full max-w-lg items-center gap-2 justify-self-center" @submit.prevent="runSearch">
-          <input
+        <form class="flex min-w-0 w-full max-w-lg items-center gap-2 justify-self-center" @submit.prevent="runSearch">
+          <FormInput
+            id="admin-shops-search"
             v-model="searchDraft"
             type="search"
+            variant="admin"
             placeholder="Search shops…"
-            class="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
+            class="min-w-0 flex-1"
             @keydown.enter.prevent="runSearch"
-          >
+          />
           <AdminButton type="submit" variant="primary">
             Go
           </AdminButton>
