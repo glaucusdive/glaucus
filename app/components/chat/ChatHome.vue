@@ -1,26 +1,15 @@
 <template>
     <div class="flex flex-col h-full w-full relative">
       <!-- Header: min-w-0 + shrink-0 so title truncates instead of clipping Step back -->
-      <div
-        class="min-h-10 min-w-0 flex flex-row justify-between items-stretch border-b border-zinc-200 dark:border-zinc-700 shrink-0">
-        <div
-          class="flex min-w-0 flex-1 items-center gap-2 h-full p-0 lg:p-4 divide-x divide-zinc-200 dark:divide-zinc-700">
-          <button @click="openMobileMenu"
-            class="flex items-center justify-center aspect-square h-full lg:hidden hover:bg-zinc-100 dark:hover:bg-zinc-800/50 p-1 cursor-pointer shrink-0">
-            <Menu class="w-5 h-5" />
-          </button>
-          <h1
-            class="text-base sm:text-lg lg:text-2xl font-semibold text-zinc-900 dark:text-white min-w-0 truncate">
-            Dive Shop Search</h1>
-        </div>
-        <div class="flex shrink-0 items-center gap-1 p-1 lg:p-4">
+      <ShellPageHeader title="Dive Shop Search">
+        <template #actions>
           <button v-if="canStepBack" @click="stepBack"
             class="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md cursor-pointer"
             title="Remove last message and your last reply so you can redo that step">
             Step back
           </button>
-        </div>
-      </div>
+        </template>
+      </ShellPageHeader>
 
       <!-- Main content: full-width chat; shop detail is a bottom sheet overlay -->
       <div class="flex-1 flex flex-row overflow-hidden relative">
@@ -335,7 +324,7 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted, watch, onUnmounted } from 'vue'
-import { Menu, ChevronRight } from 'lucide-vue-next'
+import { ChevronRight } from 'lucide-vue-next'
 import ChatComposer from '~/components/chat/ChatComposer.vue'
 import BottomSheetDrawer from '~/components/ui/BottomSheetDrawer.vue'
 import CardSearchResult from '~/components/CardSearchResult.vue'
@@ -847,7 +836,7 @@ const {
 } = useChatSessions()
 
 // Drawer (mobile menu + booking form)
-const { openMobileMenu, openDrawer, closeDrawer, isOpen, contentType, drawerData, updateBookingPayloadIfOpen } = useDrawer()
+const { openDrawer, closeDrawer, isOpen, contentType, drawerData, updateBookingPayloadIfOpen } = useDrawer()
 
 const isBookingFormOpen = computed(() => isOpen.value && contentType.value === 'booking-form')
 

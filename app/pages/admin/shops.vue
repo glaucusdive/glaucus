@@ -1,49 +1,37 @@
 <template>
   <div class="flex flex-col h-full min-h-0">
-    <!-- Top bar -->
-    <div class="shrink-0 border-b border-solid border-[color:var(--admin-table-border)] p-3 flex items-center justify-between gap-4 flex-wrap">
-      <div class="min-w-0">
-        <h1 class="text-lg font-semibold text-zinc-900 dark:text-white">Admin · Dive Shops</h1>
-      </div>
+    <ShellPageHeader title="Admin · Dive Shops">
+      
 
-      <div class="flex items-center gap-2 flex-wrap">
-        <!-- Read/Write toggle -->
-        <label class="inline-flex items-center gap-2 select-none cursor-pointer">
-          <span class="text-xs uppercase tracking-wide" :class="writeMode ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-zinc-500 dark:text-zinc-400'">
-            {{ writeMode ? 'Write' : 'Read' }}
-          </span>
-          <button
-            type="button"
-            role="switch"
-            :aria-checked="writeMode"
-            class="relative inline-flex h-5 w-9 rounded-full transition-colors cursor-pointer"
-            :class="writeMode ? 'bg-amber-500' : 'bg-zinc-300 dark:bg-zinc-600'"
-            @click="writeMode = !writeMode"
-          >
-            <span
-              class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-y-0.5"
-              :class="writeMode ? 'translate-x-[18px]' : 'translate-x-0.5'"
-            />
-          </button>
-        </label>
+        <template #actions>
+          <div class="hidden md:flex flex-row gap-4">
+            <!-- Read/Write toggle -->
+            <label class="inline-flex items-center gap-2 select-none cursor-pointer">
+              <span class="text-xs uppercase tracking-wide"
+                :class="writeMode ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-zinc-500 dark:text-zinc-400'">
+                {{ writeMode ? 'Write' : 'Read' }}
+              </span>
+              <button type="button" role="switch" :aria-checked="writeMode"
+                class="relative inline-flex h-5 w-9 rounded-full transition-colors cursor-pointer"
+                :class="writeMode ? 'bg-amber-500' : 'bg-zinc-300 dark:bg-zinc-600'" @click="writeMode = !writeMode">
+                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-y-0.5"
+                  :class="writeMode ? 'translate-x-[18px]' : 'translate-x-0.5'" />
+              </button>
+            </label>
 
-        <AdminButton
-          variant="secondary"
-          :disabled="!writeMode"
-          @click="newDrawerOpen = true"
-        >
-          Add new business
-        </AdminButton>
+            <AdminButton variant="secondary" :disabled="!writeMode" @click="newDrawerOpen = true">
+              Add new business
+            </AdminButton>
 
-        <AdminButton
-          variant="primary"
-          :disabled="!writeMode || !hasDirtyOnPage || anyRowSaving || saveAllSaving"
-          @click="saveAllDirty"
-        >
-          {{ saveAllSaving ? 'Saving…' : 'Save' }}
-        </AdminButton>
-      </div>
-    </div>
+            <AdminButton variant="primary" :disabled="!writeMode || !hasDirtyOnPage || anyRowSaving || saveAllSaving"
+              @click="saveAllDirty">
+              {{ saveAllSaving ? 'Saving…' : 'Save' }}
+            </AdminButton>
+          </div>
+          
+        </template>
+      
+    </ShellPageHeader>
 
     <!-- Loading / error / forbidden -->
     <div v-if="loading" class="flex-1 flex items-center justify-center p-8">
@@ -85,16 +73,16 @@
         </ClientOnly>
       </div>
 
-      <div class="grid shrink-0 grid-cols-[minmax(0,1fr)_minmax(12rem,32rem)_minmax(0,1fr)] items-center gap-3 border-t border-solid border-[color:var(--admin-table-border)] bg-zinc-50 px-3 py-2.5 dark:bg-zinc-950">
-        <span class="min-w-0 text-xs text-zinc-600 dark:text-zinc-400">
+      <div class="flex flex-row gap-4 items-center border-t border-solid border-[color:var(--admin-table-border)] bg-zinc-50 px-3 py-2.5 dark:bg-zinc-950">
+        <div class="hidden md:flex min-w-0 text-xs text-zinc-600 dark:text-zinc-400">
           <template v-if="appliedSearch">
             {{ shopTotal }} matching "{{ appliedSearch }}"<span v-if="pageRangeLabel"> · {{ pageRangeLabel }}</span>
           </template>
           <template v-else>
             {{ shopTotal }} shops<span v-if="pageRangeLabel"> · {{ pageRangeLabel }}</span>
           </template>
-        </span>
-        <form class="flex min-w-0 w-full max-w-lg items-center gap-2 justify-self-center" @submit.prevent="runSearch">
+        </div>
+        <form class="flex grow w-full items-center gap-2 justify-self-center" @submit.prevent="runSearch">
           <FormInput
             id="admin-shops-search"
             v-model="searchDraft"
@@ -122,14 +110,16 @@
             :disabled="currentPage <= 1"
             @click="goPrevPage"
           >
-            Previous
+            <span class="flex md:hidden"><</span>
+            <span class="hidden md:flex">Previous</span>
           </AdminButton>
           <AdminButton
             variant="secondary"
             :disabled="currentPage >= totalPages"
             @click="goNextPage"
           >
-            Next
+            <span class="flex md:hidden">></span>
+            <span class="hidden md:flex">Next</span>
           </AdminButton>
         </div>
       </div>
