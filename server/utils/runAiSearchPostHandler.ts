@@ -55,7 +55,7 @@ import {
   isCourseDiscoveryFollowUpMessage,
   tryBuildCourseDiscoverySearchResponse
 } from '../utils/courseDiscoveryFromSearch'
-import { inferSearchFiltersFromDestination } from '../utils/destinationToSearchFilters'
+import { inferSearchFiltersFromDestination, isCountryOnlyGeoFilters } from '../utils/destinationToSearchFilters'
 import { normalizeClientSearchFilters } from '../utils/normalizeClientSearchFilters'
 import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from '../utils/openAiChatModel'
 import { resolveOpenAiApiKey } from '../utils/openAiApiKey'
@@ -822,20 +822,23 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           const placeLabel = destText
           pushActivity('probe', formatGeoDirectoryQueryLine(placeLabel, geoList.length))
           if (!geoQuery.error && geoList.length > 0) {
-            if (effectiveWantsToBook && geoList.length === 1) {
-              const only = geoList[0]!
-              resolvedShop = await getShopById(supabaseUrl, supabaseKey, only.id)
-              resolvedByNamedShop = !!resolvedShop
-              skipEntityProbeFromGeo = !!resolvedShop
-            } else if (effectiveWantsToBook && geoList.length > 1) {
+            const countryOnly = isCountryOnlyGeoFilters(geoFilters)
+            if (effectiveWantsToBook && (geoList.length > 1 || countryOnly)) {
               return withAgentMeta({
                 ...formatEntitySearchResponse(
                   geoFilters,
                   geoList as unknown[],
-                  `Here are dive shops in ${placeLabel} (matched by location, not just name). Which one would you like to book?`
+                  geoList.length === 1
+                    ? `Here is a dive shop in ${placeLabel}. Pick one to start booking, or name a city or area to narrow down.`
+                    : `Here are dive shops in ${placeLabel} (matched by location, not just name). Which one would you like to book?`
                 ),
                 intent: 'search' as const
               })
+            } else if (effectiveWantsToBook && geoList.length === 1) {
+              const only = geoList[0]!
+              resolvedShop = await getShopById(supabaseUrl, supabaseKey, only.id)
+              resolvedByNamedShop = !!resolvedShop
+              skipEntityProbeFromGeo = !!resolvedShop
             } else if (!effectiveWantsToBook) {
               return withAgentMeta({
                 ...formatEntitySearchResponse(
@@ -939,6 +942,22 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             }
             if (routed.type === 'search') {
               if (effectiveWantsToBook) {
+                const resultCount = routed.response.totalResults ?? routed.response.shops?.length ?? 0
+                if (resultCount > 0) {
+                  const label =
+                    routed.response.filters.country?.trim() ||
+                    routed.response.filters.place?.trim() ||
+                    referredPhrase
+                  const msg =
+                    resultCount === 1
+                      ? `Here is a dive shop in ${label}. Pick one to start booking, or name a city or area to narrow down.`
+                      : `Here are dive shops in ${label}. Which one would you like to book?`
+                  return withAgentMeta({
+                    ...routed.response,
+                    message: msg,
+                    intent: 'search' as const
+                  })
+                }
                 const pickFromRecent = shopDisambiguationSelectableOptions((lastShops || []).slice(0, 8))
                 return withAgentMeta({
                   success: true,

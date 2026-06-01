@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { inferSearchFiltersFromDestination } from '../../server/utils/destinationToSearchFilters'
+import { inferSearchFiltersFromDestination, isCountryOnlyGeoFilters } from '../../server/utils/destinationToSearchFilters'
 
 describe('inferSearchFiltersFromDestination', () => {
   it('maps Bali to Indonesia + Bali place', () => {
@@ -19,5 +19,15 @@ describe('inferSearchFiltersFromDestination', () => {
   })
   it('maps Spain to country only', () => {
     expect(inferSearchFiltersFromDestination('spain')).toEqual({ country: 'spain' })
+  })
+})
+
+describe('isCountryOnlyGeoFilters', () => {
+  it('is true for country without place or region', () => {
+    expect(isCountryOnlyGeoFilters({ country: 'Spain' })).toBe(true)
+  })
+  it('is false when place or region is set', () => {
+    expect(isCountryOnlyGeoFilters({ country: 'Indonesia', place: 'Bali' })).toBe(false)
+    expect(isCountryOnlyGeoFilters({ country: 'France', region: 'Europe' })).toBe(false)
   })
 })

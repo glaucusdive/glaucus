@@ -20,9 +20,9 @@
           <div ref="messagesContainer"
             class="flex-1 overflow-y-auto p-2 md:p-4 flex flex-col gap-4 *:mx-auto *:w-full">
 
-            <div v-if="messages.length === 0" class="flex flex-col items-center justify-center gap-8 h-full w-full">
-              <div class="text-center flex flex-col gap-5 items-center max-w-4xl">
-                <h2 class="max-w-3xl text-xl sm:text-2xl lg:text-3xl font-bold text-zinc-900 dark:text-white">
+            <div v-if="messages.length === 0" class="flex flex-col items-start md:items-center justify-start md:justify-center gap-8 md:h-full w-full">
+              <div class="text-center flex flex-col gap-4 items-center max-w-4xl pt-8 md:pt-auto">
+                <h2 class="max-w-3xl text-lg sm:text-2xl lg:text-3xl font-bold text-zinc-900 dark:text-white">
                   Tell me what you're looking for in your diving experience, and I'll help you find the best dive shops.
                 </h2>
 

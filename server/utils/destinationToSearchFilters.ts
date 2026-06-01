@@ -48,3 +48,8 @@ export function inferSearchFiltersFromDestination (raw: string): SearchFilters {
   // Default: search location columns (city/state/street) with the phrase
   return { place: t }
 }
+
+/** True when filters scope is a whole country with no city/region narrowing. */
+export function isCountryOnlyGeoFilters (filters: SearchFilters): boolean {
+  return !!(filters.country?.trim() && !filters.place?.trim() && !filters.region?.trim())
+}
