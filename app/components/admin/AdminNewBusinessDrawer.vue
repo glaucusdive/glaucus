@@ -17,140 +17,180 @@
       </button>
     </header>
     <div class="px-4 py-3">
-      <form id="admin-new-business-form" class="flex flex-col gap-3" @submit.prevent="submit">
-        <label class="block">
-          <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Business name *</span>
-          <input
-            v-model="form.business_name"
-            type="text"
-            required
-            class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
-          >
-        </label>
-        <label class="block">
-          <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Street address</span>
-          <textarea
-            v-model="form.street_address"
-            rows="2"
-            class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
-          />
-        </label>
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label class="block">
-            <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Website</span>
-            <input v-model="form.website_url" type="url" class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white">
-          </label>
-          <label class="block">
-            <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">City</span>
-            <input v-model="form.city" type="text" class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white">
-          </label>
-          <label class="block">
-            <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">State</span>
-            <input v-model="form.state" type="text" class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white">
-          </label>
-          <label class="block">
-            <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Locale</span>
-            <input v-model="form.locale" type="text" class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white">
-          </label>
-          <label class="block">
-            <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Phone</span>
-            <input v-model="form.phone" type="text" class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white">
-          </label>
-          <label class="block">
-            <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Email</span>
-            <input v-model="form.email" type="email" class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white">
-          </label>
-          <label class="block">
-            <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Google rating</span>
-            <input v-model="form.google_rating" type="number" step="any" class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white">
-          </label>
-        </div>
+      <form id="admin-new-business-form" @submit.prevent="submit">
 
-        <div>
-          <span class="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Business type</span>
-          <AdminSelectChip
-            v-model="form.business_type_ids"
-            :options="businessTypeOptions"
-            :multiple="true"
-            :allow-add="true"
-            singular-label="business type"
-            :on-create="(n) => createSimpleLookup('dive_business_types', n)"
-            @created="onLookupCreated('diveBusinessTypes', $event)"
-          />
-        </div>
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-start">
 
-        <div class="border-t border-zinc-200 pt-3 dark:border-zinc-800">
-          <span class="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Country</span>
-          <AdminSelectChip
-            :model-value="countryChip"
-            :options="countryOptions"
-            :multiple="false"
-            :allow-add="false"
-            singular-label="country"
-            @update:model-value="onCountryChip"
-          />
-        </div>
-        <div>
-          <span class="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Region</span>
-          <AdminSelectChip
-            :model-value="regionChip"
-            :options="regionOptions"
-            :multiple="false"
-            :allow-add="true"
-            singular-label="region"
-            :on-create="createRegion"
-            @update:model-value="onRegionChip"
-            @created="onLookupCreated('regions', $event)"
-          />
-        </div>
-        <div>
-          <span class="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Courses</span>
-          <AdminSelectChip
-            v-model="form.course_ids"
-            :options="courseOptions"
-            :multiple="true"
-            :allow-add="false"
-            singular-label="course"
-          />
-        </div>
-        <div>
-          <span class="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Rental gear</span>
-          <AdminSelectChip
-            v-model="form.rental_equipment_ids"
-            :options="rentalOptions"
-            :multiple="true"
-            :allow-add="true"
-            singular-label="rental"
-            :on-create="(n) => createSimpleLookup('rental_equipment', n)"
-            @created="onLookupCreated('rentalEquipment', $event)"
-          />
-        </div>
-        <div>
-          <span class="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Gases</span>
-          <AdminSelectChip
-            v-model="form.gas_ids"
-            :options="gasOptions"
-            :multiple="true"
-            :allow-add="true"
-            singular-label="gas"
-            :on-create="(n) => createSimpleLookup('gases', n)"
-            @created="onLookupCreated('gases', $event)"
-          />
-        </div>
-        <div>
-          <span class="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Dive sites</span>
-          <AdminSelectChip
-            v-model="form.dive_site_ids"
-            :options="diveSiteOptions"
-            :multiple="true"
-            :allow-add="true"
-            singular-label="dive site"
-            :on-create="(n) => createDiveSite(n, form.country_id)"
-            @created="onLookupCreated('diveSites', $event)"
-          />
-        </div>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Basic info
+          </h3>
+          <div class="flex min-w-0 flex-col gap-4">
+            <label class="block w-full">
+              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Business name *</span>
+              <input
+                v-model="form.business_name"
+                type="text"
+                required
+                class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
+              >
+            </label>
+            <div class="w-full">
+              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Business type</span>
+              <AdminSelectChip
+                v-model="form.business_type_ids"
+                full-width
+                :options="businessTypeOptions"
+                :multiple="true"
+                :allow-add="true"
+                singular-label="business type"
+                :on-create="(n) => createSimpleLookup('dive_business_types', n)"
+                @created="onLookupCreated('diveBusinessTypes', $event)"
+              />
+            </div>
+            <label class="block w-full">
+              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Website</span>
+              <input
+                v-model="form.website_url"
+                type="url"
+                class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
+              >
+            </label>
+            <label class="block w-full">
+              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Email</span>
+              <input
+                v-model="form.email"
+                type="email"
+                class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
+              >
+            </label>
+            <label class="block w-full">
+              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Phone</span>
+              <input
+                v-model="form.phone"
+                type="text"
+                class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
+              >
+            </label>
+          </div>
 
-        <p v-if="submitError" class="text-sm text-red-600 dark:text-red-400">{{ submitError }}</p>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Location
+          </h3>
+
+          <div class="flex min-w-0 flex-col gap-4">
+            <label class="block w-full">
+              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Street address</span>
+              <textarea
+                v-model="form.street_address"
+                rows="2"
+                class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
+              />
+            </label>
+            <label class="block w-full">
+              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">City</span>
+              <input
+                v-model="form.city"
+                type="text"
+                class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
+              >
+            </label>
+            <label class="block w-full">
+              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">State</span>
+              <input
+                v-model="form.state"
+                type="text"
+                class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
+              >
+            </label>
+            <div class="w-full">
+              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Country</span>
+              <AdminSelectChip
+                :model-value="countryChip"
+                full-width
+                :options="countryOptions"
+                :multiple="false"
+                :allow-add="false"
+                singular-label="country"
+                @update:model-value="onCountryChip"
+              />
+            </div>
+            <div class="w-full">
+              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Region</span>
+              <AdminSelectChip
+                :model-value="regionChip"
+                full-width
+                :options="regionOptions"
+                :multiple="false"
+                :allow-add="true"
+                singular-label="region"
+                :on-create="createRegion"
+                @update:model-value="onRegionChip"
+                @created="onLookupCreated('regions', $event)"
+              />
+            </div>
+          </div>
+
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Shop variables
+          </h3>
+
+          <div class="flex min-w-0 flex-col gap-4">
+            <div class="w-full">
+              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Dive sites</span>
+              <AdminSelectChip
+                v-model="form.dive_site_ids"
+                full-width
+                :options="diveSiteOptions"
+                :multiple="true"
+                :allow-add="true"
+                singular-label="dive site"
+                :on-create="(n) => createDiveSite(n, form.country_id)"
+                @created="onLookupCreated('diveSites', $event)"
+              />
+            </div>
+            <div class="w-full">
+              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Courses</span>
+              <AdminSelectChip
+                v-model="form.course_ids"
+                full-width
+                :options="courseOptions"
+                :multiple="true"
+                :allow-add="false"
+                singular-label="course"
+              />
+            </div>
+            <div class="w-full">
+              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Rental gear</span>
+              <AdminSelectChip
+                v-model="form.rental_equipment_ids"
+                full-width
+                :options="rentalOptions"
+                :multiple="true"
+                :allow-add="true"
+                singular-label="rental"
+                :on-create="(n) => createSimpleLookup('rental_equipment', n)"
+                @created="onLookupCreated('rentalEquipment', $event)"
+              />
+            </div>
+            <div class="w-full">
+              <span class="mb-0.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Gases</span>
+              <AdminSelectChip
+                v-model="form.gas_ids"
+                full-width
+                :options="gasOptions"
+                :multiple="true"
+                :allow-add="true"
+                singular-label="gas"
+                :on-create="(n) => createSimpleLookup('gases', n)"
+                @created="onLookupCreated('gases', $event)"
+              />
+            </div>
+            
+          </div>
+
+        </section>
+
+        <p v-if="submitError" class="mt-4 text-sm text-red-600 dark:text-red-400">{{ submitError }}</p>
       </form>
     </div>
     <template #footer>
@@ -203,11 +243,9 @@ const emptyForm = () => ({
   website_url: '',
   city: '',
   state: '',
-  locale: '',
   phone: '',
   email: '',
   business_type_ids: [],
-  google_rating: '',
   country_id: null,
   region_id: null,
   course_ids: [],
@@ -249,12 +287,6 @@ function emptyToNull (v) {
   return s === '' ? null : s
 }
 
-function numericOrNull (v) {
-  if (v === '' || v == null) return null
-  const n = Number(v)
-  return Number.isFinite(n) ? n : null
-}
-
 function businessTypeLookupOptions () {
   return props.businessTypeOptions.map((o) => ({
     id: String(o.id),
@@ -270,13 +302,11 @@ function buildPayload () {
     website_url: emptyToNull(form.website_url),
     city: emptyToNull(form.city),
     state: emptyToNull(form.state),
-    locale: emptyToNull(form.locale),
     phone: emptyToNull(form.phone),
     email: emptyToNull(form.email),
     type: serializeDiveBusinessTypes(typeNames),
     country_id: form.country_id || null,
     region_id: form.region_id || null,
-    google_rating: numericOrNull(form.google_rating),
     course_ids: form.course_ids || [],
     rental_equipment_ids: form.rental_equipment_ids || [],
     gas_ids: form.gas_ids || [],

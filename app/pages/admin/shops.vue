@@ -369,7 +369,6 @@ const SHOP_DATA_KEYS = [
   'phone',
   'email',
   'business_type_ids',
-  'google_rating',
   'country_id',
   'region_id',
   'country_name',
@@ -426,7 +425,6 @@ function makeDraft (shop) {
     phone: shop?.phone ?? '',
     email: shop?.email ?? '',
     business_type_ids: businessTypeIdsForShop(shop?.type),
-    google_rating: shop?.google_rating ?? '',
     country_id: shop?.country_id ?? null,
     region_id: shop?.region_id ?? null,
     country_name: shop?.country_name ?? null,
@@ -575,7 +573,6 @@ function rowToPayload (row) {
     type: serializeTypeFromIds(row.business_type_ids),
     country_id: row.country_id || null,
     region_id: row.region_id || null,
-    google_rating: numericOrNull(row.google_rating),
     course_ids: row.course_ids || [],
     rental_equipment_ids: row.rental_equipment_ids || [],
     gas_ids: row.gas_ids || [],
@@ -587,12 +584,6 @@ function emptyToNull (v) {
   if (v == null) return null
   const s = String(v).trim()
   return s === '' ? null : s
-}
-
-function numericOrNull (v) {
-  if (v === '' || v == null) return null
-  const n = Number(v)
-  return Number.isFinite(n) ? n : null
 }
 
 async function saveRow (row) {

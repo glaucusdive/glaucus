@@ -2,7 +2,7 @@
   <div
     class="flex flex-col gap-1"
     :class="[
-      compact ? 'min-w-0 max-w-full' : 'min-w-[200px]',
+      fullWidth ? 'w-full min-w-0' : (compact ? 'min-w-0 max-w-full' : 'min-w-[200px]'),
       compact ? 'min-h-full justify-center' : ''
     ]"
   >
@@ -27,11 +27,12 @@
       </span>
     </div>
     <span v-else-if="disabled" class="text-xs text-zinc-400 dark:text-zinc-500">—</span>
-    <div v-if="!disabled" class="flex items-center gap-1">
+    <div v-if="!disabled" class="flex items-center gap-1" :class="fullWidth ? 'w-full' : ''">
       <select
         v-if="!creating"
         v-model="pendingSelection"
-        class="h-7 max-w-full rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-1 text-xs text-zinc-900 dark:text-white"
+        class="h-7 rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-1 text-xs text-zinc-900 dark:text-white"
+        :class="fullWidth ? 'w-full' : 'max-w-full'"
         @change="onSelectChange"
       >
         <option value="">{{ multiple ? 'Add…' : 'Select…' }}</option>
@@ -100,6 +101,11 @@ const props = defineProps({
   },
   /** When true, drop min-width so the chip fits dense grid cells */
   compact: {
+    type: Boolean,
+    default: false
+  },
+  /** Stretch select to full container width (e.g. drawer forms) */
+  fullWidth: {
     type: Boolean,
     default: false
   },
