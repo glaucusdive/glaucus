@@ -6,7 +6,7 @@
 /** Mirrors server SearchFilters shape for client/server JSON round-trip */
 export interface GuidedSearchFilters {
   country?: string
-  locale?: string
+  place?: string
   region?: string
   minRating?: number
   languages?: string[]
@@ -107,7 +107,7 @@ export function guidedBranchSelectableOptions (): { label: string; value: string
 }
 
 export const POPULAR_DESTINATION_KEYS = [
-  { key: 'bali', label: 'Bali', filters: { locale: 'Bali', country: 'Indonesia' } as GuidedSearchFilters },
+  { key: 'bali', label: 'Bali', filters: { place: 'Bali', country: 'Indonesia' } as GuidedSearchFilters },
   { key: 'thailand', label: 'Thailand', filters: { country: 'Thailand' } as GuidedSearchFilters },
   { key: 'mexico', label: 'Mexico', filters: { country: 'Mexico' } as GuidedSearchFilters },
   { key: 'indonesia', label: 'Indonesia', filters: { country: 'Indonesia' } as GuidedSearchFilters },
@@ -196,7 +196,7 @@ export function guidedShopTypeLabelFromMessage (message: string): string {
 
 export function guidedHasLocationFilters (state: Pick<GuidedSearchState, 'filters'>): boolean {
   const f = state.filters
-  return !!(String(f.country || '').trim() || String(f.locale || '').trim() || String(f.region || '').trim())
+  return !!(String(f.country || '').trim() || String(f.place || '').trim() || String(f.region || '').trim())
 }
 
 /** True when `buildDiveShopQuery` would apply at least one shop filter beyond an empty state. */

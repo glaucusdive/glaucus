@@ -230,7 +230,7 @@ export function mergeActivityIntoFilters (filters: SearchFilters, interpret: Int
   return { ...filters, activityTokens }
 }
 
-/** Merge NLU destination into search filters when the LLM left locale empty. */
+/** Merge NLU destination into search filters when place/region not already set. */
 export function mergeNluHintsIntoFilters (
   filters: SearchFilters,
   interpret: InterpretedTurn | null
@@ -238,14 +238,15 @@ export function mergeNluHintsIntoFilters (
   if (!interpret) return filters
   const place = normalizePlace(interpret.destination_text ?? undefined)
   if (!place) return filters
+  if (filters.country?.trim()) return filters
   const lower = place.toLowerCase()
-  const countryLike = ['indonesia', 'thailand', 'mexico', 'philippines', 'maldives', 'australia', 'usa', 'united states', 'egypt', 'malaysia'].some(c => lower === c || lower.includes(c))
+  const countryLike = ['indonesia', 'thailand', 'mexico', 'philippines', 'maldives', 'australia', 'usa', 'united states', 'egypt', 'malaysia', 'spain', 'france', 'italy', 'croatia', 'greece', 'portugal', 'japan'].some(c => lower === c || lower.includes(c))
   if (countryLike && !filters.country?.trim()) {
     const title = place.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
     return { ...filters, country: title }
   }
-  if (!filters.locale?.trim() && !filters.region?.trim()) {
-    return { ...filters, locale: place }
+  if (!filters.place?.trim() && !filters.region?.trim()) {
+    return { ...filters, place }
   }
   return filters
 }

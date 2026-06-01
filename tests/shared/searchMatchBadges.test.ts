@@ -5,7 +5,7 @@ describe('buildSearchMatchBadges', () => {
   it('includes activity tokens and dates but not filter geo or trip type', () => {
     const badges = buildSearchMatchBadges(
       {
-        locale: 'Bali',
+        place: 'Bali',
         country: 'Indonesia',
         diveTypes: ['Dive Shop'],
         activityTokens: ['wreck'],
@@ -20,9 +20,9 @@ describe('buildSearchMatchBadges', () => {
     expect(badges.some(b => b.startsWith('Dates:'))).toBe(true)
   })
 
-  it('adds course and NLU activity / site labels without locale chips', () => {
+  it('adds course and NLU activity / site labels without place chips', () => {
     const badges = buildSearchMatchBadges(
-      { locale: 'Cozumel', country: 'Mexico' },
+      { place: 'Cozumel', country: 'Mexico' },
       {
         certification_course_hint: 'Open Water',
         activity_terms: ['drift'],

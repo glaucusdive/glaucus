@@ -13,6 +13,7 @@ import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationI
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
 import { enrichShopsForSearchCards } from './enrichShopsForSearchCards'
+import { normalizeClientSearchFilters } from './normalizeClientSearchFilters'
 import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from './openAiChatModel'
 
 /** Optional post-result chips: narrow directory by business / trip format. */
@@ -132,7 +133,7 @@ export function parseSearchFiltersAndMessageFromLlm (aiMessage: string): { filte
     const filtersMatch = aiMessage.match(/FILTERS:\s*(\{[^}]+\})/s)
     const messageMatch = aiMessage.match(/MESSAGE:\s*(.+)/s)
     if (filtersMatch) {
-      filters = JSON.parse(filtersMatch[1]) as SearchFilters
+      filters = normalizeClientSearchFilters(JSON.parse(filtersMatch[1])) ?? {}
     }
     if (messageMatch) {
       conversationalMessage = messageMatch[1].trim()
@@ -156,7 +157,7 @@ export function isQuerySpecificEnoughForDirectShopCards (
   userAlreadySpecifiedTripType: boolean
 ): boolean {
   const geo =
-    !!(filters.country?.trim() || filters.locale?.trim() || filters.region?.trim()) ||
+    !!(filters.country?.trim() || filters.place?.trim() || filters.region?.trim()) ||
     !!(interpretTurn?.destination_text?.trim())
   if (!geo) return false
 
@@ -196,7 +197,7 @@ export function searchReplyMessagePreamble (conversationalMessage: string, final
 export function buildRelaxFilterChips (filters: SearchFilters): { label: string; value: string }[] {
   const chips: { label: string; value: string }[] = []
   const country = filters.country?.trim()
-  const locale = filters.locale?.trim()
+  const locale = filters.place?.trim()
   const region = filters.region?.trim()
   if (filters.diveTypes?.length) {
     chips.push(
@@ -550,8 +551,8 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
         followUpMessage =
           'No dive shops matched these filters. Tap an option to widen the search, or say what you want to change.'
       } else {
-        followUpMessage = filters.locale
-          ? `I found only ${resultCount} shop(s) in ${filters.locale}. Would you like me to search ${filters.country || 'the broader region'} instead?`
+        followUpMessage = filters.place
+          ? `I found only ${resultCount} shop(s) in ${filters.place}. Would you like me to search ${filters.country || 'the broader region'} instead?`
           : 'Would you like me to expand the search to include more locations?'
       }
       if (!selectableOptions?.length && filters.country) {

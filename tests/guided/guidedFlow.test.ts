@@ -72,7 +72,7 @@ describe('applyGuidedSearchCommandPure (deterministic rails)', () => {
     expect(s.step).toBe('location_destination')
     s = applyGuidedSearchCommandPure(s, `${GuidedCommands.destPrefix}bali`)
     expect(s.step).toBe('results')
-    expect(s.filters.locale).toBe('Bali')
+    expect(s.filters.place).toBe('Bali')
     expect(s.filters.country).toBe('Indonesia')
   })
 
@@ -126,7 +126,7 @@ describe('applyGuidedSearchCommandPure (deterministic rails)', () => {
     expect(s.step).toBe('results')
     s = applyGuidedSearchCommandPure(s, GuidedCommands.filterShopType)
     expect(s.step).toBe('shop_type_pick')
-    expect(s.filters.locale).toBe('Bali')
+    expect(s.filters.place).toBe('Bali')
   })
 
   it('guided:filter:course preserves filters and nameQuery', () => {
@@ -135,7 +135,7 @@ describe('applyGuidedSearchCommandPure (deterministic rails)', () => {
     s = { ...s, nameQuery: 'Foo Dive' }
     s = applyGuidedSearchCommandPure(s, GuidedCommands.filterCourse)
     expect(s.step).toBe('course_pick')
-    expect(s.filters.locale).toBe('Bali')
+    expect(s.filters.place).toBe('Bali')
     expect(s.nameQuery).toBe('Foo Dive')
   })
 })
@@ -147,7 +147,7 @@ describe('guidedNeedsCombinedQuery / filtersConstrainGuidedShops', () => {
       step: 'results',
       branch: 'course',
       courseIntent: 'Open Water',
-      filters: { locale: 'Bali', country: 'Indonesia' }
+      filters: { place: 'Bali', country: 'Indonesia' }
     }
     expect(filtersConstrainGuidedShops(state.filters)).toBe(true)
     expect(guidedNeedsCombinedQuery(state)).toBe(true)
@@ -203,7 +203,7 @@ describe('guidedPostResultsFilterChips', () => {
       diveSiteTypeLabel: 'Reef',
       nameQuery: 'X',
       filters: {
-        locale: 'Bali',
+        place: 'Bali',
         country: 'Indonesia',
         activityTokens: ['reef'],
         diveTypes: ['Liveaboard']

@@ -234,7 +234,7 @@
                     <CardInfo
                       :title="shop.business_name"
                       :items="[
-                        [shop.locale, shop.country?.name].filter(Boolean).join(', '),
+                        [formatShopCityState(shop), shop.country?.name].filter(Boolean).join(', '),
                         ...(shop.distance_miles != null ? [`${shop.distance_miles} mi away`] : [])
                       ].filter(Boolean)"
                     />
@@ -318,6 +318,7 @@ import { useSupabase } from '~/composables/useSupabase'
 import { useDemoMode } from '~/composables/useDemoMode'
 import { deleteShopReview } from '~/composables/useShopReviews'
 import { formatOperatingHours, demoHours, demoLanguages, demoDescription } from '~/utils/formatHours'
+import { formatShopCityState } from '~~/shared/bookShopPick'
 
 // Props
 const props = defineProps({
@@ -526,7 +527,7 @@ const remainingParagraphs = computed(() => {
 
 // Contact info for layout
 const contactInfo = computed(() => ({
-  address: [shopData.value?.street_address, shopData.value?.locale, shopData.value?.country?.name ?? shopData.value?.country].filter(Boolean).join(', '),
+  address: [shopData.value?.street_address, formatShopCityState(shopData.value || {}), shopData.value?.country?.name ?? shopData.value?.country].filter(Boolean).join(', '),
   phone: shopData.value?.phone,
   email: shopData.value?.email,
   website: shopData.value?.website_url

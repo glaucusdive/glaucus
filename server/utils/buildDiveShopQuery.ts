@@ -3,7 +3,8 @@ import { collectShopIdsForActivityTokens } from './collectShopIdsForActivityToke
 
 export interface SearchFilters {
   country?: string
-  locale?: string
+  /** Match city, state, or street_address (ilike). Not a DB column — place-text search. */
+  place?: string
   region?: string
   minRating?: number
   languages?: string[]
@@ -32,22 +33,34 @@ export function sanitizeTermForPostgrestOrFragment (term: string): string {
 }
 
 /**
- * PostgREST `.or()` fragment: location text matches city, state, `locale`, or `street_address` (ilike).
+ * PostgREST `.or()` fragment: place text matches city, state, or street_address (ilike).
  */
-export function diveshopLocaleOrConditions (term: string): string {
+export function diveshopPlaceOrConditions (term: string): string {
   const t = sanitizeTermForPostgrestOrFragment(term)
   if (!t) {
     return 'id.eq.00000000-0000-0000-0000-000000000000'
   }
-  return `city.ilike.%${t}%,state.ilike.%${t}%,locale.ilike.%${t}%,street_address.ilike.%${t}%`
+  return `city.ilike.%${t}%,state.ilike.%${t}%,street_address.ilike.%${t}%`
 }
+
+/** City/state only — used in entity probe to avoid street_address country-name collisions. */
+export function diveshopCityStateOrConditions (term: string): string {
+  const t = sanitizeTermForPostgrestOrFragment(term)
+  if (!t) {
+    return 'id.eq.00000000-0000-0000-0000-000000000000'
+  }
+  return `city.ilike.%${t}%,state.ilike.%${t}%`
+}
+
+/** @deprecated Use diveshopPlaceOrConditions */
+export const diveshopLocaleOrConditions = diveshopPlaceOrConditions
 
 /**
  * Build and execute the dive shop search query.
  * Filtering process:
  * 1. Resolve country/region names to IDs (so we filter on diveshops.country_id / region_id directly).
  * 2. Apply activity token constraint (intersect shop IDs) when present.
- * 3. Apply locale (city/state/locale/street_address), minRating, diveTypes, languages.
+ * 3. Apply place (city/state/street_address), minRating, diveTypes, languages.
  * 4. Order by rating then name, limit 50 (or an optional offset/limit window for pagination).
  */
 export type DiveShopQueryRange = { offset: number; limit: number }
@@ -138,9 +151,9 @@ export async function buildDiveShopQuery (
     if (regionIds.length > 0) query = query.in('region_id', regionIds)
   }
 
-  // Apply locale filter (city, state, locale, or street address)
-  if (filters.locale?.trim()) {
-    const locSafe = sanitizeTermForPostgrestOrFragment(filters.locale)
+  // Apply place filter (city, state, or street address)
+  if (filters.place?.trim()) {
+    const locSafe = sanitizeTermForPostgrestOrFragment(filters.place)
     if (!locSafe) {
       const emptyBase = client
         .from('diveshops')
@@ -148,7 +161,7 @@ export async function buildDiveShopQuery (
         .in('country_id', ['00000000-0000-0000-0000-000000000000'])
       return await applyWindow(emptyBase)
     }
-    query = query.or(diveshopLocaleOrConditions(locSafe))
+    query = query.or(diveshopPlaceOrConditions(locSafe))
   }
 
   // Apply minimum rating filter (include shops with no rating so we don't return zero when data has nulls)

@@ -134,7 +134,7 @@ export async function aggregateCoursesForSearchFilters (
 }
 
 export function placePhraseFromFilters (filters: SearchFilters): string {
-  if (filters.locale?.trim()) return filters.locale.trim()
+  if (filters.place?.trim()) return filters.place.trim()
   if (filters.region?.trim()) return filters.region.trim()
   if (filters.country?.trim()) return filters.country.trim()
   return 'this area'

@@ -1,10 +1,21 @@
 import { isDiveshopUuid } from '~/utils/shopLookup'
+import { formatShopCityState } from '~~/shared/bookShopPick'
 
 /**
  * When false, skips `get_nearby_shops_by_distance` and uses region-based neighbors only (avoids 400s if RPC
  * is missing, not granted to anon/authenticated, or PostgREST signature mismatch). Set true after DB is aligned.
  */
 const USE_NEARBY_DISTANCE_RPC = false
+
+export type NearbyShopRow = {
+  id: string
+  slug: string
+  business_name: string
+  city: string | null
+  state: string | null
+  country: { name: string }
+  distance_miles?: number
+}
 
 /**
  * Fetches a single dive shop with relations and nearby shops.
@@ -44,7 +55,7 @@ export function useShopDetail (shopLookup: string) {
         })
       }
 
-      let nearbyShops: Array<{ id: string, slug: string, business_name: string, locale: string | null, country: { name: string }, distance_miles?: number }> = []
+      let nearbyShops: NearbyShopRow[] = []
       let usedDistanceRpc = false
       if (USE_NEARBY_DISTANCE_RPC) {
         const { data: byDistance, error: nearbyRpcError } = await client.rpc('get_nearby_shops_by_distance', {
@@ -53,11 +64,20 @@ export function useShopDetail (shopLookup: string) {
           max_shops: 8
         })
         if (!nearbyRpcError && byDistance && Array.isArray(byDistance) && byDistance.length > 0) {
-          nearbyShops = byDistance.map((row: { id: string, slug: string, business_name: string, locale: string | null, country_name: string, distance_miles: number }) => ({
+          nearbyShops = byDistance.map((row: {
+            id: string
+            slug: string
+            business_name: string
+            city: string | null
+            state: string | null
+            country_name: string
+            distance_miles: number
+          }) => ({
             id: row.id,
             slug: row.slug,
             business_name: row.business_name,
-            locale: row.locale ?? null,
+            city: row.city ?? null,
+            state: row.state ?? null,
             country: { name: row.country_name },
             distance_miles: row.distance_miles
           }))
@@ -69,15 +89,23 @@ export function useShopDetail (shopLookup: string) {
         if (regionId) {
           const { data: nearby } = await client
             .from('diveshops')
-            .select('id, slug, business_name, locale, country:countries(name)')
+            .select('id, slug, business_name, city, state, country:countries(name)')
             .eq('region_id', regionId)
             .neq('id', shopRow.id)
             .limit(8)
-          nearbyShops = (nearby ?? []).map((s: { id: string, slug: string, business_name: string, locale: string | null, country: { name: string } | null }) => ({
+          nearbyShops = (nearby ?? []).map((s: {
+            id: string
+            slug: string
+            business_name: string
+            city: string | null
+            state: string | null
+            country: { name: string } | null
+          }) => ({
             id: s.id,
             slug: s.slug,
             business_name: s.business_name,
-            locale: s.locale ?? null,
+            city: s.city ?? null,
+            state: s.state ?? null,
             country: s.country ?? { name: '' }
           }))
         }
@@ -97,6 +125,7 @@ export function useShopDetail (shopLookup: string) {
     pending,
     error,
     shopData: computed(() => data.value?.shop ?? null),
-    nearbyShops: computed(() => data.value?.nearbyShops ?? [])
+    nearbyShops: computed(() => data.value?.nearbyShops ?? []),
+    formatShopCityState
   }
 }

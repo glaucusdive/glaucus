@@ -68,8 +68,6 @@ for (let i = 1; i < lines.length; i++) {
   const diveSitesRaw = (p[13] || '').trim();
   const notes = (p[14] || '').trim() || (p[15] || '').trim();
 
-  const locale = [city, state].filter(Boolean).join(', ') || null;
-
   const courseNames = diveCoursesRaw
     ? [...new Set(diveCoursesRaw.split(',').map((s) => s.trim()).filter(Boolean))]
     : [];
@@ -91,7 +89,6 @@ for (let i = 1; i < lines.length; i++) {
     website_url: website || null,
     city: city || null,
     state: state || null,
-    locale: locale || null,
     phone: phone || null,
     email: email || null,
     type: type || null,
@@ -105,25 +102,23 @@ for (let i = 1; i < lines.length; i++) {
   });
 }
 
-// Build VALUES for diveshops: id, business_name, street_address, website_url, city, state, locale, phone, email, type, notes, country_name, region_name
 const valuesLines = rows.map(
   (r) =>
-    `  ('${r.id}'::uuid, ${sqlVal(r.business_name)}, ${sqlVal(r.street_address)}, ${sqlVal(r.website_url)}, ${sqlVal(r.city)}, ${sqlVal(r.state)}, ${sqlVal(r.locale)}, ${sqlVal(r.phone)}, ${sqlVal(r.email)}, ${sqlVal(r.type)}, ${sqlVal(r.notes)}, ${sqlVal(r.country_name)}, ${sqlVal(r.region_name)})`
+    `  ('${r.id}'::uuid, ${sqlVal(r.business_name)}, ${sqlVal(r.street_address)}, ${sqlVal(r.website_url)}, ${sqlVal(r.city)}, ${sqlVal(r.state)}, ${sqlVal(r.phone)}, ${sqlVal(r.email)}, ${sqlVal(r.type)}, ${sqlVal(r.notes)}, ${sqlVal(r.country_name)}, ${sqlVal(r.region_name)})`
 );
 
 const insertDiveshops = `-- Insert diveshops from Scuba Master Database v.12 - DiveShops.csv (country_id/region_id via countries and country_aliases)
-INSERT INTO diveshops (id, business_name, street_address, website_url, city, state, locale, phone, email, type, notes, country_id, region_id)
-SELECT v.id, v.business_name, v.street_address, v.website_url, v.city, v.state, v.locale, v.phone, v.email, v.type, v.notes,
+INSERT INTO diveshops (id, business_name, street_address, website_url, city, state, phone, email, type, notes, country_id, region_id)
+SELECT v.id, v.business_name, v.street_address, v.website_url, v.city, v.state, v.phone, v.email, v.type, v.notes,
   COALESCE(c.id, ca.country_id),
   r.id
 FROM (VALUES
 ${valuesLines.join(',\n')}
-) AS v(id, business_name, street_address, website_url, city, state, locale, phone, email, type, notes, country_name, region_name)
+) AS v(id, business_name, street_address, website_url, city, state, phone, email, type, notes, country_name, region_name)
 LEFT JOIN countries c ON c.name = v.country_name
 LEFT JOIN country_aliases ca ON ca.alias = v.country_name
 LEFT JOIN regions r ON r.name = v.region_name;`;
 
-// Junction inserts: one block per shop (could be batched for courses/rental/gases/sites with same IN list to reduce statements, but clarity first)
 const junctionBlocks = [];
 
 for (const r of rows) {

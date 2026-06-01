@@ -22,7 +22,6 @@ export function adminShopScalarOrConditions (term: string): string {
     'website_url',
     'city',
     'state',
-    'locale',
     'phone',
     'email',
     'type',

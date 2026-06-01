@@ -1,8 +1,8 @@
 import type { SearchFilters } from './buildDiveShopQuery'
 
 /**
- * Map common travel destinations to country + locale/state filters so we query
- * diveshops.city/state/locale/country_id — not business_name alone.
+ * Map common travel destinations to country + place filters so we query
+ * diveshops.city/state/country_id — not business_name alone.
  */
 export function inferSearchFiltersFromDestination (raw: string): SearchFilters {
   const t = raw.trim()
@@ -11,12 +11,12 @@ export function inferSearchFiltersFromDestination (raw: string): SearchFilters {
 
   // Islands / regions strongly tied to a country (location-first, not shop name)
   const islandOrRegion: Record<string, SearchFilters> = {
-    bali: { country: 'Indonesia', locale: 'Bali' },
-    lombok: { country: 'Indonesia', locale: 'Lombok' },
-    komodo: { country: 'Indonesia', locale: 'Komodo' },
-    'nusa penida': { country: 'Indonesia', locale: 'Nusa Penida' },
-    raja: { country: 'Indonesia', locale: 'Raja Ampat' },
-    'raja ampat': { country: 'Indonesia', locale: 'Raja Ampat' }
+    bali: { country: 'Indonesia', place: 'Bali' },
+    lombok: { country: 'Indonesia', place: 'Lombok' },
+    komodo: { country: 'Indonesia', place: 'Komodo' },
+    'nusa penida': { country: 'Indonesia', place: 'Nusa Penida' },
+    raja: { country: 'Indonesia', place: 'Raja Ampat' },
+    'raja ampat': { country: 'Indonesia', place: 'Raja Ampat' }
   }
   if (islandOrRegion[lower]) return islandOrRegion[lower]
 
@@ -31,7 +31,7 @@ export function inferSearchFiltersFromDestination (raw: string): SearchFilters {
     'washington', 'west virginia', 'wisconsin', 'wyoming'
   ])
   if (usStates.has(lower)) {
-    return { country: 'United States', locale: t }
+    return { country: 'United States', place: t }
   }
 
   // Country-like single tokens (search by country name → country_id)
@@ -45,6 +45,6 @@ export function inferSearchFiltersFromDestination (raw: string): SearchFilters {
     return { country: t }
   }
 
-  // Default: search location columns (city/state/locale/street) with the phrase
-  return { locale: t }
+  // Default: search location columns (city/state/street) with the phrase
+  return { place: t }
 }

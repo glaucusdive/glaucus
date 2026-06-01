@@ -4,14 +4,14 @@ export const SEARCH_RESULT_NARRATION_MODEL = OPENAI_CHAT_MODEL
 
 function shopCardSummary (shop: Record<string, unknown>): string {
   const name = String(shop.business_name ?? 'Unknown')
-  const locale = shop.locale != null ? String(shop.locale) : ''
+  const cityState = [shop.city, shop.state].filter(v => v != null && String(v).trim()).map(String).join(', ')
   const country =
     shop.country && typeof shop.country === 'object' && shop.country !== null && 'name' in (shop.country as object)
       ? String((shop.country as { name?: string }).name ?? '')
       : ''
   const rating = typeof shop.google_rating === 'number' ? `${shop.google_rating}` : ''
   const type = shop.type != null ? String(shop.type) : ''
-  const bits = [name, [locale, country].filter(Boolean).join(', '), type, rating ? `rating ${rating}` : '']
+  const bits = [name, [cityState, country].filter(Boolean).join(', '), type, rating ? `rating ${rating}` : '']
     .filter(Boolean)
   return bits.join(' — ')
 }

@@ -10,7 +10,7 @@ describe('nluPlaceOverridesLastGeoContext', () => {
     expect(
       nluPlaceOverridesLastGeoContext(
         { destination_text: 'Bali', goal: 'search_shops' },
-        { country: 'Indonesia', locale: 'Bali' }
+        { country: 'Indonesia', place: 'Bali' }
       )
     ).toBe(false)
   })
@@ -19,7 +19,7 @@ describe('nluPlaceOverridesLastGeoContext', () => {
     expect(
       nluPlaceOverridesLastGeoContext(
         { destination_text: 'Mexico', goal: 'search_shops' },
-        { country: 'Indonesia', locale: 'Bali' }
+        { country: 'Indonesia', place: 'Bali' }
       )
     ).toBe(true)
   })
@@ -43,8 +43,8 @@ describe('userExplicitlyRequestsBroadDatasetSearch', () => {
 describe('carryForwardUnsetSearchAxes', () => {
   it('carries activityTokens from last when refine omits them', () => {
     const out = carryForwardUnsetSearchAxes(
-      { country: 'Indonesia', locale: 'Bali', diveTypes: ['Dive Resort'] },
-      { country: 'Indonesia', locale: 'Bali', activityTokens: ['cave'] },
+      { country: 'Indonesia', place: 'Bali', diveTypes: ['Dive Resort'] },
+      { country: 'Indonesia', place: 'Bali', activityTokens: ['cave'] },
       'I want to filter down to dive resorts',
       null
     )
@@ -54,8 +54,8 @@ describe('carryForwardUnsetSearchAxes', () => {
 
   it('does not carry activity when NLU shifts to a different region', () => {
     const out = carryForwardUnsetSearchAxes(
-      { country: 'Mexico', locale: 'Cozumel', diveTypes: ['Dive Resort'] },
-      { country: 'Indonesia', locale: 'Bali', activityTokens: ['cave'] },
+      { country: 'Mexico', place: 'Cozumel', diveTypes: ['Dive Resort'] },
+      { country: 'Indonesia', place: 'Bali', activityTokens: ['cave'] },
       'dive resorts in Cozumel',
       { destination_text: 'Cozumel', goal: 'search_shops' }
     )
@@ -64,8 +64,8 @@ describe('carryForwardUnsetSearchAxes', () => {
 
   it('skips carry on pagination user messages', () => {
     const out = carryForwardUnsetSearchAxes(
-      { country: 'Indonesia', locale: 'Bali' },
-      { country: 'Indonesia', locale: 'Bali', activityTokens: ['cave'] },
+      { country: 'Indonesia', place: 'Bali' },
+      { country: 'Indonesia', place: 'Bali', activityTokens: ['cave'] },
       'Load next 5',
       null
     )
@@ -84,8 +84,8 @@ describe('carryForwardUnsetSearchAxes', () => {
 
   it('does not carry when user explicitly asks for a broad catalog', () => {
     const out = carryForwardUnsetSearchAxes(
-      { country: 'Indonesia', locale: 'Bali', diveTypes: ['Dive Resort'] },
-      { country: 'Indonesia', locale: 'Bali', activityTokens: ['cave'] },
+      { country: 'Indonesia', place: 'Bali', diveTypes: ['Dive Resort'] },
+      { country: 'Indonesia', place: 'Bali', activityTokens: ['cave'] },
       'view all dive shops',
       null
     )

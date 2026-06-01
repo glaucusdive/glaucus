@@ -1,7 +1,7 @@
 /** Filters shape from chat search API (subset). */
 export type SearchFiltersLite = {
   country?: string | null
-  locale?: string | null
+  place?: string | null
   region?: string | null
   diveTypes?: string[] | null
 }
@@ -34,8 +34,8 @@ function diveTypeLabel (raw: string): string {
 }
 
 function placeFromFilters (f: SearchFiltersLite): string {
-  const locale = trimStr(f.locale)
-  if (locale) return locale
+  const place = trimStr(f.place)
+  if (place) return place
   const region = trimStr(f.region)
   if (region) return region
   const country = trimStr(f.country)

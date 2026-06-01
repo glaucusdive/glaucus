@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
 
   const { data: shop, error: fetchError } = await client
     .from('diveshops')
-    .select('id, street_address, city, state, locale, country:countries(name)')
+    .select('id, street_address, city, state, country:countries(name)')
     .eq('id', shopId)
     .single()
 

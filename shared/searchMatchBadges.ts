@@ -3,7 +3,7 @@ import type { SearchAiExtractedFacets } from './searchAiContract'
 /** Subset of `SearchFilters` — kept local so app + server can import without pulling DB types. */
 export type SearchFiltersForBadges = {
   country?: string
-  locale?: string
+  place?: string
   region?: string
   minRating?: number
   languages?: string[]

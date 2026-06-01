@@ -16,12 +16,12 @@ describe('shopNamePlaceHint', () => {
     })
   })
 
-  it('matches locale tokens from chip text', () => {
+  it('matches city/state tokens from chip text', () => {
     expect(
-      shopMatchesPlaceHint({ locale: 'Indonesia, Bali' }, 'Bali')
+      shopMatchesPlaceHint({ city: 'Bali', state: 'Indonesia' }, 'Bali')
     ).toBe(true)
     expect(
-      shopMatchesPlaceHint({ locale: 'Silver Bank, Puerto Plata' }, 'Bali')
+      shopMatchesPlaceHint({ city: 'Silver Bank', state: 'Puerto Plata' }, 'Bali')
     ).toBe(false)
   })
 })

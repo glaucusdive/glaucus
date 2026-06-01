@@ -10,7 +10,6 @@ export interface ShopWritePayload {
   website_url?: string | null
   city?: string | null
   state?: string | null
-  locale?: string | null
   phone?: string | null
   email?: string | null
   type?: string | null
@@ -29,7 +28,6 @@ const SHOP_COLUMNS = [
   'website_url',
   'city',
   'state',
-  'locale',
   'phone',
   'email',
   'type',

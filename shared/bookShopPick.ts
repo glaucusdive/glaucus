@@ -6,7 +6,12 @@ export type ShopPickLabelFields = {
   business_name: string
   city?: string | null
   state?: string | null
-  locale?: string | null
+}
+
+/** City and state joined for display (replaces removed diveshops.locale column). */
+export function formatShopCityState (shop: { city?: string | null, state?: string | null }): string {
+  const parts = [shop.city?.trim(), shop.state?.trim()].filter(Boolean) as string[]
+  return parts.length ? parts.join(', ') : ''
 }
 
 export function parseBookShopPickMessage (message: string): string | null {
@@ -17,13 +22,9 @@ export function parseBookShopPickMessage (message: string): string | null {
   return id
 }
 
-/** Secondary line for disambiguation chips (locale, or city/state). */
+/** Secondary line for disambiguation chips (city/state). */
 export function formatShopLocationSuffix (shop: ShopPickLabelFields): string {
-  const locale = shop.locale?.trim()
-  if (locale) return locale
-  const parts = [shop.city?.trim(), shop.state?.trim()].filter(Boolean) as string[]
-  if (parts.length) return parts.join(', ')
-  return ''
+  return formatShopCityState(shop)
 }
 
 export function shopDisambiguationChipLabel (shop: ShopPickLabelFields): string {

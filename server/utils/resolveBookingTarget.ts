@@ -42,7 +42,6 @@ type LastShopRow = {
   business_name: string
   city?: string | null
   state?: string | null
-  locale?: string | null
 }
 
 function shopsMatchingNamePart (candidates: ResolvedShop[], namePart: string): ResolvedShop[] {
@@ -96,8 +95,7 @@ export async function resolveBookingTargetFromPhrase (
     business_name: row.business_name,
     email: null,
     city: row.city,
-    state: row.state,
-    locale: row.locale
+    state: row.state
   }))
 
   if (nouns.operatorName && nouns.placeName) {

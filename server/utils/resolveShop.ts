@@ -7,11 +7,10 @@ export interface ResolvedShop {
   email: string | null
   city?: string | null
   state?: string | null
-  locale?: string | null
   [key: string]: unknown
 }
 
-const SHOP_LIST_SELECT = 'id, business_name, email, city, state, locale'
+const SHOP_LIST_SELECT = 'id, business_name, email, city, state'
 const FUZZY_SCAN_CHUNK = 500
 const FUZZY_SCAN_MAX_ROWS = 5000
 
