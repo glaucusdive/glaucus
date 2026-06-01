@@ -5,7 +5,6 @@ export function shopDisplayLabelForUi (source: {
   shopDisplayName?: string | null
   shopName?: string | null
   business_name?: string | null
-  locale?: string | null
   city?: string | null
   state?: string | null
 } | null | undefined): string {
@@ -14,11 +13,10 @@ export function shopDisplayLabelForUi (source: {
   if (fromServer) return fromServer
   const name = source.shopName?.trim() || source.business_name?.trim()
   if (!name) return 'Dive shop'
-  if (source.locale || source.city || source.state) {
+  if (source.city || source.state) {
     return shopDisambiguationChipLabel({
       id: '',
       business_name: name,
-      locale: source.locale,
       city: source.city,
       state: source.state
     })

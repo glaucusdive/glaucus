@@ -98,7 +98,7 @@ function emptySearchReopenLocationPicker (params: {
 }): GuidedFlowSearchResponse {
   const { state, rawMsg, activityLog, bookingHints } = params
   const nextFilters = { ...state.filters }
-  delete nextFilters.locale
+  delete nextFilters.place
   delete nextFilters.country
   delete nextFilters.region
   const nextState: GuidedSearchState = {
@@ -694,7 +694,7 @@ export async function runGuidedSearchTurn (
     if (msg.length >= 2) {
       state = {
         ...state,
-        filters: { ...state.filters, locale: msg },
+        filters: { ...state.filters, place: msg },
         branch: state.branch ?? 'location',
         step: 'results'
       }

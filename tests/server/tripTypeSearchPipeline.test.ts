@@ -48,7 +48,7 @@ describe('isQuerySpecificEnoughForDirectShopCards', () => {
 
   it('is true for minRating with geo', () => {
     expect(
-      isQuerySpecificEnoughForDirectShopCards('highly rated in Bali', { country: 'Indonesia', locale: 'Bali', minRating: 4.5 }, null, false, false)
+      isQuerySpecificEnoughForDirectShopCards('highly rated in Bali', { country: 'Indonesia', place: 'Bali', minRating: 4.5 }, null, false, false)
     ).toBe(true)
   })
 })
@@ -57,7 +57,7 @@ describe('buildRelaxFilterChips', () => {
   it('prioritizes removing dive type and locale when both set', () => {
     const chips = buildRelaxFilterChips({
       country: 'Maldives',
-      locale: 'Malé',
+      place: 'Malé',
       diveTypes: ['Dive Resort']
     })
     expect(chips.some(c => /any trip type/i.test(c.label))).toBe(true)
@@ -101,12 +101,12 @@ describe('mergeInferredDiveTypesIntoFilters', () => {
   it('adds diveTypes from message when filters omit them', () => {
     expect(
       mergeInferredDiveTypesIntoFilters(
-        { country: 'Indonesia', locale: 'Bali' },
+        { country: 'Indonesia', place: 'Bali' },
         'dive resorts in Bali'
       )
     ).toEqual({
       country: 'Indonesia',
-      locale: 'Bali',
+      place: 'Bali',
       diveTypes: ['Dive Resort']
     })
   })

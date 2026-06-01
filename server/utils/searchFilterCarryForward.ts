@@ -31,7 +31,7 @@ export function userExplicitlyRequestsBroadDatasetSearch (message: string): bool
 }
 
 function hasGeo (f: SearchFilters): boolean {
-  return !!(f.country?.trim() || f.locale?.trim() || f.region?.trim())
+  return !!(f.country?.trim() || f.place?.trim() || f.region?.trim())
 }
 
 /**
@@ -47,7 +47,7 @@ export function nluPlaceOverridesLastGeoContext (
   const dest = raw.toLowerCase()
   const bucket = [
     last.country?.trim().toLowerCase(),
-    last.locale?.trim().toLowerCase(),
+    last.place?.trim().toLowerCase(),
     last.region?.trim().toLowerCase()
   ].filter(Boolean) as string[]
   if (!bucket.length) return false
@@ -80,7 +80,7 @@ export function carryForwardUnsetSearchAxes (
     out = {
       ...out,
       ...(last.country?.trim() ? { country: last.country } : {}),
-      ...(last.locale?.trim() ? { locale: last.locale } : {}),
+      ...(last.place?.trim() ? { place: last.place } : {}),
       ...(last.region?.trim() ? { region: last.region } : {})
     }
   }

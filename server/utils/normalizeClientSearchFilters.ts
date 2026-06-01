@@ -6,7 +6,8 @@ export function normalizeClientSearchFilters (raw: unknown): SearchFilters | nul
   const o = raw as Record<string, unknown>
   const out: SearchFilters = {}
   if (typeof o.country === 'string') out.country = o.country
-  if (typeof o.locale === 'string') out.locale = o.locale
+  if (typeof o.place === 'string') out.place = o.place
+  else if (typeof o.locale === 'string') out.place = o.locale
   if (typeof o.region === 'string') out.region = o.region
   if (typeof o.minRating === 'number' && Number.isFinite(o.minRating)) out.minRating = o.minRating
   if (Array.isArray(o.languages) && o.languages.every(x => typeof x === 'string')) out.languages = o.languages as string[]

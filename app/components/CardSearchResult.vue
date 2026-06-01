@@ -33,8 +33,7 @@
       <div class="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-100">
         <MapPin class="w-4 h-4 shrink-0 mt-0.5" />
         <div class="flex flex-col">
-          <span class="font-medium">{{ [shop.locale, shop.country?.name ?? shop.country].filter(Boolean).join(', ')
-            }}</span>
+          <span class="font-medium">{{ locationLine }}</span>
           <span v-if="shop.street_address" class="text-zinc-600 dark:text-zinc-100">{{ shop.street_address }}</span>
         </div>
       </div>
@@ -86,6 +85,7 @@
 import { computed } from 'vue'
 import { Star, MapPin, Globe, Phone, Mail, ChevronUp } from 'lucide-vue-next'
 import { computeCardSearchPills } from '~~/shared/cardSearchPills'
+import { formatShopCityState } from '~~/shared/bookShopPick'
 
 const props = defineProps({
   shop: {
@@ -109,6 +109,12 @@ const props = defineProps({
 })
 
 defineEmits(['start-booking', 'view-details'])
+
+const locationLine = computed(() => {
+  const cityState = formatShopCityState(props.shop || {})
+  const country = props.shop?.country?.name ?? props.shop?.country
+  return [cityState, country].filter(Boolean).join(', ')
+})
 
 const cardPills = computed(() =>
   computeCardSearchPills({

@@ -49,12 +49,14 @@ describe('resolveBookingTargetFromPhrase', () => {
         {
           id: 'pr',
           business_name: 'Explorer Ventures Diving Fleet',
-          locale: 'Silver Bank, Puerto Plata'
+          city: 'Silver Bank',
+          state: 'Puerto Plata'
         },
         {
           id: 'bali',
           business_name: 'Explorer Ventures Diving Fleet',
-          locale: 'Indonesia, Bali'
+          city: 'Bali',
+          state: 'Indonesia'
         }
       ],
       '',
@@ -74,12 +76,14 @@ describe('resolveBookingTargetFromPhrase', () => {
         {
           id: 'pr',
           business_name: 'Explorer Ventures Diving Fleet',
-          locale: 'Silver Bank, Puerto Plata'
+          city: 'Silver Bank',
+          state: 'Puerto Plata'
         },
         {
           id: 'bali',
           business_name: 'Explorer Ventures Diving Fleet',
-          locale: 'Indonesia, Bali'
+          city: 'Bali',
+          state: 'Indonesia'
         }
       ],
       '',

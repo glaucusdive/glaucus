@@ -17,7 +17,7 @@ function filtersLooselyEqual (a: SearchFilters, b: SearchFilters): boolean {
 function normalizeForCompare (f: SearchFilters): Record<string, unknown> {
   const o: Record<string, unknown> = {}
   if (f.country?.trim()) o.country = f.country.trim()
-  if (f.locale?.trim()) o.locale = f.locale.trim()
+  if (f.place?.trim()) o.place = f.place.trim()
   if (f.region?.trim()) o.region = f.region.trim()
   if (f.minRating != null && Number.isFinite(f.minRating)) o.minRating = f.minRating
   if (f.languages?.length) o.languages = [...f.languages].sort()
@@ -35,7 +35,7 @@ function normalizeForCompare (f: SearchFilters): Record<string, unknown> {
 export function tryApplySearchFilterRelax (message: string, last: SearchFilters): SearchFilters | null {
   const m = message.trim()
   if (!m) return null
-  const hasGeo = !!(last.country?.trim() || last.locale?.trim() || last.region?.trim())
+  const hasGeo = !!(last.country?.trim() || last.place?.trim() || last.region?.trim())
   if (!hasGeo) return null
 
   let next = cloneFilters(last)
@@ -62,12 +62,12 @@ export function tryApplySearchFilterRelax (message: string, last: SearchFilters)
     changed = true
   }
 
-  const widenLocale =
-    !!last.locale?.trim() &&
+  const widenPlace =
+    !!last.place?.trim() &&
     !!last.country?.trim() &&
     /across all areas of .+, not only .+/i.test(m)
-  if (widenLocale) {
-    delete next.locale
+  if (widenPlace) {
+    delete next.place
     changed = true
   }
 

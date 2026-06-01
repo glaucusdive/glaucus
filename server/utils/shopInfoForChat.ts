@@ -105,7 +105,8 @@ export type ShopInfoBundle = {
   email: string | null
   phone: string | null
   website_url: string | null
-  locale: string | null
+  city: string | null
+  state: string | null
   google_rating: number | null
   country?: { name?: string | null } | null
   region?: { name?: string | null } | null
@@ -129,7 +130,8 @@ export async function fetchShopInfoBundle (
       email,
       phone,
       website_url,
-      locale,
+      city,
+      state,
       google_rating,
       country:countries(name),
       region:regions(name),
@@ -153,7 +155,8 @@ function clip (s: string, max: number): string {
 
 function formatOverview (shop: ShopInfoBundle): string {
   const lines: string[] = []
-  const loc = [shop.locale, shop.region?.name, shop.country?.name].filter(Boolean).join(', ')
+  const cityState = [shop.city, shop.state].filter(Boolean).join(', ')
+  const loc = [cityState, shop.region?.name, shop.country?.name].filter(Boolean).join(', ')
   if (loc) lines.push(`- Location: ${loc}`)
   if (shop.google_rating != null) lines.push(`- Google rating: ${shop.google_rating}`)
   if (lines.length === 0) {

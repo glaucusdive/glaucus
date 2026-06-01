@@ -12,10 +12,10 @@ describe('bookShopPick', () => {
     expect(parseBookShopPickMessage("Let's book Foo")).toBeNull()
   })
 
-  it('labels shops with locale when names collide', () => {
+  it('labels shops with city/state when names collide', () => {
     const shops = [
-      { id: '1', business_name: 'Explorer Ventures Diving Fleet', locale: 'St. Croix, USVI' },
-      { id: '2', business_name: 'Explorer Ventures Diving Fleet', locale: 'BVI' }
+      { id: '1', business_name: 'Explorer Ventures Diving Fleet', city: 'St. Croix', state: 'USVI' },
+      { id: '2', business_name: 'Explorer Ventures Diving Fleet', city: 'Road Town', state: 'BVI' }
     ]
     const opts = shopDisambiguationSelectableOptions(shops)
     expect(opts).toHaveLength(2)

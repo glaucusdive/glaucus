@@ -97,12 +97,19 @@ describe('shouldRunInterpretNlu', () => {
 })
 
 describe('mergeNluHintsIntoFilters', () => {
-  it('fills locale from destination when empty', () => {
+  it('fills place from destination when empty', () => {
     const out = mergeNluHintsIntoFilters(
       {},
       { goal: 'search_shops', destination_text: 'Bali' }
     )
-    expect(out.locale).toBe('Bali')
+    expect(out.place).toBe('Bali')
+  })
+  it('does not stack place when country already set', () => {
+    const out = mergeNluHintsIntoFilters(
+      { country: 'Spain' },
+      { goal: 'start_booking', destination_text: 'Spain' }
+    )
+    expect(out).toEqual({ country: 'Spain' })
   })
 })
 

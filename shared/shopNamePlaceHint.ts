@@ -1,6 +1,5 @@
-/** Fields used to match a user’s place hint (chip locale, city, etc.). */
+/** Fields used to match a user’s place hint (city, state, etc.). */
 export type ShopPlaceFields = {
-  locale?: string | null
   city?: string | null
   state?: string | null
 }
@@ -38,7 +37,7 @@ export function placeHintTokens (placeHint: string): string[] {
 }
 
 export function shopMatchesPlaceHint (shop: ShopPlaceFields, placeHint: string): boolean {
-  const blob = [shop.locale, shop.city, shop.state].filter(Boolean).join(' ').toLowerCase()
+  const blob = [shop.city, shop.state].filter(Boolean).join(' ').toLowerCase()
   if (!blob) return false
   const hint = placeHint.trim().toLowerCase()
   if (hint.length >= 2 && blob.includes(hint)) return true

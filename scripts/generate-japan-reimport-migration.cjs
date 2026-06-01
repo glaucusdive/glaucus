@@ -73,7 +73,6 @@ for (const line of lines) {
 
   const city = (p[3] || '').trim();
   const state = (p[4] || '').trim();
-  const locale = [city, state].filter(Boolean).join(', ') || null;
 
   rows.push({
     id,
@@ -82,7 +81,6 @@ for (const line of lines) {
     website_url: website || null,
     city: city || null,
     state: state || null,
-    locale,
     phone: (p[7] || '').trim() || null,
     email: (p[8] || '').trim() || null,
     courseNames: (p[9] || '')
@@ -180,7 +178,6 @@ UPDATE diveshops SET
   website_url = ${sqlVal(r.website_url)},
   city = ${sqlVal(r.city)},
   state = ${sqlVal(r.state)},
-  locale = ${sqlVal(r.locale)},
   phone = ${sqlVal(r.phone)},
   email = ${sqlVal(r.email)},
   type = 'Dive Shop',

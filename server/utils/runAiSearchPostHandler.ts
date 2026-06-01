@@ -353,7 +353,7 @@ export interface RequestBody {
   message: string
   history: Message[]
   selectedShopId?: string
-  lastShops?: { id: string, business_name: string, city?: string | null, state?: string | null, locale?: string | null }[]
+  lastShops?: { id: string, business_name: string, city?: string | null, state?: string | null, city?: string | null, state?: string | null }[]
   /** Total number of shop cards already shown in this conversation (for pagination). */
   shopsAlreadyShownCount?: number
   bookingPayload?: BookingPayload
@@ -709,7 +709,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           pushActivity(
             'search_relax',
             formatSearchRelaxActivityLine(
-              relaxed.locale?.trim() || relaxed.country?.trim() || relaxed.region?.trim() || 'your area'
+              relaxed.place?.trim() || relaxed.country?.trim() || relaxed.region?.trim() || 'your area'
             )
           )
           try {
@@ -717,7 +717,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             const { data: shops, error: dbErr } = queryResult
             if (!dbErr) {
               const place =
-                relaxed.locale?.trim() ||
+                relaxed.place?.trim() ||
                 relaxed.country?.trim() ||
                 relaxed.region?.trim() ||
                 'that area'
@@ -2927,7 +2927,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
         if (
           normalizedForCourses &&
           (normalizedForCourses.country?.trim() ||
-            normalizedForCourses.locale?.trim() ||
+            normalizedForCourses.place?.trim() ||
             normalizedForCourses.region?.trim())
         ) {
           const coursePayload = await tryBuildCourseDiscoverySearchResponse(
@@ -3035,7 +3035,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
   Return ONLY the filters in this exact format:
   FILTERS: {
     "country": "string or null",
-    "locale": "string or null", 
+    "place": "string or null", 
     "region": "string or null",
     "minRating": number or null,
     "languages": ["array", "of", "languages"] or null,

@@ -1569,8 +1569,7 @@ const sendMessage = async (messageText, displayText) => {
       id: s.id,
       business_name: s.business_name,
       city: s.city,
-      state: s.state,
-      locale: s.locale
+      state: s.state
     })) ?? undefined
 
     const lastAssistantMessage = [...messages.value].reverse().find(m => m.role === 'assistant')
