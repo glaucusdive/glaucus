@@ -25,12 +25,6 @@ const FOCUS_RING =
 const PLACEHOLDER =
   'placeholder-zinc-500'
 
-export const FORM_FIELDSET_CLASSES =
-  'bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2 mx-2'
-
-export const FORM_FIELDSET_CLASSES_EMBEDDED =
-  'bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2'
-
 export const FORM_FIELDSET_GAP_WIDE = 'gap-2'
 
 export const FORM_LABEL_CLASSES: Record<FormControlVariant, string> = {
