@@ -11,10 +11,6 @@
 
 <script setup lang="ts">
 import { computed, useAttrs } from 'vue'
-import {
-  formTextareaClasses,
-  type FormControlVariant
-} from '~/utils/formControlClasses'
 
 defineOptions({ inheritAttrs: false })
 
@@ -22,7 +18,6 @@ const props = withDefaults(
   defineProps<{
     modelValue?: string | null
     rows?: number
-    variant?: FormControlVariant
     focusRing?: boolean
     muted?: boolean
     resize?: boolean
@@ -32,7 +27,6 @@ const props = withDefaults(
   {
     modelValue: '',
     rows: 3,
-    variant: 'admin',
     focusRing: false,
     muted: false,
     resize: true,
@@ -44,11 +38,19 @@ const emit = defineEmits<{ 'update:modelValue': [string] }>()
 
 const attrs = useAttrs()
 
-const textareaClass = computed(() =>
-  [formTextareaClasses(props.variant, { focusRing: props.focusRing, muted: props.muted, resize: props.resize }), props.class]
-    .filter(Boolean)
-    .join(' ')
-)
+const textareaClass = computed(() => {
+  const classes: string[] = []
+  if (props.muted) {
+    classes.push('form-textarea-muted')
+  } else {
+    classes.push('form-textarea')
+  }
+  if (props.resize) classes.push('form-textarea-resize')
+  else classes.push('form-textarea-no-resize')
+  if (props.focusRing) classes.push('form-focus-ring')
+  if (props.class) classes.push(props.class)
+  return classes.join(' ')
+})
 
 function onInput (e: Event) {
   emit('update:modelValue', (e.target as HTMLTextAreaElement).value)

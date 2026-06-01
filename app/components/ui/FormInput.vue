@@ -12,11 +12,7 @@
 
 <script setup lang="ts">
 import { computed, ref, useAttrs } from 'vue'
-import {
-  formInputClasses,
-  type FormControlSize,
-  type FormControlVariant
-} from '~/utils/formControlClasses'
+import type { FormControlSize } from '~/components/ui/form-types'
 
 defineOptions({ inheritAttrs: false })
 
@@ -24,7 +20,6 @@ const props = withDefaults(
   defineProps<{
     modelValue?: string | number | null
     type?: string
-    variant?: FormControlVariant
     size?: FormControlSize
     focusRing?: boolean
     muted?: boolean
@@ -34,7 +29,6 @@ const props = withDefaults(
   {
     modelValue: '',
     type: 'text',
-    variant: 'admin',
     size: 'default',
     focusRing: false,
     muted: false,
@@ -49,11 +43,21 @@ const inputEl = ref<HTMLInputElement | null>(null)
 
 defineExpose({ inputEl })
 
-const inputClass = computed(() =>
-  [formInputClasses(props.variant, { size: props.size, focusRing: props.focusRing, muted: props.muted }), props.class]
-    .filter(Boolean)
-    .join(' ')
-)
+const inputClass = computed(() => {
+  const classes: string[] = []
+  if (props.muted) {
+    classes.push('form-input-muted')
+  } else if (props.size === 'sm') {
+    classes.push('form-input-sm')
+  } else if (props.size === 'md') {
+    classes.push('form-input-md')
+  } else {
+    classes.push('form-input')
+  }
+  if (props.focusRing) classes.push('form-focus-ring')
+  if (props.class) classes.push(props.class)
+  return classes.join(' ')
+})
 
 function onInput (e: Event) {
   const el = e.target as HTMLInputElement

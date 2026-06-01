@@ -69,5 +69,12 @@ export function extractMidBookingShopSwitchPhrase (message: string): string | nu
     if (phrase.length >= 2) return phrase
   }
 
+  // "switch to Dive Porter", "change to X instead" — no "book with" required.
+  const switchTo = delead.match(/\b(?:switch|change)\s+to\s+(?:the\s+)?([^.?!]+)/i)
+  if (switchTo?.[1]) {
+    const phrase = cleanReferentPhraseForProbe(switchTo[1])
+    if (phrase.length >= 2) return phrase
+  }
+
   return null
 }
