@@ -25,16 +25,16 @@
             Basic info
           </h3>
           <div class="flex min-w-0 flex-col gap-4">
-            <FormField label="Business name" variant="admin" required field-id="new-business-name">
+            <FormField label="Business name" required field-id="new-business-name">
               <FormInput
                 id="new-business-name"
                 v-model="form.business_name"
                 type="text"
-                variant="admin"
+               
                 required
               />
             </FormField>
-            <FormField label="Business type" variant="admin">
+            <FormField label="Business type">
               <AdminSelectChip
                 v-model="form.business_type_ids"
                 full-width
@@ -46,28 +46,28 @@
                 @created="onLookupCreated('diveBusinessTypes', $event)"
               />
             </FormField>
-            <FormField label="Website" variant="admin" field-id="new-business-website">
+            <FormField label="Website" field-id="new-business-website">
               <FormInput
                 id="new-business-website"
                 v-model="form.website_url"
                 type="url"
-                variant="admin"
+               
               />
             </FormField>
-            <FormField label="Email" variant="admin" field-id="new-business-email">
+            <FormField label="Email" field-id="new-business-email">
               <FormInput
                 id="new-business-email"
                 v-model="form.email"
                 type="email"
-                variant="admin"
+               
               />
             </FormField>
-            <FormField label="Phone" variant="admin" field-id="new-business-phone">
+            <FormField label="Phone" field-id="new-business-phone">
               <FormInput
                 id="new-business-phone"
                 v-model="form.phone"
                 type="text"
-                variant="admin"
+               
               />
             </FormField>
           </div>
@@ -77,22 +77,22 @@
           </h3>
 
           <div class="flex min-w-0 flex-col gap-4">
-            <FormField label="Street address" variant="admin" field-id="new-business-address">
+            <FormField label="Street address" field-id="new-business-address">
               <FormTextarea
                 id="new-business-address"
                 v-model="form.street_address"
                 :rows="2"
-                variant="admin"
+               
                 :resize="false"
               />
             </FormField>
-            <FormField label="City" variant="admin" field-id="new-business-city">
-              <FormInput id="new-business-city" v-model="form.city" type="text" variant="admin" />
+            <FormField label="City" field-id="new-business-city">
+              <FormInput id="new-business-city" v-model="form.city" type="text" />
             </FormField>
-            <FormField label="State" variant="admin" field-id="new-business-state">
-              <FormInput id="new-business-state" v-model="form.state" type="text" variant="admin" />
+            <FormField label="State" field-id="new-business-state">
+              <FormInput id="new-business-state" v-model="form.state" type="text" />
             </FormField>
-            <FormField label="Country" variant="admin">
+            <FormField label="Country">
               <AdminSelectChip
                 :model-value="countryChip"
                 full-width
@@ -103,7 +103,7 @@
                 @update:model-value="onCountryChip"
               />
             </FormField>
-            <FormField label="Region" variant="admin">
+            <FormField label="Region">
               <AdminSelectChip
                 :model-value="regionChip"
                 full-width
@@ -123,7 +123,7 @@
           </h3>
 
           <div class="flex min-w-0 flex-col gap-4">
-            <FormField label="Dive sites" variant="admin">
+            <FormField label="Dive sites">
               <AdminSelectChip
                 v-model="form.dive_site_ids"
                 full-width
@@ -135,7 +135,7 @@
                 @created="onLookupCreated('diveSites', $event)"
               />
             </FormField>
-            <FormField label="Courses" variant="admin">
+            <FormField label="Courses">
               <AdminSelectChip
                 v-model="form.course_ids"
                 full-width
@@ -145,7 +145,7 @@
                 singular-label="course"
               />
             </FormField>
-            <FormField label="Rental gear" variant="admin">
+            <FormField label="Rental gear">
               <AdminSelectChip
                 v-model="form.rental_equipment_ids"
                 full-width
@@ -157,7 +157,7 @@
                 @created="onLookupCreated('rentalEquipment', $event)"
               />
             </FormField>
-            <FormField label="Gases" variant="admin">
+            <FormField label="Gases">
               <AdminSelectChip
                 v-model="form.gas_ids"
                 full-width

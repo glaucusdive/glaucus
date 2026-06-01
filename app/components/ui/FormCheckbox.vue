@@ -4,7 +4,7 @@
       :type="type"
       :checked="isChecked"
       :value="value"
-      :class="checkboxClass"
+      class="form-check-input"
       v-bind="attrs"
       @change="onChange"
     >
@@ -15,7 +15,7 @@
     type="checkbox"
     :checked="isChecked"
     :value="value"
-    :class="checkboxClass"
+    class="form-check-input"
     v-bind="attrs"
     @change="onChange"
   >
@@ -23,11 +23,6 @@
 
 <script setup lang="ts">
 import { computed, useAttrs } from 'vue'
-import {
-  FORM_CHECKBOX_ROW_CLASSES,
-  formCheckboxClasses,
-  type FormControlVariant
-} from '~/utils/formControlClasses'
 
 defineOptions({ inheritAttrs: false })
 
@@ -35,13 +30,11 @@ const props = withDefaults(
   defineProps<{
     modelValue?: boolean | unknown[]
     value?: unknown
-    variant?: FormControlVariant
     row?: boolean
     class?: string
   }>(),
   {
     modelValue: false,
-    variant: 'panel',
     row: true,
     class: ''
   }
@@ -61,11 +54,11 @@ const isChecked = computed(() => {
   return Boolean(props.modelValue)
 })
 
-const checkboxClass = computed(() =>
-  [formCheckboxClasses(props.variant), props.class].filter(Boolean).join(' ')
+const rowClass = computed(() =>
+  props.row
+    ? ['form-checkbox-row', props.class].filter(Boolean).join(' ')
+    : ['inline-flex items-center gap-2 cursor-pointer', props.class].filter(Boolean).join(' ')
 )
-
-const rowClass = computed(() => (props.row ? FORM_CHECKBOX_ROW_CLASSES : 'inline-flex items-center gap-2 cursor-pointer'))
 
 function onChange (e: Event) {
   const el = e.target as HTMLInputElement

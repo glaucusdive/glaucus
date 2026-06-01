@@ -2,8 +2,8 @@
   <fieldset :class="fieldsetClass">
     <label
       v-if="label"
-      :for="fieldId"
-      :class="FORM_LABEL_CLASSES.panel"
+      :for="fieldId || undefined"
+      class="form-label-section"
     >
       {{ label }}
     </label>
@@ -13,10 +13,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import {
-  FORM_FIELDSET_GAP_WIDE,
-  FORM_LABEL_CLASSES
-} from '~/utils/formControlClasses'
 
 const props = withDefaults(
   defineProps<{
@@ -35,11 +31,11 @@ const props = withDefaults(
 
 const fieldId = computed(() => props.fieldId)
 
-const fieldsetClass = computed(() => {
-  const gap = props.wideGap ? FORM_FIELDSET_GAP_WIDE : 'gap-1'
-  const layout = props.embedded
-    ? `flex flex-col ${gap}`
-    : `flex flex-col ${gap} mx-2`
-  return [layout, props.class].filter(Boolean).join(' ')
-})
+const fieldsetClass = computed(() =>
+  [
+    props.embedded ? 'form-fieldset-embedded' : 'form-fieldset',
+    props.wideGap ? 'form-fieldset-wide' : '',
+    props.class
+  ].filter(Boolean).join(' ')
+)
 </script>

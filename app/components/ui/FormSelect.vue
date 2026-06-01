@@ -12,19 +12,14 @@
 
 <script setup lang="ts">
 import { computed, useAttrs } from 'vue'
-import {
-  formSelectClasses,
-  type FormControlSize,
-  type FormControlVariant
-} from '~/utils/formControlClasses'
+import type { FormControlSize } from '~/components/ui/form-types'
 
 defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(
   defineProps<{
     modelValue?: string | number | null
-    variant?: FormControlVariant
-    size?: FormControlSize
+    size?: FormControlSize | 'xs'
     muted?: boolean
     focusRing?: boolean
     id?: string
@@ -32,7 +27,6 @@ const props = withDefaults(
   }>(),
   {
     modelValue: '',
-    variant: 'admin',
     size: 'default',
     muted: false,
     focusRing: false,
@@ -44,11 +38,19 @@ const emit = defineEmits<{ 'update:modelValue': [string | number]; change: [Even
 
 const attrs = useAttrs()
 
-const selectClass = computed(() =>
-  [formSelectClasses(props.variant, { size: props.size, muted: props.muted, focusRing: props.focusRing }), props.class]
-    .filter(Boolean)
-    .join(' ')
-)
+const selectClass = computed(() => {
+  const classes: string[] = []
+  if (props.muted) {
+    classes.push('form-select-muted')
+  } else if (props.size === 'xs') {
+    classes.push('form-select-xs')
+  } else {
+    classes.push('form-select')
+  }
+  if (props.focusRing) classes.push('form-focus-ring')
+  if (props.class) classes.push(props.class)
+  return classes.join(' ')
+})
 
 function onChange (e: Event) {
   const value = (e.target as HTMLSelectElement).value

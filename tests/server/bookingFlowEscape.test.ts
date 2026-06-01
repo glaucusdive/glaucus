@@ -32,6 +32,11 @@ describe('extractMidBookingShopSwitchPhrase', () => {
     expect(p?.toLowerCase()).toContain('explorer ventures')
     expect(p?.toLowerCase()).toContain('bali')
   })
+
+  it('extracts shop from switch to … instead during booking', () => {
+    const p = extractMidBookingShopSwitchPhrase('Lets switch to Dive Porter instead')
+    expect(p).toBe('Dive Porter')
+  })
 })
 
 describe('userMessageWantsResumeSearchDuringBooking', () => {

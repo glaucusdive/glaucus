@@ -51,7 +51,7 @@
           <FormTextarea
             id="review-body"
             v-model="body"
-            variant="panel"
+           
             :rows="6"
             required
             minlength="1"

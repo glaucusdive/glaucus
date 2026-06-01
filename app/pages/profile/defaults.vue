@@ -11,22 +11,22 @@
       <form v-else @submit.prevent="saveDefaults" class="space-y-4 max-w-xl">
         <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4 space-y-3">
           <h2 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Contact</h2>
-          <FormField label="Name" variant="admin" label-style="auth" field-id="profile-name" class="space-y-1">
+          <FormField label="Name" label-style="auth" field-id="profile-name" class="space-y-1">
             <FormInput
               id="profile-name"
               v-model="defaultsForm.name"
               type="text"
-              variant="admin"
+             
               size="md"
               placeholder="Your name"
             />
           </FormField>
-          <FormField label="Email" variant="admin" label-style="auth" field-id="profile-email" class="space-y-1">
+          <FormField label="Email" label-style="auth" field-id="profile-email" class="space-y-1">
             <FormInput
               id="profile-email"
               v-model="defaultsForm.email"
               type="email"
-              variant="admin"
+             
               size="md"
               placeholder="you@example.com"
             />
@@ -45,32 +45,32 @@
                 class="text-xs text-red-600 dark:text-red-400 hover:underline cursor-pointer">Remove</button>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <FormField label="Name" variant="admin" label-style="auth">
-                <FormInput v-model="diver.name" type="text" variant="admin" size="sm" />
+              <FormField label="Name" label-style="auth">
+                <FormInput v-model="diver.name" type="text" size="sm" />
               </FormField>
-              <FormField label="Certification #" variant="admin" label-style="auth">
-                <FormInput v-model="diver.certificationNumber" type="text" variant="admin" size="sm" />
+              <FormField label="Certification #" label-style="auth">
+                <FormInput v-model="diver.certificationNumber" type="text" size="sm" />
               </FormField>
-              <FormField label="Number of dives" variant="admin" label-style="auth">
-                <FormInput v-model="diver.numberOfDives" type="text" variant="admin" size="sm" placeholder="e.g. 21" />
+              <FormField label="Number of dives" label-style="auth">
+                <FormInput v-model="diver.numberOfDives" type="text" size="sm" placeholder="e.g. 21" />
               </FormField>
               <div class="flex gap-2 items-end sm:col-span-2">
-                <FormField label="Height" variant="admin" label-style="auth" class="flex-1 min-w-0">
-                  <FormInput v-model="diver.height" type="text" variant="admin" size="sm" />
+                <FormField label="Height" label-style="auth" class="flex-1 min-w-0">
+                  <FormInput v-model="diver.height" type="text" size="sm" />
                 </FormField>
-                <FormField label="Unit" variant="admin" label-style="auth" class="w-24 shrink-0">
-                  <FormSelect v-model="diver.heightUnit" variant="admin" size="sm">
+                <FormField label="Unit" label-style="auth" class="w-24 shrink-0">
+                  <FormSelect v-model="diver.heightUnit" size="sm">
                     <option value="ft-in">ft & in</option>
                     <option value="cm">cm</option>
                   </FormSelect>
                 </FormField>
               </div>
               <div class="flex gap-2 items-end sm:col-span-2">
-                <FormField label="Weight" variant="admin" label-style="auth" class="flex-1 min-w-0">
-                  <FormInput v-model="diver.weight" type="text" variant="admin" size="sm" />
+                <FormField label="Weight" label-style="auth" class="flex-1 min-w-0">
+                  <FormInput v-model="diver.weight" type="text" size="sm" />
                 </FormField>
-                <FormField label="Unit" variant="admin" label-style="auth" class="w-24 shrink-0">
-                  <FormSelect v-model="diver.weightUnit" variant="admin" size="sm">
+                <FormField label="Unit" label-style="auth" class="w-24 shrink-0">
+                  <FormSelect v-model="diver.weightUnit" size="sm">
                     <option value="lbs">lbs</option>
                     <option value="kg">kg</option>
                   </FormSelect>
@@ -86,7 +86,7 @@
                 </span>
                 <FormSelect
                   v-model="diver.gearToAdd"
-                  variant="admin"
+                 
                   size="xs"
                   @change="addDiverGearFromSelect(idx)"
                 >

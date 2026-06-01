@@ -54,8 +54,8 @@
       </div>
 
       <form v-else class="flex flex-col gap-4 p-2" @submit.prevent="handleSubmit">
-        <FormField label="Type" variant="admin" label-style="uppercase" field-id="feedback-kind">
-          <FormSelect id="feedback-kind" v-model="kind" variant="admin" muted focus-ring>
+        <FormField label="Type" label-style="uppercase" field-id="feedback-kind">
+          <FormSelect id="feedback-kind" v-model="kind" muted focus-ring>
             <option value="bug">Bug</option>
             <option value="feature">Feature</option>
             <option value="correction">Dive Shop Inquiries</option>
@@ -64,12 +64,12 @@
 
         <hr class="border-zinc-200 dark:border-zinc-800" />
 
-        <FormField label="Name" variant="admin" label-style="uppercase" field-id="feedback-name">
+        <FormField label="Name" label-style="uppercase" field-id="feedback-name">
           <FormInput
             id="feedback-name"
             v-model="name"
             type="text"
-            variant="admin"
+           
             muted
             focus-ring
             required
@@ -78,12 +78,12 @@
           />
         </FormField>
 
-        <FormField label="Email" variant="admin" label-style="uppercase" field-id="feedback-email">
+        <FormField label="Email" label-style="uppercase" field-id="feedback-email">
           <FormInput
             id="feedback-email"
             v-model="email"
             type="email"
-            variant="admin"
+           
             muted
             focus-ring
             required
@@ -93,12 +93,12 @@
 
         <hr class="border-zinc-200 dark:border-zinc-800" />
 
-        <FormField label="Subject" variant="admin" label-style="uppercase" field-id="feedback-subject">
+        <FormField label="Subject" label-style="uppercase" field-id="feedback-subject">
           <FormInput
             id="feedback-subject"
             v-model="subject"
             type="text"
-            variant="admin"
+           
             muted
             focus-ring
             required
@@ -108,11 +108,11 @@
           />
         </FormField>
 
-        <FormField label="Message" variant="admin" label-style="uppercase" field-id="feedback-message">
+        <FormField label="Message" label-style="uppercase" field-id="feedback-message">
           <FormTextarea
             id="feedback-message"
             v-model="message"
-            variant="admin"
+           
             muted
             focus-ring
             :rows="5"
@@ -123,12 +123,12 @@
           />
         </FormField>
 
-        <FormField label="Screenshot (optional)" variant="admin" label-style="uppercase" field-id="feedback-photo">
+        <FormField label="Screenshot (optional)" label-style="uppercase" field-id="feedback-photo">
           <FormInput
             id="feedback-photo"
             ref="fileInputRef"
             type="file"
-            variant="admin"
+           
             accept="image/jpeg,image/png,image/webp,image/gif"
             class="block w-full text-sm text-zinc-600 dark:text-zinc-400 file:mr-2 file:rounded-md file:border file:border-zinc-300 file:bg-white file:px-2 file:py-1.5 file:text-sm file:font-medium file:text-zinc-900 hover:file:bg-zinc-50 dark:file:border-zinc-600 dark:file:bg-zinc-800 dark:file:text-zinc-100 dark:hover:file:bg-zinc-700 cursor-pointer"
             @change="onFileSelected"

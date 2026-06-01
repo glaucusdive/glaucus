@@ -18,32 +18,30 @@
 
         <!-- Name -->
         <FormFieldset label="Name" field-id="name">
-          <FormInput id="name" v-model="formData.name" type="text" variant="panel" required />
+          <FormInput id="name" v-model="formData.name" type="text" required />
         </FormFieldset>
 
         <!-- Email -->
         <FormFieldset label="Email" field-id="email">
-          <FormInput id="email" v-model="formData.email" type="email" variant="panel" required />
+          <FormInput id="email" v-model="formData.email" type="email" required />
         </FormFieldset>
 
         <!-- Dates -->
         <FormFieldset label="Dates for Diving" wide-gap>
-          <FormField label="Start Date" variant="panel" label-tone="sub" field-id="startDate">
+          <FormField label="Start Date" sub field-id="startDate">
             <FormInput
               id="startDate"
               v-model="formData.startDate"
               type="date"
-              variant="panel"
               :min="today"
               required
             />
           </FormField>
-          <FormField label="End Date" variant="panel" label-tone="sub" field-id="endDate">
+          <FormField label="End Date" sub field-id="endDate">
             <FormInput
               id="endDate"
               v-model="formData.endDate"
               type="date"
-              variant="panel"
               :min="formData.startDate || today"
               required
             />
@@ -54,13 +52,12 @@
         <FormFieldset label="Courses (optional)">
           <div v-if="coursesLoading" class="px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">Loading courses…</div>
           <div v-else-if="courses.length === 0" class="px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">No courses listed for this shop.</div>
-          <div v-else class="flex flex-col gap-1 px-2">
+          <div v-else class="flex flex-col gap-1">
             <FormCheckbox
               v-for="course in courses"
               :key="course.id"
               v-model="formData.desiredCourses"
               :value="course.name"
-              variant="panel"
             >
               <span class="text-sm text-zinc-900 dark:text-white">{{ course.name }}</span>
             </FormCheckbox>
@@ -71,13 +68,12 @@
         <FormFieldset label="Desired Dive Sites (optional)">
           <div v-if="diveSitesLoading" class="px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">Loading dive sites…</div>
           <div v-else-if="diveSites.length === 0" class="px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">No dive sites listed for this shop.</div>
-          <div v-else class="flex flex-col gap-1 px-2">
+          <div v-else class="flex flex-col gap-1">
             <FormCheckbox
               v-for="site in diveSites"
               :key="site.id"
               v-model="formData.desiredDiveSites"
               :value="site.name"
-              variant="panel"
             >
               <span class="text-sm text-zinc-900 dark:text-white">{{ site.name }}</span>
             </FormCheckbox>
@@ -94,7 +90,6 @@
             id="numberOfDivers"
             v-model="formData.numberOfDivers"
             type="number"
-            variant="panel"
             min="1"
             required
             @update:model-value="updateDiversCount"
@@ -102,29 +97,31 @@
         </FormFieldset>
 
         <!-- Divers Details -->
-        <div v-for="(diver, index) in formData.divers" :key="index"
-          class="flex flex-col gap-2">
-          <h3 class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Diver {{ index + 1 }}</h3>
-
-          <FormField label="Name" variant="panel" label-tone="sub" :field-id="`diver-name-${index}`">
-            <FormInput :id="`diver-name-${index}`" v-model="diver.name" type="text" variant="panel" required />
+        <FormFieldset
+          v-for="(diver, index) in formData.divers"
+          :key="index"
+          :label="`Diver ${index + 1}`"
+          wide-gap
+        >
+          <FormField label="Name" sub :field-id="`diver-name-${index}`">
+            <FormInput :id="`diver-name-${index}`" v-model="diver.name" type="text" required />
           </FormField>
 
-          <FormField label="Certification Number" variant="panel" label-tone="sub" :field-id="`diver-cert-${index}`">
-            <FormInput :id="`diver-cert-${index}`" v-model="diver.certificationNumber" type="text" variant="panel" required />
+          <FormField label="Certification Number" sub :field-id="`diver-cert-${index}`">
+            <FormInput :id="`diver-cert-${index}`" v-model="diver.certificationNumber" type="text" required />
           </FormField>
 
-          <FormField label="Number of Dives Completed" variant="panel" label-tone="sub" :field-id="`diver-dives-${index}`">
-            <FormInput :id="`diver-dives-${index}`" v-model="diver.numberOfDives" type="text" variant="panel" required />
+          <FormField label="Number of Dives Completed" sub :field-id="`diver-dives-${index}`">
+            <FormInput :id="`diver-dives-${index}`" v-model="diver.numberOfDives" type="text" required />
           </FormField>
 
           <!-- Height -->
           <div class="flex gap-2 items-end">
-            <FormField label="Height" variant="panel" label-tone="sub" :field-id="`diver-height-${index}`" class="flex-1 min-w-0">
-              <FormInput :id="`diver-height-${index}`" v-model="diver.height" type="text" variant="panel" required />
+            <FormField label="Height" sub :field-id="`diver-height-${index}`" class="flex-1 min-w-0">
+              <FormInput :id="`diver-height-${index}`" v-model="diver.height" type="text" required />
             </FormField>
-            <FormField label="Unit" variant="panel" label-tone="sub" :field-id="`diver-height-unit-${index}`" class="w-24 shrink-0">
-              <FormSelect :id="`diver-height-unit-${index}`" v-model="diver.heightUnit" variant="panel">
+            <FormField label="Unit" sub :field-id="`diver-height-unit-${index}`" class="w-24 shrink-0">
+              <FormSelect :id="`diver-height-unit-${index}`" v-model="diver.heightUnit">
                 <option value="ft-in">ft' in"</option>
                 <option value="cm">cm</option>
               </FormSelect>
@@ -133,11 +130,11 @@
 
           <!-- Weight -->
           <div class="flex gap-2 items-end">
-            <FormField label="Weight" variant="panel" label-tone="sub" :field-id="`diver-weight-${index}`" class="flex-1 min-w-0">
-              <FormInput :id="`diver-weight-${index}`" v-model="diver.weight" type="text" variant="panel" required />
+            <FormField label="Weight" sub :field-id="`diver-weight-${index}`" class="flex-1 min-w-0">
+              <FormInput :id="`diver-weight-${index}`" v-model="diver.weight" type="text" required />
             </FormField>
-            <FormField label="Unit" variant="panel" label-tone="sub" :field-id="`diver-weight-unit-${index}`" class="w-24 shrink-0">
-              <FormSelect :id="`diver-weight-unit-${index}`" v-model="diver.weightUnit" variant="panel">
+            <FormField label="Unit" sub :field-id="`diver-weight-unit-${index}`" class="w-24 shrink-0">
+              <FormSelect :id="`diver-weight-unit-${index}`" v-model="diver.weightUnit">
                 <option value="lbs">lbs</option>
                 <option value="kg">kg</option>
               </FormSelect>
@@ -145,30 +142,32 @@
           </div>
 
           <!-- Rental Gear -->
-          <div class="flex flex-col gap-2">
-            <div class="flex items-center justify-between px-2">
-              <label class="text-xs text-zinc-600 dark:text-zinc-400">Rental Gear</label>
+          <div class="flex flex-col gap-2 my-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Rental Gear</span>
               <button type="button" @click="addDiverGear(index)"
                 class="text-xs bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 px-3 py-1 rounded-sm font-medium cursor-pointer text-zinc-900 dark:text-white">
                 + Add Gear
               </button>
             </div>
 
-            <div v-for="(gear, gearIndex) in diver.gear" :key="gearIndex"
-              class="bg-white dark:bg-zinc-900 rounded-md flex flex-col gap-2 p-2 border border-zinc-200 dark:border-zinc-700">
+            <div
+              v-for="(gear, gearIndex) in diver.gear"
+              :key="gearIndex"
+              class="bg-white dark:bg-zinc-900 rounded-md flex flex-col gap-2 p-2 border border-zinc-200 dark:border-zinc-700 mx-0"
+            >
               <div class="flex items-center justify-between">
-                <span class="text-xs font-medium text-zinc-600 dark:text-zinc-400">Gear Item {{ gearIndex + 1 }}</span>
+                <span class="text-xs font-medium px-2 text-zinc-600 dark:text-zinc-400">Gear Item {{ gearIndex + 1 }}</span>
                 <button type="button" @click="removeDiverGear(index, gearIndex)"
                   class="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium cursor-pointer">
                   Remove
                 </button>
               </div>
 
-              <FormField label="Gear Type" variant="panel" label-tone="sub" :field-id="`diver-${index}-gear-type-${gearIndex}`">
+              <FormField label="Gear Type" sub :field-id="`diver-${index}-gear-type-${gearIndex}`">
                 <FormSelect
                   :id="`diver-${index}-gear-type-${gearIndex}`"
                   v-model="gear.gearType"
-                  variant="panel"
                   muted
                   required
                 >
@@ -178,7 +177,7 @@
               </FormField>
             </div>
           </div>
-        </div>
+        </FormFieldset>
 
         <!-- Submit error -->
         <div v-if="submitError" class="mx-2 p-2 rounded-md bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-sm">
@@ -677,4 +676,3 @@ const handleSubmit = async () => {
   }
 }
 </script>
-

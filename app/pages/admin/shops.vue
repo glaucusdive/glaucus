@@ -87,7 +87,7 @@
             id="admin-shops-search"
             v-model="searchDraft"
             type="search"
-            variant="admin"
+           
             placeholder="Search shops…"
             class="min-w-0 flex-1"
             @keydown.enter.prevent="runSearch"

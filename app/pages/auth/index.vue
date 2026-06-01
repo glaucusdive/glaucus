@@ -24,24 +24,24 @@
         <!-- Email form -->
         <form @submit.prevent="handleEmail" class="space-y-3">
           <div v-if="isSignUp" class="flex flex-col gap-1">
-            <FormField label="Display name (optional)" variant="admin" label-style="auth" field-id="displayName">
+            <FormField label="Display name (optional)" label-style="auth" field-id="displayName">
               <FormInput
                 id="displayName"
                 v-model="displayName"
                 type="text"
-                variant="admin"
+               
                 size="md"
                 focus-ring
                 autocomplete="name"
               />
             </FormField>
           </div>
-          <FormField label="Email" variant="admin" label-style="auth" field-id="email">
+          <FormField label="Email" label-style="auth" field-id="email">
             <FormInput
               id="email"
               v-model="email"
               type="email"
-              variant="admin"
+             
               size="md"
               focus-ring
               required
@@ -49,12 +49,12 @@
               placeholder="you@example.com"
             />
           </FormField>
-          <FormField v-if="!magicLinkOnly" label="Password" variant="admin" label-style="auth" field-id="password">
+          <FormField v-if="!magicLinkOnly" label="Password" label-style="auth" field-id="password">
             <FormInput
               id="password"
               v-model="password"
               type="password"
-              variant="admin"
+             
               size="md"
               focus-ring
               :required="!magicLinkOnly"
