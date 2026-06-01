@@ -153,3 +153,19 @@ export function formCheckboxClasses (_variant: FormControlVariant): string {
 export function formRadioClasses (_variant: FormControlVariant): string {
   return 'cursor-pointer'
 }
+
+export type ButtonVariant = 'primary' | 'secondary' | 'danger'
+
+const BUTTON_BASE =
+  'inline-flex items-center justify-center gap-1 rounded-md text-sm font-medium transition-opacity disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer'
+
+export function formButtonClasses (variant: ButtonVariant = 'secondary'): string {
+  switch (variant) {
+    case 'primary':
+      return `${BUTTON_BASE} bg-blue-500 hover:bg-blue-400 text-white px-3 py-1.5`
+    case 'danger':
+      return `${BUTTON_BASE} border border-red-600 dark:border-red-500 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 px-2.5 py-1`
+    default:
+      return `${BUTTON_BASE} border border-zinc-300 dark:border-zinc-600 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 px-3 py-1.5`
+  }
+}

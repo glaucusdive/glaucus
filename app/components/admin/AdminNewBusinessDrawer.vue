@@ -178,12 +178,12 @@
     </div>
     <template #footer>
       <div class="flex flex-wrap justify-end gap-2">
-        <AdminButton type="button" variant="secondary" :disabled="submitting" @click="close">
+        <Button type="button" variant="secondary" :disabled="submitting" @click="close">
           Cancel
-        </AdminButton>
-        <AdminButton type="submit" form="admin-new-business-form" variant="primary" :disabled="submitting">
+        </Button>
+        <Button type="submit" form="admin-new-business-form" variant="primary" :disabled="submitting">
           {{ submitting ? 'Saving…' : 'Create business' }}
-        </AdminButton>
+        </Button>
       </div>
     </template>
   </BottomSheetDrawer>
@@ -193,7 +193,6 @@
 import { reactive, ref, watch, computed } from 'vue'
 import BottomSheetDrawer from '~/components/ui/BottomSheetDrawer.vue'
 import AdminSelectChip from '~/components/admin/AdminSelectChip.vue'
-import AdminButton from '~/components/admin/AdminButton.vue'
 import {
   businessTypeNamesFromIds,
   serializeDiveBusinessTypes

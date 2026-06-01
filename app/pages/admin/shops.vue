@@ -19,14 +19,14 @@
               </button>
             </label>
 
-            <AdminButton variant="secondary" :disabled="!writeMode" @click="newDrawerOpen = true">
+            <Button variant="secondary" :disabled="!writeMode" @click="newDrawerOpen = true">
               Add new business
-            </AdminButton>
+            </Button>
 
-            <AdminButton variant="primary" :disabled="!writeMode || !hasDirtyOnPage || anyRowSaving || saveAllSaving"
+            <Button variant="primary" :disabled="!writeMode || !hasDirtyOnPage || anyRowSaving || saveAllSaving"
               @click="saveAllDirty">
               {{ saveAllSaving ? 'Saving…' : 'Save' }}
-            </AdminButton>
+            </Button>
           </div>
           
         </template>
@@ -74,7 +74,7 @@
       </div>
 
       <div class="flex flex-row gap-4 items-center border-t border-solid border-[color:var(--admin-table-border)] bg-zinc-50 px-3 py-2.5 dark:bg-zinc-950">
-        <div class="hidden md:flex min-w-0 text-xs text-zinc-600 dark:text-zinc-400">
+        <div class="hidden md:flex flex-row gap-1 text-xs text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
           <template v-if="appliedSearch">
             {{ shopTotal }} matching "{{ appliedSearch }}"<span v-if="pageRangeLabel"> · {{ pageRangeLabel }}</span>
           </template>
@@ -92,35 +92,35 @@
             class="min-w-0 flex-1"
             @keydown.enter.prevent="runSearch"
           />
-          <AdminButton type="submit" variant="primary">
+          <Button type="submit" variant="primary">
             Go
-          </AdminButton>
-          <AdminButton
+          </Button>
+          <Button
             v-if="appliedSearch"
             type="button"
             variant="secondary"
             @click="clearSearch"
           >
             Clear
-          </AdminButton>
+          </Button>
         </form>
         <div class="flex items-center justify-end gap-2">
-          <AdminButton
+          <Button
             variant="secondary"
             :disabled="currentPage <= 1"
             @click="goPrevPage"
           >
             <span class="flex md:hidden"><</span>
             <span class="hidden md:flex">Previous</span>
-          </AdminButton>
-          <AdminButton
+          </Button>
+          <Button
             variant="secondary"
             :disabled="currentPage >= totalPages"
             @click="goNextPage"
           >
             <span class="flex md:hidden">></span>
             <span class="hidden md:flex">Next</span>
-          </AdminButton>
+          </Button>
         </div>
       </div>
     </div>
@@ -152,7 +152,6 @@ import { normalizeAdminLookupId } from '~/utils/adminLookupIds'
 import { shouldKeepArrowInInput } from '~/utils/adminGridInputKeydown'
 import { adminColumnHeaderTemplate } from '~/utils/revoGridAdminColumnHeader'
 import AdminShopGridCell from '~/components/admin/grid/AdminShopGridCell.vue'
-import AdminButton from '~/components/admin/AdminButton.vue'
 import AdminNewBusinessDrawer from '~/components/admin/AdminNewBusinessDrawer.vue'
 import {
   businessTypeIdsFromStored,
