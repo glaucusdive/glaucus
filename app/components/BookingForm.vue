@@ -103,7 +103,7 @@
 
         <!-- Divers Details -->
         <div v-for="(diver, index) in formData.divers" :key="index"
-          class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-2 p-2 mx-2">
+          class="flex flex-col gap-2">
           <h3 class="text-xs uppercase font-medium px-2 text-zinc-900 dark:text-white">Diver {{ index + 1 }}</h3>
 
           <FormField label="Name" variant="panel" label-tone="sub" :field-id="`diver-name-${index}`">

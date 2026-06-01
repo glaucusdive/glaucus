@@ -29,7 +29,7 @@
       </div>
 
       <form v-else class="flex flex-col gap-3" @submit.prevent="handleSubmit">
-        <fieldset class="bg-zinc-100 dark:bg-zinc-800 rounded-md flex flex-col gap-1 p-2">
+        <fieldset class="flex flex-col gap-1">
           <!-- Use a normal block label, not <legend>: legends are laid out on the fieldset border and sit outside flex padding -->
           <label id="review-rating-label" class="text-xs uppercase font-medium px-1 text-zinc-900 dark:text-white">Rating</label>
           <div class="flex items-center gap-1 px-1" role="group" aria-labelledby="review-rating-label">
@@ -61,23 +61,23 @@
 
         <p v-if="submitError" class="text-sm text-red-600 dark:text-red-400 px-1">{{ submitError }}</p>
 
-        <button
+        <Button
           type="submit"
+          variant="secondary"
           :disabled="submitting || deleting || !body.trim()"
-          class="mx-2 border border-zinc-900 dark:border-zinc-100 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium py-3 px-4 rounded-md  w-full cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {{ submitting ? 'Saving…' : (isEditing ? 'Update review' : 'Submit review') }}
-        </button>
+        </Button>
 
-        <button
+        <Button
           v-if="isEditing && reviewId"
           type="button"
+          variant="danger"
           :disabled="submitting || deleting"
-          class="mx-2 mb-2 border border-red-600/60 dark:border-red-500/60 text-red-700 dark:text-red-400 font-medium py-2 px-4 rounded-md  w-full cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50 disabled:cursor-not-allowed"
           @click="handleDelete"
         >
           {{ deleting ? 'Deleting…' : 'Delete review' }}
-        </button>
+        </Button>
       </form>
     </div>
   </div>
