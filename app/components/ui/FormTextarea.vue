@@ -11,6 +11,13 @@
 
 <script setup lang="ts">
 import { computed, useAttrs } from 'vue'
+import {
+  formFocusRingClass,
+  formTextareaClass,
+  formTextareaMutedClass,
+  formTextareaNoResizeClass,
+  formTextareaResizeClass
+} from '~/components/ui/formControlClasses'
 
 defineOptions({ inheritAttrs: false })
 
@@ -41,13 +48,13 @@ const attrs = useAttrs()
 const textareaClass = computed(() => {
   const classes: string[] = []
   if (props.muted) {
-    classes.push('form-textarea-muted')
+    classes.push(formTextareaMutedClass)
   } else {
-    classes.push('form-textarea')
+    classes.push(formTextareaClass)
   }
-  if (props.resize) classes.push('form-textarea-resize')
-  else classes.push('form-textarea-no-resize')
-  if (props.focusRing) classes.push('form-focus-ring')
+  if (props.resize) classes.push(formTextareaResizeClass)
+  else classes.push(formTextareaNoResizeClass)
+  if (props.focusRing) classes.push(formFocusRingClass)
   if (props.class) classes.push(props.class)
   return classes.join(' ')
 })

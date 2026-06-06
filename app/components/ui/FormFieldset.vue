@@ -3,7 +3,7 @@
     <label
       v-if="label"
       :for="fieldId || undefined"
-      class="form-label-section"
+      :class="formLabelSectionClass"
     >
       {{ label }}
     </label>
@@ -13,6 +13,12 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import {
+  formFieldsetClass,
+  formFieldsetEmbeddedClass,
+  formFieldsetWideClass,
+  formLabelSectionClass
+} from '~/components/ui/formControlClasses'
 
 const props = withDefaults(
   defineProps<{
@@ -33,8 +39,8 @@ const fieldId = computed(() => props.fieldId)
 
 const fieldsetClass = computed(() =>
   [
-    props.embedded ? 'form-fieldset-embedded' : 'form-fieldset',
-    props.wideGap ? 'form-fieldset-wide' : '',
+    props.embedded ? formFieldsetEmbeddedClass : formFieldsetClass,
+    props.wideGap ? formFieldsetWideClass : '',
     props.class
   ].filter(Boolean).join(' ')
 )

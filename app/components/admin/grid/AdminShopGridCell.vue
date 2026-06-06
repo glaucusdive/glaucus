@@ -4,21 +4,33 @@
     v-if="kind === 'business'"
     class="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col justify-center gap-0.5 p-0"
   >
-    <div v-if="writeMode" class="flex min-h-0 min-w-0 flex-1 flex-col justify-center">
-      <div :class="ADMIN_GRID_WRITE_WRAP">
-        <input
-          v-model="businessName"
-          type="text"
-          placeholder="Business name"
-          :class="ADMIN_GRID_WRITE_INPUT"
-          @keydown="onAdminGridInputKeydown"
-        >
+    <div class="flex min-h-0 min-w-0 flex-1 items-center gap-4">
+      <div v-if="writeMode" class="flex min-h-0 min-w-0 flex-1 flex-col justify-center">
+        <div :class="ADMIN_GRID_WRITE_WRAP">
+          <input
+            v-model="businessName"
+            type="text"
+            placeholder="Business name"
+            :class="ADMIN_GRID_WRITE_INPUT"
+            @keydown="onAdminGridInputKeydown"
+          >
+        </div>
       </div>
+      <span
+        v-else
+        :class="[ADMIN_GRID_READ_DATA, 'min-w-0 flex-1 truncate text-sm font-normal text-zinc-900 dark:text-white']"
+      >{{ businessName || '—' }}</span>
+      <button
+        v-if="model.id"
+        type="button"
+        class="shrink-0 rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+        aria-label="Copy partner link"
+        title="Copy partner link"
+        @click.stop="onCopyPortalLink"
+      >
+        <Link class="h-4 w-4" aria-hidden="true" />
+      </button>
     </div>
-    <span
-      v-else
-      :class="[ADMIN_GRID_READ_DATA, 'text-sm font-normal text-zinc-900 dark:text-white']"
-    >{{ businessName || '—' }}</span>
     <span v-if="model.saveError" class="block truncate text-xs leading-tight text-red-600 dark:text-red-400">{{ model.saveError }}</span>
   </div>
 
@@ -81,7 +93,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Trash2 } from 'lucide-vue-next'
+import { Trash2, Link } from 'lucide-vue-next'
 import type { ColumnDataSchemaModel } from '@revolist/vue3-datagrid'
 import AdminMultiSelectCheckboxDropdown from '~/components/admin/AdminMultiSelectCheckboxDropdown.vue'
 import type { AdminShopGridContext, ShopGridRow } from './adminShopGridContext'
@@ -208,5 +220,9 @@ function onSelectCreated (opt: { id: string; label: string }) {
   else if (p === 'rental_equipment_ids') c.onLookupCreated('rentalEquipment', opt)
   else if (p === 'gas_ids') c.onLookupCreated('gases', opt)
   else if (p === 'dive_site_ids') c.onLookupCreated('diveSites', opt)
+}
+
+function onCopyPortalLink () {
+  void ctx.value.copyPortalLink(model.value)
 }
 </script>

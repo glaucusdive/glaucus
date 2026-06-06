@@ -1,4 +1,5 @@
 import { requireAdminUser } from '../../../utils/requireAdminUser'
+import { fetchDiveSitesLookup } from '../../../utils/fetchAllRows'
 
 /**
  * Returns lookup option lists used by the admin shop editor.
@@ -14,11 +15,11 @@ export default defineEventHandler(async (event) => {
     client.from('rental_equipment').select('id, name').order('name'),
     client.from('gases').select('id, name').order('name'),
     client.from('agencies').select('id, name').order('name'),
-    client.from('dive_sites').select('id, name, country_id').order('name'),
+    fetchDiveSitesLookup(client),
     client.from('dive_business_types').select('id, name').order('name')
   ])
 
-  const firstError = countries.error || regions.error || courses.error || rental.error || gases.error || agencies.error || diveSites.error || diveBusinessTypes.error
+  const firstError = countries.error || regions.error || courses.error || rental.error || gases.error || agencies.error || diveBusinessTypes.error
   if (firstError) {
     throw createError({ statusCode: 500, statusMessage: firstError.message })
   }
@@ -42,7 +43,7 @@ export default defineEventHandler(async (event) => {
     rentalEquipment: rental.data || [],
     gases: gases.data || [],
     agencies: agencies.data || [],
-    diveSites: diveSites.data || [],
+    diveSites: diveSites || [],
     diveBusinessTypes: (diveBusinessTypes.data || []).map((t: { id: string; name: string }) => ({
       id: t.id,
       name: t.name,

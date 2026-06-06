@@ -13,6 +13,15 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import {
+  formFieldClass,
+  formFieldStackedClass,
+  formLabelAuthClass,
+  formLabelClass,
+  formLabelSubClass,
+  formLabelSectionClass,
+  formLabelUppercaseClass
+} from '~/components/ui/formControlClasses'
 
 export type FormLabelStyle = 'default' | 'auth' | 'uppercase'
 
@@ -40,14 +49,14 @@ const props = withDefaults(
 const fieldId = computed(() => props.fieldId)
 
 const wrapperClass = computed(() =>
-  [props.section || props.sub ? 'form-field-stacked' : 'form-field', props.class].filter(Boolean).join(' ')
+  [props.section || props.sub ? formFieldStackedClass : formFieldClass, props.class].filter(Boolean).join(' ')
 )
 
 const labelClass = computed(() => {
-  if (props.sub) return 'form-label-sub'
-  if (props.section) return 'form-label-section'
-  if (props.labelStyle === 'auth') return 'form-label-auth'
-  if (props.labelStyle === 'uppercase') return 'form-label-uppercase'
-  return 'form-label'
+  if (props.sub) return formLabelSubClass
+  if (props.section) return formLabelSectionClass
+  if (props.labelStyle === 'auth') return formLabelAuthClass
+  if (props.labelStyle === 'uppercase') return formLabelUppercaseClass
+  return formLabelClass
 })
 </script>

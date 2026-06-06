@@ -1,21 +1,32 @@
 <template>
-  <div ref="rootRef" class="relative flex h-full min-h-0 w-full min-w-0 max-w-full flex-col justify-center gap-1 overflow-hidden">
+  <div
+    ref="rootRef"
+    class="relative flex w-full min-w-0 max-w-full flex-col gap-1"
+    :class="wrapChips ? '' : 'h-full min-h-0 justify-center overflow-hidden'"
+  >
     <button
       v-if="!disabled"
       type="button"
-      class="flex min-h-0 min-w-0 w-full flex-1 flex-nowrap items-center justify-between gap-2 overflow-x-hidden rounded-none text-left"
+      class="flex w-full gap-2 text-left"
+      :class="wrapChips
+        ? 'items-start justify-between rounded-md border border-zinc-300 bg-white px-2.5 py-2 dark:border-zinc-600 dark:bg-zinc-900'
+        : 'min-h-0 min-w-0 flex-1 flex-nowrap items-center justify-between overflow-x-hidden rounded-none'"
       :aria-expanded="open"
       aria-haspopup="listbox"
       @click.stop="toggleOpen()"
     >
-      <div class="flex min-h-0 min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-hidden">
+      <div
+        class="flex min-w-0 flex-1 gap-2"
+        :class="wrapChips ? 'flex-wrap items-center' : 'min-h-0 flex-nowrap items-center overflow-x-hidden'"
+      >
         <template v-if="modelValue.length > 0">
           <span
             v-for="id in modelValue"
             :key="String(id)"
-            class="inline-flex shrink-0 items-center gap-1 rounded bg-zinc-200 px-1 py-0 text-sm font-normal text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200"
+            class="inline-flex items-center gap-1 rounded bg-zinc-200 px-2 py-0.5 text-sm font-normal text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200"
+            :class="wrapChips ? '' : 'shrink-0'"
           >
-            <span class="max-w-[12rem] truncate">{{ labelFor(id) }}</span>
+            <span :class="wrapChips ? '' : 'max-w-[12rem] truncate'">{{ labelFor(id) }}</span>
             <span
               role="button"
               tabindex="0"
@@ -31,19 +42,26 @@
           class="flex min-h-0 min-w-0 flex-1 items-center text-sm font-normal text-zinc-500 dark:text-zinc-400"
         >Add option</span>
       </div>
-      <ChevronDown class="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-400" :class="open ? 'rotate-180' : ''" />
+      <ChevronDown
+        class="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-400"
+        :class="[open ? 'rotate-180' : '', wrapChips ? 'mt-1' : '']"
+      />
     </button>
     <div
       v-else
-      class="flex min-h-0 min-w-0 w-full flex-1 flex-nowrap items-center gap-2 overflow-x-hidden"
+      class="flex w-full gap-2"
+      :class="wrapChips
+        ? 'flex-wrap items-center rounded-md border border-zinc-300 bg-zinc-100 px-2.5 py-2 dark:border-zinc-600 dark:bg-zinc-800/50'
+        : 'min-h-0 min-w-0 flex-1 flex-nowrap items-center overflow-x-hidden'"
     >
       <template v-if="modelValue.length > 0">
         <span
           v-for="id in modelValue"
           :key="String(id)"
-          class="inline-flex shrink-0 items-center gap-1 rounded bg-zinc-200 px-1 py-0 text-sm font-normal text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200"
+          class="inline-flex items-center gap-1 rounded bg-zinc-200 px-2 py-0.5 text-sm font-normal text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200"
+          :class="wrapChips ? '' : 'shrink-0'"
         >
-          <span class="max-w-[12rem] truncate">{{ labelFor(id) }}</span>
+          <span :class="wrapChips ? '' : 'max-w-[12rem] truncate'">{{ labelFor(id) }}</span>
         </span>
       </template>
       <span
@@ -59,9 +77,21 @@
         class="fixed z-[70] max-h-[min(320px,50vh)] min-w-[200px] overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
         :style="panelStyle"
       >
+        <div
+          v-if="searchable"
+          class="border-b border-zinc-200 px-2 py-2 dark:border-zinc-700"
+        >
+          <input
+            v-model="searchQuery"
+            type="search"
+            placeholder="Search…"
+            :class="searchInputClass"
+            @keydown.stop
+          >
+        </div>
         <ul class="max-h-[min(280px,45vh)] divide-y divide-zinc-200 overflow-y-auto dark:divide-zinc-700" role="listbox">
           <li
-            v-for="opt in options"
+            v-for="opt in filteredOptions"
             :key="String(opt.id)"
             role="option"
             class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm"
@@ -72,13 +102,15 @@
             "
             @click="toggleOption(opt.id)"
           >
-            <input
-              type="checkbox"
-              class="h-3.5 w-3.5 shrink-0 rounded border-zinc-300 dark:border-zinc-600"
-              :checked="isSelected(opt.id)"
-              tabindex="-1"
-              @click.stop.prevent="toggleOption(opt.id)"
+            <span
+              class="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border"
+              :class="isSelected(opt.id)
+                ? 'border-blue-600 bg-blue-600 text-white dark:border-blue-400 dark:bg-blue-500'
+                : 'border-zinc-300 bg-white dark:border-zinc-500 dark:bg-zinc-900'"
+              aria-hidden="true"
             >
+              <Check v-if="isSelected(opt.id)" class="h-3 w-3" stroke-width="3" />
+            </span>
             <span class="min-w-0 flex-1 text-zinc-900 dark:text-zinc-100">{{ opt.label }}</span>
           </li>
         </ul>
@@ -129,8 +161,11 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { ChevronDown } from 'lucide-vue-next'
+import { ChevronDown, Check } from 'lucide-vue-next'
 import { normalizeAdminLookupId } from '~/utils/adminLookupIds'
+import { formInputClass, formInputSmClass } from '~/components/ui/formControlClasses'
+
+const searchInputClass = `${formInputClass} ${formInputSmClass} w-full`
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
@@ -140,6 +175,9 @@ const props = defineProps({
   /** When true, picking an option replaces the selection (single FK / single chip). */
   singleSelect: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
+  searchable: { type: Boolean, default: false },
+  /** Form/portal layout: wrap chips onto multiple lines instead of grid-style horizontal scroll. */
+  wrapChips: { type: Boolean, default: false },
   onCreate: { type: Function, default: null }
 })
 
@@ -154,6 +192,16 @@ const newName = ref('')
 const saving = ref(false)
 const addError = ref('')
 const newInputRef = ref(null)
+const searchQuery = ref('')
+
+const filteredOptions = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!props.searchable || !q) return props.options
+  return props.options.filter((o) => {
+    const label = o.label != null && o.label !== '' ? String(o.label) : (o.name != null ? String(o.name) : '')
+    return label.toLowerCase().includes(q)
+  })
+})
 
 const optionMap = computed(() => {
   const map = new Map()
@@ -199,7 +247,9 @@ function positionPanel () {
   const el = rootRef.value
   if (!el) return
   const r = el.getBoundingClientRect()
-  const width = Math.min(320, Math.max(200, window.innerWidth - 16))
+  const width = props.wrapChips
+    ? Math.min(Math.max(r.width, 280), window.innerWidth - 16)
+    : Math.min(320, Math.max(200, window.innerWidth - 16))
   panelStyle.value = {
     top: `${r.bottom + 4}px`,
     left: `${Math.max(8, Math.min(r.left, window.innerWidth - width - 8))}px`,
@@ -222,6 +272,7 @@ function close () {
   creating.value = false
   newName.value = ''
   addError.value = ''
+  searchQuery.value = ''
 }
 
 function onDocPointerDown (e) {
