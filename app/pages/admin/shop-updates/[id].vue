@@ -78,7 +78,7 @@ import type { PendingLookups, PortalSubmissionPayload, ShopFormSnapshot } from '
 import type { ShopLookups } from '~~/shared/shopPortalPayload'
 import { buildPortalSubmissionPayload, diffHighlightFields, snapshotFromPortalPayload } from '~/utils/shopPortalForm'
 
-definePageMeta({ layout: 'default', middleware: 'auth' })
+definePageMeta({ layout: 'default', middleware: 'admin' })
 useSeoMeta({ robots: 'noindex, nofollow' })
 
 const route = useRoute()

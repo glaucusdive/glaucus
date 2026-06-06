@@ -61,15 +61,17 @@
                 <CircleUser class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
                 Profile
               </NavLink>
-              <NavLink v-if="isSignedIn && isAppAdmin" to="/admin/shops" @click="handleCloseMobileMenu">
-                <Shield class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
-                Admin
-              </NavLink>
-              <NavLink v-if="isSignedIn && isAppAdmin" to="/admin/shop-updates" @click="handleCloseMobileMenu">
-                <ClipboardList class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
-                Shop updates
-              </NavLink>
-              <NavLink v-else to="/auth" @click="handleCloseMobileMenu">
+              <template v-if="showAdminNav">
+                <NavLink to="/admin/shops" @click="handleCloseMobileMenu">
+                  <Shield class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                  Admin
+                </NavLink>
+                <NavLink to="/admin/shop-updates" @click="handleCloseMobileMenu">
+                  <ClipboardList class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                  Shop updates
+                </NavLink>
+              </template>
+              <NavLink v-if="!authLoading && !isSignedIn" to="/auth" @click="handleCloseMobileMenu">
                 <LogIn class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" />
                 Sign in
               </NavLink>
@@ -183,7 +185,9 @@ const showChatInSidebar = computed(() => {
   return p === '/' || p.startsWith('/auth') || p.startsWith('/profile')
 })
 const { sidebarChats, requestNewChat, requestSwitchSession } = useChatSessions()
-const { isSignedIn, isAppAdmin, signOut, onAuthStateChange, accessToken } = useAuth()
+const { isSignedIn, isAppAdmin, signOut, onAuthStateChange, accessToken, loading: authLoading } = useAuth()
+
+const showAdminNav = computed(() => !authLoading.value && isSignedIn.value && isAppAdmin.value)
 
 async function runChatActionFromSidebar (action) {
   const guest = !isSignedIn.value

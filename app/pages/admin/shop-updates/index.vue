@@ -58,7 +58,7 @@
 import { ref, computed, onMounted } from 'vue'
 import type { SubmissionStatus } from '~~/shared/shopPortalPayload'
 
-definePageMeta({ layout: 'default', middleware: 'auth' })
+definePageMeta({ layout: 'default', middleware: 'admin' })
 useSeoMeta({ robots: 'noindex, nofollow' })
 
 type SubmissionCard = {
