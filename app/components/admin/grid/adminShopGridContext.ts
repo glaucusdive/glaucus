@@ -19,6 +19,7 @@ export interface AdminShopGridContext {
   createDiveSite: (name: string, countryId: string | null) => Promise<{ id: string; label: string }>
   onLookupCreated: (kindKey: string, opt: { id: string; label: string }) => void
   optionsFor: (prop: string) => { id: string; label: string }[]
+  copyPortalLink: (row: ShopGridRow) => void | Promise<void>
 }
 
 export const ADMIN_SHOP_GRID_KEY: InjectionKey<AdminShopGridContext> = Symbol('adminShopGrid')

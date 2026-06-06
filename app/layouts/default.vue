@@ -65,6 +65,10 @@
                 <Shield class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
                 Admin
               </NavLink>
+              <NavLink v-if="isSignedIn && isAppAdmin" to="/admin/shop-updates" @click="handleCloseMobileMenu">
+                <ClipboardList class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                Shop updates
+              </NavLink>
               <NavLink v-else to="/auth" @click="handleCloseMobileMenu">
                 <LogIn class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" />
                 Sign in
@@ -157,7 +161,7 @@
 <script setup>
 import gsap from 'gsap'
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { X, Sun, Moon, FilePlus, CircleUser, LogIn, LogOut, CircleHelp, Shield } from 'lucide-vue-next'
+import { X, Sun, Moon, FilePlus, CircleUser, LogIn, LogOut, CircleHelp, Shield, ClipboardList } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
 import { useTheme } from '~/composables/useTheme'
 import { useAuth } from '~/composables/useAuth'

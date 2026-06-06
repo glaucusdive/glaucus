@@ -13,6 +13,13 @@
 <script setup lang="ts">
 import { computed, ref, useAttrs } from 'vue'
 import type { FormControlSize } from '~/components/ui/form-types'
+import {
+  formFocusRingClass,
+  formInputClass,
+  formInputMdClass,
+  formInputMutedClass,
+  formInputSmClass
+} from '~/components/ui/formControlClasses'
 
 defineOptions({ inheritAttrs: false })
 
@@ -46,15 +53,15 @@ defineExpose({ inputEl })
 const inputClass = computed(() => {
   const classes: string[] = []
   if (props.muted) {
-    classes.push('form-input-muted')
+    classes.push(formInputMutedClass)
   } else if (props.size === 'sm') {
-    classes.push('form-input-sm')
+    classes.push(formInputSmClass)
   } else if (props.size === 'md') {
-    classes.push('form-input-md')
+    classes.push(formInputMdClass)
   } else {
-    classes.push('form-input')
+    classes.push(formInputClass)
   }
-  if (props.focusRing) classes.push('form-focus-ring')
+  if (props.focusRing) classes.push(formFocusRingClass)
   if (props.class) classes.push(props.class)
   return classes.join(' ')
 })

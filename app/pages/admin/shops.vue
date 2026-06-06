@@ -714,6 +714,32 @@ function onLookupCreated (kindKey, opt) {
   }
 }
 
+const portalUrlCache = new Map()
+const toast = useToast()
+
+async function copyPortalLink (row) {
+  const shopId = row.id
+  if (!shopId) return
+  try {
+    let url = portalUrlCache.get(shopId)
+    if (!url) {
+      const res = await $fetch(`/api/admin/shops/${shopId}/portal-token`, {
+        headers: authHeaders()
+      })
+      url = res.url
+      portalUrlCache.set(shopId, url)
+    }
+    await navigator.clipboard.writeText(url)
+    toast.add({
+      title: 'Link copied',
+      color: 'neutral',
+      duration: 2500
+    })
+  } catch (e) {
+    window.alert(extractErrorMessage(e) || 'Could not copy partner link')
+  }
+}
+
 /** Passed into VGridVueTemplate (RevoGrid mounts cells outside parent provide scope). */
 const gridContext = {
   writeMode,
@@ -723,7 +749,8 @@ const gridContext = {
   createSimpleLookup,
   createDiveSite,
   onLookupCreated,
-  optionsFor
+  optionsFor,
+  copyPortalLink
 }
 
 function withAdminHeader (col) {
@@ -747,7 +774,7 @@ const gridColumns = [
   withAdminHeader({
     prop: 'business_name',
     name: 'Business Name',
-    size: 200,
+    size: 240,
     pin: 'colPinStart',
     readonly: true,
     resize: true,

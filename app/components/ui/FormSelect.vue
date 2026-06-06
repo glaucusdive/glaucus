@@ -13,6 +13,12 @@
 <script setup lang="ts">
 import { computed, useAttrs } from 'vue'
 import type { FormControlSize } from '~/components/ui/form-types'
+import {
+  formFocusRingClass,
+  formSelectClass,
+  formSelectMutedClass,
+  formSelectXsClass
+} from '~/components/ui/formControlClasses'
 
 defineOptions({ inheritAttrs: false })
 
@@ -41,13 +47,13 @@ const attrs = useAttrs()
 const selectClass = computed(() => {
   const classes: string[] = []
   if (props.muted) {
-    classes.push('form-select-muted')
+    classes.push(formSelectMutedClass)
   } else if (props.size === 'xs') {
-    classes.push('form-select-xs')
+    classes.push(formSelectXsClass)
   } else {
-    classes.push('form-select')
+    classes.push(formSelectClass)
   }
-  if (props.focusRing) classes.push('form-focus-ring')
+  if (props.focusRing) classes.push(formFocusRingClass)
   if (props.class) classes.push(props.class)
   return classes.join(' ')
 })
