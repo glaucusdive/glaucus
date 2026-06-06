@@ -160,7 +160,7 @@ import {
   serializeDiveBusinessTypes
 } from '~~/shared/diveBusinessTypes'
 
-definePageMeta({ layout: 'default', middleware: 'auth' })
+definePageMeta({ layout: 'default', middleware: 'admin' })
 
 useSeoMeta({ robots: 'noindex, nofollow' })
 
