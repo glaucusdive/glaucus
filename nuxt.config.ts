@@ -27,6 +27,8 @@ export default defineNuxtConfig({
     resendApiKey: '',
     /** From address for booking emails (e.g. "Glaucus <bookings@yourdomain.com>"). Defaults to Resend onboarding domain if unset. */
     bookingFromEmail: process.env.BOOKING_FROM_EMAIL || 'Glaucus <onboarding@resend.dev>',
+    /** Comma-separated internal recipients for profile-default saves. */
+    profileUpdateNotifyEmails: process.env.PROFILE_UPDATE_NOTIFY_EMAILS || 'rshashwat@gmail.com,general@madebyporter.com',
     /** Required for geocode-shop API to update diveshops (bypasses RLS). Get from Supabase Dashboard > Project Settings > API. */
     supabaseServiceRoleKey: '',
     /** Linear personal API key (Settings → API). Used by /api/feedback to create issues. */

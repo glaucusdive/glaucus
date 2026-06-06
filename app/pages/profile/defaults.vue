@@ -115,7 +115,7 @@ import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst, type B
 
 definePageMeta({ layout: 'default', middleware: 'auth' })
 
-const { user } = useAuth()
+const { user, accessToken } = useAuth()
 const { client } = useSupabase()
 
 const gearTypes = ['Wetsuit', 'Drysuit', 'BCD', 'Regulator', 'Fins', 'Mask', 'Snorkel', 'Dive Computer', 'Weight Belt', 'Tank']
@@ -251,6 +251,25 @@ async function loadDefaults () {
   }
 }
 
+async function notifyProfileUpdate (diverCount: number) {
+  try {
+    const token = accessToken.value || (await client.auth.getSession()).data.session?.access_token
+    if (!token) return
+    await $fetch('/api/profile/notify-update', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: {
+        displayName: defaultsForm.value.name || null,
+        email: defaultsForm.value.email || null,
+        diverCount,
+        source: 'defaults_page'
+      }
+    })
+  } catch (e) {
+    console.warn('[profile notify]', e)
+  }
+}
+
 async function saveDefaults () {
   if (!user.value?.id) return
   defaultsSaving.value = true
@@ -289,6 +308,7 @@ async function saveDefaults () {
     } else {
       defaultsSaveSuccess.value = true
       defaultsSaveMessage.value = 'Defaults saved. Future bookings will use this info.'
+      void notifyProfileUpdate(default_divers.length)
     }
   } catch (e: unknown) {
     defaultsSaveSuccess.value = false
