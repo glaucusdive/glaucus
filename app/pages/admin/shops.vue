@@ -150,6 +150,7 @@ import RevoGrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import { useTheme } from '~/composables/useTheme'
 import { normalizeAdminLookupId } from '~/utils/adminLookupIds'
 import { shouldKeepArrowInInput } from '~/utils/adminGridInputKeydown'
+import { copyTextToClipboard } from '~/utils/copyTextToClipboard'
 import { adminColumnHeaderTemplate } from '~/utils/revoGridAdminColumnHeader'
 import AdminShopGridCell from '~/components/admin/grid/AdminShopGridCell.vue'
 import AdminNewBusinessDrawer from '~/components/admin/AdminNewBusinessDrawer.vue'
@@ -717,23 +718,47 @@ function onLookupCreated (kindKey, opt) {
 const portalUrlCache = new Map()
 const toast = useToast()
 
+async function resolvePortalUrl (shopId) {
+  let url = portalUrlCache.get(shopId)
+  if (!url) {
+    const res = await $fetch(`/api/admin/shops/${shopId}/portal-token`, {
+      headers: authHeaders()
+    })
+    url = res.url
+    portalUrlCache.set(shopId, url)
+  }
+  return url
+}
+
+async function prefetchPortalLink (row) {
+  const shopId = row.id
+  if (!shopId || portalUrlCache.has(shopId)) return
+  try {
+    await resolvePortalUrl(shopId)
+  } catch {
+    // Prefetch is best-effort; copy will surface errors.
+  }
+}
+
 async function copyPortalLink (row) {
   const shopId = row.id
   if (!shopId) return
   try {
-    let url = portalUrlCache.get(shopId)
-    if (!url) {
-      const res = await $fetch(`/api/admin/shops/${shopId}/portal-token`, {
-        headers: authHeaders()
+    const url = await resolvePortalUrl(shopId)
+    const copied = await copyTextToClipboard(url)
+    if (copied) {
+      toast.add({
+        title: 'Link copied',
+        color: 'neutral',
+        duration: 2500
       })
-      url = res.url
-      portalUrlCache.set(shopId, url)
+      return
     }
-    await navigator.clipboard.writeText(url)
     toast.add({
-      title: 'Link copied',
+      title: 'Click the link icon again to copy',
+      description: 'Your browser blocked clipboard access after loading the link.',
       color: 'neutral',
-      duration: 2500
+      duration: 5000
     })
   } catch (e) {
     window.alert(extractErrorMessage(e) || 'Could not copy partner link')
@@ -750,7 +775,8 @@ const gridContext = {
   createDiveSite,
   onLookupCreated,
   optionsFor,
-  copyPortalLink
+  copyPortalLink,
+  prefetchPortalLink
 }
 
 function withAdminHeader (col) {

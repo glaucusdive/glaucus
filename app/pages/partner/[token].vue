@@ -1,6 +1,6 @@
 <template>
   <main class="min-h-dvh bg-[#101214] text-white">
-    <header class="border-b border-zinc-800 px-4 py-4 sm:px-8">
+    <header v-if="!loading" class="border-b border-zinc-800 px-4 py-4 sm:px-8">
       <div class="mx-auto flex max-w-3xl items-center justify-between gap-4">
         <NuxtLink to="/" class="shrink-0">
           <Logo />
@@ -9,9 +9,8 @@
       </div>
     </header>
 
-    <div class="mx-auto max-w-3xl px-4 py-8 sm:px-8">
-      <div v-if="loading" class="py-16 text-center text-sm text-zinc-400">Loading…</div>
-      <div v-else-if="loadError" class="py-16 text-center">
+    <div v-if="!loading" class="mx-auto max-w-3xl px-4 py-8 sm:px-8">
+      <div v-if="loadError" class="py-16 text-center">
         <h1 class="text-lg font-medium text-white">Link not found</h1>
         <p class="mt-2 text-sm text-zinc-400">{{ loadError }}</p>
       </div>
@@ -19,7 +18,7 @@
         <h1 class="text-xl font-medium">Thanks — we received your updates</h1>
         <p class="mt-2 text-sm text-zinc-400">Our team will review your changes and follow up if needed.</p>
       </div>
-      <template v-else>
+      <div v-else>
         <div class="mb-8">
           <h1 class="text-xl font-medium">Review your listing</h1>
           <p class="mt-1 text-sm text-zinc-400">
@@ -73,7 +72,7 @@
             </Button>
           </div>
         </form>
-      </template>
+      </div>
     </div>
   </main>
 </template>

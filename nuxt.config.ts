@@ -1,5 +1,15 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  app: {
+    head: {
+      style: [
+        {
+          id: 'glaucus-boot',
+          innerHTML: `html,body{margin:0;background-color:#000;color:#fff}html:not(.glaucus-app-ready) #__nuxt{visibility:hidden}`
+        }
+      ]
+    }
+  },
   modules: ['@nuxt/ui', '@posthog/nuxt'],
   components: [
     {

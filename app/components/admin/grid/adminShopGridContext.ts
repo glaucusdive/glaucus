@@ -20,6 +20,7 @@ export interface AdminShopGridContext {
   onLookupCreated: (kindKey: string, opt: { id: string; label: string }) => void
   optionsFor: (prop: string) => { id: string; label: string }[]
   copyPortalLink: (row: ShopGridRow) => void | Promise<void>
+  prefetchPortalLink: (row: ShopGridRow) => void | Promise<void>
 }
 
 export const ADMIN_SHOP_GRID_KEY: InjectionKey<AdminShopGridContext> = Symbol('adminShopGrid')
