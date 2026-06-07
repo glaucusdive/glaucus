@@ -2,6 +2,7 @@ import type { PortalSubmissionPayload } from '../../../../shared/shopPortalPaylo
 import { requirePortalToken } from '../../../utils/portalToken'
 import { getSupabaseServiceRoleClient } from '../../../utils/supabaseServiceRole'
 import { fetchPortalLookups, fetchShopFormSnapshot } from '../../../utils/buildShopSnapshot'
+import { sendShopSubmissionNotification } from '../../../utils/sendShopSubmissionNotification'
 
 const submitCooldownMs = 30_000
 const lastSubmitByToken = new Map<string, number>()
@@ -67,6 +68,17 @@ export default defineEventHandler(async (event) => {
   }
 
   lastSubmitByToken.set(token, now)
+
+  const reviewUrl = `${getRequestURL(event).origin}/admin/shop-updates/${data.id}`
+  void sendShopSubmissionNotification({
+    submissionId: data.id,
+    diveshopId: shopId,
+    businessName: String(proposedPayload.business_name ?? baseline.business_name ?? '').trim(),
+    submitterName,
+    submitterEmail,
+    submitterNotes,
+    reviewUrl
+  })
 
   return { id: data.id, status: 'pending' as const }
 })
