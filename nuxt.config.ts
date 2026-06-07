@@ -29,6 +29,8 @@ export default defineNuxtConfig({
     bookingFromEmail: process.env.BOOKING_FROM_EMAIL || 'Glaucus <onboarding@resend.dev>',
     /** Comma-separated internal recipients for profile-default saves. */
     profileUpdateNotifyEmails: process.env.PROFILE_UPDATE_NOTIFY_EMAILS || 'rshashwat@gmail.com,general@madebyporter.com',
+    /** Comma-separated internal recipients when a shop owner submits portal listing changes. */
+    shopSubmissionNotifyEmails: process.env.SHOP_SUBMISSION_NOTIFY_EMAILS || 'chris@glaucusdive.com,shash@glaucusdive.com',
     /** Required for geocode-shop API to update diveshops (bypasses RLS). Get from Supabase Dashboard > Project Settings > API. */
     supabaseServiceRoleKey: '',
     /** Linear personal API key (Settings → API). Used by /api/feedback to create issues. */
