@@ -1,15 +1,13 @@
 <template>
   <!-- layout: false — we pick the shell here so layout name and slot content never desync -->
   <NuxtLayout :name="layoutName" :key="layoutName">
-    <!-- Until init() finishes: minimal shell + centered logo only -->
+    <!-- Until init() finishes: blank boot screen (styles load via app.html before reveal) -->
     <div
       v-if="!authResolved"
-      class="flex min-h-dvh items-center justify-center bg-zinc-50 dark:bg-zinc-950"
+      class="min-h-dvh bg-black"
       aria-busy="true"
       aria-label="Loading"
-    >
-      <LogoEmblem img-class="h-24 w-24" />
-    </div>
+    />
     <LandingHome v-else-if="!showChatShell" />
     <LazyChatHome v-else />
   </NuxtLayout>

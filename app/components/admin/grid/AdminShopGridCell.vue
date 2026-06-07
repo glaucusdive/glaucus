@@ -26,6 +26,8 @@
         class="shrink-0 rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
         aria-label="Copy partner link"
         title="Copy partner link"
+        @pointerenter="onPrefetchPortalLink"
+        @focus="onPrefetchPortalLink"
         @click.stop="onCopyPortalLink"
       >
         <Link class="h-4 w-4" aria-hidden="true" />
@@ -220,6 +222,10 @@ function onSelectCreated (opt: { id: string; label: string }) {
   else if (p === 'rental_equipment_ids') c.onLookupCreated('rentalEquipment', opt)
   else if (p === 'gas_ids') c.onLookupCreated('gases', opt)
   else if (p === 'dive_site_ids') c.onLookupCreated('diveSites', opt)
+}
+
+function onPrefetchPortalLink () {
+  void ctx.value.prefetchPortalLink(model.value)
 }
 
 function onCopyPortalLink () {
