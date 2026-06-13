@@ -47,7 +47,7 @@ defineProps({
   loading: { type: Boolean, default: false },
   placeholder: {
     type: String,
-    default: 'Ask me anything about dive shops...'
+    default: 'I want to find a liveaboard in Indonesia...'
   },
   outerClass: {
     type: String,
