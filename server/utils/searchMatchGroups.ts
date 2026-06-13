@@ -6,12 +6,14 @@ import {
   type ShopForMatchGroup
 } from '../../shared/searchResultGroups'
 import type { SearchFilters } from './buildDiveShopQuery'
+import { resolveCountryIdsForSearchScope } from './resolveSearchCountryIds'
 
 /** Linked dive site names per shop that match search tokens (junction lookup). */
 export async function fetchDiveSiteNameMatchesForShops (
   client: SupabaseClient,
   shopIds: string[],
-  tokens: string[]
+  tokens: string[],
+  diveSiteCountryIds?: string[] | null
 ): Promise<Map<string, string[]>> {
   const out = new Map<string, string[]>()
   if (!shopIds.length || !tokens.length) return out
@@ -25,10 +27,15 @@ export async function fetchDiveSiteNameMatchesForShops (
   const siteIds = [...new Set(junction.map((j: { dive_site_id: string }) => j.dive_site_id).filter(Boolean))]
   if (!siteIds.length) return out
 
-  const { data: sites } = await client
+  let sitesQuery = client
     .from('dive_sites')
-    .select('id, name')
+    .select('id, name, country_id')
     .in('id', siteIds)
+  const countryIds = diveSiteCountryIds?.filter(Boolean) ?? null
+  if (countryIds?.length) {
+    sitesQuery = sitesQuery.in('country_id', countryIds)
+  }
+  const { data: sites } = await sitesQuery
   if (!sites?.length) return out
 
   const tokenLower = tokens.map(t => t.toLowerCase())
@@ -64,7 +71,13 @@ export async function attachSearchMatchGroups<T extends ShopForMatchGroup> (
     const client = createClient(supabaseUrl, supabaseKey)
     const shopIds = shops.map(s => s.id).filter(Boolean) as string[]
     if (shopIds.length) {
-      ctx.diveSiteNamesByShopId = await fetchDiveSiteNameMatchesForShops(client, shopIds, ctx.tokens)
+      const diveSiteCountryIds = await resolveCountryIdsForSearchScope(client, filters)
+      ctx.diveSiteNamesByShopId = await fetchDiveSiteNameMatchesForShops(
+        client,
+        shopIds,
+        ctx.tokens,
+        diveSiteCountryIds
+      )
     }
   }
   return shops.map(shop => ({

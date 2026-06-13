@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sanitizeTermForPostgrestOrFragment } from './buildDiveShopQuery'
 import { placeSearchTokens } from '../../shared/placeSearchTokens'
+import { resolveCountryIdsForSearchScope } from './resolveSearchCountryIds'
 
 export { placeSearchTokens } from '../../shared/placeSearchTokens'
 
@@ -36,11 +37,14 @@ async function shopIdsFromDiveSiteNameTokens (
 ): Promise<string[]> {
   const siteIds = new Set<string>()
   for (const t of tokens) {
-    const { data } = await client
+    let siteQuery = client
       .from('dive_sites')
       .select('id')
       .ilike('name', `%${t}%`)
-      .limit(40)
+    if (countryIds?.length) {
+      siteQuery = siteQuery.in('country_id', countryIds)
+    }
+    const { data } = await siteQuery.limit(40)
     for (const row of data || []) {
       const id = (row as { id: string }).id
       if (id) siteIds.add(id)
@@ -76,6 +80,11 @@ export async function collectWidePlaceShopIds (
   const tokens = placeSearchTokens(placeRaw)
   if (!tokens.length) return []
 
+  let diveSiteCountryIds = countryIds
+  if (!diveSiteCountryIds?.length) {
+    diveSiteCountryIds = await resolveCountryIdsForSearchScope(client, { place: placeRaw })
+  }
+
   let scalarQuery = client.from('diveshops').select('id').or(diveshopDirectoryOrConditions(tokens))
   if (countryIds?.length) {
     scalarQuery = scalarQuery.in('country_id', countryIds)
@@ -83,7 +92,7 @@ export async function collectWidePlaceShopIds (
   const { data: scalarRows, error: scalarErr } = await scalarQuery
   if (scalarErr) return []
 
-  const diveSiteShopIds = await shopIdsFromDiveSiteNameTokens(client, tokens, countryIds)
+  const diveSiteShopIds = await shopIdsFromDiveSiteNameTokens(client, tokens, diveSiteCountryIds)
   const union = new Set<string>([
     ...(scalarRows || []).map((r: { id: string }) => r.id).filter(Boolean),
     ...diveSiteShopIds
