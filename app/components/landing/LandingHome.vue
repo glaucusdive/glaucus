@@ -5,13 +5,15 @@
       <div class="grid grid-cols-12 gap-4 items-center h-full">
         <div class="col-span-12 lg:col-span-8 lg:col-start-3">
           <div class="flex flex-col gap-2">
-            <div class="flex flex-col gap-0.5 md:gap-2 lg:flex-row lg:items-baseline lg:gap-1 text-center">
+            <div class="flex flex-col flex-wrap gap-0.5 md:gap-2 lg:flex-row lg:items-baseline lg:gap-1 px-4">
               <h1 class="text-xl md:text-2xl font-medium">Your scuba life, simplified.</h1>
-              <p class="text-xs md:text-sm text-balance text-zinc-400">An agentic assistant for novice & advance scuba divers.</p>
+              <p class="text-xs md:text-sm text-balance text-zinc-400">Simply enter your dive destination type (dive shop for day trips, dive resort, or liveaboard) and what city/region or country.</p>
             </div>
+            
             <div class="w-full">
               <ChatComposer
                 v-model="heroQuery"
+                rotate-starter-prompts
                 @submit="onHeroComposerSubmit"
               />
             </div>
