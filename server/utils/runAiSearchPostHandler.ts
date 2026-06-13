@@ -118,7 +118,7 @@ import { attachSearchMatchGroups } from '../utils/searchMatchGroups'
 import { shopIdsForCourseSearch } from '../utils/shopIdsForCourseSearch'
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
-import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
+import { buildSearchPaginationSelectableOption, SEARCH_PAGINATION_PAGE_SIZE_DEFAULT } from '../../shared/searchPaginationChip'
 import { GuidedCommands } from '../../shared/guidedFlow'
 import {
   BOOKING_CONTACT_MEANT_SOMETHING_ELSE,
@@ -420,8 +420,8 @@ function inferAlreadyShownForPagination (history: Message[], shopsAlreadyShownCo
         // "Would you…" to skip — many first pages end with a narrowing question after "top results".
         if (hasResultsPhrase) {
           const nextN = msg.content?.match(/next (\d+)\s+results?/i)?.[1]
-          const shown = nextN ? parseInt(nextN, 10) : 5
-          alreadyShown += Number.isNaN(shown) ? 5 : shown
+          const shown = nextN ? parseInt(nextN, 10) : SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
+          alreadyShown += Number.isNaN(shown) ? SEARCH_PAGINATION_PAGE_SIZE_DEFAULT : shown
           console.log(`[AI Search] Found result message at index ${i}, shown: ${shown}, total shown: ${alreadyShown}`)
         }
       }
@@ -443,7 +443,7 @@ async function finalizeSearchPaginationApiResponse (
   nextShopsRaw: unknown[],
   resultCount: number,
   alreadyShown: number,
-  paginationPageSize: number = 5
+  paginationPageSize: number = SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
 ) {
   let filters: SearchFilters = { ...lastFilters }
   const inferredHint = resolveEffectiveCertificationCourseHint(userMessage, interpretTurn ?? null)
@@ -3101,7 +3101,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
 
       // Check if user is asking for more results (pagination) or first page after a count-only reply
       const isPaginationRequest = isSearchPaginationUserMessage(message)
-      const paginationPageSize = /\b(show next 20|load next 20|next 20)\b/i.test(message) ? 20 : 5
+      const paginationPageSize = /\b(show next 20|load next 20|next 20)\b/i.test(message) ? 20 : SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
     
       if (isPaginationRequest && history && history.length > 0) {
         console.log(`[AI Search] Pagination request detected: "${message}"`)

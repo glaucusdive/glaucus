@@ -87,7 +87,7 @@ describe('groupShopsByMatchReason', () => {
     })
     const groups = groupShopsByMatchReason([shop({ type: 'Liveaboard' })], ctx)
     expect(groups.some(g => g.id === 'trip_type')).toBe(false)
-    expect(groups).toEqual([{ id: 'general', title: 'Results:', shops: [expect.objectContaining({ id: 's1' })] }])
+    expect(groups).toEqual([{ id: 'general', title: 'Matches your search:', shops: [expect.objectContaining({ id: 's1' })] }])
   })
 
   it('orders sections: dive site before city before general', () => {

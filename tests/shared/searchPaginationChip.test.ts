@@ -5,8 +5,8 @@ import {
 } from '../../shared/searchPaginationChip'
 
 describe('buildSearchPaginationSelectableOption', () => {
-  it('caps label at page size (default 5)', () => {
-    expect(buildSearchPaginationSelectableOption(12).label).toBe('Load next 5')
+  it('caps label at page size (default 10)', () => {
+    expect(buildSearchPaginationSelectableOption(12).label).toBe('Load next 10')
     expect(buildSearchPaginationSelectableOption(12).value).toBe('Show more')
   })
 
@@ -25,7 +25,7 @@ describe('buildSearchPaginationSelectableOption', () => {
     expect(buildSearchPaginationSelectableOption(-1).label).toBe('Show more')
   })
 
-  it('default page size constant is 5', () => {
-    expect(SEARCH_PAGINATION_PAGE_SIZE_DEFAULT).toBe(5)
+  it('default page size constant is 10', () => {
+    expect(SEARCH_PAGINATION_PAGE_SIZE_DEFAULT).toBe(10)
   })
 })

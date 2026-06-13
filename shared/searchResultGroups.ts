@@ -15,7 +15,8 @@ export const SEARCH_MATCH_GROUP_LABELS: Record<SearchMatchGroupId, string> = {
   business_name: 'Results by name',
   location: 'Results by location',
   trip_type: 'Results by trip type',
-  general: 'Results:'
+  /** Primary-intent matches — no extra secondary reason (city, name, dive site, etc.). */
+  general: 'Matches your search:'
 }
 
 /** Section header display order (non-empty groups only). */

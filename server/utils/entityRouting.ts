@@ -8,7 +8,10 @@ import { pickShopsWithExactBusinessName } from './resolveBookingTarget'
 import { findClosestShopNameMatch, listShopsMatchingName } from './resolveShop'
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 import { shopDisambiguationSelectableOptions } from '../../shared/bookShopPick'
-import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
+import {
+  buildSearchPaginationSelectableOption,
+  SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
+} from '../../shared/searchPaginationChip'
 import { inferSearchFiltersFromDestination, isKnownGeographicDestination } from './destinationToSearchFilters'
 import { attachSearchMatchGroups } from './searchMatchGroups'
 import type { SearchMatchFacets } from '../../shared/searchResultGroups'
@@ -185,10 +188,11 @@ export async function formatEntitySearchResponse (
     ? await attachSearchMatchGroups(supabaseUrl, supabaseKey, list, filters, facets)
     : []
   const resultCount = enriched.length
-  const responseShops = enriched.slice(0, 5)
+  const pageSize = SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
+  const responseShops = enriched.slice(0, pageSize)
   const remainingMore = Math.max(0, resultCount - responseShops.length)
   const selectableOptions =
-    remainingMore > 0 ? [buildSearchPaginationSelectableOption(remainingMore)] : undefined
+    remainingMore > 0 ? [buildSearchPaginationSelectableOption(remainingMore, pageSize)] : undefined
   const searchMatchBadges =
     responseShops.length > 0 ? buildSearchMatchBadges(filters, facets ?? null) : []
   return {
@@ -196,7 +200,7 @@ export async function formatEntitySearchResponse (
     message,
     shops: responseShops,
     totalResults: resultCount,
-    hasMoreResults: resultCount > 5,
+    hasMoreResults: resultCount > pageSize,
     filters,
     selectableOptions,
     ...(searchMatchBadges.length ? { searchMatchBadges } : {})

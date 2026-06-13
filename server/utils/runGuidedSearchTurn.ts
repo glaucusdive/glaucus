@@ -23,7 +23,7 @@ import { buildDiveShopQuery, type SearchFilters } from './buildDiveShopQuery'
 import { formatEntitySearchResponse, type EntitySearchFormattedResponse } from './entityRouting'
 import { listShopsMatchingName } from './resolveShop'
 import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
-import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
+import { buildSearchPaginationSelectableOption, SEARCH_PAGINATION_PAGE_SIZE_DEFAULT } from '../../shared/searchPaginationChip'
 import { normalizeClientSearchFilters } from './normalizeClientSearchFilters'
 import { shopIdsForCourseSearch } from './shopIdsForCourseSearch'
 import { enrichShopsForSearchCards } from './enrichShopsForSearchCards'
@@ -510,7 +510,7 @@ export async function runGuidedSearchTurn (
         ? Math.floor(body.lastSearchTotalResults)
         : null
     const alreadyShown = Math.max(0, body.shopsAlreadyShownCount ?? 0)
-    const pageSize = /\b(show next 20|load next 20|next 20)\b/i.test(rawMsg) ? 20 : 5
+    const pageSize = /\b(show next 20|load next 20|next 20)\b/i.test(rawMsg) ? 20 : SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
 
     if (guidedNeedsCombinedQuery(state)) {
       const { shops: allShops, total, filters: combinedFilters } = await runGuidedCombinedResultsQuery(

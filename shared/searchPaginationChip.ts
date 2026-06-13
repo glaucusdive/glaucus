@@ -1,9 +1,9 @@
 /** Default page size for search card pagination (orchestrator, trip-type pipeline, guided). */
-export const SEARCH_PAGINATION_PAGE_SIZE_DEFAULT = 5
+export const SEARCH_PAGINATION_PAGE_SIZE_DEFAULT = 10
 
 /**
  * Chip for loading the next page of the same search. Label reflects how many shops remain
- * (capped at `pageSize`, default 5). Value stays `Show more` for server / intent detection.
+ * (capped at `pageSize`, default 10). Value stays `Show more` for server / intent detection.
  */
 export function buildSearchPaginationSelectableOption (
   remainingMoreInSearch: number,
