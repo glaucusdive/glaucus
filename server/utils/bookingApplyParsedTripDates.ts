@@ -1,5 +1,10 @@
 import { clampBookingPayloadToNextStep, getNextBookingStep, type BookingPayloadLocal } from './bookingFastPath'
-import { applyInferredCoursesToPayloadIfEligible } from './inferCoursesFromConversation'
+import type { TripRequirements } from '../../shared/tripRequirements'
+import {
+  applyInferredCoursesToPayloadIfEligible,
+  tripRequirementsHasCourseIntent
+} from './inferCoursesFromConversation'
+import { mapCourseNamesFromTripRequirements } from './mapCourseNamesFromTripRequirements'
 
 export interface ApplyParsedTripDatesContext {
   shopCourseCount: number
@@ -7,9 +12,10 @@ export interface ApplyParsedTripDatesContext {
   userMessage: string
   history?: { role?: string; content?: string }[]
   courses: { name: string }[]
+  tripRequirements?: TripRequirements | null
 }
 
-/** Merge JS-parsed trip dates into booking payload with the same course/site/clamp rules as the ai-search orchestrator. */
+/** Merge JS-parsed trip dates into booking payload with TripRequirements-first course seed. */
 export function applyParsedTripDatesToBookingPayload (
   bookingPayload: BookingPayloadLocal,
   parsedDates: { startDate: string; endDate: string },
@@ -22,8 +28,13 @@ export function applyParsedTripDatesToBookingPayload (
   }
   if (getNextBookingStep(p)?.step === 'courses' && ctx.shopCourseCount === 0) {
     p = { ...p, desiredCourses: [] }
-  } else if (ctx.shopCourseCount > 0) {
-    p = applyInferredCoursesToPayloadIfEligible(p, ctx.history, ctx.userMessage, ctx.courses)
+  } else if (ctx.shopCourseCount > 0 && p.desiredCourses === undefined) {
+    const mapped = mapCourseNamesFromTripRequirements(ctx.tripRequirements, ctx.courses)
+    if (mapped.length > 0) {
+      p = { ...p, desiredCourses: mapped, coursesSelectionComplete: false }
+    } else if (!tripRequirementsHasCourseIntent(ctx.tripRequirements)) {
+      p = applyInferredCoursesToPayloadIfEligible(p, ctx.history, ctx.userMessage, ctx.courses)
+    }
   }
   if (getNextBookingStep(p)?.step === 'diveSites' && ctx.shopDiveSiteCount === 0) {
     p = { ...p, desiredDiveSites: [], diveSitesSelectionComplete: true }

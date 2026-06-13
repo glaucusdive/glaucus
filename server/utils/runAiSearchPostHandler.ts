@@ -72,7 +72,14 @@ import {
   formatSearchRelaxActivityLine
 } from '../utils/formatSearchActivityLog'
 import { tryShopInfoResponse } from '../utils/shopInfoForChat'
-import { applyInferredCoursesToPayloadIfEligible } from '../utils/inferCoursesFromConversation'
+import { applyBookingCourseSeedIfEligible } from '../utils/inferCoursesFromConversation'
+import {
+  mergeTripRequirements,
+  normalizeTripRequirements,
+  type TripRequirements
+} from '../../shared/tripRequirements'
+import { rankCourseOptionsForTripRequirements } from '../../shared/rankCourseOptionsForTripRequirements'
+import { tripRequirementsAfterSearchTurn } from '../utils/tripRequirementsFromSearchTurn'
 import { runWithRetries } from '../utils/retryWithBackoff'
 import { SEARCH_DIVE_SYSTEM_PROMPT } from '../utils/searchDiveSystemPrompt'
 import {
@@ -378,6 +385,8 @@ export interface RequestBody {
   lastSearchFilters?: SearchFilters
   /** Echo of last search totalResults (client); with lastSearchFilters enables a single DB range page. */
   lastSearchTotalResults?: number
+  /** Canonical trip constraints (search → booking handoff). */
+  tripRequirements?: TripRequirements
   /** When true, POST handler may be invoked with a pre-read body; client uses NDJSON progress on `/api/guided-orchestrator`. */
   progressStream?: boolean
 }
@@ -594,7 +603,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
   try {
     const onActivityLine = options?.onActivityLine
     const body = options?.body ?? await readBody<RequestBody>(event)
-    const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill, pendingEntityClarifyPhrase, lastSearchFilters: bodyLastSearchFilters, lastSearchTotalResults: bodyLastSearchTotalResults } = body
+    const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill, pendingEntityClarifyPhrase, lastSearchFilters: bodyLastSearchFilters, lastSearchTotalResults: bodyLastSearchTotalResults, tripRequirements: bodyTripRequirements } = body
 
     if (!message || typeof message !== 'string') {
       throw new Error('Message is required')
@@ -641,6 +650,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
       throw new Error('OpenAI API key not configured (set NUXT_OPENAI_API_KEY or OPENAI_API_KEY for serverless)')
     }
     return await runWithRetries(async () => {
+      let activeTripRequirements = normalizeTripRequirements(bodyTripRequirements)
       const authUser = await getAuthUser(event)
       const bookingSignupTiming = parseBookingSignupTimingFromConfig(useRuntimeConfig().public.bookingSignupTiming)
 
@@ -1010,6 +1020,22 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           getRentalEquipmentForShop(supabaseUrl, supabaseKey, resolvedShop.id),
           getCoursesForShop(supabaseUrl, supabaseKey, resolvedShop.id)
         ])
+        const effectiveTripReq = mergeTripRequirements(activeTripRequirements, {
+          selectedShopId: resolvedShop.id
+        })
+        const courseSeedBase = {
+          tripRequirements: effectiveTripReq,
+          history: history || [],
+          currentMessage: message,
+          courseOptions: courses,
+          diveSiteOptions: diveSites,
+          supabaseUrl,
+          supabaseKey,
+          shopId: resolvedShop.id
+        }
+        const rankCourses = (list: { id: string; name: string }[]) =>
+          rankCourseOptionsForTripRequirements(list, effectiveTripReq)
+        const rankedCourses = () => rankCourses(courses)
         if (continuingBooking && bookingPayload) {
           if (profilePrefill) {
             bookingPayload = mergeProfileContactIntoBookingPayload(
@@ -1021,11 +1047,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             shopCourseCount: courses.length,
             shopDiveSiteCount: diveSites.length
           }) as BookingPayload
-          bookingPayload = applyInferredCoursesToPayloadIfEligible(
+          bookingPayload = await applyBookingCourseSeedIfEligible(
             bookingPayload as BookingPayloadLocal,
-            history,
-            message,
-            courses
+            courseSeedBase
           ) as BookingPayload
           const msgTrimPreSend = message.trim()
           const preTok = parseBookingPreSendToken(msgTrimPreSend)
@@ -1098,11 +1122,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             shopCourseCount: courses.length,
             shopDiveSiteCount: diveSites.length
           }) as BookingPayload
-          initialPayload = applyInferredCoursesToPayloadIfEligible(
+          initialPayload = await applyBookingCourseSeedIfEligible(
             initialPayload as BookingPayloadLocal,
-            history,
-            message,
-            courses
+            courseSeedBase
           ) as BookingPayload
           nextHint = getNextBookingStep(initialPayload)
           const firstMessage = nextHint?.step === 'name'
@@ -1116,6 +1138,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   : nextHint?.step === 'diveSites'
                     ? bookingGotItWithShopMessage(shopLabel, bookingDiveSitesStepMessage(initialPayload))
                     : bookingGotItWithShopMessage(shopLabel, "What's the name for the booking?")
+          const rankedFresh = rankedCourses()
           return withAgentMeta({
             success: true,
             intent: 'booking' as const,
@@ -1126,17 +1149,20 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             shopLocation: shopClient.shopLocation,
             shopDisplayName: shopClient.shopDisplayName,
             bookingPayload: initialPayload,
+            tripRequirements: effectiveTripReq,
             selectableOptions: undefined,
             rentalEquipmentOptions: undefined,
-            courseOptions: getNextBookingStep(initialPayload)?.step === 'courses' && courses.length > 0 ? courses : undefined,
+            courseOptions: getNextBookingStep(initialPayload)?.step === 'courses' && rankedFresh.length > 0 ? rankedFresh : undefined,
             diveSiteOptions: getNextBookingStep(initialPayload)?.step === 'diveSites' && diveSites.length > 0 ? diveSites : undefined
           })
         }
 
         const addGearOptions = (payload: BookingPayload) =>
           getNextBookingStep(payload)?.step === 'gear' ? rentalEquipment : undefined
-        const addCourseOptions = (payload: BookingPayload) =>
-          getNextBookingStep(payload)?.step === 'courses' && courses.length > 0 ? courses : undefined
+        const addCourseOptions = (payload: BookingPayload) => {
+          const ranked = rankedCourses()
+          return getNextBookingStep(payload)?.step === 'courses' && ranked.length > 0 ? ranked : undefined
+        }
         const addDiveSiteOptions = (payload: BookingPayload) =>
           getNextBookingStep(payload)?.step === 'diveSites' && diveSites.length > 0 ? diveSites : undefined
         /** Gear step uses Done only (no separate "None" chip). */
@@ -1245,11 +1271,17 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 shopCourseCount: coSw.length,
                 shopDiveSiteCount: dsSw.length
               }) as BookingPayload
-              mergedSw = applyInferredCoursesToPayloadIfEligible(
+              mergedSw = await applyBookingCourseSeedIfEligible(
                 mergedSw as BookingPayloadLocal,
-                history,
-                message,
-                coSw
+                {
+                  ...courseSeedBase,
+                  courseOptions: coSw,
+                  diveSiteOptions: dsSw,
+                  shopId: newShop.id,
+                  tripRequirements: mergeTripRequirements(effectiveTripReq, {
+                    selectedShopId: newShop.id
+                  })
+                }
               ) as BookingPayload
               const nextSw = getNextBookingStep(mergedSw)
               const switchedClient = bookingShopFieldsForClient(newShop)
@@ -1278,7 +1310,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   getNextBookingStep(mergedSw)?.step === 'gear' && reSw.length > 0 ? reSw : undefined,
                 hideNoneForGear: hideNoneForGear(mergedSw),
                 courseOptions:
-                  getNextBookingStep(mergedSw)?.step === 'courses' && coSw.length > 0 ? coSw : undefined,
+                  getNextBookingStep(mergedSw)?.step === 'courses' && coSw.length > 0 ? rankCourses(coSw) : undefined,
                 diveSiteOptions:
                   getNextBookingStep(mergedSw)?.step === 'diveSites' && dsSw.length > 0 ? dsSw : undefined
               })
@@ -1378,11 +1410,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               shopCourseCount: courses.length,
               shopDiveSiteCount: diveSites.length
             }) as BookingPayload
-            initialPayload = applyInferredCoursesToPayloadIfEligible(
+            initialPayload = await applyBookingCourseSeedIfEligible(
               initialPayload as BookingPayloadLocal,
-              history,
-              message,
-              courses
+              courseSeedBase
             ) as BookingPayload
             nextHint = getNextBookingStep(initialPayload)
             const firstMessage = nextHint?.step === 'name'
@@ -1396,6 +1426,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                     : nextHint?.step === 'diveSites'
                       ? bookingGotItWithShopMessage(shopLabel, bookingDiveSitesStepMessage(initialPayload))
                       : bookingGotItWithShopMessage(shopLabel, "What's the name for the booking?")
+            const rankedContinue = rankedCourses()
             return withAgentMeta({
               success: true,
               intent: 'booking' as const,
@@ -1406,9 +1437,10 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             shopLocation: shopClient.shopLocation,
             shopDisplayName: shopClient.shopDisplayName,
               bookingPayload: initialPayload,
+              tripRequirements: effectiveTripReq,
               selectableOptions: undefined,
               rentalEquipmentOptions: undefined,
-              courseOptions: getNextBookingStep(initialPayload)?.step === 'courses' && courses.length > 0 ? courses : undefined,
+              courseOptions: getNextBookingStep(initialPayload)?.step === 'courses' && rankedContinue.length > 0 ? rankedContinue : undefined,
               diveSiteOptions: getNextBookingStep(initialPayload)?.step === 'diveSites' && diveSites.length > 0 ? diveSites : undefined
             })
           }
@@ -1617,7 +1649,8 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               shopDiveSiteCount: diveSites.length,
               userMessage: msgTrim,
               history,
-              courses
+              courses,
+              tripRequirements: effectiveTripReq
             }
 
             let bp: BookingPayload = { ...bookingPayload }
@@ -1891,7 +1924,8 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             lastAssistantContent,
             rentalEquipment,
             courses,
-            diveSites
+            diveSites,
+            tripRequirements: effectiveTripReq
           })
           if (reviewTurn) {
             const rt = reviewTurn as { bookingPayload?: BookingPayload; payload?: BookingPayload }
@@ -2763,7 +2797,8 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                         shopDiveSiteCount: diveSites.length,
                         userMessage: message,
                         history,
-                        courses
+                        courses,
+                        tripRequirements: effectiveTripReq
                       }
                     ) as BookingPayload
                   }
@@ -3226,22 +3261,29 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
       const aiMessage = aiData.choices[0]?.message?.content || ''
       console.log(`[AI Search] Raw AI response:`, aiMessage)
 
-      return withAgentMeta(
-        await runTripTypeSearchAfterLlm({
-          message,
-          history: history || [],
-          aiMessage,
-          openaiApiKey,
-          supabaseUrl,
-          supabaseKey,
-          shopsAlreadyShownCount,
-          onStatus: onActivityLine,
-          interpretTurn,
-          aiSearchFirst,
-          signal: searchAbortSignal,
-          lastSearchFilters: normalizeClientSearchFilters(bodyLastSearchFilters) ?? undefined
-        })
+      const searchResult = await runTripTypeSearchAfterLlm({
+        message,
+        history: history || [],
+        aiMessage,
+        openaiApiKey,
+        supabaseUrl,
+        supabaseKey,
+        shopsAlreadyShownCount,
+        onStatus: onActivityLine,
+        interpretTurn,
+        aiSearchFirst,
+        signal: searchAbortSignal,
+        lastSearchFilters: normalizeClientSearchFilters(bodyLastSearchFilters) ?? undefined
+      })
+      activeTripRequirements = tripRequirementsAfterSearchTurn(
+        activeTripRequirements,
+        searchResult.filters,
+        interpretTurn
       )
+      return withAgentMeta({
+        ...searchResult,
+        tripRequirements: activeTripRequirements
+      })
     }, {
       maxAttempts: 4,
       baseDelayMs: 280,
