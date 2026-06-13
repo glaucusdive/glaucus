@@ -368,6 +368,14 @@ import { mergeProfileContactIntoBookingPayload } from '~~/shared/mergeProfileCon
 import { advanceStaleContactPromptsAfterProfileMerge } from '~/utils/advanceBookingChatAfterProfileMerge'
 import { buildSearchMatchBadges } from '~~/shared/searchMatchBadges'
 import {
+  emptyTripRequirements,
+  mergeTripRequirements,
+  normalizeTripRequirements,
+  tripRequirementsFromBookingHints,
+  tripRequirementsFromGuidedState,
+  tripRequirementsFromSearchFilters
+} from '~~/shared/tripRequirements'
+import {
   chatLoadingLinesForKind,
   mapOrchestratorActivityToStatusLine
 } from '~/utils/chatLoadingStatus'
@@ -591,6 +599,25 @@ const preferGuidedThisSession = ref(false)
 const guidedSearchState = ref(initialGuidedSearchState())
 /** From last guided search results — merged into booking when user taps Start booking */
 const guidedBookingHints = ref(null)
+/** Canonical trip constraints (search → booking handoff). */
+const tripRequirements = ref(emptyTripRequirements())
+
+function absorbTripRequirementsFromSearchTurn (opts) {
+  let next = tripRequirements.value
+  if (opts.filters && typeof opts.filters === 'object' && !Array.isArray(opts.filters)) {
+    next = mergeTripRequirements(next, tripRequirementsFromSearchFilters(opts.filters))
+  }
+  if (opts.bookingHints) {
+    next = mergeTripRequirements(next, tripRequirementsFromBookingHints(opts.bookingHints))
+  }
+  if (opts.guidedState) {
+    next = mergeTripRequirements(next, tripRequirementsFromGuidedState(opts.guidedState))
+  }
+  if (opts.serverTripRequirements) {
+    next = mergeTripRequirements(next, normalizeTripRequirements(opts.serverTripRequirements))
+  }
+  tripRequirements.value = next
+}
 
 // Selected shop label for booking UI (includes location when known)
 const selectedShopName = computed(() => {
@@ -659,24 +686,10 @@ function isInBookingFlowForShop (shopId) {
 async function handleStartBookingFromPanel (shopId, shopName, source = 'panel') {
   selectedShopId.value = shopId
   capture(AnalyticsEvents.BOOKING_STARTED, { shop_id: shopId, source })
-  if (useGuidedSearch.value && guidedBookingHints.value && shopId) {
-    const hints = guidedBookingHints.value
-    const pre = { shopId }
-    let hasExtra = false
-    if (Array.isArray(hints.desiredCourses) && hints.desiredCourses.length) {
-      pre.desiredCourses = [...hints.desiredCourses]
-      hasExtra = true
-    }
-    if (hints.diveSiteTypeLabel) {
-      const sites = await diveSiteNamesMatchingTypeForShop(shopId, hints.diveSiteTypeLabel)
-      if (sites.length) {
-        pre.desiredDiveSites = sites
-        pre.diveSitesSelectionComplete = false
-        hasExtra = true
-      }
-    }
-    if (hasExtra) pendingBookingPayload.value = pre
+  if (guidedBookingHints.value) {
+    absorbTripRequirementsFromSearchTurn({ bookingHints: guidedBookingHints.value })
   }
+  tripRequirements.value = mergeTripRequirements(tripRequirements.value, { selectedShopId: shopId })
   sendMessage(shopName ? `Let's book ${shopName}` : "Let's book this")
 }
 
@@ -853,6 +866,7 @@ function buildPageCachePayload () {
     drawerShopName: drawerWasOpen ? (drawerData.shopName ?? null) : null,
     guidedSearchState: guidedSearchState.value,
     guidedBookingHints: guidedBookingHints.value,
+    tripRequirements: tripRequirements.value,
     preferGuidedThisSession: preferGuidedThisSession.value
   }
 }
@@ -919,6 +933,7 @@ async function hydrateFromRecord (cachedState) {
     ? mergeGuidedSearchState(cachedState.guidedSearchState)
     : initialGuidedSearchState()
   guidedBookingHints.value = cachedState.guidedBookingHints ?? null
+  tripRequirements.value = normalizeTripRequirements(cachedState.tripRequirements ?? emptyTripRequirements())
   preferGuidedThisSession.value = !!cachedState.preferGuidedThisSession
   pendingBookingPayload.value = null
   isLoading.value = false
@@ -1019,6 +1034,7 @@ function activeSessionToPageState () {
     drawerShopName: active.drawerShopName ?? null,
     guidedSearchState: active.guidedSearchState ?? null,
     guidedBookingHints: active.guidedBookingHints ?? null,
+    tripRequirements: active.tripRequirements ?? null,
     preferGuidedThisSession: active.preferGuidedThisSession ?? false
   }
 }
@@ -1181,7 +1197,7 @@ onMounted(async () => {
 })
 
 // Persist cache when state changes
-watch([messages, userInput, preferGuidedThisSession, guidedSearchState, guidedBookingHints], persistCache, { deep: true })
+watch([messages, userInput, preferGuidedThisSession, guidedSearchState, guidedBookingHints, tripRequirements], persistCache, { deep: true })
 watch([selectedShopId, detailDrawerShopId, isOpen, drawerData], persistCache, { deep: true })
 
 // Auto-scroll to bottom when new messages arrive
@@ -1437,6 +1453,7 @@ async function tryRestoreBookingSessionAfterAuth () {
       drawerShopName: null,
       guidedSearchState: guidedSearchState.value,
       guidedBookingHints: guidedBookingHints.value,
+      tripRequirements: tripRequirements.value,
       preferGuidedThisSession: preferGuidedThisSession.value
     })
     persistCache()
@@ -1604,6 +1621,11 @@ const sendMessage = async (messageText, displayText) => {
     const pendingEntityClarifyPhrase = getPendingEntityClarifyPhraseForOutgoing(message)
 
     const bookingHandoff = isBookingHandoffUserMessage(message)
+    if (selectedShopId.value) {
+      tripRequirements.value = mergeTripRequirements(tripRequirements.value, {
+        selectedShopId: selectedShopId.value
+      })
+    }
     startChatLoadingBrand(inBookingFlow || bookingHandoff ? 'booking' : 'search')
 
     const aiSearchBody = {
@@ -1629,7 +1651,8 @@ const sendMessage = async (messageText, displayText) => {
       ...(inBookingFlow && lastPayload ? { bookingPayload: lastPayload } : {}),
       ...(pendingBookingPayload.value ? { pendingBookingPayload: pendingBookingPayload.value } : {}),
       ...(profilePrefillSnapshot.value ? { profilePrefill: profilePrefillSnapshot.value } : {}),
-      ...(pendingEntityClarifyPhrase ? { pendingEntityClarifyPhrase } : {})
+      ...(pendingEntityClarifyPhrase ? { pendingEntityClarifyPhrase } : {}),
+      tripRequirements: tripRequirements.value
     }
 
     const aiHeaders = {}
@@ -1719,6 +1742,12 @@ const sendMessage = async (messageText, displayText) => {
             guidedRes.bookingHints.diveSiteTypeLabel)
             ? { ...guidedRes.bookingHints }
             : null
+        absorbTripRequirementsFromSearchTurn({
+          filters: guidedRes.filters,
+          bookingHints: guidedRes.bookingHints,
+          guidedState: mergedState
+        })
+        const tripReqSnap = { ...tripRequirements.value }
         const guidedFilters =
           guidedRes.filters && typeof guidedRes.filters === 'object' && !Array.isArray(guidedRes.filters)
             ? guidedRes.filters
@@ -1754,6 +1783,7 @@ const sendMessage = async (messageText, displayText) => {
           filters: guidedFilters,
           guidedSearchState: mergedState,
           guidedBookingHintsSnapshot: hintsSnap,
+          tripRequirementsSnapshot: tripReqSnap,
           ...(searchMatchBadges.length ? { searchMatchBadges } : {})
         })
         trackOrchestratorResponseAnalytics(
@@ -1846,6 +1876,7 @@ const sendMessage = async (messageText, displayText) => {
         closeDrawer()
         selectedShopId.value = null
         pendingBookingPayload.value = null
+        tripRequirements.value = emptyTripRequirements()
         detailDrawerShopId.value = null
         const resetShops = response.shops || []
         const resetContent = (response.message && String(response.message).trim())
@@ -2016,6 +2047,22 @@ const sendMessage = async (messageText, displayText) => {
           : []
       const searchMatchBadges = apiBadges.length ? apiBadges : fallbackBadges
 
+      if (response.intent === 'search') {
+        absorbTripRequirementsFromSearchTurn({
+          filters: response.filters,
+          serverTripRequirements: response.tripRequirements
+        })
+      } else if (response.tripRequirements) {
+        tripRequirements.value = mergeTripRequirements(
+          tripRequirements.value,
+          normalizeTripRequirements(response.tripRequirements)
+        )
+      }
+      const tripReqSnapForMsg =
+        response.intent === 'search' || response.tripRequirements
+          ? { ...tripRequirements.value }
+          : null
+
       messages.value.push({
         role: 'assistant',
         content,
@@ -2037,7 +2084,8 @@ const sendMessage = async (messageText, displayText) => {
         diveSiteOptions: response.diveSiteOptions || undefined,
         ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {}),
         ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {}),
-        ...(searchMatchBadges.length ? { searchMatchBadges } : {})
+        ...(searchMatchBadges.length ? { searchMatchBadges } : {}),
+        ...(tripReqSnapForMsg ? { tripRequirementsSnapshot: tripReqSnapForMsg } : {})
       })
       trackOrchestratorResponseAnalytics(response, capture)
       if (
@@ -2141,6 +2189,12 @@ const stepBack = () => {
     )
     guidedBookingHints.value = lastHints?.guidedBookingHintsSnapshot ?? null
   }
+  const lastTripReq = [...messages.value].reverse().find(
+    (m) => m.role === 'assistant' && m.tripRequirementsSnapshot != null
+  )
+  tripRequirements.value = lastTripReq?.tripRequirementsSnapshot
+    ? normalizeTripRequirements(lastTripReq.tripRequirementsSnapshot)
+    : emptyTripRequirements()
   persistCache()
 }
 
