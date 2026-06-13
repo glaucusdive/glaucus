@@ -1,7 +1,7 @@
 <template>
   <main ref="mainRef" class="bg-[#101214] relative z-10">
     <LandingHeader />
-    <section id="hero" class="relative bg-[url(/images/landing/glaucus-bg-hero-waves.jpg)] bg-no-repeat bg-top bg-cover min-h-[50dvh] h-[calc(85dvh-80px)] px-4 sm:px-8 lg:px-20 after:h-20 after:w-full after:bottom-0 after:left-0 after:absolute after:pointer-events-none after:bg-gradient-to-b after:from-[#101214]/0 after:to-[#101214] after:content-['']">
+    <section id="hero" class="relative bg-[url(/images/landing/glaucus-bg-hero-waves.jpg)] bg-no-repeat bg-top bg-cover min-h-[50dvh] h-[calc(65dvh-80px)] px-4 sm:px-8 lg:px-20 after:h-20 after:w-full after:bottom-0 after:left-0 after:absolute after:pointer-events-none after:bg-gradient-to-b after:from-[#101214]/0 after:to-[#101214] after:content-['']">
       <div class="grid grid-cols-12 gap-4 items-center h-full">
         <div class="col-span-12 lg:col-span-8 lg:col-start-3">
           <div class="flex flex-col gap-2">
