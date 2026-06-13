@@ -288,7 +288,8 @@
                 ref="chatComposerRef"
                 v-model="userInput"
                 :loading="isLoading"
-                :placeholder="chatComposerPlaceholder"
+                :rotate-starter-prompts="messages.length === 0"
+                :placeholder="messages.length === 0 ? '' : chatComposerPlaceholder"
                 @submit="handleSubmit"
               />
             </div>
