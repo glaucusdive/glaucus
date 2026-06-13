@@ -1,8 +1,5 @@
 import { BOOKING_RESUME_SESSION_KEY } from '~~/shared/bookingPreSendTokens'
 import { readChatsRoot, getActiveSession } from '~/composables/useSearchCache'
-import { mergedBookingPayloadFromResumeSnapshot } from '~/utils/bookingAuthResumeMerge'
-
-export { mergedBookingPayloadFromResumeSnapshot } from '~/utils/bookingAuthResumeMerge'
 
 export const BOOKING_AUTH_RESUME_REDIRECT = '/?bookingResume=1'
 

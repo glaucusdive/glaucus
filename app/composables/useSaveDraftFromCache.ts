@@ -58,5 +58,3 @@ export function useSaveDraftFromCache () {
 
   return { saveDraftFromCacheIfNeeded }
 }
-
-export { extractBookingFromCache } from '~/utils/extractBookingFromCache'

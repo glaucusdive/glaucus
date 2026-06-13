@@ -358,12 +358,14 @@ import {
 } from '~~/shared/bookingPreSendTokens'
 import {
   persistBookingResumeBeforeAuth,
-  mergedBookingPayloadFromResumeSnapshot,
   clearBookingResumeSnapshot,
   readBookingResumeSnapshot,
   BOOKING_AUTH_RESUME_REDIRECT
 } from '~/composables/useBookingAuthResume'
-import { patchLatestBookingPayloadInMessages } from '~/utils/bookingAuthResumeMerge'
+import {
+  mergedBookingPayloadFromResumeSnapshot,
+  patchLatestBookingPayloadInMessages
+} from '~/utils/bookingAuthResumeMerge'
 import { mergeProfileContactIntoBookingPayload } from '~~/shared/mergeProfileContactIntoBookingPayload'
 import { advanceStaleContactPromptsAfterProfileMerge } from '~/utils/advanceBookingChatAfterProfileMerge'
 import { buildSearchMatchBadges } from '~~/shared/searchMatchBadges'
