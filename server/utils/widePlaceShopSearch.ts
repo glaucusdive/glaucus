@@ -1,5 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sanitizeTermForPostgrestOrFragment } from './buildDiveShopQuery'
+import { placeSearchTokens } from '../../shared/placeSearchTokens'
+
+export { placeSearchTokens } from '../../shared/placeSearchTokens'
 
 const DIRECTORY_SCALAR_COLS = [
   'business_name',
@@ -9,29 +12,6 @@ const DIRECTORY_SCALAR_COLS = [
   'type',
   'slug'
 ] as const
-
-const MIN_TOKEN_LEN = 4
-
-/**
- * Tokens for directory-style place search: full phrase plus significant words (e.g. Raja Ampat → Ampat).
- */
-export function placeSearchTokens (placeRaw: string): string[] {
-  const full = sanitizeTermForPostgrestOrFragment(placeRaw)
-  if (!full) return []
-  const out: string[] = []
-  const seen = new Set<string>()
-  const add = (t: string) => {
-    const s = sanitizeTermForPostgrestOrFragment(t)
-    if (!s || seen.has(s.toLowerCase())) return
-    seen.add(s.toLowerCase())
-    out.push(s)
-  }
-  add(full)
-  for (const word of full.split(/\s+/)) {
-    if (word.length >= MIN_TOKEN_LEN) add(word)
-  }
-  return out
-}
 
 /** PostgREST `.or()` across shop scalar columns for each place token. */
 export function diveshopDirectoryOrConditions (tokens: string[]): string {

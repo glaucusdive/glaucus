@@ -17,6 +17,7 @@ import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationI
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
 import { enrichShopsForSearchCards } from './enrichShopsForSearchCards'
+import { attachSearchMatchGroups } from './searchMatchGroups'
 import { normalizeClientSearchFilters } from './normalizeClientSearchFilters'
 import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from './openAiChatModel'
 
@@ -683,8 +684,24 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     selectableOptions = mergeSelectableOptions(buildRelaxFilterChips(filters), selectableOptions)
   }
 
+  const facetHintsForBadges =
+    effectiveCourseHint || interpretTurn?.activity_terms?.length || interpretTurn?.dive_site_type_label?.trim()
+      ? {
+          certification_course_hint: effectiveCourseHint ?? interpretTurn?.certification_course_hint ?? null,
+          activity_terms: interpretTurn?.activity_terms ?? null,
+          dive_site_type_label: interpretTurn?.dive_site_type_label ?? null
+        }
+      : null
+
   if (responseShops.length > 0) {
     await enrichShopsForSearchCards(supabaseUrl, supabaseKey, responseShops)
+    responseShops = await attachSearchMatchGroups(
+      supabaseUrl,
+      supabaseKey,
+      responseShops as Parameters<typeof attachSearchMatchGroups>[2],
+      filters,
+      facetHintsForBadges
+    )
   }
 
   let messagePreamble = searchReplyMessagePreamble(conversationalMessage, finalMessage)
@@ -721,15 +738,6 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
   const selectableOptionsWithTripFilter = offerOptionalTripTypeChips
     ? mergeSelectableOptions(trimmedOptions, TRIP_TYPE_OPTIONAL_FILTER_CHIPS)
     : trimmedOptions
-
-  const facetHintsForBadges =
-    effectiveCourseHint || interpretTurn?.activity_terms?.length || interpretTurn?.dive_site_type_label?.trim()
-      ? {
-          certification_course_hint: effectiveCourseHint ?? interpretTurn?.certification_course_hint ?? null,
-          activity_terms: interpretTurn?.activity_terms ?? null,
-          dive_site_type_label: interpretTurn?.dive_site_type_label ?? null
-        }
-      : null
 
   const searchMatchBadges =
     responseShops.length > 0 ? buildSearchMatchBadges(filters, facetHintsForBadges) : []

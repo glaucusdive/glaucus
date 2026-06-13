@@ -114,6 +114,7 @@ import {
   type InterpretedTurn
 } from '../utils/interpretUserTurn'
 import { enrichShopsForSearchCards } from '../utils/enrichShopsForSearchCards'
+import { attachSearchMatchGroups } from '../utils/searchMatchGroups'
 import { shopIdsForCourseSearch } from '../utils/shopIdsForCourseSearch'
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
@@ -458,6 +459,13 @@ async function finalizeSearchPaginationApiResponse (
   }
   if (presentationShops.length > 0) {
     await enrichShopsForSearchCards(supabaseUrl, supabaseKey, presentationShops)
+    presentationShops = await attachSearchMatchGroups(
+      supabaseUrl,
+      supabaseKey,
+      presentationShops as Parameters<typeof attachSearchMatchGroups>[2],
+      filters,
+      null
+    )
   }
 
   const searchMatchBadges = buildSearchMatchBadges(filters, null)
@@ -759,11 +767,13 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 relaxed.region?.trim() ||
                 'that area'
               return withAgentMeta({
-                ...formatEntitySearchResponse(
+                ...(await formatEntitySearchResponse(
+                  supabaseUrl,
+                  supabaseKey,
                   relaxed,
                   shops as unknown[],
                   `Showing dive shops for a broader search in ${place}.`
-                ),
+                )),
                 intent: 'search' as const
               })
             }
@@ -897,13 +907,15 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             if (allowAutoBook && effectiveWantsToBook && (geoList.length > 1 || countryOnly)) {
               logIntentTurn('search')
               return withAgentMeta({
-                ...formatEntitySearchResponse(
+                ...(await formatEntitySearchResponse(
+                  supabaseUrl,
+                  supabaseKey,
                   geoFilters,
                   geoList as unknown[],
                   geoList.length === 1
                     ? `Here is a dive shop in ${placeLabel}. Pick one to start booking, or name a city or area to narrow down.`
                     : `Here are dive shops in ${placeLabel} (matched by location, not just name). Which one would you like to book?`
-                ),
+                )),
                 intent: 'search' as const
               })
             } else if (allowAutoBook && effectiveWantsToBook && geoList.length === 1) {
@@ -914,11 +926,13 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             } else if (!allowAutoBook || !effectiveWantsToBook) {
               logIntentTurn('search')
               return withAgentMeta({
-                ...formatEntitySearchResponse(
+                ...(await formatEntitySearchResponse(
+                  supabaseUrl,
+                  supabaseKey,
                   geoFilters,
                   geoList as unknown[],
                   geoMessage
-                ),
+                )),
                 intent: 'search' as const
               })
             }
@@ -958,20 +972,24 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               skipEntityProbeFromActivity = !!resolvedShop
             } else if (effectiveWantsToBook && actList.length > 1) {
               return withAgentMeta({
-                ...formatEntitySearchResponse(
+                ...(await formatEntitySearchResponse(
+                  supabaseUrl,
+                  supabaseKey,
                   actFilters,
                   actList as unknown[],
                   `Here are shops that match “${label}” in our data (site types, shop type, or linked sites). Which one would you like to book?`
-                ),
+                )),
                 intent: 'search' as const
               })
             } else if (!effectiveWantsToBook) {
               return withAgentMeta({
-                ...formatEntitySearchResponse(
+                ...(await formatEntitySearchResponse(
+                  supabaseUrl,
+                  supabaseKey,
                   actFilters,
                   actList as unknown[],
                   `Here are shops that match “${label}” in our listings, dive site types, or linked sites. Say a region if you want to narrow down.`
-                ),
+                )),
                 intent: 'search' as const
               })
             }
@@ -1063,11 +1081,13 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             } else {
               logIntentTurn('search')
               return withAgentMeta({
-                ...formatEntitySearchResponse(
+                ...(await formatEntitySearchResponse(
+                  supabaseUrl,
+                  supabaseKey,
                   {},
                   [routed.shop as unknown as Record<string, unknown>],
                   `Here is a dive shop matching "${referredPhrase}". Pick one to book or refine your search.`
-                ),
+                )),
                 intent: 'search' as const
               })
             }

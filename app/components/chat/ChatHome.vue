@@ -85,26 +85,32 @@
                     </button>
                   </div>
 
-                  <!-- Shop results -->
-                  <div v-if="msg.shops && msg.shops.length > 0" class="flex flex-col gap-2 md:p-2">
-                    <div class="flex items-center gap-2 text-sm text-zinc-600">
-                      <span class="font-medium">Top Results:</span>
-                    </div>
-                    <div class="grid grid-cols-1 gap-2">
-                      <div
-                        v-for="(shop, si) in msg.shops"
-                        :key="shop.id"
-                        class="chat-shop-card-stagger min-w-0"
-                        :style="{ animationDelay: `${msg.streamingShopsPending ? 0 : si * 80}ms` }"
-                      >
-                        <CardSearchResult
-                          :shop="shop"
-                          :active="selectedShopId === shop.id"
-                          :match-badges="msg.searchMatchBadges"
-                          :search-filters="msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : undefined"
-                          @start-booking="handleStartBookingFromCard"
-                          @view-details="handleViewDetails"
-                        />
+                  <!-- Shop results (grouped by secondary match reason) -->
+                  <div v-if="msg.shops && msg.shops.length > 0" class="flex flex-col gap-4 md:p-2">
+                    <div
+                      v-for="(group, gi) in searchResultGroupsForMessage(msg)"
+                      :key="`${index}-${group.id}`"
+                      class="flex flex-col gap-2"
+                    >
+                      <div class="flex items-center gap-2 text-sm text-zinc-600">
+                        <span class="font-medium">{{ group.title }}</span>
+                      </div>
+                      <div class="grid grid-cols-1 gap-2">
+                        <div
+                          v-for="(shop, si) in group.shops"
+                          :key="shop.id"
+                          class="chat-shop-card-stagger min-w-0"
+                          :style="{ animationDelay: `${msg.streamingShopsPending ? 0 : (groupStaggerOffset(msg, gi) + si) * 80}ms` }"
+                        >
+                          <CardSearchResult
+                            :shop="shop"
+                            :active="selectedShopId === shop.id"
+                            :match-badges="msg.searchMatchBadges"
+                            :search-filters="msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : undefined"
+                            @start-booking="handleStartBookingFromCard"
+                            @view-details="handleViewDetails"
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -370,6 +376,7 @@ import {
 import { mergeProfileContactIntoBookingPayload } from '~~/shared/mergeProfileContactIntoBookingPayload'
 import { advanceStaleContactPromptsAfterProfileMerge } from '~/utils/advanceBookingChatAfterProfileMerge'
 import { buildSearchMatchBadges } from '~~/shared/searchMatchBadges'
+import { buildSearchMatchContext, groupShopsByMatchReason } from '~~/shared/searchResultGroups'
 import {
   emptyTripRequirements,
   mergeTripRequirements,
@@ -1260,6 +1267,24 @@ function searchFiltersFingerprint (filters) {
 }
 
 // Pagination status: which range this message's results represent (1-based). Scoped to the same filter set.
+function searchResultGroupsForMessage (msg) {
+  const shops = msg?.shops || []
+  if (!shops.length) return []
+  const filters =
+    msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : {}
+  const ctx = buildSearchMatchContext(filters)
+  return groupShopsByMatchReason(shops, ctx)
+}
+
+function groupStaggerOffset (msg, groupIndex) {
+  const groups = searchResultGroupsForMessage(msg)
+  let n = 0
+  for (let i = 0; i < groupIndex; i++) {
+    n += groups[i]?.shops?.length ?? 0
+  }
+  return n
+}
+
 function getResultsRange (msgIndex) {
   const msg = messages.value[msgIndex]
   const fp = searchFiltersFingerprint(msg?.filters)
