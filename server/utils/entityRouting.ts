@@ -9,6 +9,7 @@ import { findClosestShopNameMatch, listShopsMatchingName } from './resolveShop'
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 import { shopDisambiguationSelectableOptions } from '../../shared/bookShopPick'
 import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
+import { inferSearchFiltersFromDestination, isKnownGeographicDestination } from './destinationToSearchFilters'
 
 /** Avoid ilike metacharacters from user input. */
 function sanitizeIlike (s: string): string {
@@ -117,6 +118,9 @@ function activeCategories (p: ReferentProbe): Category[] {
   if (p.countries.length > 0) c.push('country')
   if (p.regions.length > 0) c.push('region')
   if (p.placeHit) c.push('place')
+  if (!p.placeHit && isKnownGeographicDestination(p.phrase)) {
+    c.push('place')
+  }
   return c
 }
 
@@ -196,10 +200,38 @@ export type EntityRouteResult =
   | { type: 'shop_disambiguation', shops: ResolvedShop[], phrase: string }
   | { type: 'search', response: ReturnType<typeof formatEntitySearchResponse> }
 
+export type RouteReferentOptions = {
+  /** When false, single shop matches return search/disambiguation instead of booking. */
+  allowAutoBook?: boolean
+}
+
+async function routePlaceSearchFromPhrase (
+  supabaseUrl: string,
+  supabaseKey: string,
+  phrase: string
+): Promise<EntityRouteResult> {
+  const geoFilters = inferSearchFiltersFromDestination(phrase)
+  const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, geoFilters)
+  const { data, error } = dbResult as { data: ShopRow[] | null, error: unknown }
+  if (error) {
+    return { type: 'clarify', phrase }
+  }
+  const label = geoFilters.place?.trim() || geoFilters.country?.trim() || phrase
+  return {
+    type: 'search',
+    response: formatEntitySearchResponse(
+      geoFilters,
+      data,
+      `Here are dive shops in or near ${label}.`
+    )
+  }
+}
+
 export async function routeReferentFromProbe (
   supabaseUrl: string,
   supabaseKey: string,
-  probe: ReferentProbe
+  probe: ReferentProbe,
+  opts?: RouteReferentOptions
 ): Promise<EntityRouteResult> {
   const phrase = probe.phrase
 
@@ -223,6 +255,26 @@ export async function routeReferentFromProbe (
   const only = cats[0]
 
   if (only === 'shop') {
+    const allowAutoBook = opts?.allowAutoBook !== false
+    const isGeoPhrase = isKnownGeographicDestination(phrase)
+
+    if (!allowAutoBook) {
+      if (isGeoPhrase) {
+        return routePlaceSearchFromPhrase(supabaseUrl, supabaseKey, phrase)
+      }
+      if (probe.shops.length === 1) {
+        return {
+          type: 'search',
+          response: formatEntitySearchResponse(
+            {},
+            probe.shops as unknown as ShopRow[],
+            `Here ${probe.shops.length === 1 ? 'is a dive shop' : 'are dive shops'} matching "${phrase}".`
+          )
+        }
+      }
+      return { type: 'shop_disambiguation', shops: probe.shops, phrase }
+    }
+
     if (probe.shops.length === 1) {
       return { type: 'booking', shop: probe.shops[0]! }
     }

@@ -1,4 +1,8 @@
 import { buildDiveShopQuery, type SearchFilters } from './buildDiveShopQuery'
+import {
+  mergeShopListsPreferringDiveTypes,
+  shouldWidenSparseTripTypeResults
+} from './widePlaceShopSearch'
 import { carryForwardUnsetSearchAxes } from './searchFilterCarryForward'
 import {
   mergeActivityIntoFilters,
@@ -83,7 +87,7 @@ export function inferCountryFromConversation (conversationText: string): string 
  * follow-up logic, etc.). Includes plurals and “dive resort(s)” phrasing.
  */
 export const TRIP_TYPE_GATE_PATTERN =
-  /\b(liveaboards?|resorts?|dive\s+resorts?|dive\s+shops?|day\s+trips?|i\s+prefer\s+a\s+liveaboard|i\s+prefer\s+a\s+resort|i\s+prefer\s+dive\s+shops?|just\s+day\s+trips?)\b/i
+  /\b(liveaboards?|liveboards?|resorts?|dive\s+resorts?|dive\s+shops?|day\s+trips?|i\s+prefer\s+a\s+liveaboard|i\s+prefer\s+a\s+resort|i\s+prefer\s+dive\s+shops?|just\s+day\s+trips?)\b/i
 
 export function userMessageIndicatesTripTypeChoice (text: string): boolean {
   return TRIP_TYPE_GATE_PATTERN.test(String(text || ''))
@@ -106,6 +110,7 @@ export function inferCanonicalDiveTypesFromUserMessage (message: string): string
   if (!t) return null
   if (/\bdive\s+resorts?\b/i.test(t)) return ['Dive Resort']
   if (/\bliveaboards?\b/i.test(t)) return ['Liveaboard']
+  if (/\bliveboards?\b/i.test(t)) return ['Liveaboard']
   if (/\bday\s+trips?\b/i.test(t) || /\bdive\s+shops?\b/i.test(t)) return ['Dive Shop']
   if (/\bi\s+prefer\s+a\s+liveaboard\b/i.test(t)) return ['Liveaboard']
   if (/\bi\s+prefer\s+a\s+resort\b/i.test(t)) return ['Dive Resort']
@@ -444,7 +449,19 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     throw new Error('Failed to search dive shops')
   }
 
-  let shops = shopsRaw || []
+  let shops = (shopsRaw || []) as Array<{ id?: string; type?: string | null; google_rating?: number | null }>
+  const preferredDiveTypes = filters.diveTypes
+  if (
+    filters.place?.trim() &&
+    shouldWidenSparseTripTypeResults(shops.length, preferredDiveTypes)
+  ) {
+    const { diveTypes: _drop, ...broader } = filters
+    const broadResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, broader)
+    const broadShops = (broadResult.data || []) as typeof shops
+    if (!broadResult.error && broadShops.length > shops.length) {
+      shops = mergeShopListsPreferringDiveTypes(shops, broadShops, preferredDiveTypes) as typeof shops
+    }
+  }
   if (effectiveCourseHint) {
     const allowedIds = new Set(await shopIdsForCourseSearch(supabaseUrl, supabaseKey, effectiveCourseHint))
     shops = (shops as { id?: string }[]).filter(s => s.id && allowedIds.has(s.id))
