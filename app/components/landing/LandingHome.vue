@@ -199,6 +199,13 @@ import { computed, nextTick, onBeforeMount, onMounted, onUnmounted, ref, shallow
 import ChatComposer from '~/components/chat/ChatComposer.vue'
 import { LANDING_BLOG_ARTICLES } from '~/data/landingBlogArticles'
 
+useSeoMeta({
+  title: 'Your scuba life, simplified',
+  description: 'Search dive shops, resorts, and liveaboards by destination. Find and book scuba diving with Glaucus.',
+  ogTitle: 'Glaucus — Your scuba life, simplified',
+  ogDescription: 'Search dive shops, resorts, and liveaboards by destination. Find and book scuba diving with Glaucus.'
+})
+
 /** Extra viewport heights added below the sticky panel — scroll distance for word reveal (tune feel). */
 const WHATIS_RUNWAY_EXTRA_VH = 240
 const INTRO_BG_FADE_SCROLL_MULTIPLIER = 1

@@ -19,4 +19,6 @@
 
 <script setup lang="ts">
 definePageMeta({ layout: 'default', middleware: 'auth' })
+
+usePrivatePageSeo()
 </script>

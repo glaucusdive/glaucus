@@ -2,6 +2,10 @@
 export default defineNuxtConfig({
   app: {
     head: {
+      link: [
+        { rel: 'icon', type: 'image/png', href: '/images/glaucus-favicon.png' },
+        { rel: 'apple-touch-icon', href: '/images/glaucus-favicon.png' }
+      ],
       style: [
         {
           id: 'glaucus-boot',
@@ -10,7 +14,30 @@ export default defineNuxtConfig({
       ]
     }
   },
-  modules: ['@nuxt/ui', '@posthog/nuxt'],
+  modules: ['@nuxt/ui', '@posthog/nuxt', '@nuxtjs/robots', '@nuxtjs/sitemap', 'nuxt-seo-utils'],
+  site: {
+    url: process.env.NUXT_SITE_URL || 'https://glaucusdive.com',
+    name: 'Glaucus',
+    description: 'Your scuba life, simplified. Search dive shops, resorts, and liveaboards by destination.',
+    defaultLocale: 'en'
+  },
+  routeRules: {
+    '/admin/**': { robots: false },
+    '/partner/**': { robots: false },
+    '/auth/**': { robots: false },
+    '/profile/**': { robots: false },
+    '/community': { robots: false }
+  },
+  robots: {
+    disallow: ['/admin/', '/partner/', '/auth/', '/profile/', '/community', '/api/']
+  },
+  sitemap: {
+    excludeAppSources: true,
+    urls: [
+      { loc: '/' },
+      { loc: '/for-businesses' }
+    ]
+  },
   components: [
     {
       path: '~/components',

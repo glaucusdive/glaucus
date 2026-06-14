@@ -114,7 +114,6 @@ export function useShopDetail (shopLookup: string) {
       return { shop: shopRow, nearbyShops }
     },
     {
-      server: false,
       lazy: false,
       default: () => ({ shop: null, nearbyShops: [] })
     }

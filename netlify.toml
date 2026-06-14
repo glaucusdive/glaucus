@@ -5,4 +5,7 @@
 # Public PostHog ingest URL is not a secret; omit from scan so env value is not matched in docs/config.
 [build.environment]
   SECRETS_SCAN_OMIT_KEYS = "NUXT_PUBLIC_POSTHOG_HOST"
+  # Canonical site URL for @nuxtjs/seo (sitemap, OG absolute URLs). Set on production:
+  # NUXT_SITE_URL = "https://glaucusdive.com"
+  # NUXT_SITE_ENV = "production"
 

@@ -26,6 +26,7 @@
 
 <script setup>
 import DiveShopDetail from '~/components/DiveShopDetail.vue'
+import { shopSeoDescription, shopSeoTitle } from '~/utils/shopSeo'
 
 definePageMeta({ layout: 'default' })
 
@@ -35,8 +36,14 @@ const shopLookup = Array.isArray(route.params.slug) ? route.params.slug[0] : rou
 
 const { shopData, pending, error } = useShopDetail(shopLookup)
 
-useHead({
-  title: computed(() => shopData.value?.business_name || 'Dive Shop')
+const shopTitle = computed(() => shopSeoTitle(shopData.value))
+const shopDescription = computed(() => shopSeoDescription(shopData.value))
+
+useSeoMeta({
+  title: shopTitle,
+  description: shopDescription,
+  ogTitle: shopTitle,
+  ogDescription: shopDescription
 })
 
 const { saveScrollPosition } = useScrollPosition()

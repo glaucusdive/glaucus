@@ -6,4 +6,6 @@
 
 <script setup>
 definePageMeta({ layout: 'default' })
+
+usePrivatePageSeo()
 </script>

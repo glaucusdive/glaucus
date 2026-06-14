@@ -90,6 +90,8 @@ import { normalizeAuthRedirect } from '~/utils/authRedirect'
 
 definePageMeta({ layout: 'default' })
 
+usePrivatePageSeo()
+
 const route = useRoute()
 const router = useRouter()
 const isSignUp = computed(() => route.path === '/auth/signup' || route.query.signup === '1')
