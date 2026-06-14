@@ -26,18 +26,15 @@
                   Tell me what you're looking for in your diving experience, and I'll help you find the best dive shops.
                 </h2>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mt-2 w-full">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2 w-full">
                   <button
-                    v-for="example in searchPathExamples"
-                    :key="example.path"
+                    v-for="(query, index) in chatStarterSuggestions"
+                    :key="index"
                     type="button"
-                    @click="sendLandingSearchExample(example)"
+                    @click="sendLandingSearchExample(query)"
                     class="text-left p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800  cursor-pointer bg-white dark:bg-zinc-900"
                   >
-                    <span class="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-500 mb-2">
-                      {{ example.path }}
-                    </span>
-                    <span class="block text-sm text-zinc-700 dark:text-zinc-300">{{ example.query }}</span>
+                    <span class="block text-sm text-zinc-700 dark:text-zinc-300">{{ query }}</span>
                   </button>
                 </div>
 
@@ -344,6 +341,7 @@ import { useSupabase } from '~/composables/useSupabase'
 import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst } from '~/utils/mergeProfileDefaultDivers'
 import { getLatestBookingPayloadFromMessages, bookingPayloadHasNamedDiver } from '~/utils/chatBookingPayload'
 import { shopDisplayLabelForUi } from '~/utils/shopDisplayLabel'
+import { getChatStarterPrompts } from '~~/shared/chatStarterPrompts'
 import { isSearchPaginationUserMessage } from '~/utils/searchPaginationIntent'
 import {
   findAnchorAssistantIndexForPagination,
@@ -748,51 +746,7 @@ function armShopDetailCloseGuard () {
   shopDetailCloseGuardUntil = Date.now() + SHOP_DETAIL_CLOSE_GUARD_MS
 }
 
-function addDays (date, days) {
-  const next = new Date(date)
-  next.setDate(next.getDate() + days)
-  return next
-}
-
-function formatFutureDateRange () {
-  const start = addDays(new Date(), 45)
-  const end = addDays(start, 6)
-  const monthDay = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' })
-  const monthDayYear = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-
-  if (start.getFullYear() === end.getFullYear()) {
-    if (start.getMonth() === end.getMonth()) {
-      return `${monthDay.format(start)}-${end.getDate()}, ${end.getFullYear()}`
-    }
-    return `${monthDay.format(start)}-${monthDayYear.format(end)}`
-  }
-
-  return `${monthDayYear.format(start)}-${monthDayYear.format(end)}`
-}
-
-// Empty-state examples mirror the five supported search paths.
-const searchPathExamples = computed(() => [
-  {
-    path: 'By location',
-    query: 'Find dive shops in Bali'
-  },
-  {
-    path: 'By dive shop type',
-    query: 'Looking for liveaboards in the Maldives'
-  },
-  {
-    path: 'By certification course',
-    query: 'Shops in Mexico that offer advanced certification courses'
-  },
-  {
-    path: 'By dive site type',
-    query: `I want to do wreck diving in Bali from ${formatFutureDateRange()}`
-  },
-  {
-    path: 'By business name',
-    query: 'Search for a dive shop by business name'
-  }
-])
+const chatStarterSuggestions = computed(() => getChatStarterPrompts())
 
 /** True when the last assistant turn left us inside a guided mini-flow (past branch pick). */
 function isMidGuidedSearchWizard (messageList) {
@@ -803,9 +757,8 @@ function isMidGuidedSearchWizard (messageList) {
   return !!(step && step !== 'choose_branch')
 }
 
-function sendLandingSearchExample (example) {
-  // Always send the natural-language example: same text in the bubble and to the orchestrator (not the category label or guided branch token).
-  sendMessage(example.query)
+function sendLandingSearchExample (query) {
+  sendMessage(query)
 }
 
 const chatComposerPlaceholder = computed(() => {
