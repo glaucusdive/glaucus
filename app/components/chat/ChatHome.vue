@@ -1,11 +1,35 @@
 <template>
     <div class="flex flex-col h-full w-full relative">
-      <!-- Header: min-w-0 + shrink-0 so title truncates instead of clipping Step back -->
-      <ShellPageHeader title="Dive Shop Search">
+      <!-- Header: min-w-0 + shrink-0 so title truncates instead of clipping actions -->
+      <ShellPageHeader :title="pageHeaderTitle">
         <template #actions>
-          <button v-if="canStepBack" @click="stepBack"
+          <div v-if="isInBookingMode" class="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-transparent text-zinc-800 hover:border-zinc-300 dark:border-zinc-600/80 dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:border-zinc-500 dark:hover:bg-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+              aria-label="View shop details"
+              @click="openSelectedShopDetail"
+            >
+              <ChevronUp class="h-4 w-4" aria-hidden="true" />
+            </button>
+            <button
+              v-if="canStepBack"
+              type="button"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-transparent text-zinc-800 hover:border-zinc-300 dark:border-zinc-600/80 dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:border-zinc-500 dark:hover:bg-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+              title="Remove last message and your last reply so you can redo that step"
+              aria-label="Remove last message and your last reply so you can redo that step"
+              @click="stepBack"
+            >
+              <Undo2 class="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+          <button
+            v-else-if="canStepBack"
+            type="button"
             class="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md cursor-pointer"
-            title="Remove last message and your last reply so you can redo that step">
+            title="Remove last message and your last reply so you can redo that step"
+            @click="stepBack"
+          >
             Step back
           </button>
         </template>
@@ -328,7 +352,7 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted, watch, onUnmounted } from 'vue'
-import { ChevronRight } from 'lucide-vue-next'
+import { ChevronRight, ChevronUp, Undo2 } from 'lucide-vue-next'
 import ChatComposer from '~/components/chat/ChatComposer.vue'
 import BottomSheetDrawer from '~/components/ui/BottomSheetDrawer.vue'
 import CardSearchResult from '~/components/CardSearchResult.vue'
@@ -689,6 +713,17 @@ function isInBookingFlowForShop (shopId) {
   if (!shopId || bookingShopForDrawer.value?.id !== shopId) return false
   return messages.value.some(m => m.role === 'assistant' && m.intent === 'booking')
 }
+
+const isInBookingMode = computed(() => {
+  const id = selectedShopId.value
+  return !!id && !!selectedShopName.value && isInBookingFlowForShop(id)
+})
+
+const pageHeaderTitle = computed(() =>
+  isInBookingMode.value && selectedShopName.value
+    ? selectedShopName.value
+    : 'Dive Shop Search'
+)
 
 // Start booking via AI agent (from "Start Booking" in right panel)
 async function handleStartBookingFromPanel (shopId, shopName, source = 'panel') {
@@ -2196,6 +2231,13 @@ const handleViewDetails = (shop) => {
   })
 }
 
+function openSelectedShopDetail () {
+  const id = selectedShopId.value
+  if (!id) return
+  armShopDetailCloseGuard()
+  detailDrawerShopId.value = id
+}
+
 // Open layout booking-form drawer with current shop and chat-collected payload
 const openBookingFormDrawer = () => {
   const shop = bookingShopForDrawer.value
@@ -2230,7 +2272,11 @@ const closeShopDetail = () => {
   detailDrawerShopId.value = null
 }
 
-useHead({ title: 'Dive Shop Search | Glaucus' })
+useHead(computed(() => ({
+  title: isInBookingMode.value && selectedShopName.value
+    ? `${selectedShopName.value} | Glaucus`
+    : 'Dive Shop Search | Glaucus'
+})))
 </script>
 
 <style scoped>
