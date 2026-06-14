@@ -27,6 +27,8 @@ import {
 import type { ParsedTripRange } from './parseTripDates'
 import { inclusiveTripDays } from './parseTripDates'
 import { resolveTripDatesUserMessage } from './tripDateUserInput'
+import { rankCourseOptionsForTripRequirements } from '../../shared/rankCourseOptionsForTripRequirements'
+import type { TripRequirements } from '../../shared/tripRequirements'
 
 export type BookingReviewEditTurnInput = {
   message: string
@@ -41,6 +43,7 @@ export type BookingReviewEditTurnInput = {
   rentalEquipment: { name: string }[]
   courses: { name: string }[]
   diveSites: { name: string }[]
+  tripRequirements?: TripRequirements | null
 }
 
 function clonePayload (p: BookingPayloadLocal): BookingPayloadLocal {
@@ -96,8 +99,13 @@ function hideNoneForGearPayload (payload: BookingPayloadLocal | undefined): bool
   return Array.isArray(gear) && gear.length > 0
 }
 
-function courseOptionsForPayload (payload: BookingPayloadLocal, courses: { name: string }[]) {
-  return getNextBookingStep(payload)?.step === 'courses' && courses.length > 0 ? courses : undefined
+function courseOptionsForPayload (
+  payload: BookingPayloadLocal,
+  courses: { name: string }[],
+  tripRequirements?: TripRequirements | null
+) {
+  const ranked = rankCourseOptionsForTripRequirements(courses, tripRequirements)
+  return getNextBookingStep(payload)?.step === 'courses' && ranked.length > 0 ? ranked : undefined
 }
 
 function diveSiteOptionsForPayload (payload: BookingPayloadLocal, diveSites: { name: string }[]) {
@@ -168,7 +176,8 @@ function applyParsedTripRangeToPayload (
     shopDiveSiteCount: input.shopDiveSiteCount,
     userMessage: userMessageForInference,
     history: [],
-    courses: input.courses
+    courses: input.courses,
+    tripRequirements: input.tripRequirements
   }) as BookingPayloadLocal
 }
 
@@ -441,7 +450,7 @@ export function tryHandleBookingReviewEditTurn (
       bookingPayload: p,
       rentalEquipmentOptions: gearOptionsForPayload(p, input.rentalEquipment),
       hideNoneForGear: hideNoneForGearPayload(p),
-      courseOptions: courseOptionsForPayload(p, input.courses),
+      courseOptions: courseOptionsForPayload(p, input.courses, input.tripRequirements),
       diveSiteOptions: diveSiteOptionsForPayload(p, input.diveSites)
     }
   }
@@ -844,7 +853,7 @@ export function tryHandleBookingReviewEditTurn (
       shopId: input.shopId,
       shopName: input.shopName,
       bookingPayload: clamped,
-      courseOptions: courseOptionsForPayload(clamped, input.courses)
+      courseOptions: courseOptionsForPayload(clamped, input.courses, input.tripRequirements)
     }
   }
   if (/(?:dive\s+)?sites?\b/i.test(msgTrim) && wantsEditVerb(msgTrim)) {

@@ -1,4 +1,8 @@
 import { buildDiveShopQuery, type SearchFilters } from './buildDiveShopQuery'
+import {
+  mergeShopListsPreferringDiveTypes,
+  shouldWidenSparseTripTypeResults
+} from './widePlaceShopSearch'
 import { carryForwardUnsetSearchAxes } from './searchFilterCarryForward'
 import {
   mergeActivityIntoFilters,
@@ -11,8 +15,12 @@ import { shopIdsForCourseSearch } from './shopIdsForCourseSearch'
 import { narrateSearchResults } from './searchResultNarration'
 import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
-import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
+import {
+  buildSearchPaginationSelectableOption,
+  SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
+} from '../../shared/searchPaginationChip'
 import { enrichShopsForSearchCards } from './enrichShopsForSearchCards'
+import { attachSearchMatchGroups } from './searchMatchGroups'
 import { normalizeClientSearchFilters } from './normalizeClientSearchFilters'
 import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from './openAiChatModel'
 
@@ -83,7 +91,7 @@ export function inferCountryFromConversation (conversationText: string): string 
  * follow-up logic, etc.). Includes plurals and “dive resort(s)” phrasing.
  */
 export const TRIP_TYPE_GATE_PATTERN =
-  /\b(liveaboards?|resorts?|dive\s+resorts?|dive\s+shops?|day\s+trips?|i\s+prefer\s+a\s+liveaboard|i\s+prefer\s+a\s+resort|i\s+prefer\s+dive\s+shops?|just\s+day\s+trips?)\b/i
+  /\b(liveaboards?|liveboards?|resorts?|dive\s+resorts?|dive\s+shops?|day\s+trips?|i\s+prefer\s+a\s+liveaboard|i\s+prefer\s+a\s+resort|i\s+prefer\s+dive\s+shops?|just\s+day\s+trips?)\b/i
 
 export function userMessageIndicatesTripTypeChoice (text: string): boolean {
   return TRIP_TYPE_GATE_PATTERN.test(String(text || ''))
@@ -106,6 +114,7 @@ export function inferCanonicalDiveTypesFromUserMessage (message: string): string
   if (!t) return null
   if (/\bdive\s+resorts?\b/i.test(t)) return ['Dive Resort']
   if (/\bliveaboards?\b/i.test(t)) return ['Liveaboard']
+  if (/\bliveboards?\b/i.test(t)) return ['Liveaboard']
   if (/\bday\s+trips?\b/i.test(t) || /\bdive\s+shops?\b/i.test(t)) return ['Dive Shop']
   if (/\bi\s+prefer\s+a\s+liveaboard\b/i.test(t)) return ['Liveaboard']
   if (/\bi\s+prefer\s+a\s+resort\b/i.test(t)) return ['Dive Resort']
@@ -362,6 +371,7 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
   const paginationOffset = isSearchPaginationUserMessage(message)
     ? Math.max(0, shopsAlreadyShownCount ?? 0)
     : 0
+  const pageSize = SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
 
   let { filters, conversationalMessage } = parseSearchFiltersAndMessageFromLlm(aiMessage)
   if (interpretTurn) {
@@ -425,7 +435,7 @@ On a new line after your message, also output exactly 1-3 selectable suggestion 
 SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
   }
 
-  const followUpPrompt = `The search returned many dive shops (we show max 5). Ask ONE short follow-up question to narrow down.
+  const followUpPrompt = `The search returned many dive shops (we show max ${pageSize}). Ask ONE short follow-up question to narrow down.
 
   Conversation so far: ${conversationContext}
 
@@ -444,7 +454,19 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     throw new Error('Failed to search dive shops')
   }
 
-  let shops = shopsRaw || []
+  let shops = (shopsRaw || []) as Array<{ id?: string; type?: string | null; google_rating?: number | null }>
+  const preferredDiveTypes = filters.diveTypes
+  if (
+    filters.place?.trim() &&
+    shouldWidenSparseTripTypeResults(shops.length, preferredDiveTypes)
+  ) {
+    const { diveTypes: _drop, ...broader } = filters
+    const broadResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, broader)
+    const broadShops = (broadResult.data || []) as typeof shops
+    if (!broadResult.error && broadShops.length > shops.length) {
+      shops = mergeShopListsPreferringDiveTypes(shops, broadShops, preferredDiveTypes) as typeof shops
+    }
+  }
   if (effectiveCourseHint) {
     const allowedIds = new Set(await shopIdsForCourseSearch(supabaseUrl, supabaseKey, effectiveCourseHint))
     shops = (shops as { id?: string }[]).filter(s => s.id && allowedIds.has(s.id))
@@ -497,7 +519,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
         })
       }).then(parseBroadeningBody).then(r => { broadeningResult = r }).catch(() => {})
       : Promise.resolve(),
-    resultCount > 5
+    resultCount > pageSize
       ? fetch(OPENAI_CHAT_COMPLETIONS_URL, {
         method: 'POST',
         headers: {
@@ -561,7 +583,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
         ])
       }
     }
-  } else if (resultCount > 5) {
+  } else if (resultCount > pageSize) {
     const lastAssistantMessage = history.filter(h => h.role === 'assistant').pop()?.content || ''
     const lastWasAQuestion = lastAssistantMessage.includes('?')
     const noPreference = /\b(any|all|doesn't matter|don't care|no preference|whatever|either)\b/i.test(message)
@@ -607,9 +629,9 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
   let finalMessage = ''
 
   if (resultCount <= 2 || wantsMoreOptions) {
-    if (resultCount > 5) {
+    if (resultCount > pageSize) {
       const alreadyShown = Math.min(Math.max(0, paginationOffset), resultCount)
-      responseShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
+      responseShops = (shops || []).slice(alreadyShown, alreadyShown + pageSize)
       const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
       if (alreadyShown === 0) {
         finalMessage = followUpMessage?.trim() || ''
@@ -618,7 +640,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
         finalMessage = ''
       }
       if (remaining > 0) {
-        selectableOptions = [buildSearchPaginationSelectableOption(remaining)]
+        selectableOptions = [buildSearchPaginationSelectableOption(remaining, pageSize)]
       }
     } else {
       responseShops = shops || []
@@ -628,32 +650,32 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
         finalMessage = `I didn't find any dive shops matching those criteria. ${followUpMessage}`
       }
     }
-  } else if (shouldAskFollowUp && resultCount > 5) {
+  } else if (shouldAskFollowUp && resultCount > pageSize) {
     const alreadyShown = Math.min(Math.max(0, paginationOffset), resultCount)
-    responseShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
+    responseShops = (shops || []).slice(alreadyShown, alreadyShown + pageSize)
     const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
     finalMessage = followUpMessage?.trim() || ''
     if (remaining > 0) {
-      selectableOptions = [buildSearchPaginationSelectableOption(remaining)]
+      selectableOptions = [buildSearchPaginationSelectableOption(remaining, pageSize)]
     }
   } else if (userAlreadyAnsweredLastQuestion) {
     const alreadyShown = Math.min(Math.max(0, paginationOffset), resultCount)
-    responseShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
+    responseShops = (shops || []).slice(alreadyShown, alreadyShown + pageSize)
     const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
     finalMessage = 'Here are some top options based on what you said. You can confirm details with the shop or ask to narrow by location, rating, or trip type.'
     if (remaining > 0) {
-      selectableOptions = [buildSearchPaginationSelectableOption(remaining)]
+      selectableOptions = [buildSearchPaginationSelectableOption(remaining, pageSize)]
     }
   } else {
     const alreadyShown = Math.min(Math.max(0, paginationOffset), resultCount)
     console.log(`[AI Search] Showing shop cards (total ${resultCount}, offset ${alreadyShown})`)
-    responseShops = (shops || []).slice(alreadyShown, alreadyShown + 5)
+    responseShops = (shops || []).slice(alreadyShown, alreadyShown + pageSize)
     const remaining = Math.max(0, resultCount - alreadyShown - responseShops.length)
-    if (resultCount > 5 || alreadyShown > 0) {
+    if (resultCount > pageSize || alreadyShown > 0) {
       // UI shows cards first, then range ("Showing results …"); no intro line under the grid.
       finalMessage = ''
       if (remaining > 0) {
-        selectableOptions = [buildSearchPaginationSelectableOption(remaining)]
+        selectableOptions = [buildSearchPaginationSelectableOption(remaining, pageSize)]
       }
     } else {
       finalMessage = conversationalMessage
@@ -666,8 +688,24 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     selectableOptions = mergeSelectableOptions(buildRelaxFilterChips(filters), selectableOptions)
   }
 
+  const facetHintsForBadges =
+    effectiveCourseHint || interpretTurn?.activity_terms?.length || interpretTurn?.dive_site_type_label?.trim()
+      ? {
+          certification_course_hint: effectiveCourseHint ?? interpretTurn?.certification_course_hint ?? null,
+          activity_terms: interpretTurn?.activity_terms ?? null,
+          dive_site_type_label: interpretTurn?.dive_site_type_label ?? null
+        }
+      : null
+
   if (responseShops.length > 0) {
     await enrichShopsForSearchCards(supabaseUrl, supabaseKey, responseShops)
+    responseShops = await attachSearchMatchGroups(
+      supabaseUrl,
+      supabaseKey,
+      responseShops as Parameters<typeof attachSearchMatchGroups>[2],
+      filters,
+      facetHintsForBadges
+    )
   }
 
   let messagePreamble = searchReplyMessagePreamble(conversationalMessage, finalMessage)
@@ -704,15 +742,6 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
   const selectableOptionsWithTripFilter = offerOptionalTripTypeChips
     ? mergeSelectableOptions(trimmedOptions, TRIP_TYPE_OPTIONAL_FILTER_CHIPS)
     : trimmedOptions
-
-  const facetHintsForBadges =
-    effectiveCourseHint || interpretTurn?.activity_terms?.length || interpretTurn?.dive_site_type_label?.trim()
-      ? {
-          certification_course_hint: effectiveCourseHint ?? interpretTurn?.certification_course_hint ?? null,
-          activity_terms: interpretTurn?.activity_terms ?? null,
-          dive_site_type_label: interpretTurn?.dive_site_type_label ?? null
-        }
-      : null
 
   const searchMatchBadges =
     responseShops.length > 0 ? buildSearchMatchBadges(filters, facetHintsForBadges) : []

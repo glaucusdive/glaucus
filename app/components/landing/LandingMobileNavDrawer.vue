@@ -16,18 +16,32 @@
         aria-label="Landing sections"
         @click.stop
       >
-        <a
-          v-for="item in navItems"
-          :key="item.id"
-          :href="`#${item.id}`"
-          class="text-2xl font-medium  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-          :class="
-            activeNavLinkId === item.id ? 'text-white' : 'text-zinc-400 hover:text-white'
-          "
-          @click="emitClose"
-        >
-          {{ item.label }}
-        </a>
+        <template v-for="item in navItems" :key="item.id">
+          <NuxtLink
+            v-if="item.to"
+            :to="item.to"
+            :target="item.target"
+            :rel="item.target === '_blank' ? 'noopener noreferrer' : undefined"
+            class="text-2xl font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            :class="
+              activeNavLinkId === item.id ? 'text-white' : 'text-zinc-400 hover:text-white'
+            "
+            @click="emitClose"
+          >
+            {{ item.label }}
+          </NuxtLink>
+          <a
+            v-else
+            :href="`#${item.id}`"
+            class="text-2xl font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            :class="
+              activeNavLinkId === item.id ? 'text-white' : 'text-zinc-400 hover:text-white'
+            "
+            @click="emitClose"
+          >
+            {{ item.label }}
+          </a>
+        </template>
       </nav>
     </div>
   </Teleport>

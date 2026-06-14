@@ -5,6 +5,7 @@ import {
   routeReferentFromProbe,
   type ReferentProbe
 } from '../../server/utils/entityRouting'
+import { inferSearchFiltersFromDestination, isKnownGeographicDestination } from '../../server/utils/destinationToSearchFilters'
 
 describe('closestShopSuggestionResponsePayload', () => {
   it('includes entity clarify pending phrase', () => {
@@ -51,5 +52,54 @@ describe('routeReferentFromProbe country priority', () => {
     }
     const routed = await routeReferentFromProbe('', '', probe)
     expect(routed.type).toBe('clarify')
+  })
+
+  it('clarifies Raja Ampat shop + known destination collision', async () => {
+    expect(isKnownGeographicDestination('Raja Ampat')).toBe(true)
+    const probe: ReferentProbe = {
+      phrase: 'Raja Ampat',
+      shops: [{ id: '1', business_name: 'Raja Ampat Biodiversity Resort', email: null }],
+      diveSites: [],
+      countries: [],
+      regions: [],
+      placeHit: false
+    }
+    const routed = await routeReferentFromProbe('', '', probe, { allowAutoBook: false })
+    expect(routed.type).toBe('clarify')
+  })
+
+  it('books single exact shop when allowAutoBook is true', async () => {
+    const probe: ReferentProbe = {
+      phrase: 'Zen Resort',
+      shops: [{ id: 'z1', business_name: 'Zen Resort', email: null }],
+      diveSites: [],
+      countries: [],
+      regions: [],
+      placeHit: false
+    }
+    const routed = await routeReferentFromProbe('', '', probe, { allowAutoBook: true })
+    expect(routed.type).toBe('booking')
+  })
+
+  it('returns search for single shop when allowAutoBook is false and not geographic', async () => {
+    const probe: ReferentProbe = {
+      phrase: 'Zen Resort',
+      shops: [{ id: 'z1', business_name: 'Zen Resort', email: null }],
+      diveSites: [],
+      countries: [],
+      regions: [],
+      placeHit: false
+    }
+    const routed = await routeReferentFromProbe('', '', probe, { allowAutoBook: false })
+    expect(routed.type).toBe('search')
+  })
+})
+
+describe('destination aliases', () => {
+  it('normalizes raj ampat typo', () => {
+    expect(inferSearchFiltersFromDestination('raj ampat')).toEqual({
+      country: 'Indonesia',
+      place: 'Raja Ampat'
+    })
   })
 })

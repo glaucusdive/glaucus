@@ -8,7 +8,13 @@ import { pickShopsWithExactBusinessName } from './resolveBookingTarget'
 import { findClosestShopNameMatch, listShopsMatchingName } from './resolveShop'
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 import { shopDisambiguationSelectableOptions } from '../../shared/bookShopPick'
-import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
+import {
+  buildSearchPaginationSelectableOption,
+  SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
+} from '../../shared/searchPaginationChip'
+import { inferSearchFiltersFromDestination, isKnownGeographicDestination } from './destinationToSearchFilters'
+import { attachSearchMatchGroups } from './searchMatchGroups'
+import type { SearchMatchFacets } from '../../shared/searchResultGroups'
 
 /** Avoid ilike metacharacters from user input. */
 function sanitizeIlike (s: string): string {
@@ -117,6 +123,9 @@ function activeCategories (p: ReferentProbe): Category[] {
   if (p.countries.length > 0) c.push('country')
   if (p.regions.length > 0) c.push('region')
   if (p.placeHit) c.push('place')
+  if (!p.placeHit && isKnownGeographicDestination(p.phrase)) {
+    c.push('place')
+  }
   return c
 }
 
@@ -133,7 +142,9 @@ async function routeCountrySearch (
   }
   return {
     type: 'search',
-    response: formatEntitySearchResponse(
+    response: await formatEntitySearchResponse(
+      supabaseUrl,
+      supabaseKey,
       { country: countryName },
       data,
       `Here are dive shops in ${countryName}.`
@@ -164,42 +175,81 @@ async function fetchShopsByDiveSiteIds (
   return { data: res.data as ShopRow[] | null, error: res.error }
 }
 
-export function formatEntitySearchResponse (
+export async function formatEntitySearchResponse (
+  supabaseUrl: string,
+  supabaseKey: string,
   filters: SearchFilters,
   shops: ShopRow[] | null | undefined,
-  message: string
+  message: string,
+  facets?: SearchMatchFacets | null
 ) {
   const list = shops || []
-  const resultCount = list.length
-  const responseShops = list.slice(0, 5)
+  const enriched = list.length
+    ? await attachSearchMatchGroups(supabaseUrl, supabaseKey, list, filters, facets)
+    : []
+  const resultCount = enriched.length
+  const pageSize = SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
+  const responseShops = enriched.slice(0, pageSize)
   const remainingMore = Math.max(0, resultCount - responseShops.length)
   const selectableOptions =
-    remainingMore > 0 ? [buildSearchPaginationSelectableOption(remainingMore)] : undefined
+    remainingMore > 0 ? [buildSearchPaginationSelectableOption(remainingMore, pageSize)] : undefined
   const searchMatchBadges =
-    responseShops.length > 0 ? buildSearchMatchBadges(filters, null) : []
+    responseShops.length > 0 ? buildSearchMatchBadges(filters, facets ?? null) : []
   return {
     success: true as const,
     message,
     shops: responseShops,
     totalResults: resultCount,
-    hasMoreResults: resultCount > 5,
+    hasMoreResults: resultCount > pageSize,
     filters,
     selectableOptions,
     ...(searchMatchBadges.length ? { searchMatchBadges } : {})
   }
 }
 
+export type EntitySearchFormattedResponse = Awaited<ReturnType<typeof formatEntitySearchResponse>>
+
 export type EntityRouteResult =
   | { type: 'clarify', phrase: string }
   | { type: 'closest_shop_suggestion', phrase: string, shop: ResolvedShop }
   | { type: 'booking', shop: ResolvedShop }
   | { type: 'shop_disambiguation', shops: ResolvedShop[], phrase: string }
-  | { type: 'search', response: ReturnType<typeof formatEntitySearchResponse> }
+  | { type: 'search', response: EntitySearchFormattedResponse }
+
+export type RouteReferentOptions = {
+  /** When false, single shop matches return search/disambiguation instead of booking. */
+  allowAutoBook?: boolean
+}
+
+async function routePlaceSearchFromPhrase (
+  supabaseUrl: string,
+  supabaseKey: string,
+  phrase: string
+): Promise<EntityRouteResult> {
+  const geoFilters = inferSearchFiltersFromDestination(phrase)
+  const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, geoFilters)
+  const { data, error } = dbResult as { data: ShopRow[] | null, error: unknown }
+  if (error) {
+    return { type: 'clarify', phrase }
+  }
+  const label = geoFilters.place?.trim() || geoFilters.country?.trim() || phrase
+  return {
+    type: 'search',
+    response: await formatEntitySearchResponse(
+      supabaseUrl,
+      supabaseKey,
+      geoFilters,
+      data,
+      `Here are dive shops in or near ${label}.`
+    )
+  }
+}
 
 export async function routeReferentFromProbe (
   supabaseUrl: string,
   supabaseKey: string,
-  probe: ReferentProbe
+  probe: ReferentProbe,
+  opts?: RouteReferentOptions
 ): Promise<EntityRouteResult> {
   const phrase = probe.phrase
 
@@ -223,6 +273,28 @@ export async function routeReferentFromProbe (
   const only = cats[0]
 
   if (only === 'shop') {
+    const allowAutoBook = opts?.allowAutoBook !== false
+    const isGeoPhrase = isKnownGeographicDestination(phrase)
+
+    if (!allowAutoBook) {
+      if (isGeoPhrase) {
+        return routePlaceSearchFromPhrase(supabaseUrl, supabaseKey, phrase)
+      }
+      if (probe.shops.length === 1) {
+        return {
+          type: 'search',
+          response: await formatEntitySearchResponse(
+            supabaseUrl,
+            supabaseKey,
+            {},
+            probe.shops as unknown as ShopRow[],
+            `Here ${probe.shops.length === 1 ? 'is a dive shop' : 'are dive shops'} matching "${phrase}".`
+          )
+        }
+      }
+      return { type: 'shop_disambiguation', shops: probe.shops, phrase }
+    }
+
     if (probe.shops.length === 1) {
       return { type: 'booking', shop: probe.shops[0]! }
     }
@@ -245,7 +317,9 @@ export async function routeReferentFromProbe (
       : `I found "${phrase}" as a dive site but no linked dive shops in our directory yet.`
     return {
       type: 'search',
-      response: formatEntitySearchResponse(
+      response: await formatEntitySearchResponse(
+        supabaseUrl,
+        supabaseKey,
         {},
         data,
         msg
@@ -266,7 +340,9 @@ export async function routeReferentFromProbe (
     }
     return {
       type: 'search',
-      response: formatEntitySearchResponse(
+      response: await formatEntitySearchResponse(
+        supabaseUrl,
+        supabaseKey,
         { region: regionName },
         data,
         `Here are dive shops in the ${regionName} region.`
@@ -281,7 +357,9 @@ export async function routeReferentFromProbe (
   }
   return {
     type: 'search',
-    response: formatEntitySearchResponse(
+    response: await formatEntitySearchResponse(
+      supabaseUrl,
+      supabaseKey,
       { place: phrase },
       data,
       `Here are dive shops in or near ${phrase}.`
@@ -297,7 +375,7 @@ export async function handleForcedEntityClarify (
 ): Promise<
   | { kind: 'booking', shop: ResolvedShop }
   | { kind: 'shop_disambiguation', shops: ResolvedShop[], phrase: string }
-  | { kind: 'search', response: ReturnType<typeof formatEntitySearchResponse> }
+  | { kind: 'search', response: EntitySearchFormattedResponse }
   | { kind: 'clarify', phrase: string }
   | { kind: 'browse' }
 > {
@@ -341,7 +419,9 @@ export async function handleForcedEntityClarify (
     const siteNames = diveSites.map(s => s.name).join(', ')
     return {
       kind: 'search',
-      response: formatEntitySearchResponse(
+      response: await formatEntitySearchResponse(
+        supabaseUrl,
+        supabaseKey,
         {},
         data,
         (data?.length ?? 0) > 0
@@ -363,7 +443,9 @@ export async function handleForcedEntityClarify (
     if (qErr) return { kind: 'clarify', phrase }
     return {
       kind: 'search',
-      response: formatEntitySearchResponse(
+      response: await formatEntitySearchResponse(
+        supabaseUrl,
+        supabaseKey,
         { place: phrase },
         rows as ShopRow[] | null,
         `Here are dive shops in or near ${phrase}.`
@@ -377,7 +459,9 @@ export async function handleForcedEntityClarify (
     if (error) return { kind: 'clarify', phrase }
     return {
       kind: 'search',
-      response: formatEntitySearchResponse(
+      response: await formatEntitySearchResponse(
+        supabaseUrl,
+        supabaseKey,
         { country: phrase },
         data,
         `Here are dive shops in ${phrase}.`

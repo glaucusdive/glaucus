@@ -1,4 +1,7 @@
 import { getNextBookingStep, type BookingPayloadLocal } from './bookingFastPath'
+import type { TripRequirements } from '../../shared/tripRequirements'
+import { normalizeTripRequirements } from '../../shared/tripRequirements'
+import { seedBookingFromTripRequirements } from './seedBookingFromTripRequirements'
 
 const STOP = new Set([
   'the', 'a', 'an', 'and', 'or', 'for', 'with', 'from', 'that', 'this', 'are', 'you', 'your', 'me', 'my', 'in', 'on', 'at', 'to', 'of',
@@ -29,8 +32,8 @@ export function collectUserConversationTextForInference (
 }
 
 /**
- * Map earlier chat (e.g. search: "advanced certification courses") to shop course names so the
- * courses step opens with selections pre-filled; the user still confirms with chips (Done / Any).
+ * Map earlier chat (e.g. search: "advanced certification courses") to shop course names.
+ * Fallback only when TripRequirements did not supply courses.
  */
 export function inferDesiredCourseNamesFromConversation (
   conversationText: string,
@@ -47,7 +50,6 @@ export function inferDesiredCourseNamesFromConversation (
   }
   if (matched.size) return [...matched]
 
-  // "Advanced" + certification/course wording → Advanced* at this shop
   if (/\badvanced\b/.test(t) && /\b(cert|certification|course|courses|class|classes)\b/.test(t)) {
     const adv = names.filter((n) => /\badvanced\b/i.test(n))
     if (adv.length === 1) return adv
@@ -97,6 +99,36 @@ export function inferDesiredCourseNamesFromConversation (
   return []
 }
 
+export function tripRequirementsHasCourseIntent (req: TripRequirements | null | undefined): boolean {
+  const r = normalizeTripRequirements(req ?? {})
+  return !!(r.certificationLevel?.trim() || r.desiredCourses?.length)
+}
+
+/** Primary: seed from TripRequirements (no chat). */
+export async function applyTripRequirementsToPayloadIfEligible (
+  payload: BookingPayloadLocal,
+  tripRequirements: TripRequirements | null | undefined,
+  courseOptions: { name: string }[],
+  opts?: {
+    diveSiteOptions?: { name: string }[]
+    supabaseUrl?: string
+    supabaseKey?: string
+    shopId?: string
+  }
+): Promise<BookingPayloadLocal> {
+  const next = getNextBookingStep(payload)
+  if (!next || (next.step !== 'courses' && next.step !== 'diveSites')) return payload
+  return seedBookingFromTripRequirements({
+    payload,
+    tripRequirements,
+    courseOptions,
+    diveSiteOptions: opts?.diveSiteOptions ?? [],
+    supabaseUrl: opts.supabaseUrl,
+    supabaseKey: opts.supabaseKey,
+    shopId: opts.shopId
+  })
+}
+
 /** When the step machine is on "courses" and the user already stated intent earlier, pre-fill desiredCourses. */
 export function applyInferredCoursesToPayloadIfEligible (
   payload: BookingPayloadLocal,
@@ -113,4 +145,43 @@ export function applyInferredCoursesToPayloadIfEligible (
   const inferred = inferDesiredCourseNamesFromConversation(text, courseOptions)
   if (inferred.length === 0) return payload
   return { ...payload, desiredCourses: inferred, coursesSelectionComplete: false }
+}
+
+export interface ApplyBookingCourseSeedOptions {
+  tripRequirements?: TripRequirements | null
+  history?: { role?: string; content?: string }[]
+  currentMessage: string
+  courseOptions: { name: string }[]
+  diveSiteOptions?: { name: string }[]
+  supabaseUrl?: string
+  supabaseKey?: string
+  shopId?: string
+}
+
+/**
+ * TripRequirements-first course/site seed; conversation inference only when requirements lack course intent.
+ */
+export async function applyBookingCourseSeedIfEligible (
+  payload: BookingPayloadLocal,
+  opts: ApplyBookingCourseSeedOptions
+): Promise<BookingPayloadLocal> {
+  let p = await applyTripRequirementsToPayloadIfEligible(
+    payload,
+    opts.tripRequirements,
+    opts.courseOptions,
+    {
+      diveSiteOptions: opts.diveSiteOptions,
+      supabaseUrl: opts.supabaseUrl,
+      supabaseKey: opts.supabaseKey,
+      shopId: opts.shopId
+    }
+  )
+  if (p.desiredCourses !== undefined) return p
+  if (tripRequirementsHasCourseIntent(opts.tripRequirements)) return p
+  return applyInferredCoursesToPayloadIfEligible(
+    p,
+    opts.history,
+    opts.currentMessage,
+    opts.courseOptions
+  )
 }

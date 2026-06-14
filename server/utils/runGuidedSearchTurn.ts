@@ -20,10 +20,10 @@ import {
   parseGuidedSiteType
 } from '../../shared/guidedFlow'
 import { buildDiveShopQuery, type SearchFilters } from './buildDiveShopQuery'
-import { formatEntitySearchResponse } from './entityRouting'
+import { formatEntitySearchResponse, type EntitySearchFormattedResponse } from './entityRouting'
 import { listShopsMatchingName } from './resolveShop'
 import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
-import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
+import { buildSearchPaginationSelectableOption, SEARCH_PAGINATION_PAGE_SIZE_DEFAULT } from '../../shared/searchPaginationChip'
 import { normalizeClientSearchFilters } from './normalizeClientSearchFilters'
 import { shopIdsForCourseSearch } from './shopIdsForCourseSearch'
 import { enrichShopsForSearchCards } from './enrichShopsForSearchCards'
@@ -394,7 +394,7 @@ async function runGuidedCombinedResultsQuery (
 
 function guidedResultsSelectableOptions (
   state: GuidedSearchState,
-  formatted: ReturnType<typeof formatEntitySearchResponse>
+  formatted: EntitySearchFormattedResponse
 ): { label: string; value: string }[] {
   return [
     ...(formatted.selectableOptions || []),
@@ -436,7 +436,7 @@ async function assembleGuidedSearchResponse (
   supabaseUrl: string,
   supabaseKey: string,
   state: GuidedSearchState,
-  formatted: ReturnType<typeof formatEntitySearchResponse>,
+  formatted: EntitySearchFormattedResponse,
   courseIntent: string | null | undefined,
   tail: Partial<GuidedFlowSearchResponse>
 ): Promise<GuidedFlowSearchResponse> {
@@ -510,7 +510,7 @@ export async function runGuidedSearchTurn (
         ? Math.floor(body.lastSearchTotalResults)
         : null
     const alreadyShown = Math.max(0, body.shopsAlreadyShownCount ?? 0)
-    const pageSize = /\b(show next 20|load next 20|next 20)\b/i.test(rawMsg) ? 20 : 5
+    const pageSize = /\b(show next 20|load next 20|next 20)\b/i.test(rawMsg) ? 20 : SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
 
     if (guidedNeedsCombinedQuery(state)) {
       const { shops: allShops, total, filters: combinedFilters } = await runGuidedCombinedResultsQuery(
@@ -520,7 +520,7 @@ export async function runGuidedSearchTurn (
       )
       const effectiveTotal = clientTotal ?? total
       if (alreadyShown >= effectiveTotal) {
-        const empty = formatEntitySearchResponse(combinedFilters, [], 'No more results for this search.')
+        const empty = await formatEntitySearchResponse(supabaseUrl, supabaseKey, combinedFilters, [], 'No more results for this search.')
         return {
           success: true,
           intent: 'search',
@@ -532,7 +532,9 @@ export async function runGuidedSearchTurn (
       }
       const slice = allShops.slice(alreadyShown, alreadyShown + pageSize)
       const remaining = Math.max(0, effectiveTotal - alreadyShown - slice.length)
-      const formatted = formatEntitySearchResponse(
+      const formatted = await formatEntitySearchResponse(
+        supabaseUrl,
+        supabaseKey,
         combinedFilters,
         slice,
         remaining > 0 ? 'Here are more dive businesses matching your filters.' : 'Here are the remaining dive businesses matching your filters.'
@@ -565,7 +567,7 @@ export async function runGuidedSearchTurn (
       const { shops: allShops, total } = await runCourseBranchQuery(supabaseUrl, supabaseKey, state.courseIntent)
       const effectiveTotal = clientTotal ?? total
       if (alreadyShown >= effectiveTotal) {
-        const empty = formatEntitySearchResponse(filters, [], 'No more results for this search.')
+        const empty = await formatEntitySearchResponse(supabaseUrl, supabaseKey, filters, [], 'No more results for this search.')
         return {
           success: true,
           intent: 'search',
@@ -578,7 +580,9 @@ export async function runGuidedSearchTurn (
       }
       const slice = allShops.slice(alreadyShown, alreadyShown + pageSize)
       const remaining = Math.max(0, effectiveTotal - alreadyShown - slice.length)
-      const formatted = formatEntitySearchResponse(
+      const formatted = await formatEntitySearchResponse(
+        supabaseUrl,
+        supabaseKey,
         filters,
         slice,
         remaining > 0
@@ -606,7 +610,7 @@ export async function runGuidedSearchTurn (
       const matches = await listShopsMatchingName(supabaseUrl, supabaseKey, state.nameQuery, 50)
       const total = matches.length
       if (clientTotal != null && alreadyShown >= clientTotal) {
-        const empty = formatEntitySearchResponse(filters, [], 'No more results for this search.')
+        const empty = await formatEntitySearchResponse(supabaseUrl, supabaseKey, filters, [], 'No more results for this search.')
         return {
           success: true,
           intent: 'search',
@@ -618,7 +622,9 @@ export async function runGuidedSearchTurn (
       }
       const slice = matches.slice(alreadyShown, alreadyShown + pageSize)
       const remaining = Math.max(0, total - alreadyShown - slice.length)
-      const formatted = formatEntitySearchResponse(
+      const formatted = await formatEntitySearchResponse(
+        supabaseUrl,
+        supabaseKey,
         filters,
         slice as unknown[],
         remaining > 0
@@ -641,7 +647,7 @@ export async function runGuidedSearchTurn (
       })
       const pageShops = (queryResult.data || []) as unknown[]
       if (alreadyShown >= clientTotal) {
-        const empty = formatEntitySearchResponse(filters, [], 'No more results for this search.')
+        const empty = await formatEntitySearchResponse(supabaseUrl, supabaseKey, filters, [], 'No more results for this search.')
         return {
           success: true,
           intent: 'search',
@@ -652,7 +658,9 @@ export async function runGuidedSearchTurn (
         }
       }
       const remaining = Math.max(0, clientTotal - alreadyShown - pageShops.length)
-      const formatted = formatEntitySearchResponse(
+      const formatted = await formatEntitySearchResponse(
+        supabaseUrl,
+        supabaseKey,
         filters,
         pageShops,
         remaining > 0 ? 'Here are more dive shops for your filters.' : 'Here are the remaining dive shops for your filters.'
@@ -671,7 +679,9 @@ export async function runGuidedSearchTurn (
     const total = all.length
     const slice = all.slice(alreadyShown, alreadyShown + pageSize)
     const remaining = Math.max(0, total - alreadyShown - slice.length)
-    const formatted = formatEntitySearchResponse(
+    const formatted = await formatEntitySearchResponse(
+      supabaseUrl,
+      supabaseKey,
       filters,
       slice,
       remaining > 0 ? 'Here are more dive shops for your filters.' : 'Here are the remaining dive shops for your filters.'
@@ -838,7 +848,9 @@ export async function runGuidedSearchTurn (
         return emptySearchReopenNameSearch({ state, rawMsg, activityLog })
       }
     }
-    const formatted = formatEntitySearchResponse(
+    const formatted = await formatEntitySearchResponse(
+      supabaseUrl,
+      supabaseKey,
       combinedFilters,
       shops,
       total > 0
@@ -865,7 +877,9 @@ export async function runGuidedSearchTurn (
       return emptySearchReopenCoursePicker({ state, rawMsg, activityLog })
     }
     bookingHints = { desiredCourses: [state.courseIntent], diveSiteTypeLabel: null }
-    const formatted = formatEntitySearchResponse(
+    const formatted = await formatEntitySearchResponse(
+      supabaseUrl,
+      supabaseKey,
       { ...toSearchFilters(state.filters), activityTokens: undefined },
       shops,
       total > 0
@@ -890,7 +904,9 @@ export async function runGuidedSearchTurn (
     if (total === 1 && matches[0]) {
       openShopId = matches[0].id
     }
-    const formatted = formatEntitySearchResponse(
+    const formatted = await formatEntitySearchResponse(
+      supabaseUrl,
+      supabaseKey,
       toSearchFilters(state.filters),
       matches as unknown[],
       total > 0
@@ -932,7 +948,9 @@ export async function runGuidedSearchTurn (
     }
   }
 
-  const formatted = formatEntitySearchResponse(
+  const formatted = await formatEntitySearchResponse(
+    supabaseUrl,
+    supabaseKey,
     filters,
     all,
     total > 0
