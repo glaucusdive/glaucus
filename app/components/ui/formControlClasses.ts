@@ -37,7 +37,7 @@ export const formSelectMutedClass =
 export const formFieldsetClass = 'flex flex-col gap-2 p-2'
 
 export const formFieldsetEmbeddedClass =
-  'flex flex-col gap-1 rounded-md bg-zinc-100 p-2 dark:bg-zinc-800'
+  'flex flex-col gap-1 rounded-md p-2'
 
 export const formFieldsetWideClass = 'gap-2'
 

@@ -14,7 +14,7 @@
       </div>
     </div>
 
-    <div :class="embedded ? 'w-full p-2' : 'w-full flex-1 min-h-0 overflow-y-auto p-2'">
+    <div :class="embedded ? 'w-full' : 'w-full flex-1 min-h-0 overflow-y-auto p-2'">
       <div v-if="!isSignedIn" class="flex flex-col gap-3 p-2">
         <p class="text-sm text-zinc-600 dark:text-zinc-400">
           Sign in to leave a review for this dive shop.
@@ -28,7 +28,7 @@
         </NuxtLink>
       </div>
 
-      <form v-else class="flex flex-col gap-3" @submit.prevent="handleSubmit">
+      <form v-else class="flex flex-col gap-2" @submit.prevent="handleSubmit">
         <fieldset class="flex flex-col gap-1">
           <!-- Use a normal block label, not <legend>: legends are laid out on the fieldset border and sit outside flex padding -->
           <label id="review-rating-label" class="text-xs uppercase font-medium px-1 text-zinc-900 dark:text-white">Rating</label>

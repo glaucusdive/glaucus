@@ -158,7 +158,7 @@
                 </div>
                 <div
                   v-else-if="isSignedIn && shopRowId && !myReview"
-                  class="w-full max-w-full min-w-0 flex-[1_1_100%] sm:flex-[1_1_calc(50%-4px)] p-2 bg-zinc-100 dark:bg-zinc-800/50 rounded-md border border-zinc-200/80 dark:border-zinc-600/80"
+                  class="w-full max-w-full min-w-0 flex-[1_1_100%] sm:flex-[1_1_calc(50%-4px)] p-2 rounded-md border border-zinc-200 dark:border-zinc-800"
                 >
                   <ShopReviewForm
                     :key="'compose-' + shopRowId"
