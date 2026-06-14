@@ -1,14 +1,8 @@
 <template>
   <!-- layout: false — we pick the shell here so layout name and slot content never desync -->
   <NuxtLayout :name="layoutName" :key="layoutName">
-    <!-- Until init() finishes: blank boot screen (styles load via app.html before reveal) -->
-    <div
-      v-if="!authResolved"
-      class="min-h-dvh bg-black"
-      aria-busy="true"
-      aria-label="Loading"
-    />
-    <LandingHome v-else-if="!showChatShell" />
+    <!-- Show landing while auth resolves (SSR + client) to avoid hydration mismatch and black screen -->
+    <LandingHome v-if="!authResolved || !showChatShell" />
     <LazyChatHome v-else />
   </NuxtLayout>
 </template>
@@ -27,8 +21,8 @@ const { capture, AnalyticsEvents } = useAnalytics()
 
 const chatOpenedTracked = ref(false)
 
-/** False until client `init()` finishes. */
-const authResolved = ref(false)
+/** False until client `init()` finishes; true on server so crawlers get the marketing landing. */
+const authResolved = ref(import.meta.server)
 
 /** Guest dive search: `/?chat=1` (e.g. “Open Chat” from landing) without signing in. */
 const guestChat = computed(

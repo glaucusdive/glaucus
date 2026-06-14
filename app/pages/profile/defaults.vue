@@ -115,6 +115,8 @@ import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst, type B
 
 definePageMeta({ layout: 'default', middleware: 'auth' })
 
+usePrivatePageSeo()
+
 const { user, accessToken } = useAuth()
 const { client } = useSupabase()
 

@@ -92,8 +92,10 @@ import { buildPortalSubmissionPayload } from '~/utils/shopPortalForm'
 definePageMeta({ layout: false })
 
 useSeoMeta({
-  title: 'For Businesses — List your dive shop on Glaucus',
-  description: 'Submit your dive shop details to be evaluated for listing on Glaucus.'
+  title: 'List your dive shop on Glaucus',
+  description: 'Submit your dive shop details to be evaluated for listing on Glaucus.',
+  ogTitle: 'For Businesses — List your dive shop on Glaucus',
+  ogDescription: 'Submit your dive shop details to be evaluated for listing on Glaucus.'
 })
 
 const loading = ref(true)

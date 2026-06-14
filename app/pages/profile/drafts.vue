@@ -92,6 +92,8 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default', middleware: 'auth' })
 
+usePrivatePageSeo()
+
 const { accessToken } = useAuth()
 
 type BookingPayload = Record<string, unknown>
