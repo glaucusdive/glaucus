@@ -55,7 +55,10 @@ import {
   isCourseDiscoveryFollowUpMessage,
   tryBuildCourseDiscoverySearchResponse
 } from '../utils/courseDiscoveryFromSearch'
-import { inferSearchFiltersFromDestination, isCountryOnlyGeoFilters } from '../utils/destinationToSearchFilters'
+import {
+  mergeShopListsPreferringDiveTypes,
+  shouldWidenSparseTripTypeResults
+} from '../utils/widePlaceShopSearch'
 import { normalizeClientSearchFilters } from '../utils/normalizeClientSearchFilters'
 import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from '../utils/openAiChatModel'
 import { resolveOpenAiApiKey } from '../utils/openAiApiKey'
@@ -72,7 +75,14 @@ import {
   formatSearchRelaxActivityLine
 } from '../utils/formatSearchActivityLog'
 import { tryShopInfoResponse } from '../utils/shopInfoForChat'
-import { applyInferredCoursesToPayloadIfEligible } from '../utils/inferCoursesFromConversation'
+import { applyBookingCourseSeedIfEligible } from '../utils/inferCoursesFromConversation'
+import {
+  mergeTripRequirements,
+  normalizeTripRequirements,
+  type TripRequirements
+} from '../../shared/tripRequirements'
+import { rankCourseOptionsForTripRequirements } from '../../shared/rankCourseOptionsForTripRequirements'
+import { tripRequirementsAfterSearchTurn } from '../utils/tripRequirementsFromSearchTurn'
 import { runWithRetries } from '../utils/retryWithBackoff'
 import { SEARCH_DIVE_SYSTEM_PROMPT } from '../utils/searchDiveSystemPrompt'
 import {
@@ -80,6 +90,13 @@ import {
   runTripTypeSearchAfterLlm,
   searchFlowResetResponse
 } from '../utils/tripTypeSearchPipeline'
+import { mergeInterpretSearchFacetsIntoFilters } from '../utils/searchNluMerge'
+import {
+  formatBookingReadinessLine,
+  inferBookingReadinessFromMessage,
+  type BookingReadinessResult
+} from '../utils/bookingReadiness'
+import { logChatIntentSignal } from '../utils/logChatIntentSignal'
 import {
   buildDiverFieldEditPrompt,
   clearDiverFieldOnCopy,
@@ -97,10 +114,11 @@ import {
   type InterpretedTurn
 } from '../utils/interpretUserTurn'
 import { enrichShopsForSearchCards } from '../utils/enrichShopsForSearchCards'
+import { attachSearchMatchGroups } from '../utils/searchMatchGroups'
 import { shopIdsForCourseSearch } from '../utils/shopIdsForCourseSearch'
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
-import { buildSearchPaginationSelectableOption } from '../../shared/searchPaginationChip'
+import { buildSearchPaginationSelectableOption, SEARCH_PAGINATION_PAGE_SIZE_DEFAULT } from '../../shared/searchPaginationChip'
 import { GuidedCommands } from '../../shared/guidedFlow'
 import {
   BOOKING_CONTACT_MEANT_SOMETHING_ELSE,
@@ -378,6 +396,8 @@ export interface RequestBody {
   lastSearchFilters?: SearchFilters
   /** Echo of last search totalResults (client); with lastSearchFilters enables a single DB range page. */
   lastSearchTotalResults?: number
+  /** Canonical trip constraints (search → booking handoff). */
+  tripRequirements?: TripRequirements
   /** When true, POST handler may be invoked with a pre-read body; client uses NDJSON progress on `/api/guided-orchestrator`. */
   progressStream?: boolean
 }
@@ -400,8 +420,8 @@ function inferAlreadyShownForPagination (history: Message[], shopsAlreadyShownCo
         // "Would you…" to skip — many first pages end with a narrowing question after "top results".
         if (hasResultsPhrase) {
           const nextN = msg.content?.match(/next (\d+)\s+results?/i)?.[1]
-          const shown = nextN ? parseInt(nextN, 10) : 5
-          alreadyShown += Number.isNaN(shown) ? 5 : shown
+          const shown = nextN ? parseInt(nextN, 10) : SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
+          alreadyShown += Number.isNaN(shown) ? SEARCH_PAGINATION_PAGE_SIZE_DEFAULT : shown
           console.log(`[AI Search] Found result message at index ${i}, shown: ${shown}, total shown: ${alreadyShown}`)
         }
       }
@@ -423,7 +443,7 @@ async function finalizeSearchPaginationApiResponse (
   nextShopsRaw: unknown[],
   resultCount: number,
   alreadyShown: number,
-  paginationPageSize: number = 5
+  paginationPageSize: number = SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
 ) {
   let filters: SearchFilters = { ...lastFilters }
   const inferredHint = resolveEffectiveCertificationCourseHint(userMessage, interpretTurn ?? null)
@@ -439,6 +459,13 @@ async function finalizeSearchPaginationApiResponse (
   }
   if (presentationShops.length > 0) {
     await enrichShopsForSearchCards(supabaseUrl, supabaseKey, presentationShops)
+    presentationShops = await attachSearchMatchGroups(
+      supabaseUrl,
+      supabaseKey,
+      presentationShops as Parameters<typeof attachSearchMatchGroups>[2],
+      filters,
+      null
+    )
   }
 
   const searchMatchBadges = buildSearchMatchBadges(filters, null)
@@ -594,7 +621,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
   try {
     const onActivityLine = options?.onActivityLine
     const body = options?.body ?? await readBody<RequestBody>(event)
-    const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill, pendingEntityClarifyPhrase, lastSearchFilters: bodyLastSearchFilters, lastSearchTotalResults: bodyLastSearchTotalResults } = body
+    const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill, pendingEntityClarifyPhrase, lastSearchFilters: bodyLastSearchFilters, lastSearchTotalResults: bodyLastSearchTotalResults, tripRequirements: bodyTripRequirements } = body
 
     if (!message || typeof message !== 'string') {
       throw new Error('Message is required')
@@ -641,6 +668,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
       throw new Error('OpenAI API key not configured (set NUXT_OPENAI_API_KEY or OPENAI_API_KEY for serverless)')
     }
     return await runWithRetries(async () => {
+      let activeTripRequirements = normalizeTripRequirements(bodyTripRequirements)
       const authUser = await getAuthUser(event)
       const bookingSignupTiming = parseBookingSignupTimingFromConfig(useRuntimeConfig().public.bookingSignupTiming)
 
@@ -651,6 +679,20 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
       let interpretTurn: InterpretedTurn | null = null
       let interpretNluRan = false
       let interpretNluOk = false
+      let bookingReadiness: BookingReadinessResult | null = null
+      let allowAutoBook = !!continuingBooking
+      const logIntentTurn = (routedIntent: string) => {
+        const readiness = bookingReadiness
+        if (!readiness) return
+        logChatIntentSignal({
+          userId: authUser?.id ?? null,
+          message: message.trim(),
+          predictedReadiness: readiness.score,
+          primaryVerb: readiness.primaryVerb,
+          nluGoal: interpretTurn?.goal ?? null,
+          routedIntent
+        })
+      }
       const pushActivity = (stage: string, label: string) => {
         agentMeta.activityLog.push({ stage, label, at: Date.now() })
         onActivityLine?.(label)
@@ -693,7 +735,10 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           resolvedShop = picked
           resolvedByNamedShop = true
           effectiveWantsToBook = true
+          allowAutoBook = true
         }
+      } else if (!continuingBooking) {
+        allowAutoBook = wantsToBookRegex || !!shopSelectionPhrase
       }
 
       // --- Entity-aware routing: "dive with X", clarification chips (orchestrator; see .cursor/rules/ai-agent-structure.mdc) ---
@@ -722,11 +767,13 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 relaxed.region?.trim() ||
                 'that area'
               return withAgentMeta({
-                ...formatEntitySearchResponse(
+                ...(await formatEntitySearchResponse(
+                  supabaseUrl,
+                  supabaseKey,
                   relaxed,
                   shops as unknown[],
                   `Showing dive shops for a broader search in ${place}.`
-                ),
+                )),
                 intent: 'search' as const
               })
             }
@@ -790,6 +837,13 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           !!shopSelectionPhrase ||
           interpretTurn?.goal === 'start_booking' ||
           interpretTurn?.wants_booking === true
+        bookingReadiness = inferBookingReadinessFromMessage(message, history || [], interpretTurn, {
+          continuingBooking,
+          bookShopPick: !!bookShopPickId,
+          effectiveWantsToBook
+        })
+        allowAutoBook = bookingReadiness.allowAutoBook
+        pushActivity('interpret', formatBookingReadinessLine(bookingReadiness))
         const referredPhrase = pickReferentPhraseForProbe(interpretTurn, referredPhraseRegex, {
           preferShopOrRegexOverDestination:
             !!shopSelectionPhrase || !!interpretTurn?.shop_name_hint?.trim()
@@ -807,45 +861,78 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
         let skipEntityProbeFromGeo = false
         let skipEntityProbeFromActivity = false
         if (tryLocationFirst) {
-          const geoFilters = mergeInferredDiveTypesIntoFilters(
-            mergeActivityIntoFilters(
-              mergeNluHintsIntoFilters(
-                inferSearchFiltersFromDestination(destText),
+          const buildGeoFilters = () =>
+            mergeInferredDiveTypesIntoFilters(
+              mergeInterpretSearchFacetsIntoFilters(
+                mergeActivityIntoFilters(
+                  mergeNluHintsIntoFilters(
+                    inferSearchFiltersFromDestination(destText),
+                    interpretTurn
+                  ),
+                  interpretTurn
+                ),
                 interpretTurn
               ),
-              interpretTurn
-            ),
-            message
-          )
-          const geoQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, geoFilters)
-          const geoList = (geoQuery.data || []) as Array<{ id: string; business_name?: string }>
-          const placeLabel = destText
+              message
+            )
+          let geoFilters = buildGeoFilters()
+          let geoQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, geoFilters)
+          let geoList = (geoQuery.data || []) as Array<{ id: string; business_name?: string; type?: string | null; google_rating?: number | null }>
+          let widenedTripType = false
+          const preferredDiveTypes = geoFilters.diveTypes
+          if (!geoQuery.error && geoList.length === 0 && (preferredDiveTypes?.length ?? 0) > 0) {
+            const { diveTypes: _dropTypes, ...relaxedGeo } = geoFilters
+            geoFilters = relaxedGeo
+            geoQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, geoFilters)
+            geoList = (geoQuery.data || []) as typeof geoList
+          } else if (
+            !geoQuery.error &&
+            shouldWidenSparseTripTypeResults(geoList.length, preferredDiveTypes)
+          ) {
+            const { diveTypes: _dropTypes, ...broaderGeo } = geoFilters
+            const broadQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, broaderGeo)
+            const broadList = (broadQuery.data || []) as typeof geoList
+            if (!broadQuery.error && broadList.length > geoList.length) {
+              geoList = mergeShopListsPreferringDiveTypes(geoList, broadList, preferredDiveTypes) as typeof geoList
+              widenedTripType = true
+            }
+          }
+          const placeLabel = geoFilters.place?.trim() || destText
           pushActivity('probe', formatGeoDirectoryQueryLine(placeLabel, geoList.length))
           if (!geoQuery.error && geoList.length > 0) {
             const countryOnly = isCountryOnlyGeoFilters(geoFilters)
-            if (effectiveWantsToBook && (geoList.length > 1 || countryOnly)) {
+            const geoMessage = widenedTripType
+              ? `Here are dive shops in ${placeLabel}. ${preferredDiveTypes?.join(', ') ?? 'Your trip type'} matches are listed first; we also included other operators in the area.`
+              : `Here are dive shops in ${placeLabel} (from our location data).`
+            if (allowAutoBook && effectiveWantsToBook && (geoList.length > 1 || countryOnly)) {
+              logIntentTurn('search')
               return withAgentMeta({
-                ...formatEntitySearchResponse(
+                ...(await formatEntitySearchResponse(
+                  supabaseUrl,
+                  supabaseKey,
                   geoFilters,
                   geoList as unknown[],
                   geoList.length === 1
                     ? `Here is a dive shop in ${placeLabel}. Pick one to start booking, or name a city or area to narrow down.`
                     : `Here are dive shops in ${placeLabel} (matched by location, not just name). Which one would you like to book?`
-                ),
+                )),
                 intent: 'search' as const
               })
-            } else if (effectiveWantsToBook && geoList.length === 1) {
+            } else if (allowAutoBook && effectiveWantsToBook && geoList.length === 1) {
               const only = geoList[0]!
               resolvedShop = await getShopById(supabaseUrl, supabaseKey, only.id)
               resolvedByNamedShop = !!resolvedShop
               skipEntityProbeFromGeo = !!resolvedShop
-            } else if (!effectiveWantsToBook) {
+            } else if (!allowAutoBook || !effectiveWantsToBook) {
+              logIntentTurn('search')
               return withAgentMeta({
-                ...formatEntitySearchResponse(
+                ...(await formatEntitySearchResponse(
+                  supabaseUrl,
+                  supabaseKey,
                   geoFilters,
                   geoList as unknown[],
-                  `Here are dive shops in ${placeLabel} (from our location data).`
-                ),
+                  geoMessage
+                )),
                 intent: 'search' as const
               })
             }
@@ -885,20 +972,24 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               skipEntityProbeFromActivity = !!resolvedShop
             } else if (effectiveWantsToBook && actList.length > 1) {
               return withAgentMeta({
-                ...formatEntitySearchResponse(
+                ...(await formatEntitySearchResponse(
+                  supabaseUrl,
+                  supabaseKey,
                   actFilters,
                   actList as unknown[],
                   `Here are shops that match “${label}” in our data (site types, shop type, or linked sites). Which one would you like to book?`
-                ),
+                )),
                 intent: 'search' as const
               })
             } else if (!effectiveWantsToBook) {
               return withAgentMeta({
-                ...formatEntitySearchResponse(
+                ...(await formatEntitySearchResponse(
+                  supabaseUrl,
+                  supabaseKey,
                   actFilters,
                   actList as unknown[],
                   `Here are shops that match “${label}” in our listings, dive site types, or linked sites. Say a region if you want to narrow down.`
-                ),
+                )),
                 intent: 'search' as const
               })
             }
@@ -930,18 +1021,22 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               return withAgentMeta({ ...shopDisambiguationResponsePayload(target.phrase, target.shops), intent: 'search' as const })
             }
           }
-          if (!skipEntityProbe) {
+            if (!skipEntityProbe) {
             pushActivity('probe', formatProbeDirectoryLine(referredPhrase))
             const probe = await probeReferentPhrase(supabaseUrl, supabaseKey, referredPhrase)
-            const routed = await routeReferentFromProbe(supabaseUrl, supabaseKey, probe)
+            const routed = await routeReferentFromProbe(supabaseUrl, supabaseKey, probe, {
+              allowAutoBook
+            })
             if (routed.type === 'closest_shop_suggestion') {
+              logIntentTurn('search')
               return withAgentMeta({ ...closestShopSuggestionResponsePayload(routed.phrase, routed.shop), intent: 'search' as const })
             }
             if (routed.type === 'clarify') {
+              logIntentTurn('clarify')
               return withAgentMeta({ ...clarifyResponsePayload(routed.phrase), intent: 'search' as const })
             }
             if (routed.type === 'search') {
-              if (effectiveWantsToBook) {
+              if (effectiveWantsToBook && allowAutoBook) {
                 const resultCount = routed.response.totalResults ?? routed.response.shops?.length ?? 0
                 if (resultCount > 0) {
                   const label =
@@ -959,6 +1054,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   })
                 }
                 const pickFromRecent = shopDisambiguationSelectableOptions((lastShops || []).slice(0, 8))
+                logIntentTurn('search')
                 return withAgentMeta({
                   success: true,
                   intent: 'search' as const,
@@ -972,13 +1068,29 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   selectableOptions: pickFromRecent.length ? pickFromRecent : undefined
                 })
               }
+              logIntentTurn('search')
               return withAgentMeta({ ...routed.response, intent: 'search' as const })
             }
             if (routed.type === 'shop_disambiguation') {
+              logIntentTurn('search')
               return withAgentMeta({ ...shopDisambiguationResponsePayload(routed.phrase, routed.shops), intent: 'search' as const })
             }
-            resolvedShop = routed.shop
-            resolvedByNamedShop = true
+            if (allowAutoBook) {
+              resolvedShop = routed.shop
+              resolvedByNamedShop = true
+            } else {
+              logIntentTurn('search')
+              return withAgentMeta({
+                ...(await formatEntitySearchResponse(
+                  supabaseUrl,
+                  supabaseKey,
+                  {},
+                  [routed.shop as unknown as Record<string, unknown>],
+                  `Here is a dive shop matching "${referredPhrase}". Pick one to book or refine your search.`
+                )),
+                intent: 'search' as const
+              })
+            }
           }
         }
       }
@@ -999,7 +1111,8 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
         resolvedShop = await getShopById(supabaseUrl, supabaseKey, lastBookingShopId)
       }
 
-      if (resolvedShop && (effectiveWantsToBook || continuingBooking || resolvedByNamedShop)) {
+      if (resolvedShop && (effectiveWantsToBook || continuingBooking || (resolvedByNamedShop && allowAutoBook))) {
+        logIntentTurn('booking')
         // Use carried-over payload when starting a new booking after "Pick a new diveshop"
         let bookingPayload = continuingBooking
           ? bodyBookingPayload
@@ -1010,6 +1123,22 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           getRentalEquipmentForShop(supabaseUrl, supabaseKey, resolvedShop.id),
           getCoursesForShop(supabaseUrl, supabaseKey, resolvedShop.id)
         ])
+        const effectiveTripReq = mergeTripRequirements(activeTripRequirements, {
+          selectedShopId: resolvedShop.id
+        })
+        const courseSeedBase = {
+          tripRequirements: effectiveTripReq,
+          history: history || [],
+          currentMessage: message,
+          courseOptions: courses,
+          diveSiteOptions: diveSites,
+          supabaseUrl,
+          supabaseKey,
+          shopId: resolvedShop.id
+        }
+        const rankCourses = (list: { id: string; name: string }[]) =>
+          rankCourseOptionsForTripRequirements(list, effectiveTripReq)
+        const rankedCourses = () => rankCourses(courses)
         if (continuingBooking && bookingPayload) {
           if (profilePrefill) {
             bookingPayload = mergeProfileContactIntoBookingPayload(
@@ -1021,11 +1150,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             shopCourseCount: courses.length,
             shopDiveSiteCount: diveSites.length
           }) as BookingPayload
-          bookingPayload = applyInferredCoursesToPayloadIfEligible(
+          bookingPayload = await applyBookingCourseSeedIfEligible(
             bookingPayload as BookingPayloadLocal,
-            history,
-            message,
-            courses
+            courseSeedBase
           ) as BookingPayload
           const msgTrimPreSend = message.trim()
           const preTok = parseBookingPreSendToken(msgTrimPreSend)
@@ -1049,7 +1176,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
         const shopLabel = shopClient.shopDisplayName
 
         // When user explicitly named a shop and we resolved it: go straight to form details (first question: name)
-        const startingFreshBooking = (effectiveWantsToBook || resolvedByNamedShop) && !continuingBooking
+        const startingFreshBooking = (effectiveWantsToBook || (resolvedByNamedShop && allowAutoBook)) && !continuingBooking
         const noPayloadYet = !bookingPayload || !(bookingPayload.name && String(bookingPayload.name).trim())
 
         const coursesIntroMessage = (displayName: string, p: BookingPayload) =>
@@ -1098,11 +1225,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             shopCourseCount: courses.length,
             shopDiveSiteCount: diveSites.length
           }) as BookingPayload
-          initialPayload = applyInferredCoursesToPayloadIfEligible(
+          initialPayload = await applyBookingCourseSeedIfEligible(
             initialPayload as BookingPayloadLocal,
-            history,
-            message,
-            courses
+            courseSeedBase
           ) as BookingPayload
           nextHint = getNextBookingStep(initialPayload)
           const firstMessage = nextHint?.step === 'name'
@@ -1116,6 +1241,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   : nextHint?.step === 'diveSites'
                     ? bookingGotItWithShopMessage(shopLabel, bookingDiveSitesStepMessage(initialPayload))
                     : bookingGotItWithShopMessage(shopLabel, "What's the name for the booking?")
+          const rankedFresh = rankedCourses()
           return withAgentMeta({
             success: true,
             intent: 'booking' as const,
@@ -1126,17 +1252,20 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             shopLocation: shopClient.shopLocation,
             shopDisplayName: shopClient.shopDisplayName,
             bookingPayload: initialPayload,
+            tripRequirements: effectiveTripReq,
             selectableOptions: undefined,
             rentalEquipmentOptions: undefined,
-            courseOptions: getNextBookingStep(initialPayload)?.step === 'courses' && courses.length > 0 ? courses : undefined,
+            courseOptions: getNextBookingStep(initialPayload)?.step === 'courses' && rankedFresh.length > 0 ? rankedFresh : undefined,
             diveSiteOptions: getNextBookingStep(initialPayload)?.step === 'diveSites' && diveSites.length > 0 ? diveSites : undefined
           })
         }
 
         const addGearOptions = (payload: BookingPayload) =>
           getNextBookingStep(payload)?.step === 'gear' ? rentalEquipment : undefined
-        const addCourseOptions = (payload: BookingPayload) =>
-          getNextBookingStep(payload)?.step === 'courses' && courses.length > 0 ? courses : undefined
+        const addCourseOptions = (payload: BookingPayload) => {
+          const ranked = rankedCourses()
+          return getNextBookingStep(payload)?.step === 'courses' && ranked.length > 0 ? ranked : undefined
+        }
         const addDiveSiteOptions = (payload: BookingPayload) =>
           getNextBookingStep(payload)?.step === 'diveSites' && diveSites.length > 0 ? diveSites : undefined
         /** Gear step uses Done only (no separate "None" chip). */
@@ -1185,7 +1314,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           const sp = switchPhrase?.trim() || pickId || ''
           if (target.kind === 'none' && switchPhrase?.trim()) {
             const probeSw = await probeReferentPhrase(supabaseUrl, supabaseKey, sp)
-            const routedSw = await routeReferentFromProbe(supabaseUrl, supabaseKey, probeSw)
+            const routedSw = await routeReferentFromProbe(supabaseUrl, supabaseKey, probeSw, {
+              allowAutoBook: true
+            })
             if (routedSw.type === 'booking') {
               target = { kind: 'single', shop: routedSw.shop }
             } else if (routedSw.type === 'shop_disambiguation') {
@@ -1245,11 +1376,17 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 shopCourseCount: coSw.length,
                 shopDiveSiteCount: dsSw.length
               }) as BookingPayload
-              mergedSw = applyInferredCoursesToPayloadIfEligible(
+              mergedSw = await applyBookingCourseSeedIfEligible(
                 mergedSw as BookingPayloadLocal,
-                history,
-                message,
-                coSw
+                {
+                  ...courseSeedBase,
+                  courseOptions: coSw,
+                  diveSiteOptions: dsSw,
+                  shopId: newShop.id,
+                  tripRequirements: mergeTripRequirements(effectiveTripReq, {
+                    selectedShopId: newShop.id
+                  })
+                }
               ) as BookingPayload
               const nextSw = getNextBookingStep(mergedSw)
               const switchedClient = bookingShopFieldsForClient(newShop)
@@ -1278,7 +1415,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   getNextBookingStep(mergedSw)?.step === 'gear' && reSw.length > 0 ? reSw : undefined,
                 hideNoneForGear: hideNoneForGear(mergedSw),
                 courseOptions:
-                  getNextBookingStep(mergedSw)?.step === 'courses' && coSw.length > 0 ? coSw : undefined,
+                  getNextBookingStep(mergedSw)?.step === 'courses' && coSw.length > 0 ? rankCourses(coSw) : undefined,
                 diveSiteOptions:
                   getNextBookingStep(mergedSw)?.step === 'diveSites' && dsSw.length > 0 ? dsSw : undefined
               })
@@ -1378,11 +1515,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               shopCourseCount: courses.length,
               shopDiveSiteCount: diveSites.length
             }) as BookingPayload
-            initialPayload = applyInferredCoursesToPayloadIfEligible(
+            initialPayload = await applyBookingCourseSeedIfEligible(
               initialPayload as BookingPayloadLocal,
-              history,
-              message,
-              courses
+              courseSeedBase
             ) as BookingPayload
             nextHint = getNextBookingStep(initialPayload)
             const firstMessage = nextHint?.step === 'name'
@@ -1396,6 +1531,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                     : nextHint?.step === 'diveSites'
                       ? bookingGotItWithShopMessage(shopLabel, bookingDiveSitesStepMessage(initialPayload))
                       : bookingGotItWithShopMessage(shopLabel, "What's the name for the booking?")
+            const rankedContinue = rankedCourses()
             return withAgentMeta({
               success: true,
               intent: 'booking' as const,
@@ -1406,9 +1542,10 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             shopLocation: shopClient.shopLocation,
             shopDisplayName: shopClient.shopDisplayName,
               bookingPayload: initialPayload,
+              tripRequirements: effectiveTripReq,
               selectableOptions: undefined,
               rentalEquipmentOptions: undefined,
-              courseOptions: getNextBookingStep(initialPayload)?.step === 'courses' && courses.length > 0 ? courses : undefined,
+              courseOptions: getNextBookingStep(initialPayload)?.step === 'courses' && rankedContinue.length > 0 ? rankedContinue : undefined,
               diveSiteOptions: getNextBookingStep(initialPayload)?.step === 'diveSites' && diveSites.length > 0 ? diveSites : undefined
             })
           }
@@ -1617,7 +1754,8 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               shopDiveSiteCount: diveSites.length,
               userMessage: msgTrim,
               history,
-              courses
+              courses,
+              tripRequirements: effectiveTripReq
             }
 
             let bp: BookingPayload = { ...bookingPayload }
@@ -1891,7 +2029,8 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             lastAssistantContent,
             rentalEquipment,
             courses,
-            diveSites
+            diveSites,
+            tripRequirements: effectiveTripReq
           })
           if (reviewTurn) {
             const rt = reviewTurn as { bookingPayload?: BookingPayload; payload?: BookingPayload }
@@ -2763,7 +2902,8 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                         shopDiveSiteCount: diveSites.length,
                         userMessage: message,
                         history,
-                        courses
+                        courses,
+                        tripRequirements: effectiveTripReq
                       }
                     ) as BookingPayload
                   }
@@ -2961,7 +3101,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
 
       // Check if user is asking for more results (pagination) or first page after a count-only reply
       const isPaginationRequest = isSearchPaginationUserMessage(message)
-      const paginationPageSize = /\b(show next 20|load next 20|next 20)\b/i.test(message) ? 20 : 5
+      const paginationPageSize = /\b(show next 20|load next 20|next 20)\b/i.test(message) ? 20 : SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
     
       if (isPaginationRequest && history && history.length > 0) {
         console.log(`[AI Search] Pagination request detected: "${message}"`)
@@ -3226,22 +3366,29 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
       const aiMessage = aiData.choices[0]?.message?.content || ''
       console.log(`[AI Search] Raw AI response:`, aiMessage)
 
-      return withAgentMeta(
-        await runTripTypeSearchAfterLlm({
-          message,
-          history: history || [],
-          aiMessage,
-          openaiApiKey,
-          supabaseUrl,
-          supabaseKey,
-          shopsAlreadyShownCount,
-          onStatus: onActivityLine,
-          interpretTurn,
-          aiSearchFirst,
-          signal: searchAbortSignal,
-          lastSearchFilters: normalizeClientSearchFilters(bodyLastSearchFilters) ?? undefined
-        })
+      const searchResult = await runTripTypeSearchAfterLlm({
+        message,
+        history: history || [],
+        aiMessage,
+        openaiApiKey,
+        supabaseUrl,
+        supabaseKey,
+        shopsAlreadyShownCount,
+        onStatus: onActivityLine,
+        interpretTurn,
+        aiSearchFirst,
+        signal: searchAbortSignal,
+        lastSearchFilters: normalizeClientSearchFilters(bodyLastSearchFilters) ?? undefined
+      })
+      activeTripRequirements = tripRequirementsAfterSearchTurn(
+        activeTripRequirements,
+        searchResult.filters,
+        interpretTurn
       )
+      return withAgentMeta({
+        ...searchResult,
+        tripRequirements: activeTripRequirements
+      })
     }, {
       maxAttempts: 4,
       baseDelayMs: 280,

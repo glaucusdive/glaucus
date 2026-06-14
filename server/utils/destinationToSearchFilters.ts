@@ -16,7 +16,8 @@ export function inferSearchFiltersFromDestination (raw: string): SearchFilters {
     komodo: { country: 'Indonesia', place: 'Komodo' },
     'nusa penida': { country: 'Indonesia', place: 'Nusa Penida' },
     raja: { country: 'Indonesia', place: 'Raja Ampat' },
-    'raja ampat': { country: 'Indonesia', place: 'Raja Ampat' }
+    'raja ampat': { country: 'Indonesia', place: 'Raja Ampat' },
+    'raj ampat': { country: 'Indonesia', place: 'Raja Ampat' }
   }
   if (islandOrRegion[lower]) return islandOrRegion[lower]
 
@@ -52,4 +53,22 @@ export function inferSearchFiltersFromDestination (raw: string): SearchFilters {
 /** True when filters scope is a whole country with no city/region narrowing. */
 export function isCountryOnlyGeoFilters (filters: SearchFilters): boolean {
   return !!(filters.country?.trim() && !filters.place?.trim() && !filters.region?.trim())
+}
+
+/** True when the phrase maps to a known geographic destination (not a bare passthrough). */
+export function isKnownGeographicDestination (raw: string): boolean {
+  const t = raw.trim()
+  if (!t) return false
+  const lower = t.toLowerCase()
+  const filters = inferSearchFiltersFromDestination(t)
+  if (filters.country && filters.place) return true
+  const countryOnly = new Set([
+    'mexico', 'thailand', 'indonesia', 'philippines', 'maldives', 'australia', 'malaysia', 'egypt',
+    'belize', 'honduras', 'cuba', 'japan', 'fiji', 'vanuatu', 'palau', 'costa rica', 'brazil',
+    'south africa', 'greece', 'croatia', 'france', 'spain', 'italy', 'portugal', 'canada', 'new zealand',
+    'vietnam', 'tanzania', 'kenya', 'micronesia'
+  ])
+  if (countryOnly.has(lower)) return true
+  const islandKeys = new Set(['bali', 'lombok', 'komodo', 'nusa penida', 'raja', 'raja ampat', 'raj ampat'])
+  return islandKeys.has(lower)
 }

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { collectShopIdsForActivityTokens } from './collectShopIdsForActivityTokens'
+import { collectWidePlaceShopIds } from './widePlaceShopSearch'
 
 export interface SearchFilters {
   country?: string
@@ -66,7 +67,11 @@ export const diveshopLocaleOrConditions = diveshopPlaceOrConditions
 export type DiveShopQueryRange = { offset: number; limit: number }
 
 /** When no `range`, default row cap (guided combined search may raise this for ID intersection). */
-export type BuildDiveShopQueryOptions = { defaultLimit?: number }
+export type BuildDiveShopQueryOptions = {
+  defaultLimit?: number
+  /** When true (default for place filter), match business_name, tokens, and linked dive sites — not just city/state/address. */
+  widePlace?: boolean
+}
 
 export async function buildDiveShopQuery (
   supabaseUrl: string,
@@ -151,17 +156,30 @@ export async function buildDiveShopQuery (
     if (regionIds.length > 0) query = query.in('region_id', regionIds)
   }
 
-  // Apply place filter (city, state, or street address)
+  // Apply place filter (directory-wide or legacy city/state/address only)
   if (filters.place?.trim()) {
-    const locSafe = sanitizeTermForPostgrestOrFragment(filters.place)
-    if (!locSafe) {
-      const emptyBase = client
-        .from('diveshops')
-        .select('*, country:countries(name), region:regions(name)')
-        .in('country_id', ['00000000-0000-0000-0000-000000000000'])
-      return await applyWindow(emptyBase)
+    const useWidePlace = options?.widePlace !== false
+    if (useWidePlace) {
+      const wideIds = await collectWidePlaceShopIds(client, filters.place, resolvedCountryIds)
+      if (!wideIds.length) {
+        const emptyBase = client
+          .from('diveshops')
+          .select('*, country:countries(name), region:regions(name)')
+          .in('country_id', ['00000000-0000-0000-0000-000000000000'])
+        return await applyWindow(emptyBase)
+      }
+      query = query.in('id', wideIds)
+    } else {
+      const locSafe = sanitizeTermForPostgrestOrFragment(filters.place)
+      if (!locSafe) {
+        const emptyBase = client
+          .from('diveshops')
+          .select('*, country:countries(name), region:regions(name)')
+          .in('country_id', ['00000000-0000-0000-0000-000000000000'])
+        return await applyWindow(emptyBase)
+      }
+      query = query.or(diveshopPlaceOrConditions(locSafe))
     }
-    query = query.or(diveshopPlaceOrConditions(locSafe))
   }
 
   // Apply minimum rating filter (include shops with no rating so we don't return zero when data has nulls)

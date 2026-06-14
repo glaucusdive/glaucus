@@ -1,6 +1,7 @@
 import { deriveChatTitle } from '~/utils/chatTitle'
 import type { GuidedSearchState } from '~~/shared/guidedFlow'
 import { initialGuidedSearchState } from '~~/shared/guidedFlow'
+import type { TripRequirements } from '~~/shared/tripRequirements'
 
 export interface SearchCacheState {
   messages: any[]
@@ -17,6 +18,8 @@ export interface SearchCacheState {
   /** Chat-only: guided rails state (when using /api/guided-flow). */
   guidedSearchState?: GuidedSearchState | null
   guidedBookingHints?: { desiredCourses?: string[]; diveSiteTypeLabel?: string | null } | null
+  /** Canonical search → booking constraints for this chat session. */
+  tripRequirements?: TripRequirements | null
   /** When AI-first is on, user may opt into chip-based guided for this session. */
   preferGuidedThisSession?: boolean
 }
@@ -204,6 +207,9 @@ export function payloadToSessionFields (state: Omit<SearchCacheState, 'timestamp
     ...(state.guidedBookingHints !== undefined
       ? { guidedBookingHints: state.guidedBookingHints }
       : {}),
+    ...(state.tripRequirements !== undefined
+      ? { tripRequirements: state.tripRequirements }
+      : {}),
     ...(typeof state.preferGuidedThisSession === 'boolean'
       ? { preferGuidedThisSession: state.preferGuidedThisSession }
       : {})
@@ -263,6 +269,7 @@ export function archiveActiveAndStartNewChatsRoot (root: ChatsRoot, state: Omit<
       drawerShopName: null,
       guidedSearchState: initialGuidedSearchState(),
       guidedBookingHints: null,
+      tripRequirements: null,
       preferGuidedThisSession: false
     }
     const sessions = root.sessions.map(s => (s.id === active.id ? cleared : s))
@@ -316,6 +323,7 @@ export function activeToSearchCacheState (root: ChatsRoot): SearchCacheState | n
     drawerShopName: s.drawerShopName,
     guidedSearchState: s.guidedSearchState,
     guidedBookingHints: s.guidedBookingHints,
+    tripRequirements: s.tripRequirements,
     preferGuidedThisSession: s.preferGuidedThisSession
   }
 }

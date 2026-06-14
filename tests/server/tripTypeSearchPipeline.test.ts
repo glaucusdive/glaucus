@@ -84,6 +84,10 @@ describe('inferCanonicalDiveTypesFromUserMessage', () => {
     expect(inferCanonicalDiveTypesFromUserMessage('show me liveaboards in Egypt')).toEqual(['Liveaboard'])
   })
 
+  it('maps liveboard typo to Liveaboard', () => {
+    expect(inferCanonicalDiveTypesFromUserMessage('Find a liveboard in Raja Ampat')).toEqual(['Liveaboard'])
+  })
+
   it('returns null when no trip type signal', () => {
     expect(inferCanonicalDiveTypesFromUserMessage('something about fish')).toBeNull()
   })

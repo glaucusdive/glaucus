@@ -19,6 +19,8 @@ const props = withDefaults(defineProps<{
   portalMode?: boolean
   pendingLookups?: PendingLookups
   highlightFields?: string[]
+  emailLabel?: string
+  phoneLabel?: string
   adminCreateHandlers?: {
     createRegion: (name: string) => Promise<{ id: string; label: string }>
     createSimpleLookup: (kind: string, name: string) => Promise<{ id: string; label: string }>
@@ -28,7 +30,9 @@ const props = withDefaults(defineProps<{
   disabled: false,
   portalMode: false,
   pendingLookups: () => ({}),
-  highlightFields: () => []
+  highlightFields: () => [],
+  emailLabel: 'Email',
+  phoneLabel: 'Phone'
 })
 
 const emit = defineEmits<{
@@ -229,7 +233,7 @@ async function createDiveSite (name: string) {
           @update:model-value="patch({ website_url: String($event ?? '') || null })"
         />
       </FormField>
-      <FormField label="Email" field-id="shop-email">
+      <FormField :label="emailLabel" field-id="shop-email">
         <FormInput
           id="shop-email"
           :model-value="form.email ?? ''"
@@ -239,7 +243,7 @@ async function createDiveSite (name: string) {
           @update:model-value="patch({ email: String($event ?? '') || null })"
         />
       </FormField>
-      <FormField label="Phone" field-id="shop-phone">
+      <FormField :label="phoneLabel" field-id="shop-phone">
         <FormInput
           id="shop-phone"
           :model-value="form.phone ?? ''"

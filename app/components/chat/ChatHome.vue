@@ -1,11 +1,35 @@
 <template>
     <div class="flex flex-col h-full w-full relative">
-      <!-- Header: min-w-0 + shrink-0 so title truncates instead of clipping Step back -->
-      <ShellPageHeader title="Dive Shop Search">
+      <!-- Header: min-w-0 + shrink-0 so title truncates instead of clipping actions -->
+      <ShellPageHeader :title="pageHeaderTitle">
         <template #actions>
-          <button v-if="canStepBack" @click="stepBack"
+          <div v-if="isInBookingMode" class="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-transparent text-zinc-800 hover:border-zinc-300 dark:border-zinc-600/80 dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:border-zinc-500 dark:hover:bg-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+              aria-label="View shop details"
+              @click="openSelectedShopDetail"
+            >
+              <ChevronUp class="h-4 w-4" aria-hidden="true" />
+            </button>
+            <button
+              v-if="canStepBack"
+              type="button"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-transparent text-zinc-800 hover:border-zinc-300 dark:border-zinc-600/80 dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:border-zinc-500 dark:hover:bg-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+              title="Remove last message and your last reply so you can redo that step"
+              aria-label="Remove last message and your last reply so you can redo that step"
+              @click="stepBack"
+            >
+              <Undo2 class="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+          <button
+            v-else-if="canStepBack"
+            type="button"
             class="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md cursor-pointer"
-            title="Remove last message and your last reply so you can redo that step">
+            title="Remove last message and your last reply so you can redo that step"
+            @click="stepBack"
+          >
             Step back
           </button>
         </template>
@@ -26,18 +50,15 @@
                   Tell me what you're looking for in your diving experience, and I'll help you find the best dive shops.
                 </h2>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mt-2 w-full">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2 w-full">
                   <button
-                    v-for="example in searchPathExamples"
-                    :key="example.path"
+                    v-for="(query, index) in chatStarterSuggestions"
+                    :key="index"
                     type="button"
-                    @click="sendLandingSearchExample(example)"
+                    @click="sendLandingSearchExample(query)"
                     class="text-left p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800  cursor-pointer bg-white dark:bg-zinc-900"
                   >
-                    <span class="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-500 mb-2">
-                      {{ example.path }}
-                    </span>
-                    <span class="block text-sm text-zinc-700 dark:text-zinc-300">{{ example.query }}</span>
+                    <span class="block text-sm text-zinc-700 dark:text-zinc-300">{{ query }}</span>
                   </button>
                 </div>
 
@@ -85,26 +106,32 @@
                     </button>
                   </div>
 
-                  <!-- Shop results -->
-                  <div v-if="msg.shops && msg.shops.length > 0" class="flex flex-col gap-2 md:p-2">
-                    <div class="flex items-center gap-2 text-sm text-zinc-600">
-                      <span class="font-medium">Top Results:</span>
-                    </div>
-                    <div class="grid grid-cols-1 gap-2">
-                      <div
-                        v-for="(shop, si) in msg.shops"
-                        :key="shop.id"
-                        class="chat-shop-card-stagger min-w-0"
-                        :style="{ animationDelay: `${msg.streamingShopsPending ? 0 : si * 80}ms` }"
-                      >
-                        <CardSearchResult
-                          :shop="shop"
-                          :active="selectedShopId === shop.id"
-                          :match-badges="msg.searchMatchBadges"
-                          :search-filters="msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : undefined"
-                          @start-booking="handleStartBookingFromCard"
-                          @view-details="handleViewDetails"
-                        />
+                  <!-- Shop results (grouped by secondary match reason) -->
+                  <div v-if="msg.shops && msg.shops.length > 0" class="flex flex-col gap-4 md:p-2">
+                    <div
+                      v-for="(group, gi) in searchResultGroupsForMessage(msg)"
+                      :key="`${index}-${group.id}`"
+                      class="flex flex-col gap-2"
+                    >
+                      <div class="flex items-center gap-2 text-sm text-zinc-600">
+                        <span class="font-medium">{{ group.title }}</span>
+                      </div>
+                      <div class="grid grid-cols-1 gap-2">
+                        <div
+                          v-for="(shop, si) in group.shops"
+                          :key="shop.id"
+                          class="chat-shop-card-stagger min-w-0"
+                          :style="{ animationDelay: `${msg.streamingShopsPending ? 0 : (groupStaggerOffset(msg, gi) + si) * 80}ms` }"
+                        >
+                          <CardSearchResult
+                            :shop="shop"
+                            :active="selectedShopId === shop.id"
+                            :match-badges="msg.searchMatchBadges"
+                            :search-filters="msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : undefined"
+                            @start-booking="handleStartBookingFromCard"
+                            @view-details="handleViewDetails"
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -288,7 +315,8 @@
                 ref="chatComposerRef"
                 v-model="userInput"
                 :loading="isLoading"
-                :placeholder="chatComposerPlaceholder"
+                :rotate-starter-prompts="messages.length === 0"
+                :placeholder="messages.length === 0 ? '' : chatComposerPlaceholder"
                 @submit="handleSubmit"
               />
             </div>
@@ -324,7 +352,7 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted, watch, onUnmounted } from 'vue'
-import { ChevronRight } from 'lucide-vue-next'
+import { ChevronRight, ChevronUp, Undo2 } from 'lucide-vue-next'
 import ChatComposer from '~/components/chat/ChatComposer.vue'
 import BottomSheetDrawer from '~/components/ui/BottomSheetDrawer.vue'
 import CardSearchResult from '~/components/CardSearchResult.vue'
@@ -337,6 +365,7 @@ import { useSupabase } from '~/composables/useSupabase'
 import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst } from '~/utils/mergeProfileDefaultDivers'
 import { getLatestBookingPayloadFromMessages, bookingPayloadHasNamedDiver } from '~/utils/chatBookingPayload'
 import { shopDisplayLabelForUi } from '~/utils/shopDisplayLabel'
+import { getChatStarterPrompts } from '~~/shared/chatStarterPrompts'
 import { isSearchPaginationUserMessage } from '~/utils/searchPaginationIntent'
 import {
   findAnchorAssistantIndexForPagination,
@@ -358,15 +387,26 @@ import {
 } from '~~/shared/bookingPreSendTokens'
 import {
   persistBookingResumeBeforeAuth,
-  mergedBookingPayloadFromResumeSnapshot,
   clearBookingResumeSnapshot,
   readBookingResumeSnapshot,
   BOOKING_AUTH_RESUME_REDIRECT
 } from '~/composables/useBookingAuthResume'
-import { patchLatestBookingPayloadInMessages } from '~/utils/bookingAuthResumeMerge'
+import {
+  mergedBookingPayloadFromResumeSnapshot,
+  patchLatestBookingPayloadInMessages
+} from '~/utils/bookingAuthResumeMerge'
 import { mergeProfileContactIntoBookingPayload } from '~~/shared/mergeProfileContactIntoBookingPayload'
 import { advanceStaleContactPromptsAfterProfileMerge } from '~/utils/advanceBookingChatAfterProfileMerge'
 import { buildSearchMatchBadges } from '~~/shared/searchMatchBadges'
+import { buildSearchMatchContext, groupShopsByMatchReason } from '~~/shared/searchResultGroups'
+import {
+  emptyTripRequirements,
+  mergeTripRequirements,
+  normalizeTripRequirements,
+  tripRequirementsFromBookingHints,
+  tripRequirementsFromGuidedState,
+  tripRequirementsFromSearchFilters
+} from '~~/shared/tripRequirements'
 import {
   chatLoadingLinesForKind,
   mapOrchestratorActivityToStatusLine
@@ -591,6 +631,25 @@ const preferGuidedThisSession = ref(false)
 const guidedSearchState = ref(initialGuidedSearchState())
 /** From last guided search results — merged into booking when user taps Start booking */
 const guidedBookingHints = ref(null)
+/** Canonical trip constraints (search → booking handoff). */
+const tripRequirements = ref(emptyTripRequirements())
+
+function absorbTripRequirementsFromSearchTurn (opts) {
+  let next = tripRequirements.value
+  if (opts.filters && typeof opts.filters === 'object' && !Array.isArray(opts.filters)) {
+    next = mergeTripRequirements(next, tripRequirementsFromSearchFilters(opts.filters))
+  }
+  if (opts.bookingHints) {
+    next = mergeTripRequirements(next, tripRequirementsFromBookingHints(opts.bookingHints))
+  }
+  if (opts.guidedState) {
+    next = mergeTripRequirements(next, tripRequirementsFromGuidedState(opts.guidedState))
+  }
+  if (opts.serverTripRequirements) {
+    next = mergeTripRequirements(next, normalizeTripRequirements(opts.serverTripRequirements))
+  }
+  tripRequirements.value = next
+}
 
 // Selected shop label for booking UI (includes location when known)
 const selectedShopName = computed(() => {
@@ -655,28 +714,25 @@ function isInBookingFlowForShop (shopId) {
   return messages.value.some(m => m.role === 'assistant' && m.intent === 'booking')
 }
 
+const isInBookingMode = computed(() => {
+  const id = selectedShopId.value
+  return !!id && !!selectedShopName.value && isInBookingFlowForShop(id)
+})
+
+const pageHeaderTitle = computed(() =>
+  isInBookingMode.value && selectedShopName.value
+    ? selectedShopName.value
+    : 'Dive Shop Search'
+)
+
 // Start booking via AI agent (from "Start Booking" in right panel)
 async function handleStartBookingFromPanel (shopId, shopName, source = 'panel') {
   selectedShopId.value = shopId
   capture(AnalyticsEvents.BOOKING_STARTED, { shop_id: shopId, source })
-  if (useGuidedSearch.value && guidedBookingHints.value && shopId) {
-    const hints = guidedBookingHints.value
-    const pre = { shopId }
-    let hasExtra = false
-    if (Array.isArray(hints.desiredCourses) && hints.desiredCourses.length) {
-      pre.desiredCourses = [...hints.desiredCourses]
-      hasExtra = true
-    }
-    if (hints.diveSiteTypeLabel) {
-      const sites = await diveSiteNamesMatchingTypeForShop(shopId, hints.diveSiteTypeLabel)
-      if (sites.length) {
-        pre.desiredDiveSites = sites
-        pre.diveSitesSelectionComplete = false
-        hasExtra = true
-      }
-    }
-    if (hasExtra) pendingBookingPayload.value = pre
+  if (guidedBookingHints.value) {
+    absorbTripRequirementsFromSearchTurn({ bookingHints: guidedBookingHints.value })
   }
+  tripRequirements.value = mergeTripRequirements(tripRequirements.value, { selectedShopId: shopId })
   sendMessage(shopName ? `Let's book ${shopName}` : "Let's book this")
 }
 
@@ -725,51 +781,7 @@ function armShopDetailCloseGuard () {
   shopDetailCloseGuardUntil = Date.now() + SHOP_DETAIL_CLOSE_GUARD_MS
 }
 
-function addDays (date, days) {
-  const next = new Date(date)
-  next.setDate(next.getDate() + days)
-  return next
-}
-
-function formatFutureDateRange () {
-  const start = addDays(new Date(), 45)
-  const end = addDays(start, 6)
-  const monthDay = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' })
-  const monthDayYear = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-
-  if (start.getFullYear() === end.getFullYear()) {
-    if (start.getMonth() === end.getMonth()) {
-      return `${monthDay.format(start)}-${end.getDate()}, ${end.getFullYear()}`
-    }
-    return `${monthDay.format(start)}-${monthDayYear.format(end)}`
-  }
-
-  return `${monthDayYear.format(start)}-${monthDayYear.format(end)}`
-}
-
-// Empty-state examples mirror the five supported search paths.
-const searchPathExamples = computed(() => [
-  {
-    path: 'By location',
-    query: 'Find dive shops in Bali'
-  },
-  {
-    path: 'By dive shop type',
-    query: 'Looking for liveaboards in the Maldives'
-  },
-  {
-    path: 'By certification course',
-    query: 'Shops in Mexico that offer advanced certification courses'
-  },
-  {
-    path: 'By dive site type',
-    query: `I want to do wreck diving in Bali from ${formatFutureDateRange()}`
-  },
-  {
-    path: 'By business name',
-    query: 'Search for a dive shop by business name'
-  }
-])
+const chatStarterSuggestions = computed(() => getChatStarterPrompts())
 
 /** True when the last assistant turn left us inside a guided mini-flow (past branch pick). */
 function isMidGuidedSearchWizard (messageList) {
@@ -780,9 +792,8 @@ function isMidGuidedSearchWizard (messageList) {
   return !!(step && step !== 'choose_branch')
 }
 
-function sendLandingSearchExample (example) {
-  // Always send the natural-language example: same text in the bubble and to the orchestrator (not the category label or guided branch token).
-  sendMessage(example.query)
+function sendLandingSearchExample (query) {
+  sendMessage(query)
 }
 
 const chatComposerPlaceholder = computed(() => {
@@ -853,6 +864,7 @@ function buildPageCachePayload () {
     drawerShopName: drawerWasOpen ? (drawerData.shopName ?? null) : null,
     guidedSearchState: guidedSearchState.value,
     guidedBookingHints: guidedBookingHints.value,
+    tripRequirements: tripRequirements.value,
     preferGuidedThisSession: preferGuidedThisSession.value
   }
 }
@@ -919,6 +931,7 @@ async function hydrateFromRecord (cachedState) {
     ? mergeGuidedSearchState(cachedState.guidedSearchState)
     : initialGuidedSearchState()
   guidedBookingHints.value = cachedState.guidedBookingHints ?? null
+  tripRequirements.value = normalizeTripRequirements(cachedState.tripRequirements ?? emptyTripRequirements())
   preferGuidedThisSession.value = !!cachedState.preferGuidedThisSession
   pendingBookingPayload.value = null
   isLoading.value = false
@@ -1019,6 +1032,7 @@ function activeSessionToPageState () {
     drawerShopName: active.drawerShopName ?? null,
     guidedSearchState: active.guidedSearchState ?? null,
     guidedBookingHints: active.guidedBookingHints ?? null,
+    tripRequirements: active.tripRequirements ?? null,
     preferGuidedThisSession: active.preferGuidedThisSession ?? false
   }
 }
@@ -1181,7 +1195,7 @@ onMounted(async () => {
 })
 
 // Persist cache when state changes
-watch([messages, userInput, preferGuidedThisSession, guidedSearchState, guidedBookingHints], persistCache, { deep: true })
+watch([messages, userInput, preferGuidedThisSession, guidedSearchState, guidedBookingHints, tripRequirements], persistCache, { deep: true })
 watch([selectedShopId, detailDrawerShopId, isOpen, drawerData], persistCache, { deep: true })
 
 // Auto-scroll to bottom when new messages arrive
@@ -1241,6 +1255,24 @@ function searchFiltersFingerprint (filters) {
 }
 
 // Pagination status: which range this message's results represent (1-based). Scoped to the same filter set.
+function searchResultGroupsForMessage (msg) {
+  const shops = msg?.shops || []
+  if (!shops.length) return []
+  const filters =
+    msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : {}
+  const ctx = buildSearchMatchContext(filters)
+  return groupShopsByMatchReason(shops, ctx)
+}
+
+function groupStaggerOffset (msg, groupIndex) {
+  const groups = searchResultGroupsForMessage(msg)
+  let n = 0
+  for (let i = 0; i < groupIndex; i++) {
+    n += groups[i]?.shops?.length ?? 0
+  }
+  return n
+}
+
 function getResultsRange (msgIndex) {
   const msg = messages.value[msgIndex]
   const fp = searchFiltersFingerprint(msg?.filters)
@@ -1437,6 +1469,7 @@ async function tryRestoreBookingSessionAfterAuth () {
       drawerShopName: null,
       guidedSearchState: guidedSearchState.value,
       guidedBookingHints: guidedBookingHints.value,
+      tripRequirements: tripRequirements.value,
       preferGuidedThisSession: preferGuidedThisSession.value
     })
     persistCache()
@@ -1604,6 +1637,11 @@ const sendMessage = async (messageText, displayText) => {
     const pendingEntityClarifyPhrase = getPendingEntityClarifyPhraseForOutgoing(message)
 
     const bookingHandoff = isBookingHandoffUserMessage(message)
+    if (selectedShopId.value) {
+      tripRequirements.value = mergeTripRequirements(tripRequirements.value, {
+        selectedShopId: selectedShopId.value
+      })
+    }
     startChatLoadingBrand(inBookingFlow || bookingHandoff ? 'booking' : 'search')
 
     const aiSearchBody = {
@@ -1629,7 +1667,8 @@ const sendMessage = async (messageText, displayText) => {
       ...(inBookingFlow && lastPayload ? { bookingPayload: lastPayload } : {}),
       ...(pendingBookingPayload.value ? { pendingBookingPayload: pendingBookingPayload.value } : {}),
       ...(profilePrefillSnapshot.value ? { profilePrefill: profilePrefillSnapshot.value } : {}),
-      ...(pendingEntityClarifyPhrase ? { pendingEntityClarifyPhrase } : {})
+      ...(pendingEntityClarifyPhrase ? { pendingEntityClarifyPhrase } : {}),
+      tripRequirements: tripRequirements.value
     }
 
     const aiHeaders = {}
@@ -1719,6 +1758,12 @@ const sendMessage = async (messageText, displayText) => {
             guidedRes.bookingHints.diveSiteTypeLabel)
             ? { ...guidedRes.bookingHints }
             : null
+        absorbTripRequirementsFromSearchTurn({
+          filters: guidedRes.filters,
+          bookingHints: guidedRes.bookingHints,
+          guidedState: mergedState
+        })
+        const tripReqSnap = { ...tripRequirements.value }
         const guidedFilters =
           guidedRes.filters && typeof guidedRes.filters === 'object' && !Array.isArray(guidedRes.filters)
             ? guidedRes.filters
@@ -1754,6 +1799,7 @@ const sendMessage = async (messageText, displayText) => {
           filters: guidedFilters,
           guidedSearchState: mergedState,
           guidedBookingHintsSnapshot: hintsSnap,
+          tripRequirementsSnapshot: tripReqSnap,
           ...(searchMatchBadges.length ? { searchMatchBadges } : {})
         })
         trackOrchestratorResponseAnalytics(
@@ -1846,6 +1892,7 @@ const sendMessage = async (messageText, displayText) => {
         closeDrawer()
         selectedShopId.value = null
         pendingBookingPayload.value = null
+        tripRequirements.value = emptyTripRequirements()
         detailDrawerShopId.value = null
         const resetShops = response.shops || []
         const resetContent = (response.message && String(response.message).trim())
@@ -2016,6 +2063,22 @@ const sendMessage = async (messageText, displayText) => {
           : []
       const searchMatchBadges = apiBadges.length ? apiBadges : fallbackBadges
 
+      if (response.intent === 'search') {
+        absorbTripRequirementsFromSearchTurn({
+          filters: response.filters,
+          serverTripRequirements: response.tripRequirements
+        })
+      } else if (response.tripRequirements) {
+        tripRequirements.value = mergeTripRequirements(
+          tripRequirements.value,
+          normalizeTripRequirements(response.tripRequirements)
+        )
+      }
+      const tripReqSnapForMsg =
+        response.intent === 'search' || response.tripRequirements
+          ? { ...tripRequirements.value }
+          : null
+
       messages.value.push({
         role: 'assistant',
         content,
@@ -2037,7 +2100,8 @@ const sendMessage = async (messageText, displayText) => {
         diveSiteOptions: response.diveSiteOptions || undefined,
         ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {}),
         ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {}),
-        ...(searchMatchBadges.length ? { searchMatchBadges } : {})
+        ...(searchMatchBadges.length ? { searchMatchBadges } : {}),
+        ...(tripReqSnapForMsg ? { tripRequirementsSnapshot: tripReqSnapForMsg } : {})
       })
       trackOrchestratorResponseAnalytics(response, capture)
       if (
@@ -2141,6 +2205,12 @@ const stepBack = () => {
     )
     guidedBookingHints.value = lastHints?.guidedBookingHintsSnapshot ?? null
   }
+  const lastTripReq = [...messages.value].reverse().find(
+    (m) => m.role === 'assistant' && m.tripRequirementsSnapshot != null
+  )
+  tripRequirements.value = lastTripReq?.tripRequirementsSnapshot
+    ? normalizeTripRequirements(lastTripReq.tripRequirementsSnapshot)
+    : emptyTripRequirements()
   persistCache()
 }
 
@@ -2159,6 +2229,13 @@ const handleViewDetails = (shop) => {
     detailDrawerShopId.value = shop.id
     void scrollToBottom()
   })
+}
+
+function openSelectedShopDetail () {
+  const id = selectedShopId.value
+  if (!id) return
+  armShopDetailCloseGuard()
+  detailDrawerShopId.value = id
 }
 
 // Open layout booking-form drawer with current shop and chat-collected payload
@@ -2195,7 +2272,11 @@ const closeShopDetail = () => {
   detailDrawerShopId.value = null
 }
 
-useHead({ title: 'Dive Shop Search | Glaucus' })
+useHead(computed(() => ({
+  title: isInBookingMode.value && selectedShopName.value
+    ? `${selectedShopName.value} | Glaucus`
+    : 'Dive Shop Search | Glaucus'
+})))
 </script>
 
 <style scoped>

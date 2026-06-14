@@ -22,7 +22,7 @@ export const InterpretedTurnSchema = z.object({
       if (v == null || v === '') return null
       if (typeof v !== 'string') return v
       const t = v.toLowerCase().trim().replace(/[\s-]+/g, '_')
-      if (t === 'liveaboard' || t === 'live_aboard') return 'liveaboard'
+      if (t === 'liveaboard' || t === 'live_aboard' || t === 'liveboard') return 'liveaboard'
       if (t === 'dive_resort' || t === 'resort' || t === 'dive_resorts') return 'dive_resort'
       if (t === 'dive_shop' || t === 'dive_shops' || t === 'day_trip' || t === 'day_trips') return 'dive_shop'
       return null
@@ -30,6 +30,10 @@ export const InterpretedTurnSchema = z.object({
     z.enum(['liveaboard', 'dive_resort', 'dive_shop']).nullable().optional()
   ),
   wants_booking: z.boolean().optional(),
+  /** 1–10: how ready the user is to book vs browse/curate (see SYSTEM_PROMPT). */
+  booking_readiness: z.number().min(1).max(10).nullable().optional(),
+  /** Primary intent verb: browse (find/curate) vs book (reserve) vs neutral. */
+  primary_verb: z.enum(['browse', 'book', 'neutral']).nullable().optional(),
   reasoning_summary: z.string().max(500).nullable().optional(),
   confidence: z.number().min(0).max(1).optional()
 })
@@ -47,6 +51,8 @@ Return ONLY a JSON object (no markdown) with this shape:
   "dive_site_type_label": string or null,
   "trip_product_type": "liveaboard" | "dive_resort" | "dive_shop" | null,
   "wants_booking": boolean or omit,
+  "booking_readiness": number 1–10 or null,
+  "primary_verb": "browse" | "book" | "neutral" or null,
   "reasoning_summary": string or null,
   "confidence": number between 0 and 1 or omit
 }
@@ -64,7 +70,12 @@ Rules:
 - activity_terms: when the user cares about a KIND of diving or environment — NOT liveaboard vs resort (that is a separate product flow). Use 1–4 short lowercase tokens, e.g. ["cave"] for "cave diving", ["wreck"] for wreck diving, ["muck"] or ["macro"] for muck/macro, ["cenote"] for cenotes, ["ice"] for ice diving, ["drift"] for drift diving. If they mention BOTH a place and an activity (e.g. "cave diving in Mexico"), set destination_text to "Mexico" AND activity_terms to ["cave"]. If there is no activity signal, use null or omit. Do NOT put certification/course shopping intent here (e.g. "advanced certification courses", "shops that teach nitrox") — use certification_course_hint instead.
 - certification_course_hint: when the user wants **certification training or shops that offer a course level** (Open Water, Advanced, Advanced Open Water, Rescue, Nitrox, Divemaster, Discover Scuba, etc.). Put a short searchable fragment (e.g. "Open Water", "Advanced", "Advanced Open Water", "Nitrox"). **Required** when they ask for shops offering courses/certification/training (e.g. "shops in Mexico that offer advanced certification courses" → set certification_course_hint to "Advanced" or "Advanced Open Water", NOT only activity_terms). Null only if they are not asking for a course.
 - dive_site_type_label: when they care about **type of dive site / environment** as a category (wreck, reef, wall, muck, cenote, cavern/cave, beach, lake). One short phrase matching how divers talk (e.g. "wreck", "reef diving", "cenotes"). Null if not mentioned. Do not duplicate trip_product_type here.
-- trip_product_type: when they specify **liveaboard vs resort vs dive shop / day trips**: use "liveaboard" for liveaboards; "dive_resort" for dive resorts; "dive_shop" for land-based dive shops, day boats, or day trips. Null if they do not express a preference.
+- trip_product_type: when they specify **liveaboard vs resort vs dive shop / day trips**: use "liveaboard" for liveaboards (including typo "liveboard"); "dive_resort" for dive resorts; "dive_shop" for land-based dive shops, day boats, or day trips. Null if they do not express a preference.
+- booking_readiness (1–10): how ready the user is to **book a specific operator** vs **browse/curate** options.
+  - 1–4: novice or very vague ("first dive", "where should I start", no destination or trip type).
+  - 5–8: knows some variables (destination, liveaboard/resort, activity, cert) but NOT a specific shop — wants a curated list to pick from. **"Find a liveaboard in Raja Ampat" = 6–7.**
+  - 9–10: knows the operator or explicitly booking — "book at Zen Resort", "let's do Joe's Gone Diving", picked from results, or only one shop named.
+- primary_verb: "browse" when main verb is find/look/search/recommend/compare/show; "book" when book/reserve/schedule/let's do [shop]; "neutral" otherwise. If both browse and book verbs appear (e.g. "find me a shop to book in Cozumel"), prefer **browse** unless they name a specific shop.
 - reasoning_summary: ONE short user-safe sentence in first person ("I'm treating this as travel to Bali, then we'll pick a shop.") or null.
 
 When the user could mean either a place or a shop name containing that word (e.g. "Bali" alone), prefer destination_text for travel phrasing ("in Bali", "to Bali") and shop_name_hint only if they clearly ask for one operator by name. When BOTH appear (operator + "in/at" + place), always fill both fields.
@@ -76,7 +87,7 @@ export function shouldRunInterpretNlu (message: string, wantsToBook: boolean, re
   if (!t) return false
   if (wantsToBook) return true
   if (regexReferent) return true
-  if (/\b(dive|diving|dive\s*shop|dive\s*shops|liveaboard|resort|book|booking|trip)\b/i.test(t)) return true
+  if (/\b(dive|diving|dive\s*shop|dive\s*shops|liveaboard|liveboard|resort|book|booking|trip|find)\b/i.test(t)) return true
   if (/\b(in|at|near|around|within)\s+[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s-]{1,60}\b/i.test(t)) return true
   if (/\b(cave|cavern|cenote|wreck|wall|drift|muck|macro|night|ice|nitrox|technical|tec)\b/i.test(t)) return true
   return false
