@@ -59,7 +59,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ArrowUp } from 'lucide-vue-next'
-import { CHAT_STARTER_PROMPTS } from '~~/shared/chatStarterPrompts'
+import { getChatStarterPrompts } from '~~/shared/chatStarterPrompts'
 
 const ROTATE_INTERVAL_MS = 5000
 
@@ -74,7 +74,7 @@ const props = defineProps({
   rotateStarterPrompts: { type: Boolean, default: false },
   starterPrompts: {
     type: Array,
-    default: () => [...CHAT_STARTER_PROMPTS]
+    default: () => getChatStarterPrompts()
   },
   outerClass: {
     type: String,
@@ -96,7 +96,7 @@ const reduceMotion = ref(false)
 let rotateTimer = null
 
 const prompts = computed(() =>
-  props.starterPrompts.length > 0 ? props.starterPrompts : [...CHAT_STARTER_PROMPTS]
+  props.starterPrompts.length > 0 ? props.starterPrompts : getChatStarterPrompts()
 )
 
 const currentPrompt = computed(() => prompts.value[currentIndex.value] ?? '')
