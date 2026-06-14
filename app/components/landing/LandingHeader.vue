@@ -31,19 +31,34 @@
                 <Search :width="12" :height="12" :stroke-width="1.5" aria-hidden="true" />
               </button>
               <nav class="flex w-fit items-center gap-1" aria-label="Landing sections">
-                <a
-                  v-for="item in resolvedNavItems"
-                  :key="item.id"
-                  :href="`#${item.id}`"
-                  :class="[
-                    navLinkBase,
-                    activeNavLinkId === item.id
-                      ? 'bg-white/10 text-white'
-                      : 'text-zinc-300 hover:text-white'
-                  ]"
-                >
-                  {{ item.label }}
-                </a>
+                <template v-for="item in resolvedNavItems" :key="item.id">
+                  <NuxtLink
+                    v-if="item.to"
+                    :to="item.to"
+                    :target="item.target"
+                    :rel="item.target === '_blank' ? 'noopener noreferrer' : undefined"
+                    :class="[
+                      navLinkBase,
+                      isNavItemActive(item)
+                        ? 'bg-white/10 text-white'
+                        : 'text-zinc-300 hover:text-white'
+                    ]"
+                  >
+                    {{ item.label }}
+                  </NuxtLink>
+                  <a
+                    v-else
+                    :href="`#${item.id}`"
+                    :class="[
+                      navLinkBase,
+                      isNavItemActive(item)
+                        ? 'bg-white/10 text-white'
+                        : 'text-zinc-300 hover:text-white'
+                    ]"
+                  >
+                    {{ item.label }}
+                  </a>
+                </template>
               </nav>
             </template>
             <form
@@ -124,7 +139,8 @@ import { ArrowUp, Menu, Search, Xmark } from '@iconoir/vue'
 
 const defaultNavItems = [
   { id: 'whatisglaucus', label: 'What is Glaucus?' },
-  { id: 'feature1', label: 'Features' },
+  { id: 'feature1', label: 'For Divers' },
+  { id: 'for-businesses', label: 'For Businesses', to: '/for-businesses', target: '_blank' },
   { id: 'aboutus', label: 'About us' },
   { id: 'logs', label: 'Logs' },
   { id: 'contact', label: 'Contact' }
@@ -174,7 +190,9 @@ const mobileMenuOpen = ref(false)
 const searchOpen = ref(false)
 const searchQuery = ref('')
 
-const navSectionIds = computed(() => new Set(resolvedNavItems.value.map((item) => item.id)))
+const navSectionIds = computed(() =>
+  new Set(resolvedNavItems.value.filter((item) => !item.to).map((item) => item.id))
+)
 
 const rawHash = computed(() => (route.hash || '').replace(/^#/, ''))
 
@@ -196,12 +214,22 @@ const activeNavLinkId = computed(() => {
   if (searchOpen.value) {
     return null
   }
+  const routeItem = resolvedNavItems.value.find(
+    (item) => item.to && route.path === item.to
+  )
+  if (routeItem) {
+    return routeItem.id
+  }
   const h = rawHash.value
   if (!h || h === 'hero') {
     return null
   }
   return navSectionIds.value.has(h) ? h : null
 })
+
+function isNavItemActive (item) {
+  return activeNavLinkId.value === item.id
+}
 
 function measureMobileDrawerTop () {
   if (!import.meta.client || !headerRootRef.value) {

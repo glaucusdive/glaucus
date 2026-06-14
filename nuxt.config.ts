@@ -41,6 +41,8 @@ export default defineNuxtConfig({
     profileUpdateNotifyEmails: process.env.PROFILE_UPDATE_NOTIFY_EMAILS || 'rshashwat@gmail.com,general@madebyporter.com',
     /** Comma-separated internal recipients when a shop owner submits portal listing changes. */
     shopSubmissionNotifyEmails: process.env.SHOP_SUBMISSION_NOTIFY_EMAILS || 'chris@glaucusdive.com,shash@glaucusdive.com',
+    /** Recipient for new dive shop listing inquiries from /for-businesses. */
+    shopInquiryNotifyEmail: process.env.NUXT_SHOP_INQUIRY_NOTIFY_EMAIL || 'shash@glaucusdive.com',
     /** Required for geocode-shop API to update diveshops (bypasses RLS). Get from Supabase Dashboard > Project Settings > API. */
     supabaseServiceRoleKey: '',
     /** Linear personal API key (Settings → API). Used by /api/feedback to create issues. */
