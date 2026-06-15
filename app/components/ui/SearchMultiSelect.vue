@@ -37,8 +37,33 @@
             >×</span>
           </span>
         </template>
+        <template v-if="wrapChips && pendingNames.length > 0">
+          <span
+            v-for="name in pendingNames"
+            :key="`pending-${name}`"
+            class="inline-flex items-center gap-1 rounded border border-dashed border-amber-500/70 bg-amber-50/80 px-2 py-0.5 text-sm text-amber-950 dark:border-amber-400/60 dark:bg-amber-950/30 dark:text-amber-100"
+          >
+            <span class="max-w-[12rem] truncate">{{ name }}</span>
+            <button
+              v-if="pendingAddable && typeof onCreate === 'function'"
+              type="button"
+              class="rounded px-1 font-semibold leading-none text-emerald-700 hover:bg-emerald-100/80 dark:text-emerald-300 dark:hover:bg-emerald-900/40 cursor-pointer disabled:opacity-50"
+              :disabled="pendingSavingName === name"
+              :aria-label="`Add ${name}`"
+              :title="`Add ${name}`"
+              @click.stop.prevent="addPendingName(name)"
+            >{{ pendingSavingName === name ? '…' : '+' }}</button>
+            <button
+              type="button"
+              class="rounded px-1 leading-none text-zinc-500 hover:text-red-600 dark:text-zinc-400 dark:hover:text-red-400 cursor-pointer"
+              :aria-label="`Discard ${name}`"
+              :title="`Discard ${name}`"
+              @click.stop.prevent="discardPendingName(name)"
+            >×</button>
+          </span>
+        </template>
         <span
-          v-else
+          v-if="modelValue.length === 0 && (!wrapChips || pendingNames.length === 0)"
           class="flex min-h-0 min-w-0 flex-1 items-center text-sm font-normal text-zinc-500 dark:text-zinc-400"
         >Add option</span>
       </div>
@@ -64,8 +89,17 @@
           <span :class="wrapChips ? '' : 'max-w-[12rem] truncate'">{{ labelFor(id) }}</span>
         </span>
       </template>
+      <template v-if="wrapChips && pendingNames.length > 0">
+        <span
+          v-for="name in pendingNames"
+          :key="`pending-ro-${name}`"
+          class="inline-flex items-center gap-1 rounded border border-dashed border-amber-500/70 bg-amber-50/80 px-2 py-0.5 text-sm text-amber-950 dark:border-amber-400/60 dark:bg-amber-950/30 dark:text-amber-100"
+        >
+          <span class="max-w-[12rem] truncate">{{ name }}</span>
+        </span>
+      </template>
       <span
-        v-else
+        v-if="modelValue.length === 0 && (!wrapChips || pendingNames.length === 0)"
         class="flex min-h-0 min-w-0 flex-1 items-center text-sm font-normal text-zinc-400 dark:text-zinc-500"
       >—</span>
     </div>
@@ -74,7 +108,7 @@
       <div
         v-if="open && !disabled"
         ref="panelRef"
-        class="fixed z-[70] max-h-[min(320px,50vh)] min-w-[200px] overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+        class="fixed z-[70] flex min-w-[200px] flex-col overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
         :style="panelStyle"
       >
         <div
@@ -89,7 +123,7 @@
             @keydown.stop
           >
         </div>
-        <ul class="max-h-[min(280px,45vh)] divide-y divide-zinc-200 overflow-y-auto dark:divide-zinc-700" role="listbox">
+        <ul class="min-h-0 flex-1 divide-y divide-zinc-200 overflow-y-auto dark:divide-zinc-700" role="listbox">
           <li
             v-for="opt in filteredOptions"
             :key="String(opt.id)"
@@ -156,16 +190,27 @@
         </div>
       </div>
     </Teleport>
+
+    <p v-if="wrapChips && addError && !open" class="text-xs text-red-600 dark:text-red-400">{{ addError }}</p>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { ChevronDown, Check } from 'lucide-vue-next'
-import { normalizeAdminLookupId } from '~/utils/adminLookupIds'
+import { normalizeLookupId } from '~/utils/lookupIds'
 import { formInputClass, formInputSmClass } from '~/components/ui/formControlClasses'
 
 const searchInputClass = `${formInputClass} ${formInputSmClass} w-full`
+
+const PANEL_GAP = 4
+const VIEWPORT_MARGIN = 8
+const PANEL_MAX_HEIGHT_PX = 320
+const PANEL_MIN_USABLE_PX = 160
+
+function getMaxPanelHeight () {
+  return Math.min(PANEL_MAX_HEIGHT_PX, window.innerHeight * 0.5)
+}
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
@@ -178,10 +223,14 @@ const props = defineProps({
   searchable: { type: Boolean, default: false },
   /** Form/portal layout: wrap chips onto multiple lines instead of grid-style horizontal scroll. */
   wrapChips: { type: Boolean, default: false },
-  onCreate: { type: Function, default: null }
+  onCreate: { type: Function, default: null },
+  /** Unmatched CSV names shown as dashed chips with add/discard actions (wrapChips mode). */
+  pendingNames: { type: Array, default: () => [] },
+  /** When false, pending chips only offer discard (e.g. courses). */
+  pendingAddable: { type: Boolean, default: true }
 })
 
-const emit = defineEmits(['update:modelValue', 'created'])
+const emit = defineEmits(['update:modelValue', 'created', 'discard-pending'])
 
 const open = ref(false)
 const rootRef = ref(null)
@@ -190,6 +239,7 @@ const panelStyle = ref({})
 const creating = ref(false)
 const newName = ref('')
 const saving = ref(false)
+const pendingSavingName = ref('')
 const addError = ref('')
 const newInputRef = ref(null)
 const searchQuery = ref('')
@@ -207,7 +257,7 @@ const optionMap = computed(() => {
   const map = new Map()
   for (const o of props.options) {
     const rawId = String(o.id ?? '').trim()
-    const k = normalizeAdminLookupId(rawId)
+    const k = normalizeLookupId(rawId)
     const label = o.label != null && o.label !== '' ? String(o.label) : (o.name != null ? String(o.name) : '')
     map.set(k, label || rawId)
   }
@@ -215,13 +265,13 @@ const optionMap = computed(() => {
 })
 
 function labelFor (id) {
-  const k = normalizeAdminLookupId(id)
+  const k = normalizeLookupId(id)
   return optionMap.value.get(k) ?? String(id ?? '')
 }
 
 function isSelected (id) {
-  const want = normalizeAdminLookupId(id)
-  return props.modelValue.some((mid) => normalizeAdminLookupId(mid) === want)
+  const want = normalizeLookupId(id)
+  return props.modelValue.some((mid) => normalizeLookupId(mid) === want)
 }
 
 function emitValue (next) {
@@ -230,17 +280,17 @@ function emitValue (next) {
 
 function toggleOption (id) {
   const sid = String(id).trim()
-  const want = normalizeAdminLookupId(sid)
+  const want = normalizeLookupId(sid)
   if (isSelected(id)) {
-    emitValue(props.modelValue.filter((x) => normalizeAdminLookupId(x) !== want))
+    emitValue(props.modelValue.filter((x) => normalizeLookupId(x) !== want))
   } else {
     emitValue(props.singleSelect ? [sid] : [...props.modelValue, sid])
   }
 }
 
 function removeId (id) {
-  const want = normalizeAdminLookupId(id)
-  emitValue(props.modelValue.filter((x) => normalizeAdminLookupId(x) !== want))
+  const want = normalizeLookupId(id)
+  emitValue(props.modelValue.filter((x) => normalizeLookupId(x) !== want))
 }
 
 function positionPanel () {
@@ -248,22 +298,56 @@ function positionPanel () {
   if (!el) return
   const r = el.getBoundingClientRect()
   const width = props.wrapChips
-    ? Math.min(Math.max(r.width, 280), window.innerWidth - 16)
-    : Math.min(320, Math.max(200, window.innerWidth - 16))
-  panelStyle.value = {
-    top: `${r.bottom + 4}px`,
-    left: `${Math.max(8, Math.min(r.left, window.innerWidth - width - 8))}px`,
-    width: `${width}px`
+    ? Math.min(Math.max(r.width, 280), window.innerWidth - VIEWPORT_MARGIN * 2)
+    : Math.min(320, Math.max(200, window.innerWidth - VIEWPORT_MARGIN * 2))
+  const left = Math.max(VIEWPORT_MARGIN, Math.min(r.left, window.innerWidth - width - VIEWPORT_MARGIN))
+
+  const maxPanelHeight = getMaxPanelHeight()
+  const panel = panelRef.value
+  const measuredHeight = panel
+    ? Math.min(panel.getBoundingClientRect().height, maxPanelHeight)
+    : maxPanelHeight
+
+  const spaceBelow = window.innerHeight - r.bottom - VIEWPORT_MARGIN
+  const spaceAbove = r.top - VIEWPORT_MARGIN
+
+  const openAbove =
+    (spaceBelow < measuredHeight && spaceAbove > spaceBelow)
+    || (spaceBelow < PANEL_MIN_USABLE_PX && spaceAbove > spaceBelow)
+
+  if (openAbove) {
+    const maxH = Math.min(maxPanelHeight, spaceAbove - PANEL_GAP)
+    panelStyle.value = {
+      bottom: `${window.innerHeight - r.top + PANEL_GAP}px`,
+      top: 'auto',
+      left: `${left}px`,
+      width: `${width}px`,
+      maxHeight: `${Math.max(80, maxH)}px`
+    }
+  } else {
+    const maxH = Math.min(maxPanelHeight, spaceBelow - PANEL_GAP)
+    panelStyle.value = {
+      top: `${r.bottom + PANEL_GAP}px`,
+      bottom: 'auto',
+      left: `${left}px`,
+      width: `${width}px`,
+      maxHeight: `${Math.max(80, maxH)}px`
+    }
   }
+}
+
+function schedulePositionPanel () {
+  void nextTick(() => {
+    positionPanel()
+    void nextTick(() => positionPanel())
+  })
 }
 
 function toggleOpen () {
   if (props.disabled) return
   open.value = !open.value
   if (open.value) {
-    void nextTick(() => {
-      positionPanel()
-    })
+    schedulePositionPanel()
   }
 }
 
@@ -271,7 +355,6 @@ function close () {
   open.value = false
   creating.value = false
   newName.value = ''
-  addError.value = ''
   searchQuery.value = ''
 }
 
@@ -299,6 +382,10 @@ watch(open, (v) => {
     window.removeEventListener('resize', positionPanel)
     window.removeEventListener('scroll', positionPanel, true)
   }
+})
+
+watch(creating, () => {
+  if (open.value) schedulePositionPanel()
 })
 
 onMounted(() => {
@@ -332,7 +419,7 @@ async function confirmAdd () {
       const id = String(created.id).trim()
       if (props.singleSelect) {
         emitValue([id])
-      } else if (!props.modelValue.some((mid) => normalizeAdminLookupId(mid) === normalizeAdminLookupId(id))) {
+      } else if (!props.modelValue.some((mid) => normalizeLookupId(mid) === normalizeLookupId(id))) {
         emitValue([...props.modelValue, id])
       }
     }
@@ -349,5 +436,33 @@ function cancelAdd () {
   creating.value = false
   newName.value = ''
   addError.value = ''
+}
+
+function discardPendingName (name) {
+  emit('discard-pending', name)
+}
+
+async function addPendingName (name) {
+  const trimmed = String(name || '').trim()
+  if (!trimmed || typeof props.onCreate !== 'function') return
+  pendingSavingName.value = trimmed
+  addError.value = ''
+  try {
+    const created = await props.onCreate(trimmed)
+    if (created && created.id) {
+      emit('created', created)
+      const id = String(created.id).trim()
+      if (props.singleSelect) {
+        emitValue([id])
+      } else if (!props.modelValue.some((mid) => normalizeLookupId(mid) === normalizeLookupId(id))) {
+        emitValue([...props.modelValue, id])
+      }
+      emit('discard-pending', trimmed)
+    }
+  } catch (e) {
+    addError.value = e instanceof Error ? e.message : 'Could not add item'
+  } finally {
+    pendingSavingName.value = ''
+  }
 }
 </script>

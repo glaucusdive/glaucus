@@ -14,12 +14,12 @@
         />
       </FormField>
       <FormField label="Business type">
-        <AdminSelectChip
+        <SearchMultiSelect
           :model-value="modelValue.business_type_ids"
-          full-width
           :options="businessTypeOptions"
-          :multiple="true"
-          :allow-add="true"
+          searchable
+          wrap-chips
+          allow-add
           singular-label="business type"
           :on-create="(n) => createSimpleLookup('dive_business_types', n)"
           @update:model-value="patch({ business_type_ids: $event })"
@@ -83,23 +83,24 @@
         />
       </FormField>
       <FormField label="Country">
-        <AdminSelectChip
+        <SearchMultiSelect
           :model-value="countryChip"
-          full-width
           :options="countryOptions"
-          :multiple="false"
-          :allow-add="false"
+          searchable
+          wrap-chips
+          single-select
           singular-label="country"
           @update:model-value="onCountryChip"
         />
       </FormField>
       <FormField label="Region">
-        <AdminSelectChip
+        <SearchMultiSelect
           :model-value="regionChip"
-          full-width
           :options="regionOptions"
-          :multiple="false"
-          :allow-add="true"
+          searchable
+          wrap-chips
+          single-select
+          allow-add
           singular-label="region"
           :on-create="createRegion"
           @update:model-value="onRegionChip"
@@ -114,12 +115,12 @@
 
     <div class="flex min-w-0 flex-col gap-4">
       <FormField label="Dive sites">
-        <AdminSelectChip
+        <SearchMultiSelect
           :model-value="modelValue.dive_site_ids"
-          full-width
           :options="diveSiteOptions"
-          :multiple="true"
-          :allow-add="true"
+          searchable
+          wrap-chips
+          allow-add
           singular-label="dive site"
           :pending-names="pendingDiveSites"
           :on-create="(n) => createDiveSite(n, modelValue.country_id)"
@@ -132,11 +133,11 @@
         </p>
       </FormField>
       <FormField label="Courses">
-        <AdminSelectChip
+        <SearchMultiSelect
           :model-value="modelValue.course_ids"
-          full-width
           :options="courseOptions"
-          :multiple="true"
+          searchable
+          wrap-chips
           :allow-add="false"
           :pending-names="pendingCourses"
           :pending-addable="false"
@@ -145,16 +146,16 @@
           @discard-pending="(n) => discardPending('courses', n)"
         />
         <p v-if="pendingCourses.length" class="mt-1 text-xs text-amber-700 dark:text-amber-400">
-          Dashed courses weren’t matched — pick from Add… or × to skip.
+          Dashed courses weren’t matched — pick from the list or × to skip.
         </p>
       </FormField>
       <FormField label="Rental gear">
-        <AdminSelectChip
+        <SearchMultiSelect
           :model-value="modelValue.rental_equipment_ids"
-          full-width
           :options="rentalOptions"
-          :multiple="true"
-          :allow-add="true"
+          searchable
+          wrap-chips
+          allow-add
           singular-label="rental"
           :pending-names="pendingRental"
           :on-create="(n) => createSimpleLookup('rental_equipment', n)"
@@ -164,12 +165,12 @@
         />
       </FormField>
       <FormField label="Gases">
-        <AdminSelectChip
+        <SearchMultiSelect
           :model-value="modelValue.gas_ids"
-          full-width
           :options="gasOptions"
-          :multiple="true"
-          :allow-add="true"
+          searchable
+          wrap-chips
+          allow-add
           singular-label="gas"
           :pending-names="pendingGases"
           :on-create="(n) => createSimpleLookup('gases', n)"
@@ -188,7 +189,6 @@
 
 <script setup>
 import { computed } from 'vue'
-import AdminSelectChip from '~/components/admin/AdminSelectChip.vue'
 import {
   unknownNamesFromWarnings,
   filterDiscardedPendingNames,

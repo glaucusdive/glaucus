@@ -1,5 +1,2 @@
-/** Normalize lookup / FK ids for stable Map keys (UUID casing, trim). */
-export function normalizeAdminLookupId (v: unknown): string {
-  if (v == null || v === '') return ''
-  return String(v).trim().toLowerCase()
-}
+/** @deprecated Use normalizeLookupId from ~/utils/lookupIds */
+export { normalizeLookupId as normalizeAdminLookupId } from '~/utils/lookupIds'

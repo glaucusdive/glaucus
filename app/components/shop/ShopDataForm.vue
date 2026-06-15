@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import AdminMultiSelectCheckboxDropdown from '~/components/admin/AdminMultiSelectCheckboxDropdown.vue'
 import {
   formatDiveBusinessTypeLabel
 } from '~~/shared/diveBusinessTypes'
@@ -210,7 +209,7 @@ async function createDiveSite (name: string) {
       </FormField>
       <FormField label="Business type">
         <div :class="fieldClass('business_type_ids')">
-          <AdminMultiSelectCheckboxDropdown
+          <SearchMultiSelect
             :model-value="form.business_type_ids"
             :options="businessTypeOptions"
             :disabled="disabled"
@@ -292,7 +291,7 @@ async function createDiveSite (name: string) {
       </FormField>
       <FormField label="Country">
         <div :class="fieldClass('country_id')">
-          <AdminMultiSelectCheckboxDropdown
+          <SearchMultiSelect
             v-model="countryChip"
             :options="countryOptions"
             :disabled="disabled"
@@ -305,7 +304,7 @@ async function createDiveSite (name: string) {
       </FormField>
       <FormField label="Region">
         <div :class="fieldClass('region_id')">
-          <AdminMultiSelectCheckboxDropdown
+          <SearchMultiSelect
             v-model="regionChip"
             :options="regionOptions"
             :disabled="disabled"
@@ -326,7 +325,7 @@ async function createDiveSite (name: string) {
     <div class="flex min-w-0 flex-col gap-4">
       <FormField label="Dive sites">
         <div :class="fieldClass('dive_site_ids')">
-          <AdminMultiSelectCheckboxDropdown
+          <SearchMultiSelect
             :model-value="form.dive_site_ids"
             :options="diveSiteOptions"
             :disabled="disabled"
@@ -341,7 +340,7 @@ async function createDiveSite (name: string) {
       </FormField>
       <FormField label="Courses">
         <div :class="fieldClass('course_ids')">
-          <AdminMultiSelectCheckboxDropdown
+          <SearchMultiSelect
             :model-value="form.course_ids"
             :options="courseOptions"
             :disabled="disabled"
@@ -354,7 +353,7 @@ async function createDiveSite (name: string) {
       </FormField>
       <FormField label="Rental gear">
         <div :class="fieldClass('rental_equipment_ids')">
-          <AdminMultiSelectCheckboxDropdown
+          <SearchMultiSelect
             :model-value="form.rental_equipment_ids"
             :options="rentalOptions"
             :disabled="disabled"
@@ -369,7 +368,7 @@ async function createDiveSite (name: string) {
       </FormField>
       <FormField label="Gases">
         <div :class="fieldClass('gas_ids')">
-          <AdminMultiSelectCheckboxDropdown
+          <SearchMultiSelect
             :model-value="form.gas_ids"
             :options="gasOptions"
             :disabled="disabled"
