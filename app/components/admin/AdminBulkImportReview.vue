@@ -130,7 +130,7 @@
             :create-region="createRegion"
             :create-simple-lookup="createSimpleLookup"
             :create-dive-site="createDiveSite"
-            :on-lookup-created="onLookupCreated"
+            :on-lookup-created="handleLookupCreated"
             :warnings="entry.warnings"
             @update:model-value="onFormUpdate(entry.index, $event)"
           />
@@ -159,6 +159,8 @@ import AdminBulkImportPagination from '~/components/admin/AdminBulkImportPaginat
 import { BULK_IMPORT_PAGE_SIZE, BULK_IMPORT_FORM_CACHE_SIZE } from '~~/shared/bulkImportConstants'
 import { LruCache } from '~~/shared/lruCache'
 import { resolveCsvShopRowToForm } from '~~/shared/resolveCsvShopRowToForm'
+import { courseOptionsForMatching } from '~~/shared/courseLookupMatch'
+import { filterBulkImportWarnings } from '~~/shared/filterBulkImportWarnings'
 import {
   buildAdminShopWriteBody,
   emptyAdminNewBusinessForm
@@ -241,11 +243,7 @@ function buildLookups () {
   return {
     countries: props.countryOptions.map((o) => ({ id: String(o.id), name: String(o.label ?? o.name ?? '') })),
     regions: props.regionOptions.map((o) => ({ id: String(o.id), name: String(o.label ?? o.name ?? '') })),
-    courses: props.courseOptions.map((o) => ({
-      id: String(o.id),
-      certification_name: String(o.certification_name ?? o.label ?? o.name ?? ''),
-      agency_name: o.agency_name ?? null
-    })),
+    courses: courseOptionsForMatching(props.courseOptions),
     rentalEquipment: props.rentalOptions.map((o) => ({ id: String(o.id), name: String(o.label ?? o.name ?? '') })),
     gases: props.gasOptions.map((o) => ({ id: String(o.id), name: String(o.label ?? o.name ?? '') })),
     diveSites: props.diveSiteOptions.map((o) => ({
@@ -260,6 +258,25 @@ function buildLookups () {
   }
 }
 
+function warningsForIndex (index, form) {
+  const cached = warningsCache.get(index)
+  if (cached && !form) return cached
+  const csv = props.rows[index]
+  const { warnings } = resolveCsvShopRowToForm(csv, buildLookups())
+  const resolvedForm = form ?? formCache.get(index)
+  if (!resolvedForm) return warnings
+  return filterBulkImportWarnings(warnings, resolvedForm, buildLookups())
+}
+
+function handleLookupCreated (kindKey, opt) {
+  props.onLookupCreated(kindKey, opt)
+  const idx = expandedIndex.value
+  if (idx == null) return
+  const form = formCache.get(idx)
+  if (!form) return
+  warningsCache.set(idx, warningsForIndex(idx, form))
+}
+
 function resolveRow (index) {
   if (formCache.has(index)) {
     return {
@@ -268,10 +285,11 @@ function resolveRow (index) {
     }
   }
   const csv = props.rows[index]
-  const { form, warnings } = resolveCsvShopRowToForm(csv, buildLookups())
+  const { form, warnings: rawWarnings } = resolveCsvShopRowToForm(csv, buildLookups())
   formCache.set(index, reactive({ ...form }))
-  warningsCache.set(index, warnings)
-  return { form: formCache.get(index), warnings }
+  const filtered = filterBulkImportWarnings(rawWarnings, form, buildLookups())
+  warningsCache.set(index, filtered)
+  return { form: formCache.get(index), warnings: filtered }
 }
 
 function entryForIndex (index) {
@@ -329,6 +347,7 @@ function onImportPageChange (page) {
 
 function onFormUpdate (index, form) {
   formCache.set(index, form)
+  warningsCache.set(index, warningsForIndex(index, form))
 }
 
 function businessTypeLookupOptions () {
