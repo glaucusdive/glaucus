@@ -3,6 +3,12 @@ import type { GuidedSearchState } from '~~/shared/guidedFlow'
 import { initialGuidedSearchState } from '~~/shared/guidedFlow'
 import type { TripRequirements } from '~~/shared/tripRequirements'
 
+export interface PendingOrchestratorTurn {
+  message: string
+  displayText?: string
+  startedAt: number
+}
+
 export interface SearchCacheState {
   messages: any[]
   userInput: string
@@ -22,6 +28,8 @@ export interface SearchCacheState {
   tripRequirements?: TripRequirements | null
   /** When AI-first is on, user may opt into chip-based guided for this session. */
   preferGuidedThisSession?: boolean
+  /** In-flight orchestrator turn — resume after tab discard or abort. */
+  pendingOrchestratorTurn?: PendingOrchestratorTurn | null
 }
 
 export interface ChatSessionRecord extends SearchCacheState {
@@ -212,8 +220,28 @@ export function payloadToSessionFields (state: Omit<SearchCacheState, 'timestamp
       : {}),
     ...(typeof state.preferGuidedThisSession === 'boolean'
       ? { preferGuidedThisSession: state.preferGuidedThisSession }
+      : {}),
+    ...(state.pendingOrchestratorTurn !== undefined
+      ? { pendingOrchestratorTurn: state.pendingOrchestratorTurn }
       : {})
   }
+}
+
+/** True when storage marks an orchestrator turn in progress awaiting assistant reply. */
+export function sessionNeedsOrchestratorResume (session: ChatSessionRecord): boolean {
+  const pending = session.pendingOrchestratorTurn
+  if (!pending?.message) return false
+  const msgs = session.messages
+  if (!Array.isArray(msgs) || msgs.length === 0) return false
+  const last = msgs[msgs.length - 1]
+  if (last?.role !== 'user') return false
+  const expected = pending.displayText ?? pending.message
+  return String(last.content).trim() === String(expected).trim()
+}
+
+export function rootMaxUpdatedAt (root: ChatsRoot | null | undefined): number {
+  if (!root?.sessions?.length) return 0
+  return Math.max(...root.sessions.map(s => s.updatedAt ?? s.timestamp ?? 0))
 }
 
 /** Merge page state into the active session and persist. */
@@ -270,7 +298,8 @@ export function archiveActiveAndStartNewChatsRoot (root: ChatsRoot, state: Omit<
       guidedSearchState: initialGuidedSearchState(),
       guidedBookingHints: null,
       tripRequirements: null,
-      preferGuidedThisSession: false
+      preferGuidedThisSession: false,
+      pendingOrchestratorTurn: null
     }
     const sessions = root.sessions.map(s => (s.id === active.id ? cleared : s))
     const next = { version: 1 as const, activeSessionId: active.id, sessions }
@@ -324,7 +353,8 @@ export function activeToSearchCacheState (root: ChatsRoot): SearchCacheState | n
     guidedSearchState: s.guidedSearchState,
     guidedBookingHints: s.guidedBookingHints,
     tripRequirements: s.tripRequirements,
-    preferGuidedThisSession: s.preferGuidedThisSession
+    preferGuidedThisSession: s.preferGuidedThisSession,
+    pendingOrchestratorTurn: s.pendingOrchestratorTurn ?? null
   }
 }
 

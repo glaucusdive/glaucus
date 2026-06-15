@@ -357,7 +357,7 @@ import ChatComposer from '~/components/chat/ChatComposer.vue'
 import BottomSheetDrawer from '~/components/ui/BottomSheetDrawer.vue'
 import CardSearchResult from '~/components/CardSearchResult.vue'
 import ShopDetailPanel from '~/components/ShopDetailPanel.vue'
-import { useSearchCache, ensureChatsRoot, readChatsRoot, getActiveSession, persistActiveChatsRoot } from '~/composables/useSearchCache'
+import { useSearchCache, ensureChatsRoot, readChatsRoot, getActiveSession, persistActiveChatsRoot, sessionNeedsOrchestratorResume } from '~/composables/useSearchCache'
 import { useChatSessions, notifyChatSidebarUpdated } from '~/composables/useChatSessions'
 import { useDrawer } from '~/composables/useDrawer'
 import { useAuth } from '~/composables/useAuth'
@@ -372,7 +372,7 @@ import {
   findLastSearchAssistantContextIndex,
   sumAssistantSearchShopsSinceIndex
 } from '~/utils/searchPaginationShownCount'
-import { initSignedInChatsFromRemote, chatRemoteHydrateTick } from '~/composables/userChatsRemote'
+import { initSignedInChatsFromRemote, chatRemoteHydrateTick, flushPushUserChats } from '~/composables/userChatsRemote'
 import {
   GUIDED_PREFIX,
   initialGuidedSearchState,
@@ -633,6 +633,14 @@ const guidedSearchState = ref(initialGuidedSearchState())
 const guidedBookingHints = ref(null)
 /** Canonical trip constraints (search → booking handoff). */
 const tripRequirements = ref(emptyTripRequirements())
+/** In-flight orchestrator turn persisted for tab-switch / reload resume. */
+const pendingOrchestratorTurn = ref(null)
+
+function clearPendingOrchestratorTurn () {
+  if (!pendingOrchestratorTurn.value) return
+  pendingOrchestratorTurn.value = null
+  persistCache()
+}
 
 function absorbTripRequirementsFromSearchTurn (opts) {
   let next = tripRequirements.value
@@ -865,7 +873,42 @@ function buildPageCachePayload () {
     guidedSearchState: guidedSearchState.value,
     guidedBookingHints: guidedBookingHints.value,
     tripRequirements: tripRequirements.value,
-    preferGuidedThisSession: preferGuidedThisSession.value
+    preferGuidedThisSession: preferGuidedThisSession.value,
+    pendingOrchestratorTurn: pendingOrchestratorTurn.value
+  }
+}
+
+async function persistPendingTurnAndFlush (message, displayText) {
+  pendingOrchestratorTurn.value = {
+    message,
+    ...(displayText != null && displayText !== message ? { displayText } : {}),
+    startedAt: Date.now()
+  }
+  persistCache()
+  if (isSignedIn.value && user.value?.id) {
+    const root = readChatsRoot()
+    if (root) await flushPushUserChats(user.value.id, root)
+  }
+}
+
+function resumeOrchestratorTurnIfNeeded (session) {
+  if (isLoading.value || abortController.value) return
+  const active = session ?? (() => {
+    const root = readChatsRoot()
+    return root ? getActiveSession(root) : null
+  })()
+  if (!active || !sessionNeedsOrchestratorResume(active)) return
+  const pending = active.pendingOrchestratorTurn
+  if (!pending?.message) return
+  pendingOrchestratorTurn.value = pending
+  void sendMessage(pending.message, pending.displayText, { skipUserBubble: true })
+}
+
+function messagesMatchCached (cachedMessages) {
+  try {
+    return JSON.stringify(messages.value) === JSON.stringify(cachedMessages ?? [])
+  } catch {
+    return false
   }
 }
 
@@ -921,6 +964,20 @@ async function backfillSearchShopCardFieldsInMessages () {
 }
 
 async function hydrateFromRecord (cachedState) {
+  const root = readChatsRoot()
+  const sameSession = cachedState.id && root?.activeSessionId === cachedState.id
+  const inFlight = !!abortController.value
+  const pendingResume = sessionNeedsOrchestratorResume(cachedState)
+  const alreadySynced = sameSession && messagesMatchCached(cachedState.messages || [])
+
+  if (sameSession && (inFlight || (pendingResume && alreadySynced))) {
+    pendingOrchestratorTurn.value = cachedState.pendingOrchestratorTurn ?? null
+    if (pendingResume && !inFlight) {
+      resumeOrchestratorTurnIfNeeded(cachedState)
+    }
+    return
+  }
+
   isRestoringCache.value = true
   closeDrawer()
   messages.value = cachedState.messages || []
@@ -933,6 +990,7 @@ async function hydrateFromRecord (cachedState) {
   guidedBookingHints.value = cachedState.guidedBookingHints ?? null
   tripRequirements.value = normalizeTripRequirements(cachedState.tripRequirements ?? emptyTripRequirements())
   preferGuidedThisSession.value = !!cachedState.preferGuidedThisSession
+  pendingOrchestratorTurn.value = cachedState.pendingOrchestratorTurn ?? null
   pendingBookingPayload.value = null
   isLoading.value = false
   if (abortController.value) {
@@ -958,6 +1016,7 @@ async function hydrateFromRecord (cachedState) {
       }
     }, 300)
   })
+  resumeOrchestratorTurnIfNeeded(cachedState)
 }
 
 watch(chatRemoteHydrateTick, () => {
@@ -975,6 +1034,7 @@ function handlePendingNewChatRequest () {
     abortController.value = null
     isLoading.value = false
   }
+  clearPendingOrchestratorTurn()
   if (import.meta.client) {
     sessionStorage.removeItem(PENDING_DRAFT_RESUME_KEY)
     sessionStorage.removeItem(FORCE_NEW_CHAT_KEY)
@@ -1000,6 +1060,7 @@ watch(pendingSwitchSessionId, (id) => {
     abortController.value = null
     isLoading.value = false
   }
+  clearPendingOrchestratorTurn()
   closeDrawer()
   const root = applySwitchFromPage(sid, buildPageCachePayload())
   if (!root) return
@@ -1033,7 +1094,8 @@ function activeSessionToPageState () {
     guidedSearchState: active.guidedSearchState ?? null,
     guidedBookingHints: active.guidedBookingHints ?? null,
     tripRequirements: active.tripRequirements ?? null,
-    preferGuidedThisSession: active.preferGuidedThisSession ?? false
+    preferGuidedThisSession: active.preferGuidedThisSession ?? false,
+    pendingOrchestratorTurn: active.pendingOrchestratorTurn ?? null
   }
 }
 
@@ -1063,6 +1125,7 @@ function applyPendingDraftResumeFromProfile () {
     isLoading.value = false
   }
   pendingBookingPayload.value = null
+  clearPendingOrchestratorTurn()
 
   const mergedPayload = { ...payload, shopId: payload.shopId ?? shopId }
   const resumeMessages = [
@@ -1109,6 +1172,7 @@ onMounted(async () => {
   if (import.meta.client && sessionStorage.getItem(FORCE_NEW_CHAT_KEY) === '1') {
     sessionStorage.removeItem(FORCE_NEW_CHAT_KEY)
     sessionStorage.removeItem(PENDING_DRAFT_RESUME_KEY)
+    clearPendingOrchestratorTurn()
     if (abortController.value) {
       abortController.value.abort()
       abortController.value = null
@@ -1147,6 +1211,7 @@ onMounted(async () => {
   if (cachedState && cachedState.messages.length > 0) {
     messages.value = cachedState.messages
     userInput.value = cachedState.userInput || ''
+    pendingOrchestratorTurn.value = cachedState.pendingOrchestratorTurn ?? null
     if (cachedState.selectedShopId) selectedShopId.value = cachedState.selectedShopId
     const restoredDetail = cachedState.detailDrawerShopId ?? cachedState.mobileDetailShopId
     if (restoredDetail) detailDrawerShopId.value = restoredDetail
@@ -1172,6 +1237,7 @@ onMounted(async () => {
           }
         }, 300)
       })
+      resumeOrchestratorTurnIfNeeded(cachedState)
       return
     }
   }
@@ -1192,6 +1258,37 @@ onMounted(async () => {
 
   isRestoringCache.value = false
   notifyChatSidebarUpdated()
+})
+
+function onChatPageShow (ev) {
+  if (import.meta.server) return
+  const wasDiscarded = typeof document !== 'undefined' && document.wasDiscarded === true
+  if (!ev.persisted && !wasDiscarded) return
+  const root = readChatsRoot()
+  const active = root ? getActiveSession(root) : null
+  if (active) resumeOrchestratorTurnIfNeeded(active)
+}
+
+function onChatVisibilityChange () {
+  if (import.meta.server || typeof document === 'undefined') return
+  if (document.visibilityState !== 'visible') return
+  const root = readChatsRoot()
+  const active = root ? getActiveSession(root) : null
+  if (active) resumeOrchestratorTurnIfNeeded(active)
+}
+
+onMounted(() => {
+  if (import.meta.client) {
+    window.addEventListener('pageshow', onChatPageShow)
+    document.addEventListener('visibilitychange', onChatVisibilityChange)
+  }
+})
+
+onUnmounted(() => {
+  if (import.meta.client) {
+    window.removeEventListener('pageshow', onChatPageShow)
+    document.removeEventListener('visibilitychange', onChatVisibilityChange)
+  }
 })
 
 // Persist cache when state changes
@@ -1532,18 +1629,22 @@ async function postGuidedOrchestratorNdjson ({ url, headers, body, signal, onPro
 }
 
 // Send message to AI. Optional displayText: show this in the chat bubble while sending messageText to the API (e.g. chip label vs value).
-const sendMessage = async (messageText, displayText) => {
+// options.skipUserBubble: resume an interrupted orchestrator turn without duplicating the user bubble.
+const sendMessage = async (messageText, displayText, options = {}) => {
+  const { skipUserBubble = false } = options
   const message = messageText ?? userInput.value.trim()
   
   if (!message) return
 
   const rawTrim = String(message).trim()
 
-  const lastAssistForAnalytics = [...messages.value].reverse().find((m) => m.role === 'assistant')
-  const inBookingFlowForAnalytics = Boolean(
-    lastAssistForAnalytics?.intent === 'booking' && lastAssistForAnalytics?.shopId
-  )
-  trackOutgoingChatMessage(rawTrim, displayText, messageText, inBookingFlowForAnalytics)
+  if (!skipUserBubble) {
+    const lastAssistForAnalytics = [...messages.value].reverse().find((m) => m.role === 'assistant')
+    const inBookingFlowForAnalytics = Boolean(
+      lastAssistForAnalytics?.intent === 'booking' && lastAssistForAnalytics?.shopId
+    )
+    trackOutgoingChatMessage(rawTrim, displayText, messageText, inBookingFlowForAnalytics)
+  }
 
   // Cancel any in-progress request
   if (abortController.value) {
@@ -1557,7 +1658,7 @@ const sendMessage = async (messageText, displayText) => {
 
   const textToShow = displayText ?? message
 
-  if (rawTrim === BOOKING_PRESEND_OPEN_FORM) {
+  if (!skipUserBubble && rawTrim === BOOKING_PRESEND_OPEN_FORM) {
     messages.value.push({ role: 'user', content: textToShow })
     userInput.value = ''
     await scrollToBottom()
@@ -1566,7 +1667,7 @@ const sendMessage = async (messageText, displayText) => {
     return
   }
 
-  if (rawTrim === BOOKING_PRESEND_CREATE_ACCOUNT) {
+  if (!skipUserBubble && rawTrim === BOOKING_PRESEND_CREATE_ACCOUNT) {
     messages.value.push({ role: 'user', content: textToShow })
     userInput.value = ''
     await scrollToBottom()
@@ -1577,16 +1678,14 @@ const sendMessage = async (messageText, displayText) => {
   }
 
   // Add user message to chat (show label in bubble when provided, e.g. "Load next 5" instead of "Show more")
-  messages.value.push({
-    role: 'user',
-    content: textToShow
-  })
-  
-  // Clear input
-  userInput.value = ''
-  
-  // Scroll to bottom
-  await scrollToBottom()
+  if (!skipUserBubble) {
+    messages.value.push({
+      role: 'user',
+      content: textToShow
+    })
+    userInput.value = ''
+    await scrollToBottom()
+  }
   
   // Set loading state
   isLoading.value = true
@@ -1594,6 +1693,8 @@ const sendMessage = async (messageText, displayText) => {
   // Create new AbortController for this request
   abortController.value = new AbortController()
   const currentAbortController = abortController.value
+
+  await persistPendingTurnAndFlush(message, textToShow)
   
   try {
     // Call API with abort signal
@@ -2165,6 +2266,9 @@ const sendMessage = async (messageText, displayText) => {
       stopChatLoadingBrand()
       isLoading.value = false
       abortController.value = null
+      if (!currentAbortController.signal.aborted) {
+        clearPendingOrchestratorTurn()
+      }
       await scrollToBottom()
       persistCache()
       await nextTick()

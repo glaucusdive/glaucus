@@ -5,6 +5,8 @@ import {
   writeChatsRoot,
   normalizeRoot,
   getActiveSession,
+  ensureChatsRoot,
+  rootMaxUpdatedAt,
   type ChatsRoot
 } from '~/composables/useSearchCache'
 import { extractBookingFromCache, hasBookingResumeSnapshot } from '~/utils/extractBookingFromCache'
@@ -88,6 +90,27 @@ function activeSessionHasBookingInProgress (root: ChatsRoot | null | undefined):
   return extractBookingFromCache({ messages: active.messages }) != null
 }
 
+/**
+ * Merge local sessionStorage root with Supabase remote by recency.
+ * Tie-break: prefer local (active tab is source of truth).
+ */
+export function mergeChatsRoots (
+  local: ChatsRoot | null | undefined,
+  remote: ChatsRoot | null | undefined
+): ChatsRoot | null {
+  const localHas = rootHasMessages(local)
+  const remoteHas = rootHasMessages(remote)
+  if (!localHas && !remoteHas) return null
+  if (!localHas && remoteHas) return normalizeRoot(remote!)
+  if (localHas && !remoteHas) return normalizeRoot(local!)
+
+  const localMax = rootMaxUpdatedAt(local)
+  const remoteMax = rootMaxUpdatedAt(remote)
+  if (localMax > remoteMax) return normalizeRoot(local!)
+  if (remoteMax > localMax) return normalizeRoot(remote!)
+  return normalizeRoot(local!)
+}
+
 export async function initSignedInChatsFromRemote (client: SupabaseClient, userId: string) {
   if (!import.meta.client || !userId) return
 
@@ -107,15 +130,17 @@ export async function initSignedInChatsFromRemote (client: SupabaseClient, userI
     }
   }
 
-  if (rootHasMessages(remote)) {
-    writeChatsRoot(normalizeRoot(remote!), { skipRemote: true })
-    return
-  }
+  const localNorm = localRaw ? normalizeRoot(localRaw) : null
+  const remoteNorm = remote ? normalizeRoot(remote) : null
+  const merged = mergeChatsRoots(localNorm, remoteNorm)
 
-  if (rootHasMessages(localRaw)) {
-    const normalized = normalizeRoot(localRaw!)
-    writeChatsRoot(normalized, { skipRemote: true })
-    await flushPushUserChats(userId, normalized)
+  if (merged) {
+    writeChatsRoot(merged, { skipRemote: true })
+    const localMax = rootMaxUpdatedAt(localNorm)
+    const remoteMax = rootMaxUpdatedAt(remoteNorm)
+    if (localMax >= remoteMax) {
+      await flushPushUserChats(userId, merged)
+    }
     return
   }
 
