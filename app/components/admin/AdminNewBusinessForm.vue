@@ -113,79 +113,87 @@
     </h3>
 
     <div class="flex min-w-0 flex-col gap-4">
-            <FormField label="Dive sites">
-              <AdminSelectChip
-                :model-value="modelValue.dive_site_ids"
-                full-width
-                :options="diveSiteOptions"
-                :multiple="true"
-                :allow-add="true"
-                singular-label="dive site"
-                :on-create="(n) => createDiveSite(n, modelValue.country_id)"
-                @update:model-value="patch({ dive_site_ids: $event })"
-                @created="onLookupCreated('diveSites', $event)"
-              />
-              <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                Missing from CSV? Type a name in Add… to create a dive site (country required).
-              </p>
-            </FormField>
-            <FormField label="Courses">
-              <AdminSelectChip
-                :model-value="modelValue.course_ids"
-                full-width
-                :options="courseOptions"
-                :multiple="true"
-                :allow-add="false"
-                singular-label="course"
-                @update:model-value="patch({ course_ids: $event })"
-              />
-              <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                Not auto-matched? Search and select courses below (courses must exist in the catalog).
-              </p>
-            </FormField>
-            <FormField label="Rental gear">
-              <AdminSelectChip
-                :model-value="modelValue.rental_equipment_ids"
-                full-width
-                :options="rentalOptions"
-                :multiple="true"
-                :allow-add="true"
-                singular-label="rental"
-                :on-create="(n) => createSimpleLookup('rental_equipment', n)"
-                @update:model-value="patch({ rental_equipment_ids: $event })"
-                @created="onLookupCreated('rentalEquipment', $event)"
-              />
-              <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                Missing gear? Add via Add…
-              </p>
-            </FormField>
-            <FormField label="Gases">
-              <AdminSelectChip
-                :model-value="modelValue.gas_ids"
-                full-width
-                :options="gasOptions"
-                :multiple="true"
-                :allow-add="true"
-                singular-label="gas"
-                :on-create="(n) => createSimpleLookup('gases', n)"
-                @update:model-value="patch({ gas_ids: $event })"
-                @created="onLookupCreated('gases', $event)"
-              />
-              <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                Missing gas? Add via Add…
-              </p>
-            </FormField>
+      <FormField label="Dive sites">
+        <AdminSelectChip
+          :model-value="modelValue.dive_site_ids"
+          full-width
+          :options="diveSiteOptions"
+          :multiple="true"
+          :allow-add="true"
+          singular-label="dive site"
+          :pending-names="pendingDiveSites"
+          :on-create="(n) => createDiveSite(n, modelValue.country_id)"
+          @update:model-value="patch({ dive_site_ids: $event })"
+          @created="onLookupCreated('diveSites', $event)"
+          @discard-pending="(n) => discardPending('diveSites', n)"
+        />
+        <p v-if="pendingDiveSites.length" class="mt-1 text-xs text-amber-700 dark:text-amber-400">
+          Dashed tags are from CSV — + creates and links, × skips.
+        </p>
+      </FormField>
+      <FormField label="Courses">
+        <AdminSelectChip
+          :model-value="modelValue.course_ids"
+          full-width
+          :options="courseOptions"
+          :multiple="true"
+          :allow-add="false"
+          :pending-names="pendingCourses"
+          :pending-addable="false"
+          singular-label="course"
+          @update:model-value="patch({ course_ids: $event })"
+          @discard-pending="(n) => discardPending('courses', n)"
+        />
+        <p v-if="pendingCourses.length" class="mt-1 text-xs text-amber-700 dark:text-amber-400">
+          Dashed courses weren’t matched — pick from Add… or × to skip.
+        </p>
+      </FormField>
+      <FormField label="Rental gear">
+        <AdminSelectChip
+          :model-value="modelValue.rental_equipment_ids"
+          full-width
+          :options="rentalOptions"
+          :multiple="true"
+          :allow-add="true"
+          singular-label="rental"
+          :pending-names="pendingRental"
+          :on-create="(n) => createSimpleLookup('rental_equipment', n)"
+          @update:model-value="patch({ rental_equipment_ids: $event })"
+          @created="onLookupCreated('rentalEquipment', $event)"
+          @discard-pending="(n) => discardPending('rentalEquipment', n)"
+        />
+      </FormField>
+      <FormField label="Gases">
+        <AdminSelectChip
+          :model-value="modelValue.gas_ids"
+          full-width
+          :options="gasOptions"
+          :multiple="true"
+          :allow-add="true"
+          singular-label="gas"
+          :pending-names="pendingGases"
+          :on-create="(n) => createSimpleLookup('gases', n)"
+          @update:model-value="patch({ gas_ids: $event })"
+          @created="onLookupCreated('gases', $event)"
+          @discard-pending="(n) => discardPending('gases', n)"
+        />
+      </FormField>
     </div>
   </section>
 
-  <ul v-if="warnings.length > 0" class="mt-4 flex flex-col gap-1 text-xs text-amber-700 dark:text-amber-400">
-    <li v-for="(w, i) in warnings" :key="i">{{ w }}</li>
+  <ul v-if="generalWarnings.length > 0" class="mt-4 flex flex-col gap-1 text-xs text-amber-700 dark:text-amber-400">
+    <li v-for="(w, i) in generalWarnings" :key="i">{{ w }}</li>
   </ul>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import AdminSelectChip from '~/components/admin/AdminSelectChip.vue'
+import {
+  unknownNamesFromWarnings,
+  filterDiscardedPendingNames,
+  generalBulkImportWarnings
+} from '~~/shared/unknownItemsFromWarnings'
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
@@ -201,13 +209,33 @@ const props = defineProps({
   createSimpleLookup: { type: Function, required: true },
   createDiveSite: { type: Function, required: true },
   onLookupCreated: { type: Function, required: true },
-  warnings: { type: Array, default: () => [] }
+  warnings: { type: Array, default: () => [] },
+  discardedPending: { type: Set, default: undefined }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'discard-pending'])
 
 const countryChip = computed(() => (props.modelValue.country_id ? [props.modelValue.country_id] : []))
 const regionChip = computed(() => (props.modelValue.region_id ? [props.modelValue.region_id] : []))
+
+function pendingForField (field) {
+  const raw = unknownNamesFromWarnings(props.warnings, field)
+  return filterDiscardedPendingNames(raw, field, props.discardedPending)
+}
+
+const pendingDiveSites = computed(() => pendingForField('diveSites'))
+const pendingCourses = computed(() => pendingForField('courses'))
+const pendingRental = computed(() => pendingForField('rentalEquipment'))
+const pendingGases = computed(() => pendingForField('gases'))
+
+const generalWarnings = computed(() =>
+  generalBulkImportWarnings(props.warnings, {
+    diveSites: pendingDiveSites.value,
+    courses: pendingCourses.value,
+    rentalEquipment: pendingRental.value,
+    gases: pendingGases.value
+  })
+)
 
 function fieldId (suffix) {
   return `${props.idPrefix}-${suffix}`
@@ -223,5 +251,9 @@ function onCountryChip (v) {
 
 function onRegionChip (v) {
   patch({ region_id: Array.isArray(v) && v.length > 0 ? v[0] : null })
+}
+
+function discardPending (field, name) {
+  emit('discard-pending', { field, name })
 }
 </script>

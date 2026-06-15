@@ -7,7 +7,7 @@
     ]"
   >
     <div
-      v-if="modelValue.length > 0"
+      v-if="modelValue.length > 0 || pendingNames.length > 0"
       class="flex gap-1 min-w-0 items-center"
       :class="scrollChips ? 'flex-nowrap overflow-x-auto' : 'flex-wrap'"
     >
@@ -25,8 +25,32 @@
           @click="removeId(id)"
         >×</button>
       </span>
+      <span
+        v-for="name in pendingNames"
+        :key="`pending-${name}`"
+        class="inline-flex items-center gap-1 rounded border border-dashed border-amber-500/70 bg-amber-50/80 px-2 py-0.5 text-xs text-amber-950 dark:border-amber-400/60 dark:bg-amber-950/30 dark:text-amber-100"
+      >
+        <span class="max-w-[12rem] truncate">{{ name }}</span>
+        <button
+          v-if="!disabled && pendingAddable && typeof onCreate === 'function'"
+          type="button"
+          class="rounded px-1 font-semibold leading-none text-emerald-700 hover:bg-emerald-100/80 dark:text-emerald-300 dark:hover:bg-emerald-900/40 cursor-pointer disabled:opacity-50"
+          :disabled="pendingSavingName === name"
+          :aria-label="`Add ${name}`"
+          :title="`Add ${name}`"
+          @click="addPendingName(name)"
+        >{{ pendingSavingName === name ? '…' : '+' }}</button>
+        <button
+          v-if="!disabled"
+          type="button"
+          class="rounded px-1 leading-none text-zinc-500 hover:text-red-600 dark:text-zinc-400 dark:hover:text-red-400 cursor-pointer"
+          :aria-label="`Discard ${name}`"
+          :title="`Discard ${name}`"
+          @click="discardPendingName(name)"
+        >×</button>
+      </span>
     </div>
-    <span v-else-if="disabled" class="text-xs text-zinc-400 dark:text-zinc-500">—</span>
+    <span v-else-if="disabled && pendingNames.length === 0" class="text-xs text-zinc-400 dark:text-zinc-500">—</span>
     <div v-if="!disabled" class="flex items-center gap-1" :class="fullWidth ? 'w-full' : ''">
       <select
         v-if="!creating"
@@ -118,15 +142,26 @@ const props = defineProps({
   onCreate: {
     type: Function,
     default: null
+  },
+  /** Unmatched CSV names shown as dashed chips with add/discard actions. */
+  pendingNames: {
+    type: Array,
+    default: () => []
+  },
+  /** When false, pending chips only offer discard (e.g. courses). */
+  pendingAddable: {
+    type: Boolean,
+    default: true
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'created'])
+const emit = defineEmits(['update:modelValue', 'created', 'discard-pending'])
 
 const pendingSelection = ref('')
 const creating = ref(false)
 const newName = ref('')
 const saving = ref(false)
+const pendingSavingName = ref('')
 const addError = ref('')
 const newInputRef = ref(null)
 
@@ -219,5 +254,34 @@ function cancelAdd () {
   creating.value = false
   newName.value = ''
   addError.value = ''
+}
+
+function discardPendingName (name) {
+  emit('discard-pending', name)
+}
+
+async function addPendingName (name) {
+  const trimmed = String(name || '').trim()
+  if (!trimmed || typeof props.onCreate !== 'function') return
+  pendingSavingName.value = trimmed
+  addError.value = ''
+  try {
+    const created = await props.onCreate(trimmed)
+    if (created && created.id) {
+      emit('created', created)
+      if (props.multiple) {
+        if (!props.modelValue.some((mid) => String(mid) === String(created.id))) {
+          emitValue([...props.modelValue, created.id])
+        }
+      } else {
+        emitValue([created.id])
+      }
+      emit('discard-pending', trimmed)
+    }
+  } catch (e) {
+    addError.value = e instanceof Error ? e.message : 'Could not add item'
+  } finally {
+    pendingSavingName.value = ''
+  }
 }
 </script>
