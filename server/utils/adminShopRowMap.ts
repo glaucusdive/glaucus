@@ -15,6 +15,8 @@ export type AdminShopListRow = {
   country_name: string | null
   region_name: string | null
   google_rating: number | null
+  created_at: string | null
+  updated_at: string | null
   course_ids: string[]
   rental_equipment_ids: string[]
   gas_ids: string[]
@@ -35,6 +37,8 @@ export type ShopRowDb = {
   country_id: string | null
   region_id: string | null
   google_rating: number | null
+  created_at: string | null
+  updated_at: string | null
   country?: { name: string } | null
   region?: { name: string } | null
   diveshop_courses: Array<{ course_id: string }> | null
@@ -60,6 +64,8 @@ export function mapDiveshopToAdminListRow (s: ShopRowDb): AdminShopListRow {
     country_name: s.country?.name != null && String(s.country.name).trim() !== '' ? String(s.country.name).trim() : null,
     region_name: s.region?.name != null && String(s.region.name).trim() !== '' ? String(s.region.name).trim() : null,
     google_rating: s.google_rating,
+    created_at: s.created_at ?? null,
+    updated_at: s.updated_at ?? null,
     course_ids: (s.diveshop_courses || []).map((r) => r.course_id),
     rental_equipment_ids: (s.diveshop_rental_equipment || []).map((r) => r.rental_equipment_id),
     gas_ids: (s.diveshop_gases || []).map((r) => r.gas_id),
@@ -69,7 +75,7 @@ export function mapDiveshopToAdminListRow (s: ShopRowDb): AdminShopListRow {
 
 export const ADMIN_SHOP_LIST_SELECT = `
   id, slug, business_name, street_address, website_url, city, state, phone, email, type,
-  country_id, region_id, google_rating,
+  country_id, region_id, google_rating, created_at, updated_at,
   country:countries(name),
   region:regions(name),
   diveshop_courses(course_id),

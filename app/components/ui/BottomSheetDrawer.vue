@@ -22,7 +22,7 @@
         >
           <template v-if="hasFooter">
             <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <div class="min-h-0 flex-1 overflow-y-auto">
+              <div class="min-h-0 flex-1 grow flex flex-col">
                 <slot />
               </div>
               <div class="shrink-0 border-t border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">

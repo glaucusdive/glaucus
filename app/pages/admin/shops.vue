@@ -379,6 +379,24 @@ const TEXT_GRID_COLS = [
   { prop: 'email', name: 'Email', size: 180 }
 ]
 
+const DATE_GRID_COLS = [
+  { prop: 'created_at_display', name: 'Date added', size: 160 },
+  { prop: 'updated_at_display', name: 'Date modified', size: 160 }
+]
+
+function formatAdminShopTimestamp (iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  })
+}
+
 const gridTheme = computed(() => (isDark.value ? 'darkCompact' : 'compact'))
 
 const rows = ref([])
@@ -421,7 +439,9 @@ function makeDraft (shop) {
     course_ids: Array.isArray(shop?.course_ids) ? [...shop.course_ids] : [],
     rental_equipment_ids: Array.isArray(shop?.rental_equipment_ids) ? [...shop.rental_equipment_ids] : [],
     gas_ids: Array.isArray(shop?.gas_ids) ? [...shop.gas_ids] : [],
-    dive_site_ids: Array.isArray(shop?.dive_site_ids) ? [...shop.dive_site_ids] : []
+    dive_site_ids: Array.isArray(shop?.dive_site_ids) ? [...shop.dive_site_ids] : [],
+    created_at_display: formatAdminShopTimestamp(shop?.created_at),
+    updated_at_display: formatAdminShopTimestamp(shop?.updated_at)
   }
 }
 
@@ -807,6 +827,16 @@ const gridColumns = [
     cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
   }),
   ...TEXT_GRID_COLS.map((c) =>
+    withAdminHeader({
+      prop: c.prop,
+      name: c.name,
+      size: c.size,
+      readonly: true,
+      resize: true,
+      cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
+    })
+  ),
+  ...DATE_GRID_COLS.map((c) =>
     withAdminHeader({
       prop: c.prop,
       name: c.name,
