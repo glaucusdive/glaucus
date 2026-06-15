@@ -57,11 +57,12 @@
     v-else-if="kind === 'select'"
     class="flex h-full min-h-0 min-w-0 max-w-full items-center overflow-x-hidden overflow-y-hidden p-0"
   >
-    <AdminMultiSelectCheckboxDropdown
+    <SearchMultiSelect
       class="min-h-0 min-w-0 flex-1"
       :model-value="chipValue"
       :options="optionsList"
       :disabled="!writeMode"
+      searchable
       :allow-add="selectConfig.allowAdd"
       :singular-label="selectConfig.singularLabel"
       :single-select="!selectConfig.multiple"
@@ -97,7 +98,6 @@
 import { computed } from 'vue'
 import { Trash2, Link } from 'lucide-vue-next'
 import type { ColumnDataSchemaModel } from '@revolist/vue3-datagrid'
-import AdminMultiSelectCheckboxDropdown from '~/components/admin/AdminMultiSelectCheckboxDropdown.vue'
 import type { AdminShopGridContext, ShopGridRow } from './adminShopGridContext'
 import { ADMIN_GRID_READ_DATA, ADMIN_GRID_WRITE_INPUT, ADMIN_GRID_WRITE_WRAP } from '~/components/admin/adminGridEditClasses'
 import { onAdminGridInputKeydown } from '~/utils/adminGridInputKeydown'
