@@ -83,6 +83,7 @@ import ShopDataForm from '~/components/shop/ShopDataForm.vue'
 import type { ShopLookups } from '~~/shared/shopPortalPayload'
 import type { PendingLookups, ShopFormSnapshot } from '~~/shared/shopPortalPayload'
 import { buildPortalSubmissionPayload } from '~/utils/shopPortalForm'
+import { shopSeoTitle } from '~/utils/shopSeo'
 
 definePageMeta({ layout: false })
 
@@ -130,6 +131,23 @@ const pendingLookups = reactive<PendingLookups>({})
 const submitterName = ref('')
 const submitterEmail = ref('')
 const submitterNotes = ref('')
+
+const pageTitle = computed(() => {
+  if (submitted.value) return 'Thanks — listing updated'
+  if (loadError.value) return 'Link not found'
+  if (loading.value) return 'Review your listing'
+  const countryName = form.value.country_id
+    ? lookups.value.countries.find((c) => c.id === form.value.country_id)?.name ?? null
+    : null
+  return shopSeoTitle({
+    business_name: form.value.business_name || businessName.value,
+    city: form.value.city,
+    state: form.value.state,
+    country: countryName ? { name: countryName } : null
+  })
+})
+
+useHead(computed(() => ({ title: pageTitle.value })))
 
 onMounted(async () => {
   loading.value = true

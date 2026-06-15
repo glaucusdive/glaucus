@@ -1,4 +1,7 @@
+import { formatShopCityState, shopDisambiguationChipLabel } from '~~/shared/bookShopPick'
+
 type ShopSeoInput = {
+  id?: string
   business_name?: string | null
   description?: string | null
   type?: string | null
@@ -9,7 +12,19 @@ type ShopSeoInput = {
 
 export function shopSeoTitle (shop: ShopSeoInput | null | undefined): string {
   const name = shop?.business_name?.trim()
-  return name || 'Dive Shop'
+  if (!name) return 'Dive Shop'
+  const location = formatShopCityState(shop)
+  if (location) {
+    return shopDisambiguationChipLabel({
+      id: shop?.id ?? '',
+      business_name: name,
+      city: shop?.city,
+      state: shop?.state
+    })
+  }
+  const country = shop?.country?.name?.trim()
+  if (country) return `${name} — ${country}`
+  return name
 }
 
 export function shopSeoDescription (shop: ShopSeoInput | null | undefined): string {
