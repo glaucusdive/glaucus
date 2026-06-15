@@ -132,7 +132,9 @@
             :create-dive-site="createDiveSite"
             :on-lookup-created="handleLookupCreated"
             :warnings="entry.warnings"
+            :discarded-pending="discardedForIndex(entry.index)"
             @update:model-value="onFormUpdate(entry.index, $event)"
+            @discard-pending="onDiscardPending(entry.index, $event)"
           />
         </div>
       </div>
@@ -161,6 +163,7 @@ import { LruCache } from '~~/shared/lruCache'
 import { resolveCsvShopRowToForm } from '~~/shared/resolveCsvShopRowToForm'
 import { courseOptionsForMatching } from '~~/shared/courseLookupMatch'
 import { filterBulkImportWarnings } from '~~/shared/filterBulkImportWarnings'
+import { pendingDiscardedKey } from '~~/shared/unknownItemsFromWarnings'
 import {
   buildAdminShopWriteBody,
   emptyAdminNewBusinessForm
@@ -200,6 +203,7 @@ const importSummary = ref('')
 
 const formCache = new LruCache(BULK_IMPORT_FORM_CACHE_SIZE)
 const warningsCache = new LruCache(BULK_IMPORT_FORM_CACHE_SIZE)
+const discardedPendingCache = new LruCache(BULK_IMPORT_FORM_CACHE_SIZE)
 
 const importIndices = computed(() =>
   props.rowMeta
@@ -268,6 +272,23 @@ function warningsForIndex (index, form) {
   return filterBulkImportWarnings(warnings, resolvedForm, buildLookups())
 }
 
+function discardedForIndex (index) {
+  let set = discardedPendingCache.get(index)
+  if (!set) {
+    set = new Set()
+    discardedPendingCache.set(index, set)
+  }
+  return set
+}
+
+function onDiscardPending (index, { field, name }) {
+  discardedForIndex(index).add(pendingDiscardedKey(field, name))
+  const form = formCache.get(index)
+  if (form) {
+    warningsCache.set(index, warningsForIndex(index, form))
+  }
+}
+
 function handleLookupCreated (kindKey, opt) {
   props.onLookupCreated(kindKey, opt)
   const idx = expandedIndex.value
@@ -325,6 +346,7 @@ function setSkip (index, skip) {
   if (skip && expandedIndex.value === index) expandedIndex.value = null
   formCache.delete(index)
   warningsCache.delete(index)
+  discardedPendingCache.delete(index)
 }
 
 function toggleExpanded (index) {
@@ -422,6 +444,7 @@ watch(
   () => {
     formCache.clear()
     warningsCache.clear()
+    discardedPendingCache.clear()
     duplicatePage.value = 1
     importPage.value = 1
     expandedIndex.value = null
