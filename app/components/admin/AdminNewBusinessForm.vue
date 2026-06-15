@@ -113,56 +113,68 @@
     </h3>
 
     <div class="flex min-w-0 flex-col gap-4">
-      <FormField label="Dive sites">
-        <AdminSelectChip
-          :model-value="modelValue.dive_site_ids"
-          full-width
-          :options="diveSiteOptions"
-          :multiple="true"
-          :allow-add="true"
-          singular-label="dive site"
-          :on-create="(n) => createDiveSite(n, modelValue.country_id)"
-          @update:model-value="patch({ dive_site_ids: $event })"
-          @created="onLookupCreated('diveSites', $event)"
-        />
-      </FormField>
-      <FormField label="Courses">
-        <AdminSelectChip
-          :model-value="modelValue.course_ids"
-          full-width
-          :options="courseOptions"
-          :multiple="true"
-          :allow-add="false"
-          singular-label="course"
-          @update:model-value="patch({ course_ids: $event })"
-        />
-      </FormField>
-      <FormField label="Rental gear">
-        <AdminSelectChip
-          :model-value="modelValue.rental_equipment_ids"
-          full-width
-          :options="rentalOptions"
-          :multiple="true"
-          :allow-add="true"
-          singular-label="rental"
-          :on-create="(n) => createSimpleLookup('rental_equipment', n)"
-          @update:model-value="patch({ rental_equipment_ids: $event })"
-          @created="onLookupCreated('rentalEquipment', $event)"
-        />
-      </FormField>
-      <FormField label="Gases">
-        <AdminSelectChip
-          :model-value="modelValue.gas_ids"
-          full-width
-          :options="gasOptions"
-          :multiple="true"
-          :allow-add="true"
-          singular-label="gas"
-          :on-create="(n) => createSimpleLookup('gases', n)"
-          @update:model-value="patch({ gas_ids: $event })"
-          @created="onLookupCreated('gases', $event)"
-        />
-      </FormField>
+            <FormField label="Dive sites">
+              <AdminSelectChip
+                :model-value="modelValue.dive_site_ids"
+                full-width
+                :options="diveSiteOptions"
+                :multiple="true"
+                :allow-add="true"
+                singular-label="dive site"
+                :on-create="(n) => createDiveSite(n, modelValue.country_id)"
+                @update:model-value="patch({ dive_site_ids: $event })"
+                @created="onLookupCreated('diveSites', $event)"
+              />
+              <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Missing from CSV? Type a name in Add… to create a dive site (country required).
+              </p>
+            </FormField>
+            <FormField label="Courses">
+              <AdminSelectChip
+                :model-value="modelValue.course_ids"
+                full-width
+                :options="courseOptions"
+                :multiple="true"
+                :allow-add="false"
+                singular-label="course"
+                @update:model-value="patch({ course_ids: $event })"
+              />
+              <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Not auto-matched? Search and select courses below (courses must exist in the catalog).
+              </p>
+            </FormField>
+            <FormField label="Rental gear">
+              <AdminSelectChip
+                :model-value="modelValue.rental_equipment_ids"
+                full-width
+                :options="rentalOptions"
+                :multiple="true"
+                :allow-add="true"
+                singular-label="rental"
+                :on-create="(n) => createSimpleLookup('rental_equipment', n)"
+                @update:model-value="patch({ rental_equipment_ids: $event })"
+                @created="onLookupCreated('rentalEquipment', $event)"
+              />
+              <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Missing gear? Add via Add…
+              </p>
+            </FormField>
+            <FormField label="Gases">
+              <AdminSelectChip
+                :model-value="modelValue.gas_ids"
+                full-width
+                :options="gasOptions"
+                :multiple="true"
+                :allow-add="true"
+                singular-label="gas"
+                :on-create="(n) => createSimpleLookup('gases', n)"
+                @update:model-value="patch({ gas_ids: $event })"
+                @created="onLookupCreated('gases', $event)"
+              />
+              <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Missing gas? Add via Add…
+              </p>
+            </FormField>
     </div>
   </section>
 

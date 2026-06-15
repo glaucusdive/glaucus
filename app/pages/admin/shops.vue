@@ -253,7 +253,9 @@ const regionOptions = computed(() => {
 const courseOptions = computed(() =>
   lookups.value.courses.map((c) => ({
     id: String(c.id),
-    label: c.label || c.certification_name || 'Course'
+    label: c.label || c.certification_name || 'Course',
+    certification_name: c.certification_name ?? '',
+    agency_name: c.agency_name ?? null
   }))
 )
 const rentalOptions = computed(() =>
@@ -290,7 +292,13 @@ const diveSiteOptions = computed(() => {
     if (!id) continue
     const norm = normalizeAdminLookupId(id)
     const label = s.name != null && String(s.name).trim() !== '' ? String(s.name) : 'Unnamed dive site'
-    if (!map.has(norm)) map.set(norm, { id, label })
+    if (!map.has(norm)) map.set(norm, { id, label, country_id: s.country_id ?? null })
+    else {
+      const existing = map.get(norm)
+      if (s.country_id != null && existing.country_id == null) {
+        map.set(norm, { id, label, country_id: s.country_id })
+      }
+    }
   }
   for (const row of rows.value) {
     for (const raw of row.dive_site_ids || []) {
@@ -322,7 +330,7 @@ async function mergeResolvedDiveSites (ids) {
       const norm = normalizeAdminLookupId(id)
       if (seen.has(norm)) continue
       seen.add(norm)
-      list.push({ id: s.id, name: s.name })
+      list.push({ id: s.id, name: s.name, country_id: s.country_id ?? null })
     }
   } catch {
     // non-fatal
@@ -722,13 +730,15 @@ async function createDiveSite (name, country_id) {
     headers: authHeaders(),
     body: { name, country_id }
   })
-  return { id: item.id, label: item.name }
+  return { id: item.id, label: item.name, country_id: item.country_id ?? country_id }
 }
 
 function onLookupCreated (kindKey, opt) {
   const list = lookups.value[kindKey]
   if (!list) return
-  if (kindKey === 'rentalEquipment' || kindKey === 'gases' || kindKey === 'regions' || kindKey === 'diveSites' || kindKey === 'countries' || kindKey === 'diveBusinessTypes') {
+  if (kindKey === 'diveSites') {
+    list.push({ id: opt.id, name: opt.label, country_id: opt.country_id ?? null })
+  } else if (kindKey === 'rentalEquipment' || kindKey === 'gases' || kindKey === 'regions' || kindKey === 'countries' || kindKey === 'diveBusinessTypes') {
     list.push({ id: opt.id, name: opt.label })
   } else {
     list.push(opt)

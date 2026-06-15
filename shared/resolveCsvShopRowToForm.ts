@@ -1,11 +1,12 @@
 import type { ParsedShopCsvRow } from './parseScubaMasterShopCsv'
 import type { AdminNewBusinessFormState } from './adminNewBusinessFormShape'
 import { businessTypeIdsFromStored } from './diveBusinessTypes'
+import type { CourseMatchOption } from './courseLookupMatch'
 
 export interface BulkImportLookupOptions {
   countries: Array<{ id: string; name: string }>
   regions: Array<{ id: string; name: string }>
-  courses: Array<{ id: string; certification_name: string; agency_name?: string | null }>
+  courses: CourseMatchOption[]
   rentalEquipment: Array<{ id: string; name: string }>
   gases: Array<{ id: string; name: string }>
   diveSites: Array<{ id: string; name: string; country_id?: string | null }>
