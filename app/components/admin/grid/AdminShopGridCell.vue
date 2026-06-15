@@ -76,7 +76,7 @@
     v-else
     class="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col justify-center p-0"
   >
-    <div v-if="writeMode" class="flex min-h-0 min-w-0 flex-1 items-stretch">
+    <div v-if="writeMode && !isReadonlyText" class="flex min-h-0 min-w-0 flex-1 items-stretch">
       <div :class="ADMIN_GRID_WRITE_WRAP">
         <input
           v-model="textField"
@@ -112,6 +112,8 @@ const SELECT_PROPS = new Set([
   'dive_site_ids'
 ])
 
+const READONLY_TEXT_PROPS = new Set(['created_at_display', 'updated_at_display'])
+
 const props = defineProps<
   ColumnDataSchemaModel<ShopGridRow> & { gridContext: AdminShopGridContext }
 >()
@@ -128,6 +130,8 @@ const kind = computed(() => {
   if (SELECT_PROPS.has(p)) return 'select' as const
   return 'text' as const
 })
+
+const isReadonlyText = computed(() => READONLY_TEXT_PROPS.has(prop.value))
 
 const businessName = computed({
   get: () => String(model.value.business_name ?? ''),

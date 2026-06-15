@@ -1,0 +1,4 @@
+export const BULK_IMPORT_PAGE_SIZE = 25
+export const BULK_IMPORT_MAX_ROWS = 1000
+export const BULK_IMPORT_PARSE_BATCH_SIZE = 50
+export const BULK_IMPORT_FORM_CACHE_SIZE = 50

@@ -3,186 +3,101 @@
     :open="open"
     aria-label="Add new business"
     z-index-class="z-[60]"
+    sheet-height-class="max-h-[92dvh]"
     @update:open="$emit('update:open', $event)"
   >
-    <header class="flex shrink-0 items-center justify-between gap-2 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-      <h2 class="text-base font-semibold text-zinc-900 dark:text-white">Add new business</h2>
-      <button
-        type="button"
-        class="rounded-md p-1.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800 cursor-pointer"
-        aria-label="Close"
-        @click="close"
-      >
-        <span class="text-lg leading-none">×</span>
-      </button>
+    <header class="grid grid-cols-[minmax(0,20%)_1fr_minmax(0,20%)] items-center gap-2 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+      <h2 class="min-w-0 truncate text-base font-semibold text-zinc-900 dark:text-white">Add new business</h2>
+      <div class="flex min-w-0 justify-center">
+        <div class="inline-flex rounded-md border border-zinc-200 p-0.5 dark:border-zinc-700">
+          <button
+            type="button"
+            class="rounded-sm px-3 py-1 text-xs font-medium cursor-pointer transition-colors whitespace-nowrap"
+            :class="importMode === 'solo'
+              ? 'bg-zinc-200/70 text-zinc-900 dark:bg-zinc-800 dark:text-white'
+              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'"
+            @click="setImportMode('solo')"
+          >
+            Solo import
+          </button>
+          <button
+            type="button"
+            class="rounded-sm px-3 py-1 text-xs font-medium cursor-pointer transition-colors whitespace-nowrap"
+            :class="importMode === 'bulk'
+              ? 'bg-zinc-200/70 text-zinc-900 dark:bg-zinc-800 dark:text-white'
+              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'"
+            @click="setImportMode('bulk')"
+          >
+            Bulk import
+          </button>
+        </div>
+      </div>
+      <div class="justify-self-end ">
+        <button type="button"
+          class="rounded-md p-1.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800 cursor-pointer"
+          aria-label="Close" @click="close">
+          <span class="text-lg leading-none">×</span>
+        </button>
+      </div>
     </header>
-    <div class="px-4 py-3">
-      <form id="admin-new-business-form" @submit.prevent="submit">
 
-        <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-start">
+    <div class="overflow-y-auto grow">
+      <div class="px-4 py-3">
+        <!-- Solo import -->
+        <form v-if="importMode === 'solo'" id="admin-new-business-form" @submit.prevent="submitSolo">
+          <AdminNewBusinessForm v-model="soloForm" :country-options="countryOptions" :region-options="regionOptions"
+            :course-options="courseOptions" :rental-options="rentalOptions" :gas-options="gasOptions"
+            :dive-site-options="diveSiteOptions" :business-type-options="businessTypeOptions"
+            :create-region="createRegion" :create-simple-lookup="createSimpleLookup" :create-dive-site="createDiveSite"
+            :on-lookup-created="onLookupCreated" />
+          <p v-if="submitError" class="mt-4 text-sm text-red-600 dark:text-red-400">{{ submitError }}</p>
+        </form>
 
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Basic info
-          </h3>
-          <div class="flex min-w-0 flex-col gap-4">
-            <FormField label="Business name" required field-id="new-business-name">
-              <FormInput
-                id="new-business-name"
-                v-model="form.business_name"
-                type="text"
-               
-                required
-              />
-            </FormField>
-            <FormField label="Business type">
-              <AdminSelectChip
-                v-model="form.business_type_ids"
-                full-width
-                :options="businessTypeOptions"
-                :multiple="true"
-                :allow-add="true"
-                singular-label="business type"
-                :on-create="(n) => createSimpleLookup('dive_business_types', n)"
-                @created="onLookupCreated('diveBusinessTypes', $event)"
-              />
-            </FormField>
-            <FormField label="Website" field-id="new-business-website">
-              <FormInput
-                id="new-business-website"
-                v-model="form.website_url"
-                type="url"
-               
-              />
-            </FormField>
-            <FormField label="Email" field-id="new-business-email">
-              <FormInput
-                id="new-business-email"
-                v-model="form.email"
-                type="email"
-               
-              />
-            </FormField>
-            <FormField label="Phone" field-id="new-business-phone">
-              <FormInput
-                id="new-business-phone"
-                v-model="form.phone"
-                type="text"
-               
-              />
-            </FormField>
+        <!-- Bulk import -->
+        <div v-else class="flex flex-col gap-4">
+          <AdminBulkImportDropzone v-if="!bulkRows.length" @parsed="onBulkParsed" />
+          <div v-else-if="bulkLoading" class="py-12 text-center text-sm text-zinc-500 dark:text-zinc-400">
+            Checking duplicates…
           </div>
-
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Location
-          </h3>
-
-          <div class="flex min-w-0 flex-col gap-4">
-            <FormField label="Street address" field-id="new-business-address">
-              <FormTextarea
-                id="new-business-address"
-                v-model="form.street_address"
-                :rows="2"
-               
-                :resize="false"
-              />
-            </FormField>
-            <FormField label="City" field-id="new-business-city">
-              <FormInput id="new-business-city" v-model="form.city" type="text" />
-            </FormField>
-            <FormField label="State" field-id="new-business-state">
-              <FormInput id="new-business-state" v-model="form.state" type="text" />
-            </FormField>
-            <FormField label="Country">
-              <AdminSelectChip
-                :model-value="countryChip"
-                full-width
-                :options="countryOptions"
-                :multiple="false"
-                :allow-add="false"
-                singular-label="country"
-                @update:model-value="onCountryChip"
-              />
-            </FormField>
-            <FormField label="Region">
-              <AdminSelectChip
-                :model-value="regionChip"
-                full-width
-                :options="regionOptions"
-                :multiple="false"
-                :allow-add="true"
-                singular-label="region"
-                :on-create="createRegion"
-                @update:model-value="onRegionChip"
-                @created="onLookupCreated('regions', $event)"
-              />
-            </FormField>
+          <AdminBulkImportReview v-else ref="bulkReviewRef" :rows="bulkRows" :row-meta="bulkRowMeta"
+            :country-options="countryOptions" :region-options="regionOptions" :course-options="courseOptions"
+            :rental-options="rentalOptions" :gas-options="gasOptions" :dive-site-options="diveSiteOptions"
+            :business-type-options="businessTypeOptions" :auth-headers="authHeaders" :create-region="createRegion"
+            :create-simple-lookup="createSimpleLookup" :create-dive-site="createDiveSite"
+            :on-lookup-created="onLookupCreated" @meta-update="onBulkMetaUpdate" />
+          <div v-if="bulkRows.length && !bulkLoading" class="flex justify-end">
+            <Button type="button" variant="secondary" @click="resetBulk">
+              Upload different file
+            </Button>
           </div>
-
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Shop variables
-          </h3>
-
-          <div class="flex min-w-0 flex-col gap-4">
-            <FormField label="Dive sites">
-              <AdminSelectChip
-                v-model="form.dive_site_ids"
-                full-width
-                :options="diveSiteOptions"
-                :multiple="true"
-                :allow-add="true"
-                singular-label="dive site"
-                :on-create="(n) => createDiveSite(n, form.country_id)"
-                @created="onLookupCreated('diveSites', $event)"
-              />
-            </FormField>
-            <FormField label="Courses">
-              <AdminSelectChip
-                v-model="form.course_ids"
-                full-width
-                :options="courseOptions"
-                :multiple="true"
-                :allow-add="false"
-                singular-label="course"
-              />
-            </FormField>
-            <FormField label="Rental gear">
-              <AdminSelectChip
-                v-model="form.rental_equipment_ids"
-                full-width
-                :options="rentalOptions"
-                :multiple="true"
-                :allow-add="true"
-                singular-label="rental"
-                :on-create="(n) => createSimpleLookup('rental_equipment', n)"
-                @created="onLookupCreated('rentalEquipment', $event)"
-              />
-            </FormField>
-            <FormField label="Gases">
-              <AdminSelectChip
-                v-model="form.gas_ids"
-                full-width
-                :options="gasOptions"
-                :multiple="true"
-                :allow-add="true"
-                singular-label="gas"
-                :on-create="(n) => createSimpleLookup('gases', n)"
-                @created="onLookupCreated('gases', $event)"
-              />
-            </FormField>
-          </div>
-
-        </section>
-
-        <p v-if="submitError" class="mt-4 text-sm text-red-600 dark:text-red-400">{{ submitError }}</p>
-      </form>
+          <p v-if="bulkError" class="text-sm text-red-600 dark:text-red-400">{{ bulkError }}</p>
+        </div>
+      </div>
     </div>
+    
+
     <template #footer>
       <div class="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="secondary" :disabled="submitting" @click="close">
           Cancel
         </Button>
-        <Button type="submit" form="admin-new-business-form" variant="primary" :disabled="submitting">
+        <Button
+          v-if="importMode === 'solo'"
+          type="submit"
+          form="admin-new-business-form"
+          variant="primary"
+          :disabled="submitting"
+        >
           {{ submitting ? 'Saving…' : 'Create business' }}
+        </Button>
+        <Button
+          v-else
+          type="button"
+          variant="primary"
+          :disabled="submitting || !bulkRows.length || bulkLoading || bulkImportCount === 0"
+          @click="submitBulk"
+        >
+          {{ submitting ? 'Importing…' : bulkImportButtonLabel }}
         </Button>
       </div>
     </template>
@@ -192,11 +107,15 @@
 <script setup>
 import { reactive, ref, watch, computed } from 'vue'
 import BottomSheetDrawer from '~/components/ui/BottomSheetDrawer.vue'
-import AdminSelectChip from '~/components/admin/AdminSelectChip.vue'
+import AdminNewBusinessForm from '~/components/admin/AdminNewBusinessForm.vue'
+import AdminBulkImportDropzone from '~/components/admin/AdminBulkImportDropzone.vue'
+import AdminBulkImportReview from '~/components/admin/AdminBulkImportReview.vue'
+import { emptyAdminNewBusinessForm, buildAdminShopWriteBody } from '~~/shared/adminNewBusinessFormShape'
 import {
   businessTypeNamesFromIds,
   serializeDiveBusinessTypes
 } from '~~/shared/diveBusinessTypes'
+import { BULK_IMPORT_MAX_ROWS } from '~~/shared/bulkImportConstants'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -216,57 +135,68 @@ const props = defineProps({
 
 const emit = defineEmits(['update:open', 'success'])
 
+const importMode = ref('solo')
 const submitting = ref(false)
 const submitError = ref('')
 
-const emptyForm = () => ({
-  business_name: '',
-  street_address: '',
-  website_url: '',
-  city: '',
-  state: '',
-  phone: '',
-  email: '',
-  business_type_ids: [],
-  country_id: null,
-  region_id: null,
-  course_ids: [],
-  rental_equipment_ids: [],
-  gas_ids: [],
-  dive_site_ids: []
+const soloForm = reactive(emptyAdminNewBusinessForm())
+
+const bulkRows = ref([])
+const bulkRowMeta = ref([])
+const bulkLoading = ref(false)
+const bulkError = ref('')
+const bulkReviewRef = ref(null)
+
+const bulkImportCount = computed(() =>
+  bulkRowMeta.value.filter((m) => !m.skip).length
+)
+
+const bulkDuplicateSkipCount = computed(() =>
+  bulkRowMeta.value.filter((m) => m.skip && m.duplicate).length
+)
+
+const bulkImportButtonLabel = computed(() => {
+  const n = bulkImportCount.value
+  const skipped = bulkDuplicateSkipCount.value
+  if (n === 0) return 'Import businesses'
+  if (skipped === 0) return n === 1 ? 'Import business' : `Import ${n} businesses`
+  return `Import ${n} business${n === 1 ? '' : 'es'} (${skipped} duplicate${skipped === 1 ? '' : 's'} skipped)`
 })
-
-const form = reactive(emptyForm())
-
-const countryChip = computed(() => (form.country_id ? [form.country_id] : []))
-const regionChip = computed(() => (form.region_id ? [form.region_id] : []))
-
-function onCountryChip (v) {
-  form.country_id = Array.isArray(v) && v.length > 0 ? v[0] : null
-}
-
-function onRegionChip (v) {
-  form.region_id = Array.isArray(v) && v.length > 0 ? v[0] : null
-}
 
 watch(
   () => props.open,
   (v) => {
-    if (v) {
-      submitError.value = ''
-      Object.assign(form, emptyForm())
-    }
+    if (v) resetAll()
   }
 )
 
-function close () {
-  emit('update:open', false)
+function resetSolo () {
+  submitError.value = ''
+  Object.assign(soloForm, emptyAdminNewBusinessForm())
 }
 
-function emptyToNull (v) {
-  if (v == null) return null
-  const s = String(v).trim()
-  return s === '' ? null : s
+function resetBulk () {
+  bulkRows.value = []
+  bulkRowMeta.value = []
+  bulkLoading.value = false
+  bulkError.value = ''
+}
+
+function resetAll () {
+  resetSolo()
+  resetBulk()
+  importMode.value = 'solo'
+}
+
+function setImportMode (mode) {
+  if (importMode.value === mode) return
+  importMode.value = mode
+  submitError.value = ''
+  bulkError.value = ''
+}
+
+function close () {
+  emit('update:open', false)
 }
 
 function businessTypeLookupOptions () {
@@ -276,29 +206,14 @@ function businessTypeLookupOptions () {
   }))
 }
 
-function buildPayload () {
-  const typeNames = businessTypeNamesFromIds(form.business_type_ids || [], businessTypeLookupOptions())
-  return {
-    business_name: String(form.business_name || '').trim(),
-    street_address: emptyToNull(form.street_address),
-    website_url: emptyToNull(form.website_url),
-    city: emptyToNull(form.city),
-    state: emptyToNull(form.state),
-    phone: emptyToNull(form.phone),
-    email: emptyToNull(form.email),
-    type: serializeDiveBusinessTypes(typeNames),
-    country_id: form.country_id || null,
-    region_id: form.region_id || null,
-    course_ids: form.course_ids || [],
-    rental_equipment_ids: form.rental_equipment_ids || [],
-    gas_ids: form.gas_ids || [],
-    dive_site_ids: form.dive_site_ids || []
-  }
+function buildSoloPayload () {
+  const typeNames = businessTypeNamesFromIds(soloForm.business_type_ids || [], businessTypeLookupOptions())
+  return buildAdminShopWriteBody(soloForm, serializeDiveBusinessTypes(typeNames))
 }
 
-async function submit () {
+async function submitSolo () {
   submitError.value = ''
-  if (!String(form.business_name || '').trim()) {
+  if (!String(soloForm.business_name || '').trim()) {
     submitError.value = 'Business name is required'
     return
   }
@@ -307,7 +222,7 @@ async function submit () {
     await $fetch('/api/admin/shops', {
       method: 'POST',
       headers: props.authHeaders(),
-      body: buildPayload()
+      body: buildSoloPayload()
     })
     emit('success')
     close()
@@ -318,6 +233,68 @@ async function submit () {
       e?.statusMessage ||
       e?.message ||
       'Could not create business'
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function onBulkParsed (rows) {
+  bulkError.value = ''
+  if (rows.length > BULK_IMPORT_MAX_ROWS) {
+    bulkError.value = `Maximum ${BULK_IMPORT_MAX_ROWS} rows per import`
+    return
+  }
+  bulkRows.value = rows
+  bulkLoading.value = true
+  try {
+    const candidates = rows.map((r) => ({
+      index: r.index,
+      business_name: r.business_name,
+      website_url: r.website_url
+    }))
+    const { matches } = await $fetch('/api/admin/shops/import-dedupe-check', {
+      method: 'POST',
+      headers: props.authHeaders(),
+      body: { candidates }
+    })
+    const matchByIndex = new Map((matches || []).map((m) => [m.index, m]))
+    bulkRowMeta.value = rows.map((r) => {
+      const duplicate = matchByIndex.get(r.index) || null
+      return {
+        skip: Boolean(duplicate),
+        duplicate
+      }
+    })
+  } catch (e) {
+    const data = e?.data || e?.response?._data
+    bulkError.value =
+      (data && typeof data === 'object' && (data.statusMessage || data.message)) ||
+      e?.statusMessage ||
+      e?.message ||
+      'Duplicate check failed'
+    bulkRows.value = []
+  } finally {
+    bulkLoading.value = false
+  }
+}
+
+function onBulkMetaUpdate ({ index, skip }) {
+  bulkRowMeta.value = bulkRowMeta.value.map((m, i) =>
+    i === index ? { ...m, skip } : m
+  )
+}
+
+async function submitBulk () {
+  bulkError.value = ''
+  const review = bulkReviewRef.value
+  if (!review?.submitImport) return
+  submitting.value = true
+  try {
+    const result = await review.submitImport()
+    if (result?.ok) {
+      emit('success')
+      close()
+    }
   } finally {
     submitting.value = false
   }
