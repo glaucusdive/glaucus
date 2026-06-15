@@ -98,6 +98,7 @@
 import { computed } from 'vue'
 import { Trash2, Link } from 'lucide-vue-next'
 import type { ColumnDataSchemaModel } from '@revolist/vue3-datagrid'
+import SearchMultiSelect from '~/components/ui/SearchMultiSelect.vue'
 import type { AdminShopGridContext, ShopGridRow } from './adminShopGridContext'
 import { ADMIN_GRID_READ_DATA, ADMIN_GRID_WRITE_INPUT, ADMIN_GRID_WRITE_WRAP } from '~/components/admin/adminGridEditClasses'
 import { onAdminGridInputKeydown } from '~/utils/adminGridInputKeydown'
