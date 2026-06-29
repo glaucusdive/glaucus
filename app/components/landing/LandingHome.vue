@@ -162,7 +162,7 @@
         <div v-if="blogPending" class="flex w-full items-center justify-center py-16 text-zinc-500">
           Loading posts…
         </div>
-        <div v-else-if="blogPosts.length" class="flex w-fit flex-row gap-0 *:first:border-l">
+        <div v-else-if="blogPosts.length" class="flex w-fit flex-row gap-0 divide-x divide-zinc-800">
           <LandingContentSlide
             v-for="article in blogPosts"
             :key="article.id"

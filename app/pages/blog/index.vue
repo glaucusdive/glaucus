@@ -26,12 +26,12 @@
       </div>
       <div
         v-else
-        class="col-span-12 grid grid-cols-1 gap-0 border-y border-zinc-800 md:grid-cols-2 lg:grid-cols-3"
+        class="col-span-12 grid grid-cols-1 gap-px border border-zinc-800 bg-zinc-800 md:grid-cols-2"
       >
         <div
           v-for="article in posts"
           :key="article.id"
-          class="border-r border-b border-zinc-800 [&_.flex]:!w-full"
+          class="[&_.flex]:!w-full"
         >
           <LandingContentSlide
             :image="article.hero_image_url"
