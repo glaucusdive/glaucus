@@ -8,7 +8,7 @@ export default defineEventHandler(async () => {
       .from('blog_posts')
       .select('slug, updated_at')
       .eq('status', 'published')
-      .order('sort_order', { ascending: false })
+      .order('published_at', { ascending: false })
 
     if (error || !data?.length) return []
 

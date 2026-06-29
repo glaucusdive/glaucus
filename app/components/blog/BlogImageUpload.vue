@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-3">
+  <div class="flex w-full flex-col gap-3">
     <div
       v-if="previewUrl"
       class="relative overflow-hidden rounded-lg border border-zinc-700"
@@ -8,7 +8,7 @@
     </div>
 
     <div
-      class="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed px-6 py-8 text-center transition-colors"
+      class="flex w-full flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed px-6 py-8 text-center transition-colors"
       :class="dragActive
         ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/20'
         : 'border-zinc-300 dark:border-zinc-700'"

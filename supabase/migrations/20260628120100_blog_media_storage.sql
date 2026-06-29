@@ -13,18 +13,21 @@ ON CONFLICT (id) DO UPDATE SET
   file_size_limit = EXCLUDED.file_size_limit,
   allowed_mime_types = EXCLUDED.allowed_mime_types;
 
+DROP POLICY IF EXISTS "Public read blog media" ON storage.objects;
 CREATE POLICY "Public read blog media"
   ON storage.objects
   FOR SELECT
   TO public
   USING (bucket_id = 'blog-media');
 
+DROP POLICY IF EXISTS "Admins insert blog media" ON storage.objects;
 CREATE POLICY "Admins insert blog media"
   ON storage.objects
   FOR INSERT
   TO authenticated
   WITH CHECK (bucket_id = 'blog-media' AND public.is_app_admin());
 
+DROP POLICY IF EXISTS "Admins update blog media" ON storage.objects;
 CREATE POLICY "Admins update blog media"
   ON storage.objects
   FOR UPDATE
@@ -32,6 +35,7 @@ CREATE POLICY "Admins update blog media"
   USING (bucket_id = 'blog-media' AND public.is_app_admin())
   WITH CHECK (bucket_id = 'blog-media' AND public.is_app_admin());
 
+DROP POLICY IF EXISTS "Admins delete blog media" ON storage.objects;
 CREATE POLICY "Admins delete blog media"
   ON storage.objects
   FOR DELETE

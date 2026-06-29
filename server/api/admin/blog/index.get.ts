@@ -7,8 +7,8 @@ export default defineEventHandler(async (event) => {
   const { data, error } = await client
     .from('blog_posts')
     .select(BLOG_POST_LIST_COLUMNS)
-    .order('sort_order', { ascending: false })
     .order('published_at', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
 
   if (error) {
     throw createError({ statusCode: 500, statusMessage: error.message })

@@ -216,7 +216,7 @@ import gsap from 'gsap'
 import { computed, nextTick, onBeforeMount, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import ChatComposer from '~/components/chat/ChatComposer.vue'
 
-const { posts: blogPosts, pending: blogPending } = useBlogPosts(() => ({ limit: 3 }))
+const { posts: blogPosts, pending: blogPending } = useBlogPosts(() => ({ limit: 5 }))
 
 useSeoMeta({
   title: 'Your scuba life, simplified',

@@ -30,9 +30,9 @@
           >
             {{ item.label }}
           </NuxtLink>
-          <a
+          <NuxtLink
             v-else
-            :href="`#${item.id}`"
+            :to="`/#${item.id}`"
             class="text-2xl font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             :class="
               activeNavLinkId === item.id ? 'text-white' : 'text-zinc-400 hover:text-white'
@@ -40,7 +40,7 @@
             @click="emitClose"
           >
             {{ item.label }}
-          </a>
+          </NuxtLink>
         </template>
       </nav>
     </div>

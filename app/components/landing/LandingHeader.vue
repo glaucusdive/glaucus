@@ -46,9 +46,9 @@
                   >
                     {{ item.label }}
                   </NuxtLink>
-                  <a
+                  <NuxtLink
                     v-else
-                    :href="`#${item.id}`"
+                    :to="landingSectionTo(item.id)"
                     :class="[
                       navLinkBase,
                       isNavItemActive(item)
@@ -57,7 +57,7 @@
                     ]"
                   >
                     {{ item.label }}
-                  </a>
+                  </NuxtLink>
                 </template>
               </nav>
             </template>
@@ -220,12 +220,19 @@ const activeNavLinkId = computed(() => {
   if (routeItem) {
     return routeItem.id
   }
+  if (route.path !== '/') {
+    return null
+  }
   const h = rawHash.value
   if (!h || h === 'hero') {
     return null
   }
   return navSectionIds.value.has(h) ? h : null
 })
+
+function landingSectionTo (id) {
+  return `/#${id}`
+}
 
 function isNavItemActive (item) {
   return activeNavLinkId.value === item.id

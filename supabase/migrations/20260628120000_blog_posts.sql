@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS blog_posts (
 CREATE INDEX IF NOT EXISTS idx_blog_posts_status_sort
   ON blog_posts (status, sort_order DESC, published_at DESC NULLS LAST);
 
+DROP TRIGGER IF EXISTS trg_blog_posts_updated_at ON blog_posts;
 CREATE TRIGGER trg_blog_posts_updated_at
   BEFORE UPDATE ON blog_posts
   FOR EACH ROW
@@ -68,12 +69,14 @@ CREATE TRIGGER trg_blog_posts_set_slug
 
 ALTER TABLE blog_posts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Public read published blog posts" ON blog_posts;
 CREATE POLICY "Public read published blog posts"
   ON blog_posts
   FOR SELECT
   TO anon, authenticated
   USING (status = 'published');
 
+DROP POLICY IF EXISTS "Admins manage blog posts" ON blog_posts;
 CREATE POLICY "Admins manage blog posts"
   ON blog_posts
   FOR ALL
