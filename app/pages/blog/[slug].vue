@@ -13,13 +13,13 @@
   <article v-else class="relative z-10 bg-black text-white">
     <div
       class="relative w-full"
-      :class="post.hero_image_url ? '-mt-20' : ''"
+      :class="post.hero_image_url ? '-mt-24' : ''"
     >
       <img
         v-if="post.hero_image_url"
         :src="post.hero_image_url"
         :alt="post.hero_image_alt || post.title"
-        class="block w-full max-h-[60vh] min-h-[40vh] object-cover"
+        class="block w-full max-h-[70vh] min-h-[40vh] object-cover object-top"
       />
       <div
         class="pointer-events-none absolute inset-0 bg-linear-to-b from-black/30 via-transparent to-black"

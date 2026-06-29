@@ -4,14 +4,14 @@
     :class="fill ? 'h-full w-full' : 'w-xs md:w-sm lg:w-md xl:w-lg'"
   >
     <div class="relative flex items-center justify-center">
-      <img class="z-0 block" :src="image" :alt="imageAlt" />
+      <img class="z-0 block aspect-video" :src="image" :alt="imageAlt" />
       <div
         class="pointer-events-none absolute inset-0 z-10 bg-linear-to-b from-[#101214]/0 to-[#101214]"
         aria-hidden="true"
       />
     </div>
     <div
-      class="flex flex-col gap-8 p-8 md:p-10 xl:p-20 bg-black"
+      class="flex flex-col justify-end gap-8 p-8 md:p-10 xl:p-20 bg-black grow"
       :class="fill ? 'flex-1' : ''"
     >
       <div class="flex flex-col gap-4">

@@ -154,7 +154,7 @@
         </div>
       </div>
     </section>
-    <section id="logs" class="flex flex-col gap-6">
+    <section id="logs" class="flex flex-col gap-0 border-b border-zinc-800">
       <div
         class="overflow-x-auto overflow-y-hidden scroll-smooth border-y border-zinc-800 snap-x snap-proximity no-scrollbars"
       >
@@ -177,14 +177,12 @@
           New guides coming soon.
         </div>
       </div>
-      <div class="flex justify-center px-4 pb-8">
-        <NuxtLink
-          to="/blog"
-          class="text-xs font-medium uppercase tracking-wide text-zinc-400 hover:text-white"
-        >
-          View all posts
-        </NuxtLink>
-      </div>
+      <NuxtLink
+        to="/blog"
+        class="flex justify-center text-sm p-8 font-medium uppercase tracking-wide hover:bg-zinc-900/50 text-zinc-400 hover:text-white"
+      >
+        View all posts
+      </NuxtLink>
     </section>
     <section id="contact" class="border-b border-zinc-800 h-[80dvh] px-4 sm:px-8 lg:px-20">
       <div class="grid grid-cols-12 gap-4 h-full">
