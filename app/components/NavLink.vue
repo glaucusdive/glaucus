@@ -29,13 +29,22 @@ const props = defineProps({
   disabled: {
     type: Boolean,
     default: false
+  },
+  /** When set, active if route.path equals `to` or starts with this prefix + '/' */
+  activePrefix: {
+    type: String,
+    default: ''
   }
 })
 
 const emit = defineEmits(['click'])
 
 const route = useRoute()
-const isActive = computed(() => route.path === props.to)
+const isActive = computed(() => {
+  if (route.path === props.to) return true
+  if (props.activePrefix && route.path.startsWith(`${props.activePrefix}/`)) return true
+  return false
+})
 
 const handleClick = (event) => {
   emit('click', event)

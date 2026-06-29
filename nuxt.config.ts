@@ -33,9 +33,11 @@ export default defineNuxtConfig({
   },
   sitemap: {
     excludeAppSources: true,
+    sources: ['/api/__sitemap__/blog'],
     urls: [
       { loc: '/' },
-      { loc: '/for-businesses' }
+      { loc: '/for-businesses' },
+      { loc: '/blog' }
     ]
   },
   components: [

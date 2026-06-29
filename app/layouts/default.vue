@@ -70,6 +70,13 @@
                   <ClipboardList class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
                   Shop updates
                 </NavLink>
+                <NavLink
+                  to="/admin/blog"
+                  active-prefix="/admin/blog"
+                  @click="handleCloseMobileMenu"
+                >
+                  Manage blog
+                </NavLink>
               </template>
               <NavLink v-if="!authLoading && !isSignedIn" to="/auth" @click="handleCloseMobileMenu">
                 <LogIn class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" />

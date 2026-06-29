@@ -154,18 +154,36 @@
         </div>
       </div>
     </section>
-    <section id="logs">
+    <section id="logs" class="flex flex-col gap-6">
       <div
         class="overflow-x-auto overflow-y-hidden scroll-smooth border-y border-zinc-800 snap-x snap-proximity no-scrollbars"
       >
         <!-- Intentionally flex-row at all breakpoints: horizontal snap scroll for article cards -->
-        <div class="flex w-fit flex-row gap-0 *:first:border-l">
+        <div v-if="blogPending" class="flex w-full items-center justify-center py-16 text-zinc-500">
+          Loading posts…
+        </div>
+        <div v-else-if="blogPosts.length" class="flex w-fit flex-row gap-0 *:first:border-l">
           <LandingContentSlide
-            v-for="(article, i) in LANDING_BLOG_ARTICLES"
-            :key="i"
-            v-bind="article"
+            v-for="article in blogPosts"
+            :key="article.id"
+            :image="article.hero_image_url"
+            :image-alt="article.hero_image_alt"
+            :title="article.title"
+            :excerpt="article.excerpt"
+            :to="`/blog/${article.slug}`"
           />
         </div>
+        <div v-else class="flex w-full items-center justify-center py-16 text-zinc-500 text-sm">
+          New guides coming soon.
+        </div>
+      </div>
+      <div class="flex justify-center px-4 pb-8">
+        <NuxtLink
+          to="/blog"
+          class="text-xs font-medium uppercase tracking-wide text-zinc-400 hover:text-white"
+        >
+          View all posts
+        </NuxtLink>
       </div>
     </section>
     <section id="contact" class="border-b border-zinc-800 h-[80dvh] px-4 sm:px-8 lg:px-20">
@@ -197,7 +215,8 @@
 import gsap from 'gsap'
 import { computed, nextTick, onBeforeMount, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import ChatComposer from '~/components/chat/ChatComposer.vue'
-import { LANDING_BLOG_ARTICLES } from '~/data/landingBlogArticles'
+
+const { posts: blogPosts, pending: blogPending } = useBlogPosts(() => ({ limit: 3 }))
 
 useSeoMeta({
   title: 'Your scuba life, simplified',
