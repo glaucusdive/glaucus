@@ -16,8 +16,24 @@
         >
           All posts
         </NuxtLink>
+        <button
+          v-if="!loadError && (isNew || !loading)"
+          type="submit"
+          form="admin-blog-post-form"
+          class="inline-flex items-center justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          :disabled="saving"
+        >
+          {{ saving ? 'Saving…' : 'Save' }}
+        </button>
       </template>
     </ShellPageHeader>
+
+    <p
+      v-if="saveError"
+      class="shrink-0 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300 lg:px-6"
+    >
+      {{ saveError }}
+    </p>
 
     <div v-if="loading && !isNew" class="flex-1 flex items-center justify-center p-8">
       <span class="text-sm text-zinc-500">Loading…</span>
@@ -30,6 +46,8 @@
       :post-id="postId"
       :initial="post"
       @saved="onSaved"
+      @update:saving="saving = $event"
+      @update:save-error="saveError = $event"
     />
   </div>
 </template>
@@ -40,7 +58,6 @@ import type { BlogPost } from '~~/shared/blogPost'
 import AdminBlogPostForm from '~/components/admin/AdminBlogPostForm.vue'
 
 definePageMeta({ layout: 'default', middleware: 'admin' })
-useSeoMeta({ robots: 'noindex, nofollow' })
 
 const route = useRoute()
 const router = useRouter()
@@ -56,6 +73,19 @@ const postId = computed(() => (isNew.value ? null : rawId.value))
 const post = ref<BlogPost | null>(null)
 const loading = ref(!isNew.value)
 const loadError = ref('')
+const saving = ref(false)
+const saveError = ref('')
+
+const pageTitle = computed(() => {
+  if (isNew.value) return 'Admin · New post'
+  if (post.value?.title) return `Admin · ${post.value.title}`
+  return 'Admin · Edit post'
+})
+
+useSeoMeta({
+  title: pageTitle,
+  robots: 'noindex, nofollow'
+})
 
 async function loadPost () {
   if (isNew.value) return

@@ -16,7 +16,7 @@
           class="w-full lg:w-56 h-full shrink-0 flex flex-col justify-between p-2 absolute lg:relative z-50">
           <div>
             <div class="h-fit flex flex-row justify-between items-center p-2 lg:p-4">
-              <NuxtLink to="/" @click="handleCloseMobileMenu">
+              <NuxtLink :to="{ path: '/', query: { chat: '1' } }" @click="handleCloseMobileMenu">
                 <Logo />
               </NuxtLink>
               <button @click="handleCloseMobileMenu"
@@ -197,14 +197,11 @@ const { isSignedIn, isAppAdmin, signOut, onAuthStateChange, accessToken, loading
 const showAdminNav = computed(() => !authLoading.value && isSignedIn.value && isAppAdmin.value)
 
 async function runChatActionFromSidebar (action) {
-  const guest = !isSignedIn.value
   const needNav =
     route.path !== '/' ||
-    (guest && String(route.query.chat) !== '1')
+    String(route.query.chat) !== '1'
   if (needNav) {
-    await navigateTo(
-      guest ? { path: '/', query: { chat: '1' } } : { path: '/' }
-    )
+    await navigateTo({ path: '/', query: { chat: '1' } })
     await nextTick()
   }
   action()

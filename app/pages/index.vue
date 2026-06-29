@@ -24,19 +24,21 @@ const chatOpenedTracked = ref(false)
 /** False until client `init()` finishes; true on server so crawlers get the marketing landing. */
 const authResolved = ref(import.meta.server)
 
-/** Guest dive search: `/?chat=1` (e.g. “Open Chat” from landing) without signing in. */
+/** Chat shell for guests with `?chat=1`, or signed-in users who opened chat the same way. */
 const guestChat = computed(
   () => authResolved.value && !isSignedIn.value && route.query.chat === '1'
 )
 
-const showChatShell = computed(() => isSignedIn.value || guestChat.value)
+const signedInChat = computed(
+  () => authResolved.value && isSignedIn.value && route.query.chat === '1'
+)
 
-/** Signed-in users, or guests who opened chat, use the app shell; marketing-only guests use `landing`. */
+const showChatShell = computed(() => guestChat.value || signedInChat.value)
+
+/** Guests on marketing home use `landing`; chat (guest or signed-in) uses the app shell. */
 const layoutName = computed(() => {
   if (!authResolved.value) return 'landing'
-  if (isSignedIn.value) return 'default'
-  if (guestChat.value) return 'default'
-  return 'landing'
+  return showChatShell.value ? 'default' : 'landing'
 })
 
 onMounted(async () => {

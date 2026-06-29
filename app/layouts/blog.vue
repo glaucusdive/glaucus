@@ -1,7 +1,9 @@
 <template>
   <div class="min-h-dvh w-full bg-black text-white">
     <LandingHeader />
-    <slot />
+    <div class="relative z-10 min-h-dvh bg-black">
+      <slot />
+    </div>
     <LandingFooter />
   </div>
 </template>

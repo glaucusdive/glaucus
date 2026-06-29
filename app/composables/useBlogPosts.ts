@@ -63,8 +63,8 @@ export function useBlogPosts (options: OptionsInput = {}) {
       let q = client
         .from('blog_posts')
         .select(BLOG_POST_CARD_COLUMNS)
-        .order('sort_order', { ascending: false })
         .order('published_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
 
       if (!includeDrafts) {
         q = q.eq('status', 'published')
