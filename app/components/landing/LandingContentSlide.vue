@@ -1,5 +1,8 @@
 <template>
-  <div class="flex w-xs md:w-sm lg:w-md xl:w-lg shrink-0 snap-start flex-col gap-0 group justify-between">
+  <div
+    class="flex shrink-0 snap-start flex-col gap-0 group justify-between"
+    :class="fill ? 'h-full w-full' : 'w-xs md:w-sm lg:w-md xl:w-lg'"
+  >
     <div class="relative flex items-center justify-center">
       <img class="z-0 block" :src="image" :alt="imageAlt" />
       <div
@@ -7,7 +10,10 @@
         aria-hidden="true"
       />
     </div>
-    <div class="flex flex-col gap-8 p-8 md:p-10 xl:p-20 bg-black">
+    <div
+      class="flex flex-col gap-8 p-8 md:p-10 xl:p-20 bg-black"
+      :class="fill ? 'flex-1' : ''"
+    >
       <div class="flex flex-col gap-4">
         <h2 class="text-2xl text-pretty">
           {{ title }}
@@ -36,7 +42,9 @@ const props = defineProps({
   imageAlt: { type: String, required: true },
   title: { type: String, required: true },
   excerpt: { type: String, required: true },
-  to: { type: String, required: true }
+  to: { type: String, required: true },
+  /** Full width/height for blog index grid cells (not horizontal scroll strip). */
+  fill: { type: Boolean, default: false }
 })
 
 const readLabel = computed(() => `Read: ${props.title}`)

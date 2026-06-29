@@ -26,20 +26,24 @@
       </div>
       <div
         v-else
-        class="col-span-12 grid grid-cols-1 gap-px border border-zinc-800 bg-zinc-800 md:grid-cols-2"
+        class="col-span-12 grid grid-cols-1 auto-rows-fr gap-px border border-zinc-800 bg-zinc-800 md:grid-cols-2"
       >
         <div
           v-for="article in posts"
           :key="article.id"
-          class="[&_.flex]:!w-full"
+          class="h-full"
         >
           <LandingContentSlide
+            fill
             :image="article.hero_image_url"
             :image-alt="article.hero_image_alt"
             :title="article.title"
             :excerpt="article.excerpt"
             :to="`/blog/${article.slug}`"
           />
+        </div>
+        <div v-if="showGridCta" class="h-full min-h-full">
+          <BlogBookDiveCta variant="grid" />
         </div>
       </div>
     </section>
@@ -52,6 +56,11 @@ import { blogIndexJsonLd } from '~/utils/blogJsonLd'
 definePageMeta({ layout: 'blog' })
 
 const { posts, pending } = useBlogPosts()
+
+/** Fill the lone empty cell in a 2-column grid when post count is odd. */
+const showGridCta = computed(
+  () => !pending.value && posts.value.length > 0 && posts.value.length % 2 === 1
+)
 const siteConfig = useSiteConfig()
 const siteUrl = computed(() => siteConfig.url || 'https://glaucusdive.com')
 
