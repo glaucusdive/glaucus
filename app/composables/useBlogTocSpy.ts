@@ -1,37 +1,84 @@
-import { onMounted, onUnmounted, ref, type Ref } from 'vue'
+import { nextTick, onUnmounted, ref, watch, type Ref } from 'vue'
 
-/** Highlight TOC item for the H2 section currently in view. */
-export function useBlogTocSpy (contentRoot: Ref<HTMLElement | null>) {
+/** Viewport line for “current section” — matches design (~20% from top, below sticky header). */
+const ACTIVATION_RATIO = 0.2
+
+export function useBlogTocSpy (
+  contentRoot: Ref<HTMLElement | null>,
+  /** Re-bind when post content changes (e.g. slug navigation). */
+  contentKey?: Ref<string | undefined>
+) {
   const activeId = ref<string | null>(null)
-  let observer: IntersectionObserver | null = null
+  let headings: HTMLElement[] = []
+  let rafId: number | null = null
 
-  onMounted(() => {
+  function collectHeadings (): boolean {
     const root = contentRoot.value
-    if (!root || typeof IntersectionObserver === 'undefined') return
+    if (!root) {
+      headings = []
+      return false
+    }
+    headings = Array.from(root.querySelectorAll<HTMLElement>('h2[id]'))
+    return headings.length > 0
+  }
 
-    const headings = Array.from(root.querySelectorAll<HTMLElement>('h2[id]'))
-    if (!headings.length) return
+  function updateActive () {
+    if (!headings.length) {
+      activeId.value = null
+      return
+    }
+    const activationLine = window.innerHeight * ACTIVATION_RATIO
+    let current = headings[0].id
+    for (const h of headings) {
+      if (h.getBoundingClientRect().top <= activationLine) {
+        current = h.id
+      }
+    }
+    activeId.value = current
+  }
 
-    observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter(e => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
-        if (visible.length) {
-          activeId.value = visible[0].target.id
-        }
-      },
-      { rootMargin: '-20% 0px -60% 0px', threshold: 0 }
-    )
+  function onScrollOrResize () {
+    if (rafId != null) return
+    rafId = requestAnimationFrame(() => {
+      rafId = null
+      updateActive()
+    })
+  }
 
-    for (const h of headings) observer.observe(h)
-    activeId.value = headings[0]?.id ?? null
-  })
+  function unbind () {
+    if (typeof window === 'undefined') return
+    window.removeEventListener('scroll', onScrollOrResize)
+    window.removeEventListener('resize', onScrollOrResize)
+    if (rafId != null) {
+      cancelAnimationFrame(rafId)
+      rafId = null
+    }
+  }
 
-  onUnmounted(() => {
-    observer?.disconnect()
-    observer = null
-  })
+  function bind () {
+    unbind()
+    if (!collectHeadings()) {
+      activeId.value = null
+      return
+    }
+    updateActive()
+    if (typeof window === 'undefined') return
+    window.addEventListener('scroll', onScrollOrResize, { passive: true })
+    window.addEventListener('resize', onScrollOrResize, { passive: true })
+  }
+
+  async function rebind () {
+    await nextTick()
+    bind()
+  }
+
+  watch(
+    [contentRoot, () => contentKey?.value],
+    () => { void rebind() },
+    { immediate: true }
+  )
+
+  onUnmounted(unbind)
 
   return { activeId }
 }
