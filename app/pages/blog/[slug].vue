@@ -73,7 +73,8 @@ const { post, pending } = useBlogPosts(() => ({ slug: slug.value }))
 const { posts: allPublished } = useBlogPosts()
 
 const contentRoot = ref(null)
-const { activeId } = useBlogTocSpy(contentRoot)
+const contentKey = computed(() => post.value?.slug)
+const { activeId } = useBlogTocSpy(contentRoot, contentKey)
 
 const tocItems = computed(() =>
   post.value ? extractBlogToc(post.value.body_markdown) : []
