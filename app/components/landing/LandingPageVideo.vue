@@ -8,17 +8,15 @@
         muted
         loop
         preload="metadata"
-        :controls="isPlaying"
+        :controls="overlayDismissed || isPlaying"
         :aria-label="ariaLabel"
       >
         <source :src="src" type="video/mp4" />
       </video>
       <button
+        v-if="!overlayDismissed"
         type="button"
-        class="absolute inset-0 z-20 flex cursor-pointer items-center justify-center border-0 bg-transparent p-0 transition-opacity duration-300 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900"
-        :class="isPlaying ? 'pointer-events-none opacity-0' : 'opacity-100'"
-        :tabindex="isPlaying ? -1 : 0"
-        :aria-hidden="isPlaying"
+        class="absolute inset-0 z-20 flex cursor-pointer items-center justify-center border-0 bg-transparent p-0 transition-opacity duration-300 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900 opacity-100"
         :aria-label="playLabel"
         @click="onPlayClick"
       >
@@ -44,7 +42,8 @@
  *
  * Viewport: IntersectionObserver plays when ~50% visible, pauses when out of view.
  * `loop` repeats while playing; pausing or leaving view stops playback (no loop until play again).
- * Preview overlay follows real playback (hide on play, show on pause/ended).
+ * Preview overlay: shown until first play; then removed for the session so seeking
+ * with native controls is not blocked by a pause-triggered overlay reappearing.
  * `muted` enables reliable autoplay; explicit play click unmutes (user gesture).
  */
 import { computed, onMounted, onUnmounted, ref } from 'vue'
@@ -68,13 +67,16 @@ const props = defineProps({
 
 const rootRef = ref(null)
 const videoEl = ref(null)
-/** Synced with `play` / `pause` / `ended` so overlay and controls match actual playback. */
+/** Synced with `play` / `pause` / `ended` so controls match actual playback. */
 const isPlaying = ref(false)
+/** After first play, never show the big preview overlay again (until refresh). */
+const overlayDismissed = ref(false)
 
 const hasSrc = computed(() => Boolean(props.src?.trim()))
 
 function onVideoPlay () {
   isPlaying.value = true
+  overlayDismissed.value = true
 }
 
 function onVideoPause () {
@@ -88,6 +90,7 @@ function onVideoEnded () {
 async function onPlayClick () {
   const el = videoEl.value
   if (!el) return
+  overlayDismissed.value = true
   try {
     el.muted = false
     await el.play()

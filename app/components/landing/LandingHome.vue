@@ -144,13 +144,11 @@
       <div class="grid grid-cols-12 gap-4 items-center">
         <div class="col-span-12 lg:col-span-5">
           <div class="flex flex-col gap-8">
-            <h2 class="text-3xl xl:text-5xl text-pretty">We’re Glaucus, an AI assistant for divers.</h2>
-            <p class="text-lg xl:text-2xl text-pretty">This is the about section copy. I dont know what to put here, but we will figure it out soon. But we will want the content to be brief and tell a story on why we did what we did.</p>
-            <p class="text-lg xl:text-2xl text-pretty">This is the about section copy. I dont know what to put here, but we will figure it out soon. But we will want the content to be brief and tell a story on why we did what we did.</p>
+            <h2 class="text-3xl xl:text-5xl text-pretty">Meet Glaucus co-founder, Shashwat Rajvaidya</h2>
           </div>
         </div>
         <div class="col-span-12 lg:col-start-7 lg:col-span-6">
-          <LandingPageVideo class="aspect-[3/4] w-full" />
+          <LandingPageVideo src="/videos/landing/glaucus-about-video-comp.mp4" class="h-[90dvh] min-h-[600px] aspect-3/4 w-full" />
         </div>
       </div>
     </section>
