@@ -154,6 +154,7 @@ import { shouldKeepArrowInInput } from '~/utils/adminGridInputKeydown'
 import { copyTextToClipboard } from '~/utils/copyTextToClipboard'
 import { adminColumnHeaderTemplate } from '~/utils/revoGridAdminColumnHeader'
 import AdminShopGridCell from '~/components/admin/grid/AdminShopGridCell.vue'
+import { resolveSavedShopId } from '~/components/admin/grid/adminShopGridContext'
 import AdminNewBusinessDrawer from '~/components/admin/AdminNewBusinessDrawer.vue'
 import {
   businessTypeIdsFromStored,
@@ -659,17 +660,19 @@ function openCreateDrawer () {
 }
 
 function editRow (row) {
-  if (!writeMode.value || !row.id || row.saving) return
+  const shopId = resolveSavedShopId(row)
+  if (!writeMode.value || !shopId || row.saving) return
   drawerSession.value = {
     mode: 'edit',
-    shopId: String(row.id),
+    shopId,
     prefill: adminShopRowToNewBusinessForm(row)
   }
   newDrawerOpen.value = true
 }
 
 function duplicateRow (row) {
-  if (!writeMode.value || !row.id || row.saving) return
+  const shopId = resolveSavedShopId(row)
+  if (!writeMode.value || !shopId || row.saving) return
   drawerSession.value = {
     mode: 'duplicate',
     prefill: adminShopRowToNewBusinessForm(row, { nameSuffix: ' (Copy)' })
@@ -678,12 +681,13 @@ function duplicateRow (row) {
 }
 
 async function deleteRow (row) {
-  if (!row.id) return
+  const shopId = resolveSavedShopId(row)
+  if (!shopId) return
   if (!confirm(`Delete "${row.business_name}"? This also removes related bookings and reviews.`)) return
   row.saving = true
   row.saveError = ''
   try {
-    await $fetch(`/api/admin/shops/${row.id}`, {
+    await $fetch(`/api/admin/shops/${shopId}`, {
       method: 'DELETE',
       headers: authHeaders()
     })
@@ -945,7 +949,8 @@ const gridColumns = [
   withAdminHeader({
     prop: '__actions',
     name: 'Actions',
-    size: 140,
+    size: 150,
+    pin: 'colPinEnd',
     readonly: true,
     resize: true,
     cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
