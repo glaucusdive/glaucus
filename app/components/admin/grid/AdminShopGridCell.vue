@@ -39,7 +39,7 @@
   <!-- Row actions: edit, duplicate, delete -->
   <div
     v-else-if="kind === 'actions'"
-    class="flex h-full min-h-0 w-full min-w-0 max-w-full items-center justify-center gap-0.5 p-0"
+    class="flex h-full min-h-0 w-full min-w-0 max-w-full items-center justify-center gap-4 p-0"
   >
     <template v-if="model.id">
       <button
