@@ -36,11 +36,31 @@
     <span v-if="model.saveError" class="block truncate text-xs leading-tight text-red-600 dark:text-red-400">{{ model.saveError }}</span>
   </div>
 
-  <!-- Delete -->
+  <!-- Row actions: edit, duplicate, delete -->
   <div
-    v-else-if="kind === 'delete'"
-    class="flex h-full min-h-0 w-full min-w-0 max-w-full items-center justify-center p-0"
+    v-else-if="kind === 'actions'"
+    class="flex h-full min-h-0 w-full min-w-0 max-w-full items-center justify-center gap-0.5 p-0"
   >
+    <template v-if="model.id">
+      <button
+        type="button"
+        class="rounded p-0.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+        :disabled="!writeMode || model.saving"
+        aria-label="Edit shop"
+        @click="ctx.editRow(model)"
+      >
+        <Pencil class="h-4 w-4" aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        class="rounded p-0.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+        :disabled="!writeMode || model.saving"
+        aria-label="Duplicate shop"
+        @click="ctx.duplicateRow(model)"
+      >
+        <Copy class="h-4 w-4" aria-hidden="true" />
+      </button>
+    </template>
     <button
       type="button"
       class="rounded p-0.5 text-red-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-red-400 dark:hover:bg-zinc-800/50"
@@ -96,7 +116,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Trash2, Link } from 'lucide-vue-next'
+import { Trash2, Link, Pencil, Copy } from 'lucide-vue-next'
 import type { ColumnDataSchemaModel } from '@revolist/vue3-datagrid'
 import SearchMultiSelect from '~/components/ui/SearchMultiSelect.vue'
 import type { AdminShopGridContext, ShopGridRow } from './adminShopGridContext'
@@ -127,7 +147,7 @@ const model = computed(() => props.model as ShopGridRow)
 const kind = computed(() => {
   const p = prop.value
   if (p === 'business_name') return 'business' as const
-  if (p === '__delete') return 'delete' as const
+  if (p === '__actions') return 'actions' as const
   if (SELECT_PROPS.has(p)) return 'select' as const
   return 'text' as const
 })

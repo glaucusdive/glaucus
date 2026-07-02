@@ -35,6 +35,31 @@ export function emptyAdminNewBusinessForm (): AdminNewBusinessFormState {
   }
 }
 
+export function adminShopRowToNewBusinessForm (
+  row: Partial<AdminNewBusinessFormState>,
+  options?: { nameSuffix?: string }
+): AdminNewBusinessFormState {
+  const baseName = String(row.business_name ?? '').trim()
+  const suffix = options?.nameSuffix ?? ''
+  const business_name = baseName + suffix
+  return {
+    business_name,
+    street_address: String(row.street_address ?? ''),
+    website_url: String(row.website_url ?? ''),
+    city: String(row.city ?? ''),
+    state: String(row.state ?? ''),
+    phone: String(row.phone ?? ''),
+    email: String(row.email ?? ''),
+    business_type_ids: [...(row.business_type_ids || [])],
+    country_id: row.country_id ?? null,
+    region_id: row.region_id ?? null,
+    course_ids: [...(row.course_ids || [])],
+    rental_equipment_ids: [...(row.rental_equipment_ids || [])],
+    gas_ids: [...(row.gas_ids || [])],
+    dive_site_ids: [...(row.dive_site_ids || [])]
+  }
+}
+
 export interface AdminShopWriteBody {
   business_name: string
   street_address: string | null
