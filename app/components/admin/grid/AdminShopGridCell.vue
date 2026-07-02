@@ -39,33 +39,34 @@
   <!-- Row actions: edit, duplicate, delete -->
   <div
     v-else-if="kind === 'actions'"
-    class="flex h-full min-h-0 w-full min-w-0 max-w-full items-center justify-center gap-4 p-0"
+    class="flex h-full min-h-0 w-full min-w-0 max-w-full items-center justify-center gap-1 overflow-visible p-0"
   >
-    <template v-if="model.id">
-      <button
-        type="button"
-        class="rounded p-0.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-        :disabled="!writeMode || model.saving"
-        aria-label="Edit shop"
-        @click="ctx.editRow(model)"
-      >
-        <Pencil class="h-4 w-4" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        class="rounded p-0.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-        :disabled="!writeMode || model.saving"
-        aria-label="Duplicate shop"
-        @click="ctx.duplicateRow(model)"
-      >
-        <Copy class="h-4 w-4" aria-hidden="true" />
-      </button>
-    </template>
     <button
       type="button"
-      class="rounded p-0.5 text-red-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-red-400 dark:hover:bg-zinc-800/50"
+      class="shrink-0 rounded p-0.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+      :disabled="!writeMode || !savedShopId || model.saving"
+      aria-label="Edit shop"
+      title="Edit shop"
+      @click="ctx.editRow(model)"
+    >
+      <Pencil class="h-4 w-4" aria-hidden="true" />
+    </button>
+    <button
+      type="button"
+      class="shrink-0 rounded p-0.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+      :disabled="!writeMode || !savedShopId || model.saving"
+      aria-label="Duplicate shop"
+      title="Duplicate shop"
+      @click="ctx.duplicateRow(model)"
+    >
+      <Copy class="h-4 w-4" aria-hidden="true" />
+    </button>
+    <button
+      type="button"
+      class="shrink-0 rounded p-0.5 text-red-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-red-400 dark:hover:bg-zinc-800/50"
       :disabled="!writeMode || model.saving"
       aria-label="Delete shop"
+      title="Delete shop"
       @click="ctx.deleteRow(model)"
     >
       <Trash2 class="h-4 w-4" aria-hidden="true" />
@@ -120,6 +121,7 @@ import { Trash2, Link, Pencil, Copy } from 'lucide-vue-next'
 import type { ColumnDataSchemaModel } from '@revolist/vue3-datagrid'
 import SearchMultiSelect from '~/components/ui/SearchMultiSelect.vue'
 import type { AdminShopGridContext, ShopGridRow } from './adminShopGridContext'
+import { resolveSavedShopId } from './adminShopGridContext'
 import { ADMIN_GRID_READ_DATA, ADMIN_GRID_WRITE_INPUT, ADMIN_GRID_WRITE_WRAP } from '~/components/admin/adminGridEditClasses'
 import { onAdminGridInputKeydown } from '~/utils/adminGridInputKeydown'
 
@@ -143,6 +145,9 @@ const ctx = computed(() => props.gridContext)
 const writeMode = computed(() => ctx.value.writeMode.value)
 const prop = computed(() => String(props.column.prop))
 const model = computed(() => props.model as ShopGridRow)
+
+/** RevoGrid row models may not expose `id` on every cell; fall back to original/uid. */
+const savedShopId = computed(() => resolveSavedShopId(model.value))
 
 const kind = computed(() => {
   const p = prop.value

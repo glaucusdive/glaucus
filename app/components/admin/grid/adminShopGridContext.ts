@@ -26,3 +26,20 @@ export interface AdminShopGridContext {
 }
 
 export const ADMIN_SHOP_GRID_KEY: InjectionKey<AdminShopGridContext> = Symbol('adminShopGrid')
+
+/** Saved shop UUID from a grid row (RevoGrid cells may not always surface `id` on `model`). */
+export function resolveSavedShopId (row: ShopGridRow | Record<string, unknown> | null | undefined): string | null {
+  if (!row) return null
+  const candidates = [
+    row.id,
+    (row.original as { id?: unknown } | null)?.id,
+    row.uid
+  ]
+  for (const candidate of candidates) {
+    if (candidate == null) continue
+    const s = String(candidate).trim()
+    if (!s || s.startsWith('new-')) continue
+    return s
+  }
+  return null
+}
