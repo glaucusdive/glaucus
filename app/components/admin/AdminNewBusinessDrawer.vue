@@ -1,14 +1,14 @@
 <template>
   <BottomSheetDrawer
     :open="open"
-    aria-label="Add new business"
+    :aria-label="drawerAriaLabel"
     z-index-class="z-[60]"
     sheet-height-class="max-h-[92dvh]"
     @update:open="$emit('update:open', $event)"
   >
     <header class="grid grid-cols-[minmax(0,20%)_1fr_minmax(0,20%)] items-center gap-2 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-      <h2 class="min-w-0 truncate text-base font-semibold text-zinc-900 dark:text-white">Add new business</h2>
-      <div class="flex min-w-0 justify-center">
+      <h2 class="min-w-0 truncate text-base font-semibold text-zinc-900 dark:text-white">{{ drawerTitle }}</h2>
+      <div v-if="showImportTabs" class="flex min-w-0 justify-center">
         <div class="inline-flex rounded-md border border-zinc-200 p-0.5 dark:border-zinc-700">
           <button
             type="button"
@@ -32,6 +32,7 @@
           </button>
         </div>
       </div>
+      <div v-else class="min-w-0" />
       <div class="justify-self-end ">
         <button type="button"
           class="rounded-md p-1.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800 cursor-pointer"
@@ -88,7 +89,7 @@
           variant="primary"
           :disabled="submitting"
         >
-          {{ submitting ? 'Saving…' : 'Create business' }}
+          {{ submitting ? 'Saving…' : soloSubmitLabel }}
         </Button>
         <Button
           v-else
@@ -119,6 +120,7 @@ import { BULK_IMPORT_MAX_ROWS } from '~~/shared/bulkImportConstants'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
+  session: { type: Object, default: null },
   countryOptions: { type: Array, default: () => [] },
   regionOptions: { type: Array, default: () => [] },
   courseOptions: { type: Array, default: () => [] },
@@ -163,10 +165,35 @@ const bulkImportButtonLabel = computed(() => {
   return `Import ${n} business${n === 1 ? '' : 'es'} (${skipped} duplicate${skipped === 1 ? '' : 's'} skipped)`
 })
 
+const sessionMode = computed(() => props.session?.mode ?? 'create')
+
+const showImportTabs = computed(() =>
+  sessionMode.value !== 'edit' && sessionMode.value !== 'duplicate'
+)
+
+const drawerTitle = computed(() =>
+  sessionMode.value === 'edit' ? 'Edit business' : 'Add new business'
+)
+
+const drawerAriaLabel = computed(() => drawerTitle.value)
+
+const soloSubmitLabel = computed(() =>
+  sessionMode.value === 'edit' ? 'Save changes' : 'Create business'
+)
+
 watch(
   () => props.open,
   (v) => {
-    if (v) resetAll()
+    if (!v) return
+    const s = props.session
+    resetBulk()
+    importMode.value = 'solo'
+    submitError.value = ''
+    if (s?.mode === 'edit' || s?.mode === 'duplicate') {
+      Object.assign(soloForm, s.prefill)
+    } else {
+      Object.assign(soloForm, emptyAdminNewBusinessForm())
+    }
   }
 )
 
@@ -218,13 +245,23 @@ async function submitSolo () {
     return
   }
   submitting.value = true
+  const mode = sessionMode.value
+  const editId = mode === 'edit' ? props.session?.shopId : null
   try {
-    await $fetch('/api/admin/shops', {
-      method: 'POST',
-      headers: props.authHeaders(),
-      body: buildSoloPayload()
-    })
-    emit('success')
+    if (editId) {
+      await $fetch(`/api/admin/shops/${editId}`, {
+        method: 'PATCH',
+        headers: props.authHeaders(),
+        body: buildSoloPayload()
+      })
+    } else {
+      await $fetch('/api/admin/shops', {
+        method: 'POST',
+        headers: props.authHeaders(),
+        body: buildSoloPayload()
+      })
+    }
+    emit('success', { mode: editId ? 'edit' : (mode === 'duplicate' ? 'duplicate' : 'create') })
     close()
   } catch (e) {
     const data = e?.data || e?.response?._data
@@ -232,7 +269,7 @@ async function submitSolo () {
       (data && typeof data === 'object' && (data.statusMessage || data.message)) ||
       e?.statusMessage ||
       e?.message ||
-      'Could not create business'
+      (editId ? 'Could not save business' : 'Could not create business')
   } finally {
     submitting.value = false
   }
@@ -292,7 +329,7 @@ async function submitBulk () {
   try {
     const result = await review.submitImport()
     if (result?.ok) {
-      emit('success')
+      emit('success', { mode: 'create' })
       close()
     }
   } finally {

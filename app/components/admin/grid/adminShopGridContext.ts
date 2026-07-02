@@ -7,11 +7,13 @@ export type ShopGridRow = Record<string, unknown> & {
   dirty: boolean
   saving: boolean
   saveError: string
-  __delete: string
+  __actions: string
 }
 
 export interface AdminShopGridContext {
   writeMode: Ref<boolean>
+  editRow: (row: ShopGridRow) => void
+  duplicateRow: (row: ShopGridRow) => void
   deleteRow: (row: ShopGridRow) => void | Promise<void>
   setSingle: (row: ShopGridRow, field: string, value: unknown[]) => void
   createRegion: (name: string) => Promise<{ id: string; label: string }>

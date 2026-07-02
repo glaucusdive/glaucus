@@ -46,7 +46,7 @@ export function adminHeaderKindForProp (prop: string): AdminGridHeaderKind {
   if (p === 'website_url') return 'url'
   if (p === 'country_id' || p === 'region_id') return 'options'
   if (p === 'course_ids' || p === 'rental_equipment_ids' || p === 'gas_ids' || p === 'dive_site_ids') return 'options'
-  if (p === '__delete') return 'delete'
+  if (p === '__actions' || p === '__delete') return 'delete'
   return 'text'
 }
 

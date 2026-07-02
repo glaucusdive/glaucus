@@ -19,7 +19,7 @@
               </button>
             </label>
 
-            <Button variant="secondary" :disabled="!writeMode" @click="newDrawerOpen = true">
+            <Button variant="secondary" :disabled="!writeMode" @click="openCreateDrawer">
               Add new business
             </Button>
 
@@ -127,6 +127,7 @@
 
     <AdminNewBusinessDrawer
       v-model:open="newDrawerOpen"
+      :session="drawerSession"
       :country-options="countryOptions"
       :region-options="regionOptions"
       :course-options="courseOptions"
@@ -139,7 +140,7 @@
       :create-simple-lookup="createSimpleLookup"
       :create-dive-site="createDiveSite"
       :on-lookup-created="onLookupCreated"
-      @success="onNewBusinessSuccess"
+      @success="onDrawerSuccess"
     />
   </div>
 </template>
@@ -160,6 +161,7 @@ import {
   formatDiveBusinessTypeLabel,
   serializeDiveBusinessTypes
 } from '~~/shared/diveBusinessTypes'
+import { adminShopRowToNewBusinessForm } from '~~/shared/adminNewBusinessFormShape'
 
 definePageMeta({ layout: 'default', middleware: 'admin' })
 
@@ -175,6 +177,8 @@ const loading = ref(true)
 const loadError = ref('')
 const saveAllSaving = ref(false)
 const newDrawerOpen = ref(false)
+/** @type {import('vue').Ref<{ mode: 'create' } | { mode: 'edit', shopId: string, prefill: import('~~/shared/adminNewBusinessFormShape').AdminNewBusinessFormState } | { mode: 'duplicate', prefill: import('~~/shared/adminNewBusinessFormShape').AdminNewBusinessFormState } | null>} */
+const drawerSession = ref(null)
 
 const shops = ref([])
 const shopTotal = ref(0)
@@ -463,7 +467,7 @@ function makeRow (shop) {
     dirty: !shop,
     saving: false,
     saveError: '',
-    __delete: ''
+    __actions: ''
   })
 }
 
@@ -649,6 +653,30 @@ async function saveAllDirty () {
   }
 }
 
+function openCreateDrawer () {
+  drawerSession.value = { mode: 'create' }
+  newDrawerOpen.value = true
+}
+
+function editRow (row) {
+  if (!writeMode.value || !row.id || row.saving) return
+  drawerSession.value = {
+    mode: 'edit',
+    shopId: String(row.id),
+    prefill: adminShopRowToNewBusinessForm(row)
+  }
+  newDrawerOpen.value = true
+}
+
+function duplicateRow (row) {
+  if (!writeMode.value || !row.id || row.saving) return
+  drawerSession.value = {
+    mode: 'duplicate',
+    prefill: adminShopRowToNewBusinessForm(row, { nameSuffix: ' (Copy)' })
+  }
+  newDrawerOpen.value = true
+}
+
 async function deleteRow (row) {
   if (!row.id) return
   if (!confirm(`Delete "${row.business_name}"? This also removes related bookings and reviews.`)) return
@@ -798,6 +826,8 @@ async function copyPortalLink (row) {
 /** Passed into VGridVueTemplate (RevoGrid mounts cells outside parent provide scope). */
 const gridContext = {
   writeMode,
+  editRow,
+  duplicateRow,
   deleteRow,
   setSingle,
   createRegion,
@@ -913,9 +943,9 @@ const gridColumns = [
     cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
   }),
   withAdminHeader({
-    prop: '__delete',
-    name: 'Delete',
-    size: 100,
+    prop: '__actions',
+    name: 'Actions',
+    size: 140,
     readonly: true,
     resize: true,
     cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
@@ -971,10 +1001,19 @@ async function loadInitial () {
   }
 }
 
-async function onNewBusinessSuccess () {
-  currentPage.value = 1
-  await loadShopsPage()
+async function onDrawerSuccess (payload) {
+  const mode = payload?.mode ?? drawerSession.value?.mode ?? 'create'
+  if (mode === 'edit') {
+    await loadShopsPage()
+  } else {
+    currentPage.value = 1
+    await loadShopsPage()
+  }
 }
+
+watch(newDrawerOpen, (v) => {
+  if (!v) drawerSession.value = null
+})
 
 onMounted(async () => {
   await init()
