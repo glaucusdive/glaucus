@@ -46,11 +46,21 @@
       <div class="px-4 py-3">
         <!-- Solo import -->
         <form v-if="importMode === 'solo'" id="admin-new-business-form" @submit.prevent="submitSolo">
-          <AdminNewBusinessForm v-model="soloForm" :country-options="countryOptions" :region-options="regionOptions"
-            :course-options="courseOptions" :rental-options="rentalOptions" :gas-options="gasOptions"
-            :dive-site-options="diveSiteOptions" :business-type-options="businessTypeOptions"
-            :create-region="createRegion" :create-simple-lookup="createSimpleLookup" :create-dive-site="createDiveSite"
-            :on-lookup-created="onLookupCreated" />
+          <AdminNewBusinessForm
+            :model-value="soloForm"
+            :country-options="countryOptions"
+            :region-options="regionOptions"
+            :course-options="courseOptions"
+            :rental-options="rentalOptions"
+            :gas-options="gasOptions"
+            :dive-site-options="diveSiteOptions"
+            :business-type-options="businessTypeOptions"
+            :create-region="createRegion"
+            :create-simple-lookup="createSimpleLookup"
+            :create-dive-site="createDiveSite"
+            :on-lookup-created="onLookupCreated"
+            @update:model-value="onSoloFormUpdate"
+          />
           <p v-if="submitError" class="mt-4 text-sm text-red-600 dark:text-red-400">{{ submitError }}</p>
         </form>
 
@@ -196,6 +206,10 @@ watch(
     }
   }
 )
+
+function onSoloFormUpdate (next) {
+  Object.assign(soloForm, next)
+}
 
 function resetSolo () {
   submitError.value = ''
