@@ -142,8 +142,7 @@ const defaultNavItems = [
   { id: 'feature1', label: 'For Divers' },
   { id: 'for-businesses', label: 'For Businesses', to: '/for-businesses', target: '_blank' },
   { id: 'aboutus', label: 'About us' },
-  { id: 'logs', label: 'Logs' },
-  { id: 'contact', label: 'Contact' }
+  { id: 'logs', label: 'Logs' }
 ]
 
 const props = defineProps({
