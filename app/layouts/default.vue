@@ -94,30 +94,7 @@
             </ClientOnly>
           </nav>
 
-          <!-- Theme Toggle Button -->
           <div class="w-full h-12 p-0 shrink-0 flex flex-row gap-2 items-center">
-            <ClientOnly>
-              <button @click="toggleTheme"
-                class="w-full h-full flex items-center justify-center rounded-full gap-0 p-1 border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 text-zinc-900 dark:text-white cursor-pointer relative before:content-[''] before:absolute before:inset-1 before:rounded-full before:bg-zinc-200 dark:before:bg-zinc-700 before:w-[calc(50%-4px)] before:z-[-1] before:transition-transform before:duration-300 before:ease-in-out before:left-1"
-                :class="isDark ? 'before:translate-x-full' : 'before:translate-x-0'">
-                <div class="w-full h-full flex items-center justify-center rounded-full">
-                  <Sun class="w-6 h-6" :class="isDark ? 'opacity-30' : 'opacity-100'" stroke-width="1" />
-                </div>
-                <div class="w-full h-full flex items-center justify-center rounded-full">
-                  <Moon class="w-6 h-6" :class="isDark ? 'opacity-100' : 'opacity-30'" stroke-width="1" />
-                </div>
-              </button>
-              <template #fallback>
-                <div class="w-full h-18 flex items-center justify-center rounded-full gap-0 p-1 border border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-white cursor-pointer relative before:content-[''] before:absolute before:inset-1 before:rounded-full before:bg-zinc-200 dark:before:bg-zinc-700 before:w-[calc(50%-4px)] before:z-[-1] before:transition-transform before:duration-300 before:ease-in-out before:left-1 before:translate-x-0">
-                  <div class="w-full h-full flex items-center justify-center rounded-full">
-                    <Sun class="w-8 h-8 opacity-100" stroke-width="1" />
-                  </div>
-                  <div class="w-full h-full flex items-center justify-center rounded-full">
-                    <Moon class="w-8 h-8 opacity-30" stroke-width="1" />
-                  </div>
-                </div>
-              </template>
-            </ClientOnly>
             <ClientOnly>
               <FeedbackFlyout />
               <template #fallback>
@@ -170,9 +147,8 @@
 <script setup>
 import gsap from 'gsap'
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { X, Sun, Moon, FilePlus, CircleUser, LogIn, LogOut, CircleHelp, Shield, ClipboardList } from 'lucide-vue-next'
+import { X, FilePlus, CircleUser, LogIn, LogOut, CircleHelp, Shield, ClipboardList } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
-import { useTheme } from '~/composables/useTheme'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/composables/useSupabase'
 import { initSignedInChatsFromRemote, requestChatRemoteHydrate, clearLocalChatsAfterSignOut } from '~/composables/userChatsRemote'
@@ -226,7 +202,6 @@ function formatChatUpdated (ts) {
   }
 }
 
-const { isDark, toggleTheme } = useTheme()
 const { client } = useSupabase()
 const { saveDraftFromCacheIfNeeded } = useSaveDraftFromCache()
 
