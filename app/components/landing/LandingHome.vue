@@ -191,7 +191,7 @@
               <button type="button"
                 class="w-full rounded-md h-10 px-4 py-2 text-sm font-medium uppercase bg-white text-zinc-900 hover:bg-zinc-200 whitespace-nowrap sm:w-auto"
                 @click="goToApp">
-                Open App
+                Book your dive
               </button>
             </div>
           </div>
