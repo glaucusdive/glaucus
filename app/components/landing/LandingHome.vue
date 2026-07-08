@@ -193,11 +193,6 @@
                 @click="goToApp">
                 Open App
               </button>
-              <NuxtLink to="contact"
-                class="flex w-full items-center justify-center rounded-md h-10 px-4 py-2 text-sm font-medium uppercase bg-zinc-600 text-zinc-100 hover:bg-zinc-500 whitespace-nowrap sm:w-auto"
-                @click="goToApp">
-                Contact Us
-              </NuxtLink>
             </div>
           </div>
         </div>
