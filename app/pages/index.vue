@@ -21,8 +21,12 @@ const { capture, AnalyticsEvents } = useAnalytics()
 
 const chatOpenedTracked = ref(false)
 
-/** False until client `init()` finishes; true on server so crawlers get the marketing landing. */
-const authResolved = ref(import.meta.server)
+/**
+ * False on the server and until client `init()` finishes, so SSR and the first client
+ * render both show the marketing landing. Keeps hydration in sync (no layout/tree
+ * mismatch → no `insertBefore` crash) and remains crawler-friendly.
+ */
+const authResolved = ref(false)
 
 /** Chat shell for guests with `?chat=1`, or signed-in users who opened chat the same way. */
 const guestChat = computed(
