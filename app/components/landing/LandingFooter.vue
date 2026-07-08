@@ -12,7 +12,6 @@
             <NuxtLink to="/for-businesses" target="_blank" rel="noopener noreferrer">For Businesses</NuxtLink>
             <NuxtLink to="/#aboutus">About Us</NuxtLink>
             <NuxtLink to="/#logs">Logs</NuxtLink>
-            <NuxtLink to="/#contact">Contact</NuxtLink>
             <NuxtLink to="/privacy">Privacy Policy</NuxtLink>
             <NuxtLink to="/legal">Legal Notice</NuxtLink>
           </nav>
