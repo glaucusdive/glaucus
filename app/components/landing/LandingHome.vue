@@ -347,4 +347,8 @@ onUnmounted(() => {
 function onHeroComposerSubmit (q) {
   void navigateTo({ path: '/', query: { chat: '1', q } })
 }
+
+function goToApp () {
+  void navigateTo({ path: '/', query: { chat: '1' } })
+}
 </script>
