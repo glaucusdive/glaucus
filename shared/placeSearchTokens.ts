@@ -11,7 +11,22 @@ export function sanitizePlaceSearchToken (s: string): string {
 const MIN_TOKEN_LEN = 4
 
 /**
+ * Generic words that appear in many country/region names. When the full phrase has other
+ * significant words (e.g. "Solomon Islands"), do not emit these alone — they pollute worldwide OR search.
+ */
+export const GENERIC_PLACE_TOKEN_WORDS = new Set([
+  'island',
+  'islands',
+  'republic',
+  'kingdom',
+  'federation',
+  'states',
+  'united'
+])
+
+/**
  * Tokens for directory-style place search: full phrase plus significant words (e.g. Raja Ampat → Ampat).
+ * Suppresses bare generic words (Islands, Republic, …) when they are not the whole query.
  */
 export function placeSearchTokens (placeRaw: string): string[] {
   const full = sanitizePlaceSearchToken(placeRaw)
@@ -25,8 +40,11 @@ export function placeSearchTokens (placeRaw: string): string[] {
     out.push(s)
   }
   add(full)
-  for (const word of full.split(/\s+/)) {
-    if (word.length >= MIN_TOKEN_LEN) add(word)
+  const words = full.split(/\s+/).filter(w => w.length >= MIN_TOKEN_LEN)
+  const hasNonGeneric = words.some(w => !GENERIC_PLACE_TOKEN_WORDS.has(w.toLowerCase()))
+  for (const word of words) {
+    if (hasNonGeneric && GENERIC_PLACE_TOKEN_WORDS.has(word.toLowerCase())) continue
+    add(word)
   }
   return out
 }

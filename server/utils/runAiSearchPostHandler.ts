@@ -903,7 +903,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             const countryOnly = isCountryOnlyGeoFilters(geoFilters)
             const geoMessage = widenedTripType
               ? `Here are dive shops in ${placeLabel}. ${preferredDiveTypes?.join(', ') ?? 'Your trip type'} matches are listed first; we also included other operators in the area.`
-              : `Here are dive shops in ${placeLabel} (from our location data).`
+              : `Here are dive shops in ${placeLabel}.`
             if (allowAutoBook && effectiveWantsToBook && (geoList.length > 1 || countryOnly)) {
               logIntentTurn('search')
               return withAgentMeta({

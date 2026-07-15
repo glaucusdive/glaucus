@@ -15,16 +15,25 @@ describe('inferSearchFiltersFromDestination', () => {
     })
   })
   it('maps Mexico to country', () => {
-    expect(inferSearchFiltersFromDestination('mexico')).toEqual({ country: 'mexico' })
+    expect(inferSearchFiltersFromDestination('mexico')).toEqual({ country: 'Mexico' })
   })
   it('maps Spain to country only', () => {
-    expect(inferSearchFiltersFromDestination('spain')).toEqual({ country: 'spain' })
+    expect(inferSearchFiltersFromDestination('spain')).toEqual({ country: 'Spain' })
+  })
+  it('maps Solomon Islands to country only (no place wide-search)', () => {
+    expect(inferSearchFiltersFromDestination('Solomon Islands')).toEqual({
+      country: 'Solomon Islands'
+    })
+    expect(inferSearchFiltersFromDestination('the Solomon Islands')).toEqual({
+      country: 'Solomon Islands'
+    })
   })
 })
 
 describe('isCountryOnlyGeoFilters', () => {
   it('is true for country without place or region', () => {
     expect(isCountryOnlyGeoFilters({ country: 'Spain' })).toBe(true)
+    expect(isCountryOnlyGeoFilters({ country: 'Solomon Islands' })).toBe(true)
   })
   it('is false when place or region is set', () => {
     expect(isCountryOnlyGeoFilters({ country: 'Indonesia', place: 'Bali' })).toBe(false)

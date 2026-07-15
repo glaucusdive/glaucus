@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { SearchFilters } from './buildDiveShopQuery'
 import { sanitizeActivityTokenForIlike } from './collectShopIdsForActivityTokens'
+import { inferSearchFiltersFromDestination } from './destinationToSearchFilters'
 
 import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from './openAiChatModel'
 
@@ -250,12 +251,16 @@ export function mergeNluHintsIntoFilters (
   const place = normalizePlace(interpret.destination_text ?? undefined)
   if (!place) return filters
   if (filters.country?.trim()) return filters
-  const lower = place.toLowerCase()
-  const countryLike = ['indonesia', 'thailand', 'mexico', 'philippines', 'maldives', 'australia', 'usa', 'united states', 'egypt', 'malaysia', 'spain', 'france', 'italy', 'croatia', 'greece', 'portugal', 'japan'].some(c => lower === c || lower.includes(c))
-  if (countryLike && !filters.country?.trim()) {
-    const title = place.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
-    return { ...filters, country: title }
+
+  const inferred = inferSearchFiltersFromDestination(place)
+  if (inferred.country?.trim()) {
+    const out: SearchFilters = { ...filters, country: inferred.country.trim() }
+    if (inferred.place?.trim() && !filters.place?.trim()) {
+      out.place = inferred.place.trim()
+    }
+    return out
   }
+
   if (!filters.place?.trim() && !filters.region?.trim()) {
     return { ...filters, place }
   }

@@ -97,12 +97,20 @@ describe('shouldRunInterpretNlu', () => {
 })
 
 describe('mergeNluHintsIntoFilters', () => {
-  it('fills place from destination when empty', () => {
+  it('maps Bali destination to Indonesia country + Bali place', () => {
     const out = mergeNluHintsIntoFilters(
       {},
       { goal: 'search_shops', destination_text: 'Bali' }
     )
-    expect(out.place).toBe('Bali')
+    expect(out).toEqual({ country: 'Indonesia', place: 'Bali' })
+  })
+  it('maps Solomon Islands to country only (no place)', () => {
+    const out = mergeNluHintsIntoFilters(
+      {},
+      { goal: 'search_shops', destination_text: 'Solomon Islands' }
+    )
+    expect(out).toEqual({ country: 'Solomon Islands' })
+    expect(out.place).toBeUndefined()
   })
   it('does not stack place when country already set', () => {
     const out = mergeNluHintsIntoFilters(
