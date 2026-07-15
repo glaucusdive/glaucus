@@ -127,6 +127,11 @@ import {
 } from '../../shared/bookingPreSendTokens'
 import { contactNameInputLikelyNotAPlainName } from '../utils/bookingFieldReplyHeuristics'
 import { classifyBookingContactReply } from '../utils/bookingContactReplyClassifier'
+import {
+  applyResolvedTripDatesToBookingPayload,
+  mergeResolvedTripDatesIntoRequirements,
+  resolveTripDatesForBookingHandoff
+} from '../utils/resolveTripDatesForBookingHandoff'
 
 function abortSignalFromH3Event (event: H3Event): AbortSignal | undefined {
   const req = event.node.req
@@ -1123,9 +1128,17 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           getRentalEquipmentForShop(supabaseUrl, supabaseKey, resolvedShop.id),
           getCoursesForShop(supabaseUrl, supabaseKey, resolvedShop.id)
         ])
-        const effectiveTripReq = mergeTripRequirements(activeTripRequirements, {
-          selectedShopId: resolvedShop.id
+        const resolvedHandoffDates = resolveTripDatesForBookingHandoff({
+          tripRequirements: activeTripRequirements,
+          lastSearchFilters: normalizeClientSearchFilters(bodyLastSearchFilters),
+          history: history || []
         })
+        const effectiveTripReq = mergeResolvedTripDatesIntoRequirements(
+          mergeTripRequirements(activeTripRequirements, {
+            selectedShopId: resolvedShop.id
+          }),
+          resolvedHandoffDates
+        )
         const courseSeedBase = {
           tripRequirements: effectiveTripReq,
           history: history || [],
@@ -1216,6 +1229,10 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             // Prefilling divers skips courses/sites/diver-count in the step machine.
           }
           let initialPayload: BookingPayload = { shopId: resolvedShop.id, ...base, ...fromProfile }
+          initialPayload = applyResolvedTripDatesToBookingPayload(
+            initialPayload as BookingPayloadLocal,
+            resolvedHandoffDates
+          ) as BookingPayload
           let nextHint = getNextBookingStep(initialPayload)
           if (nextHint?.step === 'courses' && courses.length === 0) {
             initialPayload = { ...initialPayload, desiredCourses: [] }
@@ -1506,6 +1523,10 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               }
             }
             let initialPayload = { ...base, ...fromProfile } as BookingPayload
+            initialPayload = applyResolvedTripDatesToBookingPayload(
+              initialPayload as BookingPayloadLocal,
+              resolvedHandoffDates
+            ) as BookingPayload
             let nextHint = getNextBookingStep(initialPayload)
             if (nextHint?.step === 'courses' && courses.length === 0) {
               initialPayload = { ...initialPayload, desiredCourses: [] }

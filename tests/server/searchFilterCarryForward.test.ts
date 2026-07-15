@@ -41,6 +41,16 @@ describe('userExplicitlyRequestsBroadDatasetSearch', () => {
 })
 
 describe('carryForwardUnsetSearchAxes', () => {
+  it('carries dates from last when refine omits them', () => {
+    const out = carryForwardUnsetSearchAxes(
+      { country: 'Indonesia', place: 'Bali', diveTypes: ['Dive Resort'] },
+      { country: 'Indonesia', place: 'Bali', dates: { start: '2027-07-01', end: '2027-07-04' } },
+      'I want to filter down to dive resorts',
+      null
+    )
+    expect(out.dates).toEqual({ start: '2027-07-01', end: '2027-07-04' })
+  })
+
   it('carries activityTokens from last when refine omits them', () => {
     const out = carryForwardUnsetSearchAxes(
       { country: 'Indonesia', place: 'Bali', diveTypes: ['Dive Resort'] },

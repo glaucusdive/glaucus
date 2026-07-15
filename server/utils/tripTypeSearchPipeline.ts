@@ -3,6 +3,7 @@ import {
   mergeShopListsPreferringDiveTypes,
   shouldWidenSparseTripTypeResults
 } from './widePlaceShopSearch'
+import { attachParsedTripDatesToSearchFilters } from './attachParsedTripDatesToSearchFilters'
 import { carryForwardUnsetSearchAxes } from './searchFilterCarryForward'
 import {
   mergeActivityIntoFilters,
@@ -403,6 +404,7 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
   }
 
   filters = carryForwardUnsetSearchAxes(filters, lastSearchFilters ?? undefined, message, interpretTurn ?? null)
+  filters = attachParsedTripDatesToSearchFilters(filters, message)
 
   onStatus?.('Applying filters…')
 

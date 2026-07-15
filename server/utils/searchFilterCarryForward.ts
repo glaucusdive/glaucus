@@ -111,6 +111,13 @@ export function carryForwardUnsetSearchAxes (
   if ((!out.languages?.length) && last.languages?.length) {
     out = { ...out, languages: [...last.languages] }
   }
+  if (
+    !(out.dates?.start?.trim() && out.dates?.end?.trim()) &&
+    last.dates?.start?.trim() &&
+    last.dates?.end?.trim()
+  ) {
+    out = { ...out, dates: { start: last.dates.start, end: last.dates.end } }
+  }
 
   return out
 }
