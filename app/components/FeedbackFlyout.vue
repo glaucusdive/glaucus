@@ -134,7 +134,7 @@
             @change="onFileSelected"
           />
           <p class="text-[11px] text-zinc-500 dark:text-zinc-500 leading-snug">
-            JPEG, PNG, WebP, or GIF, up to 4&nbsp;MB. Shown inline on the Linear issue.
+            Paste an image, or choose a file. JPEG, PNG, WebP, or GIF, up to 4&nbsp;MB. Shown inline on the Linear issue.
           </p>
           <div v-if="attachmentPreviewUrl" class="relative rounded-md border border-zinc-200 dark:border-zinc-600 overflow-hidden max-h-32 w-full bg-zinc-100 dark:bg-zinc-800">
             <img :src="attachmentPreviewUrl" alt="Attachment preview" class="w-full h-full object-contain max-h-32">
@@ -241,30 +241,96 @@ function clearAttachment () {
   }
 }
 
-function onFileSelected (e) {
-  revokePreview()
-  const input = e.target
-  const file = input?.files?.[0] ?? null
-  if (!file) {
-    selectedFile.value = null
-    return
+function syncFileInput (file) {
+  const input = fileInputRef.value?.inputEl
+  if (!input) return
+  try {
+    const dt = new DataTransfer()
+    dt.items.add(file)
+    input.files = dt.files
+  } catch {
+    // DataTransfer may be unavailable; preview + selectedFile still work for submit
   }
+}
+
+/** Validate and attach a screenshot file; returns false if rejected. */
+function attachScreenshot (file) {
+  revokePreview()
   if (file.size > MAX_ATTACHMENT_BYTES) {
     submitError.value = 'Photo must be 4MB or smaller.'
-    input.value = ''
     selectedFile.value = null
-    return
+    if (fileInputRef.value?.inputEl) {
+      fileInputRef.value.inputEl.value = ''
+    }
+    return false
   }
   const okType = /^image\/(jpeg|jpg|png|webp|gif)$/i.test(file.type)
   if (!okType) {
     submitError.value = 'Please choose a JPEG, PNG, WebP, or GIF image.'
-    input.value = ''
     selectedFile.value = null
-    return
+    if (fileInputRef.value?.inputEl) {
+      fileInputRef.value.inputEl.value = ''
+    }
+    return false
   }
   submitError.value = ''
   selectedFile.value = file
   attachmentPreviewUrl.value = URL.createObjectURL(file)
+  syncFileInput(file)
+  return true
+}
+
+function onFileSelected (e) {
+  const input = e.target
+  const file = input?.files?.[0] ?? null
+  if (!file) {
+    revokePreview()
+    selectedFile.value = null
+    return
+  }
+  if (!attachScreenshot(file) && input) {
+    input.value = ''
+  }
+}
+
+function imageFileFromClipboard (clipboardData) {
+  if (!clipboardData) return null
+  const files = clipboardData.files
+  if (files?.length) {
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i]
+      if (f && /^image\//i.test(f.type)) return f
+    }
+  }
+  const items = clipboardData.items
+  if (items?.length) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      if (item?.kind === 'file' && /^image\//i.test(item.type || '')) {
+        const f = item.getAsFile()
+        if (f) return f
+      }
+    }
+  }
+  return null
+}
+
+function onPaste (e) {
+  if (!open.value || successInfo.value) return
+  const file = imageFileFromClipboard(e.clipboardData)
+  if (!file) return
+  e.preventDefault()
+  const named = file.name && file.name !== 'blob'
+    ? file
+    : new File([file], `screenshot-${Date.now()}.${extFromMime(file.type)}`, { type: file.type })
+  attachScreenshot(named)
+}
+
+function extFromMime (mime) {
+  if (/png/i.test(mime)) return 'png'
+  if (/webp/i.test(mime)) return 'webp'
+  if (/gif/i.test(mime)) return 'gif'
+  return 'jpg'
 }
 
 function onDocPointerDown (e) {
@@ -293,10 +359,12 @@ watch(open, (isOpen) => {
 onMounted(() => {
   document.addEventListener('pointerdown', onDocPointerDown, true)
   document.addEventListener('keydown', onKeydown)
+  document.addEventListener('paste', onPaste)
 })
 onUnmounted(() => {
   document.removeEventListener('pointerdown', onDocPointerDown, true)
   document.removeEventListener('keydown', onKeydown)
+  document.removeEventListener('paste', onPaste)
   revokePreview()
 })
 
