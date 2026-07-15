@@ -737,6 +737,12 @@ const pageHeaderTitle = computed(() =>
 async function handleStartBookingFromPanel (shopId, shopName, source = 'panel') {
   selectedShopId.value = shopId
   capture(AnalyticsEvents.BOOKING_STARTED, { shop_id: shopId, source })
+  const lastSearchMsg = [...messages.value].reverse().find(
+    (m) => m.role === 'assistant' && m.filters && typeof m.filters === 'object'
+  )
+  if (lastSearchMsg?.filters) {
+    absorbTripRequirementsFromSearchTurn({ filters: lastSearchMsg.filters })
+  }
   if (guidedBookingHints.value) {
     absorbTripRequirementsFromSearchTurn({ bookingHints: guidedBookingHints.value })
   }
