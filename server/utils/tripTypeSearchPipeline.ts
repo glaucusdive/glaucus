@@ -78,7 +78,12 @@ export function inferCountryFromConversation (conversationText: string): string 
     { pattern: /\bcuba\b/i, country: 'Cuba' },
     { pattern: /\bsouth africa\b/i, country: 'South Africa' },
     { pattern: /\bgreece\b/i, country: 'Greece' },
-    { pattern: /\bcroatia\b/i, country: 'Croatia' }
+    { pattern: /\bcroatia\b/i, country: 'Croatia' },
+    { pattern: /\bsolomon\s+islands\b/i, country: 'Solomon Islands' },
+    { pattern: /\bfiji\b/i, country: 'Fiji' },
+    { pattern: /\bvanuatu\b/i, country: 'Vanuatu' },
+    { pattern: /\bpalau\b/i, country: 'Palau' },
+    { pattern: /\bcosta\s+rica\b/i, country: 'Costa Rica' }
   ]
   for (const { pattern, country } of countryPatterns) {
     if (pattern.test(conversationText)) return country

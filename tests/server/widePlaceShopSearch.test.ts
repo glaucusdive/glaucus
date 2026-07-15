@@ -14,6 +14,11 @@ describe('placeSearchTokens', () => {
   it('includes single long token', () => {
     expect(placeSearchTokens('Bali')).toEqual(['Bali'])
   })
+
+  it('does not emit bare Islands when phrase is Solomon Islands', () => {
+    expect(placeSearchTokens('Solomon Islands')).toEqual(['Solomon Islands', 'Solomon'])
+    expect(placeSearchTokens('Solomon Islands')).not.toContain('Islands')
+  })
 })
 
 describe('diveshopDirectoryOrConditions', () => {

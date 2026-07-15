@@ -116,6 +116,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.80.1** — Fix country destination search (e.g. Solomon Islands liveaboard) by promoting place phrases to `country_id` and suppressing generic place tokens like "Islands" (2026-07-15).
 - **0.80.0** — Enhance search functionality with certification course handling and shop enrichment (2026-05-04).
 - **0.79.6** — Refactor OpenAI API integration to use max_completion_tokens and remove temperature settings (2026-05-04).
 - **0.79.5** — Update environment setup and configuration for OpenAI integration (2026-05-03).

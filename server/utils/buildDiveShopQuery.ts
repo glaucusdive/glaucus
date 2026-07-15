@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { collectShopIdsForActivityTokens } from './collectShopIdsForActivityTokens'
+import { promotePlaceToCountryFilters } from './resolveSearchCountryIds'
 import { collectWidePlaceShopIds } from './widePlaceShopSearch'
 
 export interface SearchFilters {
@@ -82,6 +83,7 @@ export async function buildDiveShopQuery (
 ) {
   const client = createClient(supabaseUrl, supabaseKey)
   const defaultLimit = options?.defaultLimit != null && options.defaultLimit > 0 ? options.defaultLimit : 50
+  const effectiveFilters = await promotePlaceToCountryFilters(client, filters)
 
   const applyWindow = (q: ReturnType<typeof client.from>) => {
     if (range && range.limit > 0 && range.offset >= 0) {
@@ -93,8 +95,8 @@ export async function buildDiveShopQuery (
 
   /** When `filters.country` is set, resolved once for shop query + strict activity site scope. */
   let resolvedCountryIds: string[] | null = null
-  if (filters.country?.trim()) {
-    const countryPat = sanitizeTermForPostgrestOrFragment(filters.country)
+  if (effectiveFilters.country?.trim()) {
+    const countryPat = sanitizeTermForPostgrestOrFragment(effectiveFilters.country)
     if (!countryPat) {
       const emptyBase = client
         .from('diveshops')
@@ -115,8 +117,8 @@ export async function buildDiveShopQuery (
   }
 
   let activityIdFilter: string[] | null = null
-  if (filters.activityTokens && filters.activityTokens.length > 0) {
-    activityIdFilter = await collectShopIdsForActivityTokens(client, filters.activityTokens, {
+  if (effectiveFilters.activityTokens && effectiveFilters.activityTokens.length > 0) {
+    activityIdFilter = await collectShopIdsForActivityTokens(client, effectiveFilters.activityTokens, {
       diveSiteCountryIds: resolvedCountryIds ?? undefined
     })
     if (activityIdFilter.length === 0) {
@@ -138,8 +140,8 @@ export async function buildDiveShopQuery (
   }
 
   // Resolve region name to ID(s) and filter by region_id
-  if (filters.region?.trim()) {
-    const regionPat = sanitizeTermForPostgrestOrFragment(filters.region)
+  if (effectiveFilters.region?.trim()) {
+    const regionPat = sanitizeTermForPostgrestOrFragment(effectiveFilters.region)
     if (!regionPat) {
       const emptyBase = client
         .from('diveshops')
@@ -157,10 +159,10 @@ export async function buildDiveShopQuery (
   }
 
   // Apply place filter (directory-wide or legacy city/state/address only)
-  if (filters.place?.trim()) {
+  if (effectiveFilters.place?.trim()) {
     const useWidePlace = options?.widePlace !== false
     if (useWidePlace) {
-      const wideIds = await collectWidePlaceShopIds(client, filters.place, resolvedCountryIds)
+      const wideIds = await collectWidePlaceShopIds(client, effectiveFilters.place, resolvedCountryIds)
       if (!wideIds.length) {
         const emptyBase = client
           .from('diveshops')
@@ -170,7 +172,7 @@ export async function buildDiveShopQuery (
       }
       query = query.in('id', wideIds)
     } else {
-      const locSafe = sanitizeTermForPostgrestOrFragment(filters.place)
+      const locSafe = sanitizeTermForPostgrestOrFragment(effectiveFilters.place)
       if (!locSafe) {
         const emptyBase = client
           .from('diveshops')
@@ -183,19 +185,19 @@ export async function buildDiveShopQuery (
   }
 
   // Apply minimum rating filter (include shops with no rating so we don't return zero when data has nulls)
-  if (filters.minRating !== undefined && filters.minRating > 0) {
-    query = query.or(`google_rating.gte.${filters.minRating},google_rating.is.null`)
+  if (effectiveFilters.minRating !== undefined && effectiveFilters.minRating > 0) {
+    query = query.or(`google_rating.gte.${effectiveFilters.minRating},google_rating.is.null`)
   }
 
   // Apply dive type filter (diveshops.type is text, e.g. "Liveaboard", "Dive Shop, Liveaboard")
-  if (filters.diveTypes && filters.diveTypes.length > 0) {
-    const typeConditions = filters.diveTypes.map(t => `type.ilike.%${t}%`).join(',')
+  if (effectiveFilters.diveTypes && effectiveFilters.diveTypes.length > 0) {
+    const typeConditions = effectiveFilters.diveTypes.map(t => `type.ilike.%${t}%`).join(',')
     query = query.or(typeConditions)
   }
 
   // Apply language filters (array contains)
-  if (filters.languages && filters.languages.length > 0) {
-    query = query.overlaps('languages', filters.languages)
+  if (effectiveFilters.languages && effectiveFilters.languages.length > 0) {
+    query = query.overlaps('languages', effectiveFilters.languages)
   }
 
   // Order by rating (highest first), then by business name
