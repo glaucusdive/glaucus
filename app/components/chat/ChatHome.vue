@@ -98,11 +98,13 @@
                     <button
                       v-if="(bookingShopForDrawer || (msg.shopId && msg.shopName)) && !(msg.shops && msg.shops.length > 0)"
                       type="button"
-                      @click="openBookingFormDrawerFromMessage(msg)"
+                      @click="toggleBookingFormDrawerFromMessage(msg)"
                       class="w-10 shrink-0 self-stretch flex items-center justify-center rounded-sm border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200  cursor-pointer"
-                      aria-label="Open booking form"
+                      :aria-label="isBookingFormOpen ? 'Close booking form' : 'Open booking form'"
+                      :aria-expanded="isBookingFormOpen"
                     >
-                      <ChevronRight class="w-5 h-5" />
+                      <ChevronLeft v-if="isBookingFormOpen" class="w-5 h-5" />
+                      <ChevronRight v-else class="w-5 h-5" />
                     </button>
                   </div>
 
@@ -352,7 +354,7 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted, watch, onUnmounted } from 'vue'
-import { ChevronRight, ChevronUp, Undo2 } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, ChevronUp, Undo2 } from 'lucide-vue-next'
 import ChatComposer from '~/components/chat/ChatComposer.vue'
 import BottomSheetDrawer from '~/components/ui/BottomSheetDrawer.vue'
 import CardSearchResult from '~/components/CardSearchResult.vue'
@@ -2359,8 +2361,12 @@ const openBookingFormDrawer = () => {
   })
 }
 
-// Open booking form from chevron on a specific message (use message's shop context so it works when global computed lags)
-function openBookingFormDrawerFromMessage (msg) {
+// Toggle booking form from chevron on a booking message (flip to close when already open)
+function toggleBookingFormDrawerFromMessage (msg) {
+  if (isBookingFormOpen.value) {
+    closeDrawer()
+    return
+  }
   const shop = bookingShopForDrawer.value || (msg.shopId && msg.shopName ? { id: msg.shopId, name: msg.shopName } : null)
   if (!shop) return
   armShopDetailCloseGuard()
