@@ -249,6 +249,7 @@ export default defineEventHandler(async (event) => {
         const { data, error: errShop } = await resend.emails.send({
           from: fromEmail,
           to: [shopEmail],
+          replyTo: email,
           subject: diveshopSubject,
           text: diveshopText
         })
@@ -288,6 +289,7 @@ export default defineEventHandler(async (event) => {
         const { error } = await resend.emails.send({
           from: fromEmail,
           to: [email],
+          replyTo: shopEmail,
           subject: userSubject,
           text: userText
         })
