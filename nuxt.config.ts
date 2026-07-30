@@ -14,7 +14,7 @@ export default defineNuxtConfig({
       ]
     }
   },
-  modules: ['@nuxt/ui', '@posthog/nuxt', '@nuxtjs/robots', '@nuxtjs/sitemap', 'nuxt-seo-utils'],
+  modules: ['@nuxt/ui', '@posthog/nuxt', '@nuxtjs/robots', '@nuxtjs/sitemap', 'nuxt-seo-utils', 'nuxt-gtag'],
   site: {
     url: process.env.NUXT_SITE_URL || 'https://glaucusdive.com',
     name: 'Glaucus',
@@ -119,8 +119,16 @@ export default defineNuxtConfig({
        * When `true`, tag events with test_mode (for dashboards that exclude test traffic).
        * Default off so KPI dashboards work while app test mode may still be on.
        */
-      posthogMarkTestTraffic: process.env.NUXT_PUBLIC_POSTHOG_MARK_TEST_TRAFFIC === 'true'
+      posthogMarkTestTraffic: process.env.NUXT_PUBLIC_POSTHOG_MARK_TEST_TRAFFIC === 'true',
+      /** Set NUXT_PUBLIC_GA4_ENABLED=true on Netlify prod only. */
+      ga4Enabled: process.env.NUXT_PUBLIC_GA4_ENABLED === 'true',
+      ga4Id: process.env.NUXT_PUBLIC_GA4_ID || 'G-WTKZQBBPWT'
     }
+  },
+
+  gtag: {
+    enabled: process.env.NUXT_PUBLIC_GA4_ENABLED === 'true',
+    id: process.env.NUXT_PUBLIC_GA4_ID || 'G-WTKZQBBPWT'
   },
 
   posthogConfig: {
@@ -137,4 +145,3 @@ export default defineNuxtConfig({
     }
   }
 })
-
