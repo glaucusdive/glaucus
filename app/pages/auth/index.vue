@@ -1,6 +1,7 @@
 <template>
-    <div class="min-h-screen bg-zinc-50 dark:bg-zinc-900 p-4 flex items-center justify-center">
-      <div class="w-full max-w-md space-y-6">
+  <div class="flex h-full min-h-0 flex-1 flex-col">
+    <div class="flex flex-1 min-h-0 flex-col items-center justify-center overflow-y-auto p-4">
+      <section class="flex w-full max-w-md flex-col gap-6">
         <h1 class="text-2xl font-bold text-zinc-900 dark:text-white text-center">
           {{ isSignUp ? 'Create account' : 'Sign in' }}
         </h1>
@@ -18,11 +19,11 @@
 
         <div class="relative">
           <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-zinc-300 dark:border-zinc-600" /></div>
-          <div class="relative flex justify-center text-sm"><span class="px-2 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400">or</span></div>
+          <div class="relative flex justify-center text-sm"><span class="px-2 bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400">or</span></div>
         </div>
 
         <!-- Email form -->
-        <form @submit.prevent="handleEmail" class="space-y-3">
+        <form @submit.prevent="handleEmail" class="flex flex-col gap-3">
           <div v-if="isSignUp" class="flex flex-col gap-1">
             <FormField label="Display name (optional)" label-style="auth" field-id="displayName">
               <FormInput
@@ -81,8 +82,9 @@
           <NuxtLink v-if="isSignUp" to="/auth" class="underline hover:no-underline">Already have an account? Sign in</NuxtLink>
           <NuxtLink v-else to="/auth/signup" class="underline hover:no-underline">Create an account</NuxtLink>
         </p>
-      </div>
+      </section>
     </div>
+  </div>
 </template>
 
 <script setup lang="ts">
