@@ -181,21 +181,24 @@
                     </button>
                   </div>
 
-                  <!-- Rental gear: pick items or Done (no gear); click selected chip again to remove -->
+                  <!-- Rental gear: pick items or Done (no gear); toggle locally, commit on Done -->
                   <div
                     v-if="Array.isArray(msg.rentalEquipmentOptions)"
                     class="flex flex-col gap-4 p-2 transition-opacity duration-200"
                     :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
                   >
+                    <p v-if="index === activeChipMessageIndex" class="text-xs text-zinc-500 dark:text-zinc-400">
+                      Select all that apply, then tap Done.
+                    </p>
                     <div class="flex w-full flex-wrap gap-2">
                       <button
                         v-for="eq in msg.rentalEquipmentOptions"
                         :key="eq.id"
                         type="button"
-                        @click="sendMessage(getGearChipClickValue(msg, eq))"
+                        @click="toggleGearChipDraft(index, eq)"
                         :class="[
                           'px-3 py-1.5 text-sm',
-                          isGearChipSelected(msg, eq) ? bookingChipSelectedClass : bookingChipUnselectedClass
+                          isGearChipSelected(msg, eq, index) ? bookingChipSelectedClass : bookingChipUnselectedClass
                         ]"
                       >
                         {{ eq.name }}
@@ -203,24 +206,27 @@
                     </div>
                     <button
                       type="button"
-                      @click="sendMessage('done')"
+                      @click="commitBookingChipDraft('gear')"
                       class="self-start px-3 py-1.5 text-sm rounded-full bg-blue-500 hover:bg-blue-400 text-white cursor-pointer font-medium"
                     >
                       Done
                     </button>
                   </div>
 
-                  <!-- Courses: optional Any (hidden when search already inferred picks); course chips; Done = primary blue CTA below -->
+                  <!-- Courses: toggle locally, commit on Done -->
                   <div
                     v-if="msg.courseOptions && msg.courseOptions.length > 0"
                     class="flex flex-col gap-4 p-2 transition-opacity duration-200"
                     :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
                   >
+                    <p v-if="index === activeChipMessageIndex" class="text-xs text-zinc-500 dark:text-zinc-400">
+                      Select all that apply, then tap Done.
+                    </p>
                     <div class="flex w-full flex-wrap gap-2">
                       <button
                         v-if="!shouldHideAnyCourseChip(msg)"
                         type="button"
-                        @click="sendMessage('any')"
+                        @click="commitBookingChipDraft('courses', { clear: true })"
                         class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600  cursor-pointer font-medium"
                       >
                         Any
@@ -229,10 +235,10 @@
                         v-for="course in msg.courseOptions"
                         :key="course.id"
                         type="button"
-                        @click="sendMessage(course.name)"
+                        @click="toggleCourseChipDraft(index, course)"
                         :class="[
                           'w-fit px-3 py-1.5 text-sm',
-                          isCourseChipSelected(msg, course) ? bookingChipSelectedClass : bookingChipUnselectedClass
+                          isCourseChipSelected(msg, course, index) ? bookingChipSelectedClass : bookingChipUnselectedClass
                         ]"
                       >
                         {{ course.name }}
@@ -240,24 +246,27 @@
                     </div>
                     <button
                       type="button"
-                      @click="sendMessage('done')"
+                      @click="commitBookingChipDraft('courses')"
                       class="self-start px-3 py-1.5 text-sm rounded-full bg-blue-500 hover:bg-blue-400 text-white cursor-pointer font-medium"
                     >
                       Done
                     </button>
                   </div>
 
-                  <!-- Dive sites: optional Any; site chips; Done = primary blue CTA below -->
+                  <!-- Dive sites: toggle locally, commit on Done -->
                   <div
                     v-if="msg.diveSiteOptions && msg.diveSiteOptions.length > 0"
                     class="flex flex-col gap-4 p-2 transition-opacity duration-200"
                     :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
                   >
+                    <p v-if="index === activeChipMessageIndex" class="text-xs text-zinc-500 dark:text-zinc-400">
+                      Select all that apply, then tap Done.
+                    </p>
                     <div class="flex w-full flex-wrap gap-2">
                       <button
                         v-if="!shouldHideAnyDiveSiteChip(msg)"
                         type="button"
-                        @click="sendMessage('any')"
+                        @click="commitBookingChipDraft('diveSites', { clear: true })"
                         class="px-3 py-1.5 text-sm rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600  cursor-pointer font-medium"
                       >
                         Any
@@ -266,10 +275,10 @@
                         v-for="site in msg.diveSiteOptions"
                         :key="site.id"
                         type="button"
-                        @click="sendMessage(site.name)"
+                        @click="toggleDiveSiteChipDraft(index, site)"
                         :class="[
                           'w-fit px-3 py-1.5 text-sm',
-                          isDiveSiteChipSelected(msg, site) ? bookingChipSelectedClass : bookingChipUnselectedClass
+                          isDiveSiteChipSelected(msg, site, index) ? bookingChipSelectedClass : bookingChipUnselectedClass
                         ]"
                       >
                         {{ site.name }}
@@ -277,7 +286,7 @@
                     </div>
                     <button
                       type="button"
-                      @click="sendMessage('done')"
+                      @click="commitBookingChipDraft('diveSites')"
                       class="self-start px-3 py-1.5 text-sm rounded-full bg-blue-500 hover:bg-blue-400 text-white cursor-pointer font-medium"
                     >
                       Done
@@ -717,6 +726,194 @@ const activeChipMessageIndex = computed(() => {
   }
   return -1
 })
+
+/** Local multi-select draft for booking chips (courses / dive sites / gear) — commit on Done only. */
+const bookingChipDraft = ref(null)
+
+function bookingPayloadFromMessage (msg) {
+  return msg?.bookingPayload ?? msg?.payload ?? null
+}
+
+function gearNamesFromMessagePayload (msg) {
+  const payload = bookingPayloadFromMessage(msg)
+  const divers = payload?.divers ?? []
+  const current = divers.find((d) => !d.gearAsked)
+  const gear = current?.gear ?? []
+  return gear
+    .map((g) => (g.gearType ?? g.gear_type ?? '').toString().trim())
+    .filter(Boolean)
+}
+
+function syncBookingChipDraftFromMessage (msgIndex) {
+  if (msgIndex < 0) {
+    bookingChipDraft.value = null
+    return
+  }
+  const msg = messages.value[msgIndex]
+  if (!msg) {
+    bookingChipDraft.value = null
+    return
+  }
+  const payload = bookingPayloadFromMessage(msg)
+  if (msg.courseOptions?.length) {
+    bookingChipDraft.value = {
+      kind: 'courses',
+      anchorIndex: msgIndex,
+      names: [...(payload?.desiredCourses ?? [])]
+    }
+    return
+  }
+  if (msg.diveSiteOptions?.length) {
+    bookingChipDraft.value = {
+      kind: 'diveSites',
+      anchorIndex: msgIndex,
+      names: [...(payload?.desiredDiveSites ?? [])]
+    }
+    return
+  }
+  if (Array.isArray(msg.rentalEquipmentOptions)) {
+    bookingChipDraft.value = {
+      kind: 'gear',
+      anchorIndex: msgIndex,
+      names: [...gearNamesFromMessagePayload(msg)]
+    }
+    return
+  }
+  bookingChipDraft.value = null
+}
+
+watch(activeChipMessageIndex, (idx) => {
+  syncBookingChipDraftFromMessage(idx)
+}, { immediate: true })
+
+function draftMatchesMessage (msgIndex, kind) {
+  const d = bookingChipDraft.value
+  return d?.kind === kind && d.anchorIndex === msgIndex
+}
+
+function toggleNameInDraft (msgIndex, kind, name) {
+  const d = bookingChipDraft.value
+  if (!d || d.kind !== kind || d.anchorIndex !== msgIndex) return
+  const key = String(name ?? '').trim()
+  if (!key) return
+  const lower = key.toLowerCase()
+  const next = [...d.names]
+  const i = next.findIndex((n) => n.toLowerCase() === lower)
+  if (i >= 0) next.splice(i, 1)
+  else next.push(key)
+  bookingChipDraft.value = { ...d, names: next }
+}
+
+function toggleCourseChipDraft (msgIndex, course) {
+  toggleNameInDraft(msgIndex, 'courses', course?.name)
+}
+
+function toggleDiveSiteChipDraft (msgIndex, site) {
+  toggleNameInDraft(msgIndex, 'diveSites', site?.name)
+}
+
+function toggleGearChipDraft (msgIndex, eq) {
+  toggleNameInDraft(msgIndex, 'gear', eq?.name)
+}
+
+function patchLatestBookingPayloadInChat (merged) {
+  for (let i = messages.value.length - 1; i >= 0; i--) {
+    const m = messages.value[i]
+    if (m.role === 'assistant' && m.intent === 'booking') {
+      m.bookingPayload = merged
+      m.payload = merged
+      break
+    }
+  }
+  pendingBookingPayload.value = merged
+}
+
+function buildPayloadWithGearDraft (base, gearNames) {
+  const p = JSON.parse(JSON.stringify(base || {}))
+  const numDivers = Math.max(1, p.numberOfDivers ?? 1)
+  const divers = Array.isArray(p.divers) ? p.divers.map((d) => ({ ...d })) : []
+  while (divers.length < numDivers) {
+    divers.push({
+      name: '',
+      certificationNumber: '',
+      numberOfDives: '',
+      height: '',
+      heightUnit: 'ft-in',
+      weight: '',
+      weightUnit: 'lbs',
+      gear: []
+    })
+  }
+  const idx = divers.findIndex((d) => !d.gearAsked)
+  const targetIdx = idx >= 0 ? idx : Math.min(numDivers - 1, divers.length - 1)
+  const target = divers[targetIdx]
+  if (target) {
+    divers[targetIdx] = {
+      ...target,
+      gear: gearNames.map((name) => ({ gearType: name }))
+    }
+  }
+  p.divers = divers
+  return p
+}
+
+function commitBookingChipDraft (kind, opts = {}) {
+  const d = bookingChipDraft.value
+  const base = lastBookingPayload.value
+    ? JSON.parse(JSON.stringify(lastBookingPayload.value))
+    : {}
+  if (opts.clear) {
+    if (kind === 'courses') {
+      patchLatestBookingPayloadInChat({ ...base, desiredCourses: [], coursesSelectionComplete: true })
+      bookingChipDraft.value = null
+      sendMessage('any', 'Any')
+      return
+    }
+    if (kind === 'diveSites') {
+      patchLatestBookingPayloadInChat({ ...base, desiredDiveSites: [], diveSitesSelectionComplete: true })
+      bookingChipDraft.value = null
+      sendMessage('any', 'Any')
+      return
+    }
+  }
+  if (!d || d.kind !== kind) {
+    sendMessage('done')
+    return
+  }
+  let merged = { ...base }
+  if (kind === 'courses') {
+    merged = {
+      ...merged,
+      desiredCourses: [...d.names],
+      coursesSelectionComplete: true
+    }
+  } else if (kind === 'diveSites') {
+    merged = {
+      ...merged,
+      desiredDiveSites: [...d.names],
+      diveSitesSelectionComplete: true
+    }
+  } else if (kind === 'gear') {
+    merged = buildPayloadWithGearDraft(merged, d.names)
+    patchLatestBookingPayloadInChat(merged)
+    bookingChipDraft.value = null
+    if (d.names.length === 0) {
+      sendMessage('none', 'None')
+      return
+    }
+    sendMessage('done', `Done — ${d.names.join(', ')}`)
+    return
+  }
+  patchLatestBookingPayloadInChat(merged)
+  bookingChipDraft.value = null
+  const label =
+    kind === 'courses' && d.names.length
+      ? `Done — ${d.names.join(', ')}`
+      : kind === 'diveSites' && d.names.length
+        ? `Done — ${d.names.join(', ')}`
+        : 'Done'
+  sendMessage('done', label)
+}
 
 // True when we're in the AI booking flow for this shop (so panel shows "Show form" instead of "Start Booking")
 function isInBookingFlowForShop (shopId) {
@@ -1399,22 +1596,16 @@ function getResultsRangeLabel (msgIndex) {
   return `Showing results ${start}–${end} of ${total} dive shops found`
 }
 
-/** Current diver's selected gear names (for messages showing gear chips) — used to show selected state and toggle remove */
-function getSelectedGearNamesForMessage (msg) {
-  const payload = msg.payload ?? msg.bookingPayload
-  const divers = payload?.divers ?? []
-  const current = divers.find(d => !d.gearAsked)
-  const gear = current?.gear ?? []
-  return new Set(gear.map(g => (g.gearType ?? g.gear_type ?? '').toString().trim().toLowerCase()).filter(Boolean))
+/** Current diver's selected gear names — draft when active, else payload. */
+function getSelectedGearNamesForMessage (msg, msgIndex) {
+  if (draftMatchesMessage(msgIndex, 'gear')) {
+    return new Set(bookingChipDraft.value.names.map((n) => n.toLowerCase()))
+  }
+  const gear = gearNamesFromMessagePayload(msg)
+  return new Set(gear.map((n) => n.toLowerCase()))
 }
-function getGearChipClickValue (msg, eq) {
-  const selected = getSelectedGearNamesForMessage(msg)
-  const name = (eq.name ?? '').toString().trim()
-  if (selected.has(name.toLowerCase())) return `remove ${name}`
-  return name
-}
-function isGearChipSelected (msg, eq) {
-  return getSelectedGearNamesForMessage(msg).has((eq.name ?? '').toString().trim().toLowerCase())
+function isGearChipSelected (msg, eq, msgIndex) {
+  return getSelectedGearNamesForMessage(msg, msgIndex).has((eq.name ?? '').toString().trim().toLowerCase())
 }
 
 /** Multi-select booking chips: high-contrast selected state in light and dark mode. */
@@ -1423,15 +1614,18 @@ const bookingChipSelectedClass =
 const bookingChipUnselectedClass =
   'rounded-full border cursor-pointer border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
 
-/** Course chips reflect bookingPayload.desiredCourses (e.g. search-inferred prefill). */
-function getSelectedCourseNamesForMessage (msg) {
-  const payload = msg.payload ?? msg.bookingPayload
+/** Course chips reflect draft or bookingPayload.desiredCourses. */
+function getSelectedCourseNamesForMessage (msg, msgIndex) {
+  if (draftMatchesMessage(msgIndex, 'courses')) {
+    return new Set(bookingChipDraft.value.names.map((n) => n.toLowerCase()))
+  }
+  const payload = bookingPayloadFromMessage(msg)
   const list = payload?.desiredCourses
   if (!Array.isArray(list)) return new Set()
-  return new Set(list.map(c => String(c).trim().toLowerCase()).filter(Boolean))
+  return new Set(list.map((c) => String(c).trim().toLowerCase()).filter(Boolean))
 }
-function isCourseChipSelected (msg, course) {
-  return getSelectedCourseNamesForMessage(msg).has((course.name ?? '').toString().trim().toLowerCase())
+function isCourseChipSelected (msg, course, msgIndex) {
+  return getSelectedCourseNamesForMessage(msg, msgIndex).has((course.name ?? '').toString().trim().toLowerCase())
 }
 
 /** “Any” chip removed — use Done to skip or finish multi-select steps. */
@@ -1439,14 +1633,17 @@ function shouldHideAnyCourseChip () {
   return true
 }
 
-function getSelectedDiveSiteNamesForMessage (msg) {
-  const payload = msg.payload ?? msg.bookingPayload
+function getSelectedDiveSiteNamesForMessage (msg, msgIndex) {
+  if (draftMatchesMessage(msgIndex, 'diveSites')) {
+    return new Set(bookingChipDraft.value.names.map((n) => n.toLowerCase()))
+  }
+  const payload = bookingPayloadFromMessage(msg)
   const list = payload?.desiredDiveSites
   if (!Array.isArray(list)) return new Set()
-  return new Set(list.map(s => String(s).trim().toLowerCase()).filter(Boolean))
+  return new Set(list.map((s) => String(s).trim().toLowerCase()).filter(Boolean))
 }
-function isDiveSiteChipSelected (msg, site) {
-  return getSelectedDiveSiteNamesForMessage(msg).has((site.name ?? '').toString().trim().toLowerCase())
+function isDiveSiteChipSelected (msg, site, msgIndex) {
+  return getSelectedDiveSiteNamesForMessage(msg, msgIndex).has((site.name ?? '').toString().trim().toLowerCase())
 }
 
 function shouldHideAnyDiveSiteChip () {

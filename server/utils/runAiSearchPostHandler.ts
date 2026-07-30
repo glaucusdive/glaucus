@@ -2676,6 +2676,25 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 diveSiteOptions: undefined
               })
             }
+            return withAgentMeta({
+              success: true,
+              intent: 'booking' as const,
+              bookingReady: false,
+              message:
+                'Tap "No — just these divers" or "Yes — add another", or name a different dive shop to switch (e.g. "Let\'s book with …" or "I want to dive with …").',
+              shopId: resolvedShop.id,
+              shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
+              bookingPayload,
+              selectableOptions: [
+                { label: 'No — just these divers', value: 'no' },
+                { label: 'Yes — add another', value: 'yes' }
+              ],
+              rentalEquipmentOptions: undefined,
+              courseOptions: undefined,
+              diveSiteOptions: undefined
+            })
           }
           if (/^(lbs?|kg|pounds)$/i.test(msgTrim)) {
             const fastUnit = tryFastPathUnitOnly(message, bookingPayload, shopLabel)
