@@ -1080,7 +1080,6 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 intent: 'search' as const
               })
             }
-          }
         }
       }
       if (effectiveWantsToBook && !resolvedShop) {
