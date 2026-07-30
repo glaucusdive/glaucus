@@ -68,8 +68,12 @@ export function extractMidBookingShopSwitchPhrase (message: string): string | nu
   const hasSwitchSignal =
     /\b(?:let'?s\s+)?(?:book|reserve)(?:ing)?\b/i.test(delead) ||
     /\b(?:i\s+)?want\s+to\s+book\b/i.test(delead) ||
+    /\b(?:i\s+)?want\s+to\s+dive\b/i.test(delead) ||
     /\bcan\s+i\s+book\b/i.test(delead) ||
     /\bbook(?:ing)?\s+with\b/i.test(delead) ||
+    /\b(?:go\s+)?(?:dive|diving)\s+with\b/i.test(delead) ||
+    /\b(?:go\s+)?diving\s+at\b/i.test(delead) ||
+    /\bdive\s+at\b/i.test(delead) ||
     /\bgo\s+with\b/i.test(delead) ||
     /\b(?:switch|change)\s+to\b/i.test(delead) ||
     /\binstead\b/i.test(delead) ||

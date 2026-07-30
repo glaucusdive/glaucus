@@ -38,6 +38,14 @@ describe('extractMidBookingShopSwitchPhrase', () => {
     const p = extractMidBookingShopSwitchPhrase('Lets switch to Dive Porter instead')
     expect(p).toBe('Dive Porter')
   })
+
+  it('extracts shop from want to dive with … during booking', () => {
+    const p = extractMidBookingShopSwitchPhrase(
+      'I want to dive with Aquatech Divers in Playa Del Carmen'
+    )
+    expect(p?.toLowerCase()).toContain('aquatech')
+    expect(p?.toLowerCase()).toContain('playa')
+  })
 })
 
 describe('extractMidBookingLocationBrowsePhrase', () => {
