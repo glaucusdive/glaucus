@@ -20,6 +20,7 @@ import { getCoursesForShop } from '../utils/getCoursesForShop'
 import { getRentalEquipmentForShop } from '../utils/getRentalEquipmentForShop'
 import { mergeProfileContactIntoBookingPayload } from '~~/shared/mergeProfileContactIntoBookingPayload'
 import { clampBookingPayloadToNextStep, getBookingMultiSelectAdvanceCopy, getNextBookingStep, isBookingOptionalClearSelectionToken, isBookingOptionalStepToken, tryFastPath, tryFastPathUnitOnly, profileDiverSelectableChipsFromPrefill, type BookingPayloadLocal, type NextStepResult, type PendingReviewEdit } from '../utils/bookingFastPath'
+import { sanitizeBookingPayloadGearForShop } from '../../shared/filterGearToShopOfferings'
 import {
   bookingCoursesStepMessage,
   bookingDiveSitesStepMessage,
@@ -1188,6 +1189,12 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
         const courseNames = courses.map(c => c.name)
         const diveSiteNames = diveSites.map(d => d.name)
         const rentalEquipmentNames = rentalEquipment.map(e => e.name)
+        if (continuingBooking && bookingPayload) {
+          bookingPayload = sanitizeBookingPayloadGearForShop(
+            bookingPayload as BookingPayloadLocal,
+            rentalEquipmentNames
+          ) as BookingPayload
+        }
         const shopClient = bookingShopFieldsForClient(resolvedShop)
         const shopLabel = shopClient.shopDisplayName
 

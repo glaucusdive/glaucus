@@ -377,6 +377,10 @@ import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst } from 
 import { getLatestBookingPayloadFromMessages, bookingPayloadHasNamedDiver } from '~/utils/chatBookingPayload'
 import { shopDisplayLabelForUi } from '~/utils/shopDisplayLabel'
 import { getChatStarterPrompts } from '~~/shared/chatStarterPrompts'
+import {
+  filterGearNamesToShopOfferings,
+  shopRentalEquipmentNameList
+} from '~~/shared/filterGearToShopOfferings'
 import { isSearchPaginationUserMessage } from '~/utils/searchPaginationIntent'
 import {
   findAnchorAssistantIndexForPagination,
@@ -739,9 +743,11 @@ function gearNamesFromMessagePayload (msg) {
   const divers = payload?.divers ?? []
   const current = divers.find((d) => !d.gearAsked)
   const gear = current?.gear ?? []
-  return gear
+  const names = gear
     .map((g) => (g.gearType ?? g.gear_type ?? '').toString().trim())
     .filter(Boolean)
+  const shopNames = shopRentalEquipmentNameList(msg?.rentalEquipmentOptions)
+  return filterGearNamesToShopOfferings(names, shopNames)
 }
 
 function syncBookingChipDraftFromMessage (msgIndex) {
@@ -894,14 +900,17 @@ function commitBookingChipDraft (kind, opts = {}) {
       diveSitesSelectionComplete: true
     }
   } else if (kind === 'gear') {
-    merged = buildPayloadWithGearDraft(merged, d.names)
+    const anchorMsg = messages.value[d.anchorIndex]
+    const shopGear = shopRentalEquipmentNameList(anchorMsg?.rentalEquipmentOptions)
+    const gearNames = filterGearNamesToShopOfferings(d.names, shopGear)
+    merged = buildPayloadWithGearDraft(merged, gearNames)
     patchLatestBookingPayloadInChat(merged)
     bookingChipDraft.value = null
-    if (d.names.length === 0) {
+    if (gearNames.length === 0) {
       sendMessage('none', 'None')
       return
     }
-    sendMessage('done', `Done — ${d.names.join(', ')}`)
+    sendMessage('done', `Done — ${gearNames.join(', ')}`)
     return
   }
   patchLatestBookingPayloadInChat(merged)
