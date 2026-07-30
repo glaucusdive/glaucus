@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { BOOKING_PRESEND_CONFIRM_SEND } from '../../shared/bookingPreSendTokens'
-import { canImmediateSendBookingReply, isConfirmSendMessage } from '../../server/utils/bookingSendIntentGate'
+import {
+  canImmediateSendBookingReply,
+  isConfirmSendMessage,
+  shouldShowPreSendReviewOnFirstConfirm
+} from '../../server/utils/bookingSendIntentGate'
 
 describe('isConfirmSendMessage', () => {
   it('treats pre-send chip token as confirm send', () => {
@@ -109,6 +113,32 @@ describe('canImmediateSendBookingReply', () => {
         nextStep: { step: 'ready' },
         lastAssistantContent: "Here's your booking summary for Dive Porter.",
         preSendReviewAck: true
+      })
+    ).toBe(true)
+  })
+})
+
+describe('shouldShowPreSendReviewOnFirstConfirm', () => {
+  it('returns false when assistant asked add another diver (yes chip is not confirm-send)', () => {
+    expect(
+      shouldShowPreSendReviewOnFirstConfirm({
+        sendIntent: true,
+        sendAnywayIntent: false,
+        nextStep: { step: 'ready' },
+        preSendReviewAck: false,
+        lastAssistantContent: 'Do you want to add another diver? (yes/no)'
+      })
+    ).toBe(false)
+  })
+
+  it('returns true for yes at ready when not add-another prompt', () => {
+    expect(
+      shouldShowPreSendReviewOnFirstConfirm({
+        sendIntent: true,
+        sendAnywayIntent: false,
+        nextStep: { step: 'ready' },
+        preSendReviewAck: false,
+        lastAssistantContent: 'All set — ready to send your booking request.'
       })
     ).toBe(true)
   })

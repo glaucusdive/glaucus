@@ -15,6 +15,29 @@ export function isConfirmSendMessage (msg: string): boolean {
     /^(just\s+)?send(?:\s+it)?$/i.test(t)
 }
 
+/** Assistant is waiting for yes/no on "Do you want to add another diver?" */
+export function isAssistantAwaitingAddAnotherDiverReply (lastAssistantContent: string): boolean {
+  return /add another diver/i.test(lastAssistantContent)
+}
+
+/**
+ * First "yes"/"send" at `ready` before pre-send review — show summary/review UI.
+ * Must not steal "yes" from the add-another-diver chips (value is literally "yes").
+ */
+export function shouldShowPreSendReviewOnFirstConfirm (opts: {
+  sendIntent: boolean
+  sendAnywayIntent: boolean
+  nextStep: NextStepResult | null | undefined
+  preSendReviewAck: boolean
+  lastAssistantContent: string
+}): boolean {
+  if (!opts.sendIntent || opts.sendAnywayIntent) return false
+  if (opts.nextStep?.step !== 'ready') return false
+  if (opts.preSendReviewAck) return false
+  if (isAssistantAwaitingAddAnotherDiverReply(opts.lastAssistantContent)) return false
+  return true
+}
+
 /**
  * Whether the orchestrator may return bookingReady from the early "confirm send" shortcut.
  * Generic tokens like "yes" from chips must not send when the step machine is not `ready`,
@@ -32,6 +55,6 @@ export function canImmediateSendBookingReply (opts: {
   if (!opts.sendIntent) return false
   if (opts.nextStep?.step !== 'ready') return false
   if (!opts.preSendReviewAck) return false
-  if (/add another diver/i.test(opts.lastAssistantContent)) return false
+  if (isAssistantAwaitingAddAnotherDiverReply(opts.lastAssistantContent)) return false
   return true
 }
