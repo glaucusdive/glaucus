@@ -6,6 +6,9 @@ import {
   bookingGearStepMessage
 } from '../../shared/bookingMultiSelectPrompts'
 import { extractMidBookingShopSwitchPhrase } from './bookingFlowEscape'
+import {
+  filterGearToShopOfferings
+} from '../../shared/filterGearToShopOfferings'
 import { contactNameInputLikelyNotAPlainName } from './bookingFieldReplyHeuristics'
 
 /** Minimal booking types to avoid circular import from ai-search.post */
@@ -712,6 +715,10 @@ export function tryFastPath (
             }
             if (!divers[i]) divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
             const filled = profileDiverToPayload(match)
+            const shopGearNames = options?.rentalEquipmentNames ?? []
+            filled.gear = shopGearNames.length
+              ? filterGearToShopOfferings(filled.gear, shopGearNames)
+              : []
             divers[i] = { ...filled, gearAsked: divers[i].gearAsked }
             p.divers = divers
             const name = divers[i].name || 'They'
@@ -932,6 +939,12 @@ export function tryFastPath (
           messagePreamble: `Got it — ${n} will need rental gear.`,
           message: bookingGearStepMessage(n),
           payload: p
+        }
+      }
+      if (isDone && divers[i]?.gear?.length) {
+        const equipmentNames = options?.rentalEquipmentNames ?? []
+        if (equipmentNames.length > 0) {
+          divers[i].gear = filterGearToShopOfferings(divers[i].gear, equipmentNames)
         }
       }
       if (isDone && divers[i]?.gear?.length) {
