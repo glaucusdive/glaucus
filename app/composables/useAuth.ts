@@ -10,7 +10,7 @@ const userRole = ref<'standard' | 'admin'>('standard')
 export const useAuth = () => {
   const { client } = useSupabase()
 
-  const isSignedIn = computed(() => !!user.value)
+  const isSignedIn = computed(() => !!session.value)
 
   async function loadUserRole () {
     const id = user.value?.id
@@ -101,7 +101,14 @@ export const useAuth = () => {
 
   async function signOut () {
     const { error } = await client.auth.signOut()
-    if (error) throw error
+    if (error) {
+      const name = (error as { name?: string }).name
+      if (name === 'AuthSessionMissingError') {
+        await client.auth.signOut({ scope: 'local' }).catch(() => {})
+      } else {
+        throw error
+      }
+    }
     user.value = null
     session.value = null
     userRole.value = 'standard'
