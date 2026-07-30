@@ -28,7 +28,12 @@ import {
   bookingMultiSelectChipHint
 } from '../../shared/bookingMultiSelectPrompts'
 import { tryHandleBookingReviewEditTurn } from '../utils/bookingReviewEdit'
-import { canImmediateSendBookingReply, isConfirmSendMessage } from '../utils/bookingSendIntentGate'
+import {
+  canImmediateSendBookingReply,
+  isAssistantAwaitingAddAnotherDiverReply,
+  isConfirmSendMessage,
+  shouldShowPreSendReviewOnFirstConfirm
+} from '../utils/bookingSendIntentGate'
 import { inclusiveTripDays } from '../utils/parseTripDates'
 import { resolveTripDatesUserMessage } from '../utils/tripDateUserInput'
 import { applyParsedTripDatesToBookingPayload } from '../utils/bookingApplyParsedTripDates'
@@ -1751,6 +1756,93 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           )
           if (switchOut) return switchOut
 
+          // "Yes — add another" chip sends value `yes` — handle before confirm-send shortcuts.
+          if (
+            isAssistantAwaitingAddAnotherDiverReply(lastAssistantForSendGate) &&
+            continuingBooking &&
+            bookingPayload
+          ) {
+            const numDiversEarly = Math.max(1, bookingPayload.numberOfDivers ?? 1)
+            const noMoreEarly =
+              /^(no|nope|nah|that's all|just (these|two|them)|no other|no more|there's no|there are only|only two|just the two)$/i.test(
+                msgTrim
+              ) || /no other diver|just (the )?two divers/i.test(msgTrim)
+            if (noMoreEarly) {
+              const p = { ...bookingPayload, shopId: resolvedShop.id }
+              const gatedNoMore = resolvePreSendWhenPayloadReady({
+                payload: p as BookingPayloadLocal,
+                shopId: resolvedShop.id,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
+                hasAuthUser: !!authUser,
+                timing: bookingSignupTiming
+              })
+              if (gatedNoMore) return gatedNoMore
+            }
+            const yesMoreEarly =
+              /^(yes|yeah|yep|add one|add another|yes please|sure)$/i.test(msgTrim)
+            if (yesMoreEarly) {
+              const newNum = numDiversEarly + 1
+              const p = { ...bookingPayload, numberOfDivers: newNum }
+              const divers = Array.isArray(bookingPayload.divers) ? [...bookingPayload.divers] : []
+              while (divers.length < newNum) {
+                divers.push({
+                  name: '',
+                  certificationNumber: '',
+                  numberOfDives: '',
+                  height: '',
+                  heightUnit: 'ft-in',
+                  weight: '',
+                  weightUnit: 'lbs',
+                  gear: []
+                })
+              }
+              p.divers = divers
+              const selectableOptions = profileDiverSelectableChipsFromPrefill(profilePrefill, {
+                bookingPayload: p
+              })
+              return withAgentMeta({
+                success: true,
+                intent: 'booking' as const,
+                bookingReady: false,
+                message: selectableOptions?.length
+                  ? `Use an existing diver from your profile or create a new one for Diver ${newNum}?`
+                  : `What's Diver ${newNum}'s full name?`,
+                shopId: resolvedShop.id,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
+                bookingPayload: p,
+                selectableOptions,
+                rentalEquipmentOptions: undefined,
+                courseOptions: undefined,
+                diveSiteOptions: undefined
+              })
+            }
+            if (msgTrim) {
+              return withAgentMeta({
+                success: true,
+                intent: 'booking' as const,
+                bookingReady: false,
+                message:
+                  'Tap "No — just these divers" or "Yes — add another", or name a different dive shop to switch (e.g. "Let\'s book with …" or "I want to dive with …").',
+                shopId: resolvedShop.id,
+                shopName: shopLabel,
+            shopLocation: shopClient.shopLocation,
+            shopDisplayName: shopClient.shopDisplayName,
+                bookingPayload,
+                selectableOptions: [
+                  { label: 'No — just these divers', value: 'no' },
+                  { label: 'Yes — add another', value: 'yes' }
+                ],
+                rentalEquipmentOptions: undefined,
+                courseOptions: undefined,
+                diveSiteOptions: undefined
+              })
+            }
+          }
+
           const sendIntent = isConfirmSendMessage(msgTrim)
           const sendAnywayIntent = isSendAnywayMessage(msgTrim)
           const finishTasksIntent = isFinishRemainingTasksMessage(msgTrim)
@@ -1762,7 +1854,15 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             preSendReviewAck: Boolean(payloadForSendCheck.preSendReviewAck)
           })
 
-          if (sendIntent && !sendAnywayIntent && nextStepBeforeInput?.step === 'ready' && !payloadForSendCheck.preSendReviewAck) {
+          if (
+            shouldShowPreSendReviewOnFirstConfirm({
+              sendIntent,
+              sendAnywayIntent,
+              nextStep: nextStepBeforeInput,
+              preSendReviewAck: Boolean(payloadForSendCheck.preSendReviewAck),
+              lastAssistantContent: lastAssistantForSendGate
+            })
+          ) {
             const pRev = { ...payloadForSendCheck, shopId: resolvedShop.id }
             const gatedRev = resolvePreSendWhenPayloadReady({
               payload: pRev as BookingPayloadLocal,
@@ -2630,72 +2730,6 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               diveSiteOptions: undefined
             })
           }
-          // Reply to "Do you want to add another diver?" — no → booking ready (dive sites already asked earlier); yes → add diver and ask for name
-          if (lastAssistantContent && /add another diver/i.test(lastAssistantContent) && continuingBooking && bookingPayload) {
-            const numDivers = Math.max(1, bookingPayload.numberOfDivers ?? 1)
-            const noMore = /^(no|nope|nah|that's all|just (these|two|them)|no other|no more|there's no|there are only|only two|just the two)$/i.test(msgTrim) || /no other diver|just (the )?two divers/i.test(msgTrim)
-            if (noMore) {
-              const p = { ...bookingPayload, shopId: resolvedShop.id }
-              const gatedNoMore = resolvePreSendWhenPayloadReady({
-                payload: p as BookingPayloadLocal,
-                shopId: resolvedShop.id,
-                shopName: shopLabel,
-            shopLocation: shopClient.shopLocation,
-            shopDisplayName: shopClient.shopDisplayName,
-                hasAuthUser: !!authUser,
-                timing: bookingSignupTiming
-              })
-              if (gatedNoMore) return gatedNoMore
-            }
-            const yesMore = /^(yes|yeah|yep|add one|add another|yes please|sure)$/i.test(msgTrim)
-            if (yesMore) {
-              const newNum = numDivers + 1
-              const p = { ...bookingPayload, numberOfDivers: newNum }
-              const divers = Array.isArray(bookingPayload.divers) ? [...bookingPayload.divers] : []
-              while (divers.length < newNum) {
-                divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
-              }
-              p.divers = divers
-              const selectableOptions = profileDiverSelectableChipsFromPrefill(profilePrefill, { bookingPayload: p })
-              return withAgentMeta({
-                success: true,
-                intent: 'booking' as const,
-                bookingReady: false,
-                message: selectableOptions?.length
-                  ? `Use an existing diver from your profile or create a new one for Diver ${newNum}?`
-                  : `What's Diver ${newNum}'s full name?`,
-                shopId: resolvedShop.id,
-                shopName: shopLabel,
-            shopLocation: shopClient.shopLocation,
-            shopDisplayName: shopClient.shopDisplayName,
-                bookingPayload: p,
-                selectableOptions,
-                rentalEquipmentOptions: undefined,
-                courseOptions: undefined,
-
-                diveSiteOptions: undefined
-              })
-            }
-            return withAgentMeta({
-              success: true,
-              intent: 'booking' as const,
-              bookingReady: false,
-              message:
-                'Tap "No — just these divers" or "Yes — add another", or name a different dive shop to switch (e.g. "Let\'s book with …" or "I want to dive with …").',
-              shopId: resolvedShop.id,
-              shopName: shopLabel,
-            shopLocation: shopClient.shopLocation,
-            shopDisplayName: shopClient.shopDisplayName,
-              bookingPayload,
-              selectableOptions: [
-                { label: 'No — just these divers', value: 'no' },
-                { label: 'Yes — add another', value: 'yes' }
-              ],
-              rentalEquipmentOptions: undefined,
-              courseOptions: undefined,
-              diveSiteOptions: undefined
-            })
-          }
           if (/^(lbs?|kg|pounds)$/i.test(msgTrim)) {
             const fastUnit = tryFastPathUnitOnly(message, bookingPayload, shopLabel)
             if (fastUnit) {
@@ -2721,7 +2755,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           const nextStep = getNextBookingStep(bookingPayload)
           // Already complete: user said "send" / "yes" / "confirm" — return ready to send, don't re-ask or call LLM
           if (nextStep?.step === 'ready') {
-            const confirmSend = isConfirmSendMessage(msgTrim)
+            const confirmSend =
+              isConfirmSendMessage(msgTrim) &&
+              !isAssistantAwaitingAddAnotherDiverReply(lastAssistantContent)
             if (confirmSend) {
               const p = { ...bookingPayload, shopId: resolvedShop.id }
               const gatedConfirm = resolvePreSendWhenPayloadReady({
