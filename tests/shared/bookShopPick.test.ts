@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  canCommitBookingHandoffForShop,
   formatShopLocationSuffix,
   parseBookShopPickMessage,
   shopDisambiguationChipLabel,
@@ -32,5 +33,23 @@ describe('bookShopPick', () => {
     expect(
       formatShopLocationSuffix({ id: 'x', business_name: 'Shop', city: 'Kona', state: 'HI' })
     ).toBe('Kona, HI')
+  })
+
+  it('commits booking handoff only when shop was shown or selected', () => {
+    const shopId = '11111111-2222-4333-8444-555555555555'
+    expect(
+      canCommitBookingHandoffForShop("Let's book Dive Alaska", shopId, {
+        lastShops: [{ id: shopId, business_name: 'Dive Alaska' }]
+      })
+    ).toBe(true)
+    expect(
+      canCommitBookingHandoffForShop("Let's book Dive Alaska", shopId, {
+        selectedShopId: shopId
+      })
+    ).toBe(true)
+    expect(canCommitBookingHandoffForShop("Let's book Dive Alaska", shopId, {})).toBe(false)
+    expect(canCommitBookingHandoffForShop('I want to book a live aboard in Alaska', shopId, {
+      lastShops: [{ id: shopId, business_name: 'Dive Alaska' }]
+    })).toBe(false)
   })
 })
