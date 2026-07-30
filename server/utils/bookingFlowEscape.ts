@@ -9,6 +9,28 @@ import {
 const LEAD_IN =
   /^(?:wait|hold on|hang on|sorry|actually|nevermind|never mind|whoops|oops|stop|cancel)\s*[,\s:-]*\s*/i
 
+const MID_BOOKING_LOCATION_BROWSE =
+  /\b(?:show\s+me\s+)?(?:all\s+)?(?:dive\s+shops?|liveaboards?|liveboards?|dive\s+resorts?|resorts?)\s+(?:in|near|around)\s+([^.?!]+)/i
+
+/** While in booking, user asks to browse operators in a place (e.g. "Dive shops in Alaska"). */
+export function extractMidBookingLocationBrowsePhrase (message: string): string | null {
+  const t = message.trim()
+  if (t.length < 6) return null
+  const patterns: RegExp[] = [
+    MID_BOOKING_LOCATION_BROWSE,
+    /\b(?:find|search\s+for)\s+(?:dive\s+shops?|liveaboards?|liveboards?|resorts?)\s+(?:in|near|around)\s+([^.?!]+)/i,
+    /\b(?:options?|list(?:ing)?)\s+(?:of\s+)?(?:dive\s+shops?|liveaboards?|resorts?)\s+(?:in|near|around)\s+([^.?!]+)/i
+  ]
+  for (const re of patterns) {
+    const m = t.match(re)
+    if (m?.[1]) {
+      const phrase = cleanReferentPhraseForProbe(m[1])
+      if (phrase.length >= 2) return phrase
+    }
+  }
+  return null
+}
+
 /** User wants to leave the booking flow and search again (no new shop name). */
 export function userMessageWantsResumeSearchDuringBooking (message: string): boolean {
   const t = message.trim()

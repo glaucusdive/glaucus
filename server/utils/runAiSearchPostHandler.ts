@@ -64,7 +64,7 @@ import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from '../utils/openAiC
 import { resolveOpenAiApiKey } from '../utils/openAiApiKey'
 import { tryApplySearchFilterRelax } from '../utils/searchFilterRelaxFromFollowUp'
 import { resolveBookingTargetFromPhrase } from '../utils/resolveBookingTarget'
-import { extractMidBookingShopSwitchPhrase, userMessageWantsResumeSearchDuringBooking } from '../utils/bookingFlowEscape'
+import { extractMidBookingShopSwitchPhrase, extractMidBookingLocationBrowsePhrase, userMessageWantsResumeSearchDuringBooking } from '../utils/bookingFlowEscape'
 import {
   formatActivityStyleFilterLine,
   formatBookingLlmActivityLine,
@@ -801,8 +801,16 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           return withAgentMeta({ ...shopDisambiguationResponsePayload(forced.phrase, forced.shops), intent: 'search' as const })
         }
         if (forced.kind === 'booking') {
-          resolvedShop = forced.shop
-          resolvedByNamedShop = true
+          return withAgentMeta({
+            ...(await formatEntitySearchResponse(
+              supabaseUrl,
+              supabaseKey,
+              {},
+              [forced.shop as unknown as Record<string, unknown>],
+              `Here is a dive shop matching your selection. Pick one to start booking.`
+            )),
+            intent: 'search' as const
+          })
         }
         // forced.kind === 'browse': fall through to normal search flow (trip-type / LLM)
       } else if (!continuingBooking && !clarifyChoice && supabaseUrl && supabaseKey) {
@@ -909,38 +917,24 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             const geoMessage = widenedTripType
               ? `Here are dive shops in ${placeLabel}. ${preferredDiveTypes?.join(', ') ?? 'Your trip type'} matches are listed first; we also included other operators in the area.`
               : `Here are dive shops in ${placeLabel}.`
-            if (allowAutoBook && effectiveWantsToBook && (geoList.length > 1 || countryOnly)) {
-              logIntentTurn('search')
-              return withAgentMeta({
-                ...(await formatEntitySearchResponse(
-                  supabaseUrl,
-                  supabaseKey,
-                  geoFilters,
-                  geoList as unknown[],
-                  geoList.length === 1
-                    ? `Here is a dive shop in ${placeLabel}. Pick one to start booking, or name a city or area to narrow down.`
-                    : `Here are dive shops in ${placeLabel} (matched by location, not just name). Which one would you like to book?`
-                )),
-                intent: 'search' as const
-              })
-            } else if (allowAutoBook && effectiveWantsToBook && geoList.length === 1) {
-              const only = geoList[0]!
-              resolvedShop = await getShopById(supabaseUrl, supabaseKey, only.id)
-              resolvedByNamedShop = !!resolvedShop
-              skipEntityProbeFromGeo = !!resolvedShop
-            } else if (!allowAutoBook || !effectiveWantsToBook) {
-              logIntentTurn('search')
-              return withAgentMeta({
-                ...(await formatEntitySearchResponse(
-                  supabaseUrl,
-                  supabaseKey,
-                  geoFilters,
-                  geoList as unknown[],
-                  geoMessage
-                )),
-                intent: 'search' as const
-              })
-            }
+            // Destination-only query: always show options — never auto-book a single geo match.
+            logIntentTurn('search')
+            const pickMessage =
+              geoList.length === 1
+                ? `Here is a dive shop in ${placeLabel}. Pick one to start booking, or name a city or area to narrow down.`
+                : countryOnly
+                  ? `Here are dive shops in ${placeLabel}. Which one would you like to book?`
+                  : `Here are dive shops in ${placeLabel} (matched by location, not just name). Which one would you like to book?`
+            return withAgentMeta({
+              ...(await formatEntitySearchResponse(
+                supabaseUrl,
+                supabaseKey,
+                geoFilters,
+                geoList as unknown[],
+                widenedTripType ? geoMessage : pickMessage
+              )),
+              intent: 'search' as const
+            })
           }
         }
 
@@ -970,39 +964,24 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             })
           }
           if (!actQuery.error && actList.length > 0) {
-            if (effectiveWantsToBook && actList.length === 1) {
-              const only = actList[0]!
-              resolvedShop = await getShopById(supabaseUrl, supabaseKey, only.id)
-              resolvedByNamedShop = !!resolvedShop
-              skipEntityProbeFromActivity = !!resolvedShop
-            } else if (effectiveWantsToBook && actList.length > 1) {
-              return withAgentMeta({
-                ...(await formatEntitySearchResponse(
-                  supabaseUrl,
-                  supabaseKey,
-                  actFilters,
-                  actList as unknown[],
-                  `Here are shops that match “${label}” in our data (site types, shop type, or linked sites). Which one would you like to book?`
-                )),
-                intent: 'search' as const
-              })
-            } else if (!effectiveWantsToBook) {
-              return withAgentMeta({
-                ...(await formatEntitySearchResponse(
-                  supabaseUrl,
-                  supabaseKey,
-                  actFilters,
-                  actList as unknown[],
-                  `Here are shops that match “${label}” in our listings, dive site types, or linked sites. Say a region if you want to narrow down.`
-                )),
-                intent: 'search' as const
-              })
-            }
+            const actMessage =
+              actList.length === 1
+                ? `Here is a shop that matches “${label}” in our data. Pick one to start booking, or add a region to narrow down.`
+                : `Here are shops that match “${label}” in our data (site types, shop type, or linked sites). Which one would you like to book?`
+            return withAgentMeta({
+              ...(await formatEntitySearchResponse(
+                supabaseUrl,
+                supabaseKey,
+                actFilters,
+                actList as unknown[],
+                actMessage
+              )),
+              intent: 'search' as const
+            })
           }
         }
 
         if (referredPhrase && !resolvedShop && !skipEntityProbeFromGeo && !skipEntityProbeFromActivity) {
-          let skipEntityProbe = false
           if (effectiveWantsToBook) {
             const bookingNouns = interpretTurn
               ? mergeBookingNounHints(
@@ -1018,20 +997,28 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               bookingNouns
             )
             if (target.kind === 'single') {
-              resolvedShop = await getShopById(supabaseUrl, supabaseKey, target.shop.id)
-              resolvedByNamedShop = !!resolvedShop
-              skipEntityProbe = true
+              pushActivity('probe', formatProbeDirectoryLine(referredPhrase))
+              logIntentTurn('search')
+              return withAgentMeta({
+                ...(await formatEntitySearchResponse(
+                  supabaseUrl,
+                  supabaseKey,
+                  {},
+                  [target.shop as unknown as Record<string, unknown>],
+                  `Here is a dive shop matching "${referredPhrase}". Pick one to start booking.`
+                )),
+                intent: 'search' as const
+              })
             } else if (target.kind === 'ambiguous') {
               pushActivity('probe', formatProbeDirectoryLine(target.phrase))
               return withAgentMeta({ ...shopDisambiguationResponsePayload(target.phrase, target.shops), intent: 'search' as const })
             }
           }
-            if (!skipEntityProbe) {
-            pushActivity('probe', formatProbeDirectoryLine(referredPhrase))
-            const probe = await probeReferentPhrase(supabaseUrl, supabaseKey, referredPhrase)
-            const routed = await routeReferentFromProbe(supabaseUrl, supabaseKey, probe, {
-              allowAutoBook
-            })
+          pushActivity('probe', formatProbeDirectoryLine(referredPhrase))
+          const probe = await probeReferentPhrase(supabaseUrl, supabaseKey, referredPhrase)
+          const routed = await routeReferentFromProbe(supabaseUrl, supabaseKey, probe, {
+            allowAutoBook
+          })
             if (routed.type === 'closest_shop_suggestion') {
               logIntentTurn('search')
               return withAgentMeta({ ...closestShopSuggestionResponsePayload(routed.phrase, routed.shop), intent: 'search' as const })
@@ -1080,10 +1067,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               logIntentTurn('search')
               return withAgentMeta({ ...shopDisambiguationResponsePayload(routed.phrase, routed.shops), intent: 'search' as const })
             }
-            if (allowAutoBook) {
-              resolvedShop = routed.shop
-              resolvedByNamedShop = true
-            } else {
+            if (routed.type === 'booking') {
               logIntentTurn('search')
               return withAgentMeta({
                 ...(await formatEntitySearchResponse(
@@ -1091,7 +1075,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   supabaseKey,
                   {},
                   [routed.shop as unknown as Record<string, unknown>],
-                  `Here is a dive shop matching "${referredPhrase}". Pick one to book or refine your search.`
+                  `Here is a dive shop matching "${referredPhrase}". Pick one to start booking.`
                 )),
                 intent: 'search' as const
               })
@@ -1100,12 +1084,6 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
         }
       }
       if (effectiveWantsToBook && !resolvedShop) {
-        if (selectedShopId) {
-          resolvedShop = await getShopById(supabaseUrl, supabaseKey, selectedShopId)
-        }
-        if (!resolvedShop && lastShops?.length === 1) {
-          resolvedShop = await getShopById(supabaseUrl, supabaseKey, lastShops[0].id)
-        }
         if (!resolvedShop && message.match(/\b(first|second|third|1st|2nd|3rd)\s+(one|shop|result)\b/i) && lastShops?.length) {
           const idx = message.match(/\b(first|1st)\b/i) ? 0 : message.match(/\b(second|2nd)\b/i) ? 1 : 2
           const shop = lastShops[Math.min(idx, lastShops.length - 1)]
@@ -1334,9 +1312,20 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             const routedSw = await routeReferentFromProbe(supabaseUrl, supabaseKey, probeSw, {
               allowAutoBook: true
             })
-            if (routedSw.type === 'booking') {
-              target = { kind: 'single', shop: routedSw.shop }
-            } else if (routedSw.type === 'shop_disambiguation') {
+            if (routedSw.type === 'search') {
+              const { shopId: _s, ...carrySearch } = clearBookingPreSendFlags(
+                bookingPayload as BookingPayloadLocal
+              ) as BookingPayload
+              return withAgentMeta({
+                ...routedSw.response,
+                intent: 'search' as const,
+                shopId: undefined,
+                shopName: undefined,
+                bookingPayload: undefined,
+                pendingBookingPayload: carrySearch
+              })
+            }
+            if (routedSw.type === 'shop_disambiguation') {
               const { shopId: _s, ...carryAmb } = clearBookingPreSendFlags(
                 bookingPayload as BookingPayloadLocal
               ) as BookingPayload
@@ -1378,6 +1367,25 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           }
 
           if (target.kind === 'single') {
+            if (!pickId) {
+              const { shopId: _s, ...carrySingle } = clearBookingPreSendFlags(
+                bookingPayload as BookingPayloadLocal
+              ) as BookingPayload
+              return withAgentMeta({
+                ...(await formatEntitySearchResponse(
+                  supabaseUrl,
+                  supabaseKey,
+                  {},
+                  [target.shop as unknown as Record<string, unknown>],
+                  `Here is a dive shop matching "${sp}". Pick one to switch your booking.`
+                )),
+                intent: 'search' as const,
+                shopId: undefined,
+                shopName: undefined,
+                bookingPayload: undefined,
+                pendingBookingPayload: carrySingle
+              })
+            }
             const newShop = await getShopById(supabaseUrl, supabaseKey, target.shop.id)
             if (newShop && newShop.id !== resolvedShop.id) {
               const [dsSw, reSw, coSw] = await Promise.all([
@@ -1643,6 +1651,55 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               hideNoneForGear: hideNoneForGear(pElse),
               courseOptions: addCourseOptions(pElse),
               diveSiteOptions: addDiveSiteOptions(pElse)
+            })
+          }
+
+          // Mid-booking: browse operators in a place (e.g. "Dive shops in Alaska").
+          const locationBrowsePlace = extractMidBookingLocationBrowsePhrase(msgTrim)
+          if (locationBrowsePlace && supabaseUrl && supabaseKey) {
+            const browseFilters = mergeInferredDiveTypesIntoFilters(
+              inferSearchFiltersFromDestination(locationBrowsePlace),
+              msgTrim
+            )
+            const browseQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, browseFilters)
+            const browseList = (browseQuery.data || []) as unknown[]
+            const placeLabel =
+              browseFilters.place?.trim() ||
+              browseFilters.country?.trim() ||
+              locationBrowsePlace
+            const { shopId: _browseSid, ...payloadWithoutShop } = clearBookingPreSendFlags(
+              bookingPayload as BookingPayloadLocal
+            ) as BookingPayload
+            if (!browseQuery.error && browseList.length > 0) {
+              return withAgentMeta({
+                ...(await formatEntitySearchResponse(
+                  supabaseUrl,
+                  supabaseKey,
+                  browseFilters,
+                  browseList,
+                  browseList.length === 1
+                    ? `Here is a dive shop in ${placeLabel}. Pick one to start booking.`
+                    : `Here are dive shops in ${placeLabel}. Pick one to start booking.`
+                )),
+                intent: 'search' as const,
+                shopId: undefined,
+                shopName: undefined,
+                bookingPayload: undefined,
+                pendingBookingPayload: payloadWithoutShop
+              })
+            }
+            return withAgentMeta({
+              success: true,
+              intent: 'search' as const,
+              message: `I couldn't find dive shops in ${placeLabel} in our directory. Try a nearby city or country, or say "go back to search".`,
+              shops: [],
+              totalResults: 0,
+              hasMoreResults: false,
+              filters: browseFilters,
+              shopId: undefined,
+              shopName: undefined,
+              bookingPayload: undefined,
+              pendingBookingPayload: payloadWithoutShop
             })
           }
 

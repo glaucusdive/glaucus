@@ -245,6 +245,32 @@ async function routePlaceSearchFromPhrase (
   }
 }
 
+async function routeShopMatchesToPick (
+  supabaseUrl: string,
+  supabaseKey: string,
+  phrase: string,
+  shops: ResolvedShop[]
+): Promise<EntityRouteResult> {
+  if (shops.length === 0) {
+    return { type: 'clarify', phrase }
+  }
+  const exact = pickShopsWithExactBusinessName(phrase, shops)
+  const toShow = exact.length === 1 ? exact : shops.length === 1 ? shops : null
+  if (toShow) {
+    return {
+      type: 'search',
+      response: await formatEntitySearchResponse(
+        supabaseUrl,
+        supabaseKey,
+        {},
+        toShow as unknown as ShopRow[],
+        `Here is a dive shop matching "${phrase}". Pick one to start booking.`
+      )
+    }
+  }
+  return { type: 'shop_disambiguation', shops, phrase }
+}
+
 export async function routeReferentFromProbe (
   supabaseUrl: string,
   supabaseKey: string,
@@ -273,36 +299,11 @@ export async function routeReferentFromProbe (
   const only = cats[0]
 
   if (only === 'shop') {
-    const allowAutoBook = opts?.allowAutoBook !== false
     const isGeoPhrase = isKnownGeographicDestination(phrase)
-
-    if (!allowAutoBook) {
-      if (isGeoPhrase) {
-        return routePlaceSearchFromPhrase(supabaseUrl, supabaseKey, phrase)
-      }
-      if (probe.shops.length === 1) {
-        return {
-          type: 'search',
-          response: await formatEntitySearchResponse(
-            supabaseUrl,
-            supabaseKey,
-            {},
-            probe.shops as unknown as ShopRow[],
-            `Here ${probe.shops.length === 1 ? 'is a dive shop' : 'are dive shops'} matching "${phrase}".`
-          )
-        }
-      }
-      return { type: 'shop_disambiguation', shops: probe.shops, phrase }
+    if (isGeoPhrase) {
+      return routePlaceSearchFromPhrase(supabaseUrl, supabaseKey, phrase)
     }
-
-    if (probe.shops.length === 1) {
-      return { type: 'booking', shop: probe.shops[0]! }
-    }
-    const exact = pickShopsWithExactBusinessName(phrase, probe.shops)
-    if (exact.length === 1) {
-      return { type: 'booking', shop: exact[0]! }
-    }
-    return { type: 'shop_disambiguation', shops: probe.shops, phrase }
+    return routeShopMatchesToPick(supabaseUrl, supabaseKey, phrase, probe.shops)
   }
 
   if (only === 'dive_site') {
@@ -393,14 +394,14 @@ export async function handleForcedEntityClarify (
     if (shops.length === 0) {
       return { kind: 'clarify', phrase }
     }
-    if (shops.length === 1) {
-      return { kind: 'booking', shop: shops[0]! }
+    const routed = await routeShopMatchesToPick(supabaseUrl, supabaseKey, phrase, shops)
+    if (routed.type === 'search') {
+      return { kind: 'search', response: routed.response }
     }
-    const exact = pickShopsWithExactBusinessName(phrase, shops)
-    if (exact.length === 1) {
-      return { kind: 'booking', shop: exact[0]! }
+    if (routed.type === 'shop_disambiguation') {
+      return { kind: 'shop_disambiguation', shops: routed.shops, phrase: routed.phrase }
     }
-    return { kind: 'shop_disambiguation', shops, phrase }
+    return { kind: 'clarify', phrase }
   }
 
   if (kind === 'dive_site') {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  extractMidBookingLocationBrowsePhrase,
   extractMidBookingShopSwitchPhrase,
   userMessageWantsResumeSearchDuringBooking
 } from '../../server/utils/bookingFlowEscape'
@@ -36,6 +37,17 @@ describe('extractMidBookingShopSwitchPhrase', () => {
   it('extracts shop from switch to … instead during booking', () => {
     const p = extractMidBookingShopSwitchPhrase('Lets switch to Dive Porter instead')
     expect(p).toBe('Dive Porter')
+  })
+})
+
+describe('extractMidBookingLocationBrowsePhrase', () => {
+  it('extracts place from dive shops in …', () => {
+    expect(extractMidBookingLocationBrowsePhrase('Dive shops in Alaska')).toBe('Alaska')
+    expect(extractMidBookingLocationBrowsePhrase('show me liveaboards in Raja Ampat')).toBe('Raja Ampat')
+  })
+
+  it('does not treat plain names as browse', () => {
+    expect(extractMidBookingLocationBrowsePhrase('Jane Smith')).toBeNull()
   })
 })
 
