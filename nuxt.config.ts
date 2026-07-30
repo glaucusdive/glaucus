@@ -122,13 +122,14 @@ export default defineNuxtConfig({
       posthogMarkTestTraffic: process.env.NUXT_PUBLIC_POSTHOG_MARK_TEST_TRAFFIC === 'true',
       /** Set NUXT_PUBLIC_GA4_ENABLED=true on Netlify prod only. */
       ga4Enabled: process.env.NUXT_PUBLIC_GA4_ENABLED === 'true',
-      ga4Id: process.env.NUXT_PUBLIC_GA4_ID || 'G-WTKZQBBPWT'
+      /** GA4 measurement ID from Google Admin; set via NUXT_PUBLIC_GA4_ID (not hardcoded — Netlify secrets scan). */
+      ga4Id: process.env.NUXT_PUBLIC_GA4_ID || ''
     }
   },
 
   gtag: {
     enabled: process.env.NUXT_PUBLIC_GA4_ENABLED === 'true',
-    id: process.env.NUXT_PUBLIC_GA4_ID || 'G-WTKZQBBPWT'
+    id: process.env.NUXT_PUBLIC_GA4_ID || ''
   },
 
   posthogConfig: {

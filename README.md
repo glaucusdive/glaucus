@@ -90,7 +90,7 @@ Copy a root `.env` for local dev (never commit it). Set the same names in **Netl
 | `NUXT_PUBLIC_POSTHOG_HOST` | Ingest host from PostHog project settings |
 | `NUXT_PUBLIC_POSTHOG_MARK_TEST_TRAFFIC` | Optional `true` to tag events `test_mode` (only if dashboards exclude test traffic) |
 | `NUXT_PUBLIC_GA4_ENABLED` | `true` on prod only — Google Analytics 4 pageviews (for Search Console linking) |
-| `NUXT_PUBLIC_GA4_ID` | GA4 measurement ID (`G-WTKZQBBPWT`; optional — has a default in config) |
+| `NUXT_PUBLIC_GA4_ID` | GA4 measurement ID (`G-…` from Google Admin → Data streams) |
 | `NUXT_PUBLIC_TEST_MODE` | `false` on prod to turn off app test mode (amber shell, booking whitelist) |
 
 PostHog dashboards: [docs/posthog-dashboard-prompts.md](docs/posthog-dashboard-prompts.md). GA4 runs alongside PostHog; link the GA4 property to Search Console in Google Admin after deploy. Supabase CLI: `supabase login`, `supabase link`, `supabase db push` (use the glaucus account; omit `--profile glaucus`).
@@ -118,6 +118,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.81.1** — Stop hardcoding GA4 measurement ID so Netlify secrets scan passes (2026-07-30).
 - **0.81.0** — Add Google Analytics 4 (GA4) for Search Console integration (2026-07-30).
 - **0.80.4** — Toggle the booking-form chevron to close the open form and flip the arrow (2026-07-15).
 - **0.80.3** — Carry trip dates from the search message into booking so “Book this” does not ask for dates again (2026-07-15).
