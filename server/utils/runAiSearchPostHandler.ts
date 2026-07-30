@@ -38,7 +38,7 @@ import {
   collectBookingNounHints,
   mergeBookingNounHints
 } from '../../shared/bookingNounResolve'
-import { parseBookShopPickMessage, shopDisambiguationSelectableOptions } from '../../shared/bookShopPick'
+import { parseBookShopPickMessage, shopDisambiguationSelectableOptions, canCommitBookingHandoffForShop } from '../../shared/bookShopPick'
 import { formatBookingReviewSummary } from '../../shared/formatBookingReviewSummary'
 import { extractBookingTargetFallback, extractReferredEntityPhrase, extractShopSelectionPhrase } from '../utils/extractReferredEntityPhrase'
 import { parseEntityClarifyMessage } from '../utils/entityClarify'
@@ -742,6 +742,20 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           effectiveWantsToBook = true
           allowAutoBook = true
         }
+      } else if (
+        !resolvedShop &&
+        selectedShopId &&
+        supabaseUrl &&
+        supabaseKey &&
+        canCommitBookingHandoffForShop(message, selectedShopId, { lastShops, selectedShopId })
+      ) {
+        const picked = await getShopById(supabaseUrl, supabaseKey, selectedShopId)
+        if (picked) {
+          resolvedShop = picked
+          resolvedByNamedShop = true
+          effectiveWantsToBook = true
+          allowAutoBook = true
+        }
       } else if (!continuingBooking) {
         allowAutoBook = wantsToBookRegex || !!shopSelectionPhrase
       }
@@ -997,18 +1011,25 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               bookingNouns
             )
             if (target.kind === 'single') {
-              pushActivity('probe', formatProbeDirectoryLine(referredPhrase))
-              logIntentTurn('search')
-              return withAgentMeta({
-                ...(await formatEntitySearchResponse(
-                  supabaseUrl,
-                  supabaseKey,
-                  {},
-                  [target.shop as unknown as Record<string, unknown>],
-                  `Here is a dive shop matching "${referredPhrase}". Pick one to start booking.`
-                )),
-                intent: 'search' as const
-              })
+              if (
+                canCommitBookingHandoffForShop(message, target.shop.id, { lastShops, selectedShopId })
+              ) {
+                resolvedShop = await getShopById(supabaseUrl, supabaseKey, target.shop.id)
+                resolvedByNamedShop = !!resolvedShop
+              } else {
+                pushActivity('probe', formatProbeDirectoryLine(referredPhrase))
+                logIntentTurn('search')
+                return withAgentMeta({
+                  ...(await formatEntitySearchResponse(
+                    supabaseUrl,
+                    supabaseKey,
+                    {},
+                    [target.shop as unknown as Record<string, unknown>],
+                    `Here is a dive shop matching "${referredPhrase}". Pick one to start booking.`
+                  )),
+                  intent: 'search' as const
+                })
+              }
             } else if (target.kind === 'ambiguous') {
               pushActivity('probe', formatProbeDirectoryLine(target.phrase))
               return withAgentMeta({ ...shopDisambiguationResponsePayload(target.phrase, target.shops), intent: 'search' as const })

@@ -1,3 +1,5 @@
+import { isBookingHandoffUserMessage } from './guidedFlow'
+
 /** Stable chip value when several directory shops share a name — encodes diveshop id. */
 export const BOOK_SHOP_PREFIX = 'book_shop:'
 
@@ -43,4 +45,19 @@ export function shopDisambiguationSelectableOptions (
 
 export function isBookShopPickUserMessage (message: string): boolean {
   return parseBookShopPickMessage(message) != null
+}
+
+/**
+ * True when the user is explicitly committing to book a shop they already saw
+ * ("Let's book …", book_shop chip, book with/at) — not a cold destination search.
+ */
+export function canCommitBookingHandoffForShop (
+  message: string,
+  shopId: string,
+  opts?: { lastShops?: { id: string }[] | null, selectedShopId?: string | null }
+): boolean {
+  if (!shopId || !isBookingHandoffUserMessage(message)) return false
+  if (parseBookShopPickMessage(message)) return true
+  if (opts?.selectedShopId && opts.selectedShopId === shopId) return true
+  return !!(opts?.lastShops ?? []).some(s => s.id === shopId)
 }
