@@ -68,7 +68,7 @@ describe('routeReferentFromProbe country priority', () => {
     expect(routed.type).toBe('clarify')
   })
 
-  it('books single exact shop when allowAutoBook is true', async () => {
+  it('returns search for single shop so user must pick before booking', async () => {
     const probe: ReferentProbe = {
       phrase: 'Zen Resort',
       shops: [{ id: 'z1', business_name: 'Zen Resort', email: null }],
@@ -78,10 +78,10 @@ describe('routeReferentFromProbe country priority', () => {
       placeHit: false
     }
     const routed = await routeReferentFromProbe('', '', probe, { allowAutoBook: true })
-    expect(routed.type).toBe('booking')
+    expect(routed.type).toBe('search')
   })
 
-  it('returns search for single shop when allowAutoBook is false and not geographic', async () => {
+  it('returns search for single shop regardless of allowAutoBook', async () => {
     const probe: ReferentProbe = {
       phrase: 'Zen Resort',
       shops: [{ id: 'z1', business_name: 'Zen Resort', email: null }],
