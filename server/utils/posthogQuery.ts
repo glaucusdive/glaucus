@@ -1,6 +1,6 @@
-export interface PostHogUserCounts {
-  newUsers: number
-  returningUsers: number
+export interface PostHogVisitorCounts {
+  newVisitors: number
+  returningVisitors: number
 }
 
 interface HogQLQueryResponse {
@@ -26,10 +26,10 @@ export function isPostHogQueryConfigured (): boolean {
   return Boolean(apiKey && projectId)
 }
 
-export async function fetchPostHogUserCounts (
+export async function fetchPostHogVisitorCounts (
   fromIso: string,
   toIso: string
-): Promise<PostHogUserCounts | null> {
+): Promise<PostHogVisitorCounts | null> {
   if (!isPostHogQueryConfigured()) return null
 
   const config = useRuntimeConfig()
@@ -90,11 +90,11 @@ export async function fetchPostHogUserCounts (
     return null
   }
 
-  const newUsers = Number(row[0])
-  const returningUsers = Number(row[1])
-  if (!Number.isFinite(newUsers) || !Number.isFinite(returningUsers)) {
+  const newVisitors = Number(row[0])
+  const returningVisitors = Number(row[1])
+  if (!Number.isFinite(newVisitors) || !Number.isFinite(returningVisitors)) {
     return null
   }
 
-  return { newUsers, returningUsers }
+  return { newVisitors, returningVisitors }
 }

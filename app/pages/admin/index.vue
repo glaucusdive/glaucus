@@ -5,7 +5,7 @@
         <FormSelect
           id="dashboard-range"
           v-model="selectedRange"
-          class="min-w-[10rem]"
+          class="min-w-40"
           muted
           focus-ring
           @change="loadDashboard"
@@ -35,7 +35,7 @@
         <div
           v-for="stat in statCards"
           :key="stat.label"
-          class="min-w-[10rem] flex-1 rounded-md border border-zinc-300 p-4 dark:border-zinc-700"
+          class="min-w-40 flex-1 rounded-md border border-zinc-300 p-4 dark:border-zinc-700"
         >
           <p class="text-3xl font-semibold text-zinc-900 dark:text-white tabular-nums">
             {{ stat.value }}
@@ -53,7 +53,7 @@
         v-if="data && !data.posthogConfigured"
         class="mt-6 text-sm text-zinc-500 dark:text-zinc-400"
       >
-        Configure PostHog API (<code class="text-xs">POSTHOG_PERSONAL_API_KEY</code>, <code class="text-xs">POSTHOG_PROJECT_ID</code>) for new vs returning user counts.
+        Configure PostHog API (<code class="text-xs">POSTHOG_PERSONAL_API_KEY</code>, <code class="text-xs">POSTHOG_PROJECT_ID</code>) for new vs returning visitor counts.
       </p>
       <p
         v-else-if="data && data.posthogConfigured && !data.posthogAvailable"
@@ -61,6 +61,57 @@
       >
         PostHog is configured but the query failed. Check server logs and API key permissions.
       </p>
+
+      <section v-if="data" class="mt-8">
+        <h2 class="text-base font-semibold text-zinc-900 dark:text-white">
+          Users
+          <span class="ml-1 text-sm font-normal text-zinc-500 dark:text-zinc-400">
+            ({{ data.userRows.length }})
+          </span>
+        </h2>
+
+        <div class="mt-4 overflow-x-auto">
+          <table class="w-full min-w-[40rem] border border-zinc-300 text-sm dark:border-zinc-700 rounded-md overflow-hidden">
+            <thead>
+              <tr class="border-b border-zinc-300 bg-zinc-50 text-left dark:border-zinc-700 dark:bg-zinc-900/50">
+                <th class="px-4 py-2 font-medium text-zinc-600 dark:text-zinc-400">Email</th>
+                <th class="px-4 py-2 font-medium text-zinc-600 dark:text-zinc-400">Signed up</th>
+                <th class="px-4 py-2 font-medium text-zinc-600 dark:text-zinc-400">Last signed in</th>
+                <th class="px-4 py-2 font-medium text-zinc-600 dark:text-zinc-400">Type</th>
+                <th class="px-4 py-2 font-medium text-zinc-600 dark:text-zinc-400">Bookings</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="!data.userRows.length">
+                <td colspan="5" class="px-4 py-8 text-center text-zinc-500 dark:text-zinc-400">
+                  No users signed up in this period.
+                </td>
+              </tr>
+              <tr
+                v-for="row in data.userRows"
+                :key="row.id"
+                class="border-b border-zinc-200 last:border-b-0 dark:border-zinc-800"
+              >
+                <td class="px-4 py-2 text-zinc-900 dark:text-white">
+                  {{ row.email || '—' }}
+                </td>
+                <td class="px-4 py-2 text-zinc-700 dark:text-zinc-300">
+                  {{ formatDashboardDate(row.signedUpAt) }}
+                </td>
+                <td class="px-4 py-2 text-zinc-700 dark:text-zinc-300">
+                  {{ formatDashboardDate(row.lastSignedInAt) }}
+                </td>
+                <td class="px-4 py-2 text-zinc-700 dark:text-zinc-300 capitalize">
+                  {{ row.userType }}
+                </td>
+                <td class="px-4 py-2 text-zinc-900 dark:text-white tabular-nums">
+                  {{ row.bookingsSubmitted.toLocaleString() }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -74,14 +125,24 @@ useSeoMeta({
   robots: 'noindex, nofollow'
 })
 
+interface DashboardUserRow {
+  id: string
+  email: string | null
+  signedUpAt: string | null
+  lastSignedInAt: string | null
+  userType: 'normal' | 'admin'
+  bookingsSubmitted: number
+}
+
 interface DashboardResponse {
   range: string
   from: string
   to: string
   bookings: number
-  signups: number
-  newUsers: number | null
-  returningUsers: number | null
+  users: number
+  userRows: DashboardUserRow[]
+  newVisitors: number | null
+  returningVisitors: number | null
   posthogConfigured: boolean
   posthogAvailable: boolean
 }
@@ -98,6 +159,15 @@ function formatCount (n: number | null | undefined): string {
   return n.toLocaleString()
 }
 
+function formatDashboardDate (iso: string | null | undefined): string {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleDateString()
+  } catch {
+    return '—'
+  }
+}
+
 const statCards = computed(() => {
   const d = data.value
   const posthogHint = d && !d.posthogAvailable
@@ -106,13 +176,13 @@ const statCards = computed(() => {
 
   return [
     {
-      label: 'New users',
-      value: formatCount(d?.newUsers),
+      label: 'New visitors',
+      value: formatCount(d?.newVisitors),
       hint: posthogHint
     },
     {
-      label: 'Returning users',
-      value: formatCount(d?.returningUsers),
+      label: 'Returning visitors',
+      value: formatCount(d?.returningVisitors),
       hint: posthogHint
     },
     {
@@ -121,8 +191,8 @@ const statCards = computed(() => {
       hint: undefined
     },
     {
-      label: 'Signups',
-      value: formatCount(d?.signups),
+      label: 'Users',
+      value: formatCount(d?.users),
       hint: undefined
     }
   ]
