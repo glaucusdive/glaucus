@@ -3,6 +3,7 @@ import type { H3Event } from 'h3'
 import { isBookingEmailAllowedInTestMode, isTestModeEnabled } from '../../shared/testMode'
 import { getShopById } from '../utils/resolveShop'
 import { createSupabaseClientForUser, getAuthUser, getBearerToken } from '../utils/getAuthUser'
+import { getSupabaseServiceRoleClient } from '../utils/supabaseServiceRole'
 import { runWithRetries } from '../utils/retryWithBackoff'
 
 interface DiverPayload {
@@ -95,32 +96,48 @@ function buildUserConfirmationBody (shopName: string, userEmail: string, shopEma
   ].join('\n')
 }
 
-async function logSubmissionIfAuthenticated (
+async function logBookingSubmission (
   event: H3Event,
   payload: BookingBody
 ) {
+  const sentAt = new Date().toISOString()
   const user = await getAuthUser(event)
-  if (!user) return
-
   const token = getBearerToken(event)
-  if (!token) return
 
-  const config = useRuntimeConfig()
-  const client = createSupabaseClientForUser(
-    config.public.supabaseUrl,
-    config.public.supabaseKey,
-    token
-  )
+  if (user && token) {
+    const config = useRuntimeConfig()
+    const client = createSupabaseClientForUser(
+      config.public.supabaseUrl,
+      config.public.supabaseKey,
+      token
+    )
 
-  const { error } = await client.from('booking_submissions').insert({
-    user_id: user.id,
-    shop_id: payload.shopId,
-    payload,
-    sent_at: new Date().toISOString()
-  })
+    const { error } = await client.from('booking_submissions').insert({
+      user_id: user.id,
+      shop_id: payload.shopId,
+      payload,
+      sent_at: sentAt
+    })
 
-  if (error) {
-    console.error('Failed to log booking submission:', error.message)
+    if (error) {
+      console.error('Failed to log booking submission:', error.message)
+    }
+    return
+  }
+
+  try {
+    const serviceClient = getSupabaseServiceRoleClient()
+    const { error } = await serviceClient.from('booking_submissions').insert({
+      user_id: null,
+      shop_id: payload.shopId,
+      payload,
+      sent_at: sentAt
+    })
+    if (error) {
+      console.error('Failed to log guest booking submission:', error.message)
+    }
+  } catch (e: any) {
+    console.error('Guest booking log skipped:', e?.message || e)
   }
 }
 
@@ -277,7 +294,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  await logSubmissionIfAuthenticated(event, payload)
+  await logBookingSubmission(event, payload)
   await clearMatchingDraftIfAuthenticated(event, payload)
 
   const userSubject = `We've sent your booking request to ${shopName}`

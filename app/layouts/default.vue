@@ -16,7 +16,7 @@
           class="w-full lg:w-56 h-full shrink-0 flex flex-col justify-between p-2 absolute lg:relative z-50">
           <div>
             <div class="h-fit flex flex-row justify-between items-center p-2 lg:p-4">
-              <NuxtLink :to="{ path: '/', query: { chat: '1' } }" @click="handleCloseMobileMenu">
+              <NuxtLink :to="isAdminRoute ? '/admin' : { path: '/', query: { chat: '1' } }" @click="handleCloseMobileMenu">
                 <Logo />
               </NuxtLink>
               <button @click="handleCloseMobileMenu"
@@ -28,43 +28,57 @@
 
           <nav class="w-full flex flex-col gap-1">
             <ClientOnly>
-              <div
-                v-if="showChatInSidebar"
-                class="flex flex-col gap-1"
-              >
-                <button
-                  type="button"
-                  class="w-full flex items-center gap-2 text-left px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200 rounded-sm  cursor-pointer bg-transparent"
-                  @click="onSidebarNewChat"
+              <!-- Chat sidebar -->
+              <template v-if="!isAdminRoute">
+                <div
+                  v-if="showChatInSidebar"
+                  class="flex flex-col gap-1"
                 >
-                  <FilePlus class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" />
-                  New Chat
-                </button>
-                <button
-                  v-for="c in sidebarChats"
-                  :key="c.id"
-                  type="button"
-                  class="w-full text-left py-2 px-3 rounded-md text-sm border  cursor-pointer flex flex-row justify-between items-baseline gap-0.5"
-                  :class="c.isActive
-                    ? 'border-blue-500 bg-blue-50 dark:bg-zinc-900 text-zinc-900 dark:text-white'
-                    : 'border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'"
-                  @click="onSelectChat(c.id)"
-                >
-                  <span class="font-medium line-clamp-2 truncate">{{ c.title }}</span>
-                  <span v-if="formatChatUpdated(c.updatedAt)" class="text-xs text-zinc-500 dark:text-zinc-400">{{ formatChatUpdated(c.updatedAt) }}</span>
-                </button>
-              </div>
-            </ClientOnly>
-            <!-- <NavLink to="/community" disabled>Community</NavLink> -->
-            <ClientOnly>
-              <NavLink v-if="isSignedIn" to="/profile" @click="handleCloseMobileMenu">
-                <CircleUser class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
-                Profile
-              </NavLink>
-              <template v-if="showAdminNav">
-                <NavLink to="/admin/shops" @click="handleCloseMobileMenu">
+                  <button
+                    type="button"
+                    class="w-full flex items-center gap-2 text-left px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200 rounded-sm  cursor-pointer bg-transparent"
+                    @click="onSidebarNewChat"
+                  >
+                    <FilePlus class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" />
+                    New Chat
+                  </button>
+                  <button
+                    v-for="c in sidebarChats"
+                    :key="c.id"
+                    type="button"
+                    class="w-full text-left py-2 px-3 rounded-md text-sm border  cursor-pointer flex flex-row justify-between items-baseline gap-0.5"
+                    :class="c.isActive
+                      ? 'border-blue-500 bg-blue-50 dark:bg-zinc-900 text-zinc-900 dark:text-white'
+                      : 'border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'"
+                    @click="onSelectChat(c.id)"
+                  >
+                    <span class="font-medium line-clamp-2 truncate">{{ c.title }}</span>
+                    <span v-if="formatChatUpdated(c.updatedAt)" class="text-xs text-zinc-500 dark:text-zinc-400">{{ formatChatUpdated(c.updatedAt) }}</span>
+                  </button>
+                </div>
+                <NavLink v-if="isSignedIn" to="/profile" @click="handleCloseMobileMenu">
+                  <CircleUser class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                  Profile
+                </NavLink>
+                <NavLink v-if="showAdminNav" to="/admin" @click="handleCloseMobileMenu">
                   <Shield class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
                   Admin
+                </NavLink>
+              </template>
+
+              <!-- Admin sidebar -->
+              <template v-else>
+                <NavLink to="/?chat=1" @click="handleCloseMobileMenu">
+                  <ArrowLeft class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                  Back to chat
+                </NavLink>
+                <NavLink to="/admin" @click="handleCloseMobileMenu">
+                  <LayoutDashboard class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                  Dashboard
+                </NavLink>
+                <NavLink to="/admin/shops" @click="handleCloseMobileMenu">
+                  <Database class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                  Shop database
                 </NavLink>
                 <NavLink to="/admin/shop-updates" @click="handleCloseMobileMenu">
                   <ClipboardList class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
@@ -75,9 +89,41 @@
                   active-prefix="/admin/blog"
                   @click="handleCloseMobileMenu"
                 >
+                  <FileText class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
                   Manage blog
                 </NavLink>
+                <a
+                  href="https://us.posthog.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-sm font-medium bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 px-4 py-2 rounded-sm inline-flex items-center gap-2 w-full text-zinc-600 dark:text-zinc-400"
+                  @click="handleCloseMobileMenu"
+                >
+                  <BarChart3 class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                  PostHog analytics
+                </a>
+                <a
+                  href="https://analytics.google.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-sm font-medium bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 px-4 py-2 rounded-sm inline-flex items-center gap-2 w-full text-zinc-600 dark:text-zinc-400"
+                  @click="handleCloseMobileMenu"
+                >
+                  <LineChart class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                  GA4 analytics
+                </a>
+                <a
+                  href="https://search.google.com/search-console"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-sm font-medium bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 px-4 py-2 rounded-sm inline-flex items-center gap-2 w-full text-zinc-600 dark:text-zinc-400"
+                  @click="handleCloseMobileMenu"
+                >
+                  <Search class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                  Search console
+                </a>
               </template>
+
               <NavLink v-if="!authLoading && !isSignedIn" to="/auth" @click="handleCloseMobileMenu">
                 <LogIn class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" />
                 Sign in
@@ -147,7 +193,23 @@
 <script setup>
 import gsap from 'gsap'
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { X, FilePlus, CircleUser, LogIn, LogOut, CircleHelp, Shield, ClipboardList } from 'lucide-vue-next'
+import {
+  X,
+  FilePlus,
+  CircleUser,
+  LogIn,
+  LogOut,
+  CircleHelp,
+  Shield,
+  ClipboardList,
+  ArrowLeft,
+  LayoutDashboard,
+  Database,
+  FileText,
+  BarChart3,
+  LineChart,
+  Search
+} from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/composables/useSupabase'
@@ -162,6 +224,7 @@ import Logo from '~/components/Logo.vue'
 const testMode = useTestMode()
 
 const route = useRoute()
+const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 /** Chat chrome also on auth/profile so it doesn’t vanish while signing in or on account pages. */
 const showChatInSidebar = computed(() => {
   const p = route.path

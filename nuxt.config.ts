@@ -80,6 +80,12 @@ export default defineNuxtConfig({
     linearTeamId: '',
     /** Linear workflow state UUID for “User Feedback” status. */
     linearFeedbackStateId: '',
+    /** PostHog personal API key (server-only) for admin dashboard HogQL queries. */
+    posthogPersonalApiKey: '',
+    /** PostHog project id for Query API (numeric id from project settings). */
+    posthogProjectId: '',
+    /** PostHog app host for Query API (e.g. https://us.posthog.com). */
+    posthogApiHost: process.env.POSTHOG_HOST || 'https://us.posthog.com',
 
     // Public keys - available both client and server-side
     public: {

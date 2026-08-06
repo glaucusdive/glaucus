@@ -3,10 +3,10 @@
     <ShellPageHeader title="Admin · Shop updates">
       <template #actions>
         <NuxtLink
-          to="/admin/shops"
+          to="/admin"
           class="inline-flex items-center justify-center gap-1 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
-          Dive shops
+          Dashboard
         </NuxtLink>
       </template>
     </ShellPageHeader>
