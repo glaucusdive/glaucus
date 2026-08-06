@@ -4,7 +4,8 @@ import {
   parseDashboardRange,
   resolveDashboardDateWindow
 } from '../../utils/adminDashboardRange'
-import { fetchPostHogUserCounts, isPostHogQueryConfigured } from '../../utils/posthogQuery'
+import { listUsersInSignupRange } from '../../utils/adminDashboardUsers'
+import { fetchPostHogVisitorCounts, isPostHogQueryConfigured } from '../../utils/posthogQuery'
 
 async function countBookings (fromIso: string, toIso: string): Promise<number> {
   const client = getSupabaseServiceRoleClient()
@@ -21,35 +22,6 @@ async function countBookings (fromIso: string, toIso: string): Promise<number> {
   return count ?? 0
 }
 
-async function countSignups (fromIso: string, toIso: string): Promise<number> {
-  const client = getSupabaseServiceRoleClient()
-  const fromMs = new Date(fromIso).getTime()
-  const toMs = new Date(toIso).getTime()
-  const perPage = 1000
-  let page = 1
-  let total = 0
-
-  while (true) {
-    const { data, error } = await client.auth.admin.listUsers({ page, perPage })
-    if (error) {
-      console.error('[dashboard] signup count failed:', error.message)
-      throw createError({ statusCode: 500, statusMessage: 'Failed to count signups' })
-    }
-
-    const users = data?.users ?? []
-    for (const user of users) {
-      if (!user.created_at) continue
-      const createdMs = new Date(user.created_at).getTime()
-      if (createdMs >= fromMs && createdMs < toMs) total++
-    }
-
-    if (users.length < perPage) break
-    page++
-  }
-
-  return total
-}
-
 export default defineEventHandler(async (event) => {
   await requireAdminUser(event)
 
@@ -57,10 +29,10 @@ export default defineEventHandler(async (event) => {
   const range = parseDashboardRange(typeof query.range === 'string' ? query.range : undefined)
   const window = resolveDashboardDateWindow(range)
 
-  const [bookings, signups, posthogCounts] = await Promise.all([
+  const [bookings, userRows, posthogCounts] = await Promise.all([
     countBookings(window.from, window.to),
-    countSignups(window.from, window.to),
-    fetchPostHogUserCounts(window.from, window.to)
+    listUsersInSignupRange(window.from, window.to),
+    fetchPostHogVisitorCounts(window.from, window.to)
   ])
 
   return {
@@ -68,9 +40,10 @@ export default defineEventHandler(async (event) => {
     from: window.from,
     to: window.to,
     bookings,
-    signups,
-    newUsers: posthogCounts?.newUsers ?? null,
-    returningUsers: posthogCounts?.returningUsers ?? null,
+    users: userRows.length,
+    userRows,
+    newVisitors: posthogCounts?.newVisitors ?? null,
+    returningVisitors: posthogCounts?.returningVisitors ?? null,
     posthogConfigured: isPostHogQueryConfigured(),
     posthogAvailable: posthogCounts !== null
   }
