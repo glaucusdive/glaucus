@@ -89,6 +89,10 @@ Copy a root `.env` for local dev (never commit it). Set the same names in **Netl
 | `NUXT_PUBLIC_POSTHOG_KEY` | PostHog project token (`phc_…`) |
 | `NUXT_PUBLIC_POSTHOG_HOST` | Ingest host from PostHog project settings |
 | `NUXT_PUBLIC_POSTHOG_MARK_TEST_TRAFFIC` | Optional `true` to tag events `test_mode` (only if dashboards exclude test traffic) |
+| `POSTHOG_PERSONAL_API_KEY` | Server-only PostHog personal API key for admin dashboard HogQL queries |
+| `POSTHOG_PROJECT_ID` | PostHog project id (numeric) for Query API |
+| `POSTHOG_HOST` | PostHog app host for Query API (default `https://us.posthog.com`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Required for admin dashboard counts and guest booking logs |
 | `NUXT_PUBLIC_GA4_ENABLED` | `true` on prod only — Google Analytics 4 pageviews (for Search Console linking) |
 | `NUXT_PUBLIC_GA4_ID` | GA4 measurement ID (`G-…` from Google Admin → Data streams) |
 | `NUXT_PUBLIC_TEST_MODE` | `false` on prod to turn off app test mode (amber shell, booking whitelist) |
@@ -118,6 +122,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.82.0** — Admin dashboard with KPI stats (new/returning users, bookings, signups), split chat vs admin nav, guest booking logging (2026-08-06).
 - **0.81.1** — Stop hardcoding GA4 measurement ID so Netlify secrets scan passes (2026-07-30).
 - **0.81.0** — Add Google Analytics 4 (GA4) for Search Console integration (2026-07-30).
 - **0.80.4** — Toggle the booking-form chevron to close the open form and flip the arrow (2026-07-15).
