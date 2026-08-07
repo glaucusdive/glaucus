@@ -30,9 +30,11 @@ load_dotenv()
 from agents.nlu_agent import run_nlu_agent
 from agents.search_agent import run_search_agent
 from agents.booking_agent import run_booking_agent
+from agents.orchestrator_agent import run_orchestrator_agent
 from models.nlu_models import NluRequest, NluResponse
 from models.search_models import SearchAgentRequest, SearchAgentResponse
 from models.booking_models import BookingAgentRequest, BookingAgentResponse
+from models.orchestrator_models import OrchestratorRequest, OrchestratorResponse
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -178,6 +180,21 @@ async def dev_playground() -> str:
         <button onclick="sendRequest('/agents/booking', 'booking-input', 'booking-output')">Send</button>
         <pre id="booking-output">Waiting...</pre>
       </section>
+
+      <section class="card">
+        <h2>Orchestrator</h2>
+        <div class="path">POST /agents/orchestrator</div>
+        <textarea id="orchestrator-input">{
+  "message": "find me cave diving in Mexico",
+  "history": [],
+  "wantsBooking": false,
+  "regexReferent": "Mexico",
+  "runSearchAgent": false,
+  "runBookingAgent": false
+}</textarea>
+        <button onclick="sendRequest('/agents/orchestrator', 'orchestrator-input', 'orchestrator-output')">Send</button>
+        <pre id="orchestrator-output">Waiting...</pre>
+      </section>
     </div>
   </main>
 
@@ -282,6 +299,23 @@ async def search_endpoint(body: SearchAgentRequest) -> SearchAgentResponse:
 )
 async def booking_endpoint(body: BookingAgentRequest) -> BookingAgentResponse:
     return await run_booking_agent(body)
+
+
+# ── Orchestrator endpoint ──────────────────────────────────────────────────────
+
+@app.post(
+    "/agents/orchestrator",
+    response_model=OrchestratorResponse,
+    tags=["agents"],
+    summary="Run TS-like orchestration blocks in Python",
+    description=(
+        "Runs NLU + fail-soft continuation + booking readiness + referent phrase "
+        "selection + NLU filter merges. Optionally invokes search/booking agents "
+        "in the same request for end-to-end orchestration tests."
+    ),
+)
+async def orchestrator_endpoint(body: OrchestratorRequest) -> OrchestratorResponse:
+    return await run_orchestrator_agent(body)
 
 
 if __name__ == "__main__":

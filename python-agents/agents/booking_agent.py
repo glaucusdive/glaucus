@@ -19,7 +19,7 @@ from typing import Any
 
 from models.booking_models import BookingAgentRequest, BookingAgentResponse
 from prompts.booking_prompt import build_booking_system_prompt
-from utils.openai_client import OPENAI_CHAT_MODEL, get_openai_client
+from utils.llm_chat import run_chat_completion
 
 logger = logging.getLogger(__name__)
 
@@ -85,20 +85,19 @@ def _build_messages(request: BookingAgentRequest) -> list[dict[str, str]]:
 
 async def run_booking_agent(request: BookingAgentRequest) -> BookingAgentResponse:
     """Run one booking-assistant turn and return the structured response."""
-    client = get_openai_client()
     messages = _build_messages(request)
 
     try:
-        response = await client.chat.completions.create(
-            model=OPENAI_CHAT_MODEL,
-            messages=messages,  # type: ignore[arg-type]
+        raw = await run_chat_completion(
+            messages=messages,
             max_completion_tokens=_MAX_TOKENS,
+            run_name="booking_agent",
+            metadata={"goal": "booking_collection"},
         )
     except Exception as exc:
-        logger.error("Booking OpenAI call failed: %s", exc)
+        logger.error("Booking LLM call failed: %s", exc)
         return BookingAgentResponse(ok=False, error=str(exc))
 
-    raw = response.choices[0].message.content or ""
 
     booking_ready_payload = _extract_json_block(_BOOKING_READY_RE, raw)
     collected_payload = _extract_json_block(_COLLECTED_RE, raw)

@@ -29,6 +29,7 @@ class SearchFilters(BaseModel):
     min_rating: Optional[float] = Field(None, alias="minRating")
     languages: Optional[list[str]] = None
     dive_types: Optional[list[str]] = Field(None, alias="diveTypes")
+    activity_tokens: Optional[list[str]] = Field(None, alias="activityTokens")
 
     model_config = {"populate_by_name": True}
 
