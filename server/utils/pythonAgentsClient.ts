@@ -92,6 +92,47 @@ export interface BookingAgentResponse {
   error?: string
 }
 
+// --- Orchestrator ---
+
+export interface OrchestratorRequest {
+  message: string
+  history?: ChatMessage[]
+  wantsBooking?: boolean
+  regexReferent?: string | null
+  preferShopOrRegexOverDestination?: boolean
+  baseFilters?: Record<string, unknown> | null
+  runSearchAgent?: boolean
+  runBookingAgent?: boolean
+  bookingRequest?: BookingAgentRequest | null
+  autoAgentRouting?: boolean
+  runDbProbe?: boolean
+  runDbSearch?: boolean
+  selectedShopId?: string | null
+}
+
+export interface BookingReadinessFromPython {
+  score: number
+  primaryVerb: 'browse' | 'book' | 'neutral' | string
+  effectiveWantsToBook: boolean
+}
+
+export interface OrchestratorResponse {
+  ok: boolean
+  nluOk: boolean
+  nluError?: string | null
+  interpretTurn: InterpretedTurnFromPython
+  bookingReadiness: BookingReadinessFromPython
+  referentPhrase?: string | null
+  mergedFilters: SearchFiltersFromPython & { activityTokens?: string[] | null }
+  activityLog: string[]
+  agentCall: 'search' | 'booking' | 'none'
+  search?: SearchAgentResponse | null
+  booking?: BookingAgentResponse | null
+  dbProbe?: Record<string, unknown> | null
+  dbSearch?: Record<string, unknown> | null
+  selectedShop?: Record<string, unknown> | null
+}
+
 // ── Client implementation ────────────────────────────────────────────────────
 
 function getAgentsBaseUrl (): string {
@@ -162,6 +203,29 @@ export async function callBookingAgent (
     return await postAgent<BookingAgentRequest, BookingAgentResponse>('/agents/booking', req, signal)
   } catch (e) {
     return { ok: false, bookingReady: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+/**
+ * Call the Python orchestrator endpoint for a single routed turn.
+ */
+export async function callOrchestratorAgent (
+  req: OrchestratorRequest,
+  signal?: AbortSignal
+): Promise<OrchestratorResponse> {
+  try {
+    return await postAgent<OrchestratorRequest, OrchestratorResponse>('/agents/orchestrator', req, signal)
+  } catch (e) {
+    return {
+      ok: false,
+      nluOk: false,
+      nluError: e instanceof Error ? e.message : String(e),
+      interpretTurn: { goal: 'unclear' },
+      bookingReadiness: { score: 1, primaryVerb: 'neutral', effectiveWantsToBook: false },
+      mergedFilters: {},
+      activityLog: [`orchestrator_error: ${e instanceof Error ? e.message : String(e)}`],
+      agentCall: 'none'
+    }
   }
 }
 
