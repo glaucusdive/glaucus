@@ -36,6 +36,9 @@ Nitro serverless functions  (TypeScript)
 
 Interactive docs at **http://localhost:8001/docs** when running locally.
 
+Local playground page at **http://localhost:8001/dev** for quickly calling
+`/agents/nlu`, `/agents/search`, and `/agents/booking` without Nuxt.
+
 ## Agents
 
 | File | Mirrors TypeScript | Role |
