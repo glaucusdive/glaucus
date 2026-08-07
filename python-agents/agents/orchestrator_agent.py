@@ -315,7 +315,9 @@ async def run_orchestrator_agent(request: OrchestratorRequest) -> OrchestratorRe
             except Exception as exc:
                 db_search = {"ok": False, "error": str(exc)}
                 activity_log.append(f"db_search_failed: {exc}")
-
+                
+    print(f"orchestrator_activity_log: {activity_log}")
+    
     return OrchestratorResponse(
         ok=True,
         nluOk=ir.error is None,
