@@ -5,6 +5,7 @@ import {
   parseBookingReviewEditChip
 } from '../../shared/bookingReviewEditTokens'
 import { formatBookingReviewSummary } from '../../shared/formatBookingReviewSummary'
+import { bookingDobStepMessage, parseDateOfBirth } from '../../shared/diverAge'
 import { bookingGearStepMessage, bookingMultiSelectChipHint } from '../../shared/bookingMultiSelectPrompts'
 import {
   clampBookingPayloadToNextStep,
@@ -71,6 +72,7 @@ function wantsEditVerb (msg: string): boolean {
 function emptyDiverRow (): BookingDiverLocal {
   return {
     name: '',
+    dateOfBirth: '',
     certificationNumber: '',
     numberOfDives: '',
     height: '',
@@ -199,7 +201,7 @@ function parseDiverIndexFromMessage (msg: string): number | null {
   return n - 1
 }
 
-type DiverField = 'name' | 'certificationNumber' | 'numberOfDives' | 'height' | 'weight' | 'gear'
+type DiverField = 'name' | 'dateOfBirth' | 'certificationNumber' | 'numberOfDives' | 'height' | 'weight' | 'gear'
 
 type TryParseDiverFieldEditOpts = { implicitSingleDiver?: boolean }
 
@@ -216,6 +218,9 @@ function tryParseDiverFieldEditOneShot (
   const mGear = msgTrim.match(/\bdiver\s*\d+\s*'?s?\s*(?:rental\s+)?gear\b/i)
   if (mGear && wantsEditVerb(msgTrim)) {
     return { diverIndex: idx, field: 'gear', value: toVal }
+  }
+  if (/\b(?:date\s+of\s+birth|birthday|dob)\b/i.test(msgTrim) && wantsEditVerb(msgTrim)) {
+    return { diverIndex: idx, field: 'dateOfBirth', value: toVal }
   }
   if (/\b(?:certification|cert(?:\s*#)?)\b/i.test(msgTrim) && wantsEditVerb(msgTrim)) {
     return { diverIndex: idx, field: 'certificationNumber', value: toVal }
@@ -242,6 +247,11 @@ function applyDiverFieldValue (d: BookingDiverLocal, field: DiverField, raw: str
     case 'name':
       out.name = v
       break
+    case 'dateOfBirth': {
+      const iso = parseDateOfBirth(v)
+      out.dateOfBirth = iso || v
+      break
+    }
     case 'certificationNumber':
       out.certificationNumber = v
       break
@@ -276,6 +286,8 @@ function ackDiverFieldApplied (diverIndex: number, field: DiverField, raw: strin
       return `Updated ${who}'s weight to ${v}.`
     case 'height':
       return `Updated ${who}'s height to ${v}.`
+    case 'dateOfBirth':
+      return `Updated ${who}'s date of birth to ${v}.`
     case 'certificationNumber':
       return `Updated ${who}'s certification number to ${v}.`
     case 'numberOfDives':
@@ -929,6 +941,7 @@ export function tryHandleBookingReviewEditTurn (
         divers[diverFieldShot.diverIndex] = { ...cur, gear: [], gearAsked: false }
       } else {
         const clearedD = { ...cur }
+        if (diverFieldShot.field === 'dateOfBirth') clearedD.dateOfBirth = ''
         if (diverFieldShot.field === 'certificationNumber') clearedD.certificationNumber = ''
         if (diverFieldShot.field === 'numberOfDives') clearedD.numberOfDives = ''
         if (diverFieldShot.field === 'height') clearedD.height = ''
@@ -951,7 +964,9 @@ export function tryHandleBookingReviewEditTurn (
       })
       const who = cur.name?.trim() || `Diver ${diverFieldShot.diverIndex + 1}`
       const q =
-        diverFieldShot.field === 'certificationNumber'
+        diverFieldShot.field === 'dateOfBirth'
+          ? bookingDobStepMessage(who)
+          : diverFieldShot.field === 'certificationNumber'
           ? `What is ${who}'s certification number?`
           : diverFieldShot.field === 'numberOfDives'
             ? `How many dives has ${who} completed?`

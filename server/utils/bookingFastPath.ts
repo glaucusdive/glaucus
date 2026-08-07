@@ -10,10 +10,16 @@ import {
   filterGearToShopOfferings
 } from '../../shared/filterGearToShopOfferings'
 import { contactNameInputLikelyNotAPlainName } from './bookingFieldReplyHeuristics'
+import {
+  bookingDobConfirmPreamble,
+  bookingDobStepMessage,
+  parseDateOfBirth
+} from '../../shared/diverAge'
 
 /** Minimal booking types to avoid circular import from ai-search.post */
 export interface BookingDiverLocal {
   name: string
+  dateOfBirth: string
   certificationNumber: string
   numberOfDives: string
   height: string
@@ -64,7 +70,7 @@ export type PendingReviewEdit =
       kind: 'awaiting_value'
       target: 'diver_field'
       diverIndex: number
-      field: 'name' | 'certificationNumber' | 'numberOfDives' | 'height' | 'weight' | 'gear'
+      field: 'name' | 'dateOfBirth' | 'certificationNumber' | 'numberOfDives' | 'height' | 'weight' | 'gear'
     }
 
 export type BookingStep =
@@ -75,6 +81,7 @@ export type BookingStep =
   | 'numberOfDivers'
   | 'isContactDiver1'
   | 'diverName'
+  | 'dateOfBirth'
   | 'certificationNumber'
   | 'numberOfDives'
   | 'height'
@@ -123,7 +130,7 @@ export function getNextBookingStep (payload: BookingPayloadLocal): NextStepResul
   const divers = ensureDivers(payload)
   for (let j = divers.length; j < numDivers; j++) {
     divers.push({
-      name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in',
+      name: '', dateOfBirth: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in',
       weight: '', weightUnit: 'lbs', gear: []
     })
   }
@@ -132,6 +139,7 @@ export function getNextBookingStep (payload: BookingPayloadLocal): NextStepResul
   for (let idx = 0; idx < numDivers; idx++) {
     const d = divers[idx] || {}
     if (!d.name || String(d.name).trim() === '') return { step: 'diverName', diverIndex: idx, diverName: '' }
+    if (!d.dateOfBirth || String(d.dateOfBirth).trim() === '') return { step: 'dateOfBirth', diverIndex: idx, diverName: d.name }
     if (!d.certificationNumber || String(d.certificationNumber).trim() === '') return { step: 'certificationNumber', diverIndex: idx, diverName: d.name }
     if (d.numberOfDives === undefined || d.numberOfDives === null || String(d.numberOfDives).trim() === '') return { step: 'numberOfDives', diverIndex: idx, diverName: d.name }
     if (!d.height || String(d.height).trim() === '') return { step: 'height', diverIndex: idx, diverName: d.name }
@@ -151,6 +159,7 @@ function diverHasAnyData (d: BookingDiverLocal | undefined): boolean {
   if (!d) return false
   return Boolean(
     (d.name && String(d.name).trim()) ||
+    (d.dateOfBirth && String(d.dateOfBirth).trim()) ||
     (d.certificationNumber && String(d.certificationNumber).trim()) ||
     (d.numberOfDives !== undefined && d.numberOfDives !== null && String(d.numberOfDives).trim() !== '') ||
     (d.height && String(d.height).trim()) ||
@@ -279,6 +288,36 @@ export function clampBookingPayloadToNextStep (
       const d = p.divers[di]
       let changed = false
       const clearAfterName = () => {
+        if (String(d.dateOfBirth || '').trim()) {
+          d.dateOfBirth = ''
+          changed = true
+        }
+        if (String(d.certificationNumber || '').trim()) {
+          d.certificationNumber = ''
+          changed = true
+        }
+        if (d.numberOfDives !== undefined && d.numberOfDives !== null && String(d.numberOfDives).trim() !== '') {
+          d.numberOfDives = ''
+          changed = true
+        }
+        if (String(d.height || '').trim()) {
+          d.height = ''
+          changed = true
+        }
+        if (String(d.weight || '').trim()) {
+          d.weight = ''
+          changed = true
+        }
+        if (d.gear?.length) {
+          d.gear = []
+          changed = true
+        }
+        if (d.gearAsked) {
+          delete d.gearAsked
+          changed = true
+        }
+      }
+      const clearAfterDob = () => {
         if (String(d.certificationNumber || '').trim()) {
           d.certificationNumber = ''
           changed = true
@@ -374,6 +413,11 @@ export function clampBookingPayloadToNextStep (
         if (changed) continue
         break
       }
+      if (next.step === 'dateOfBirth') {
+        clearAfterDob()
+        if (changed) continue
+        break
+      }
       if (next.step === 'certificationNumber') {
         clearAfterCert()
         if (changed) continue
@@ -447,6 +491,7 @@ export interface FastPathResult {
 /** Profile diver shape (from profiles.default_divers) for "use existing diver" flow. */
 export interface ProfileDiverPrefill {
   name?: string
+  date_of_birth?: string
   certification_number?: string
   number_of_dives?: string
   height?: string
@@ -501,6 +546,7 @@ function profileDiverToPayload (d: ProfileDiverPrefill): BookingDiverLocal {
   const wu = (d.weight_unit || 'lbs').toLowerCase()
   return {
     name: d.name ?? '',
+    dateOfBirth: d.date_of_birth ?? '',
     certificationNumber: d.certification_number ?? '',
     numberOfDives: d.number_of_dives ?? '',
     height: d.height ?? '',
@@ -667,7 +713,7 @@ export function tryFastPath (
       p.numberOfDivers = n
       while (ensureDivers(p).length < n) {
         (p.divers = p.divers || []).push({
-          name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in',
+          name: '', dateOfBirth: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in',
           weight: '', weightUnit: 'lbs', gear: []
         })
       }
@@ -713,7 +759,7 @@ export function tryFastPath (
                 }
               }
             }
-            if (!divers[i]) divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
+            if (!divers[i]) divers.push({ name: '', dateOfBirth: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
             const filled = profileDiverToPayload(match)
             const shopGearNames = options?.rentalEquipmentNames ?? []
             filled.gear = shopGearNames.length
@@ -744,6 +790,13 @@ export function tryFastPath (
                 payload: p
               }
             }
+            if (next?.step === 'dateOfBirth') {
+              return {
+                messagePreamble: `Thanks — I've added ${name} from your profile.`,
+                message: bookingDobStepMessage(name),
+                payload: p
+              }
+            }
             if (next?.step === 'certificationNumber') {
               return {
                 messagePreamble: `Thanks — I've added ${name} from your profile.`,
@@ -759,13 +812,13 @@ export function tryFastPath (
       if (i === 0 && p.name && String(p.name).trim()) {
         const affirm = /\b(yes|yeah|yep|yup|correct|that's me|that is me|i am|i'm one|sure|please do)\b/i.test(msg) || /^\s*y\s*$/i.test(msg)
         if (affirm) {
-          if (!divers[0]) divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
+          if (!divers[0]) divers.push({ name: '', dateOfBirth: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
           divers[0].name = String(p.name).trim()
           p.divers = divers
           const name = divers[0].name
           return {
             messagePreamble: `Thanks — I'll use ${name} for Diver 1.`,
-            message: `What is ${name}'s certification number?`,
+            message: bookingDobStepMessage(name),
             payload: p
           }
         }
@@ -782,12 +835,32 @@ export function tryFastPath (
         }
         return { message: `Could you give me Diver ${i + 1}'s full name (first and last)?`, payload: p }
       }
-      if (!divers[i]) divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
+      if (!divers[i]) divers.push({ name: '', dateOfBirth: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
       divers[i].name = msg
       p.divers = divers
       return {
         messagePreamble: `Thanks — ${msg}, got it.`,
-        message: `What is ${msg}'s certification number?`,
+        message: bookingDobStepMessage(msg),
+        payload: p
+      }
+    }
+    case 'dateOfBirth': {
+      if (!divers[i]) return null
+      if (isBookingOptionalStepToken(msg)) return null
+      const iso = parseDateOfBirth(msg)
+      if (!iso) {
+        const n = divers[i].name || 'they'
+        return {
+          message: `I couldn't read that date. What's ${n}'s date of birth? (e.g. 1990-03-15 or March 15, 1990)`,
+          payload: p
+        }
+      }
+      divers[i].dateOfBirth = iso
+      p.divers = divers
+      const n = divers[i].name || 'They'
+      return {
+        messagePreamble: bookingDobConfirmPreamble(n, iso),
+        message: `What is ${n}'s certification number?`,
         payload: p
       }
     }

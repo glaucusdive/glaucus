@@ -48,6 +48,14 @@
               <FormField label="Name" label-style="auth">
                 <FormInput v-model="diver.name" type="text" size="sm" />
               </FormField>
+              <div class="flex flex-row gap-2 items-end sm:col-span-2">
+                <FormField label="Date of Birth" label-style="auth" class="flex-1 min-w-0">
+                  <FormInput v-model="diver.dateOfBirth" type="date" :max="today" size="sm" />
+                </FormField>
+                <p class="shrink-0 pb-2 text-xs text-zinc-500 dark:text-zinc-400 tabular-nums">
+                  {{ diver.dateOfBirth ? `Age ${ageFromDateOfBirth(diver.dateOfBirth)}` : 'Age —' }}
+                </p>
+              </div>
               <FormField label="Certification #" label-style="auth">
                 <FormInput v-model="diver.certificationNumber" type="text" size="sm" />
               </FormField>
@@ -112,6 +120,7 @@
 import { readChatsRoot, getActiveSession } from '~/composables/useSearchCache'
 import { getLatestBookingPayloadFromMessages, bookingPayloadHasNamedDiver } from '~/utils/chatBookingPayload'
 import { mergeDefaultDiversFromBookingPayload, defaultDiverJsonFromFirst, type BookingDiverLike } from '~/utils/mergeProfileDefaultDivers'
+import { ageFromDateOfBirth } from '~~/shared/diverAge'
 
 definePageMeta({ layout: 'default', middleware: 'auth' })
 
@@ -122,11 +131,17 @@ const { client } = useSupabase()
 
 const gearTypes = ['Wetsuit', 'Drysuit', 'BCD', 'Regulator', 'Fins', 'Mask', 'Snorkel', 'Dive Computer', 'Weight Belt', 'Tank']
 
+const today = computed(() => {
+  const date = new Date()
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+})
+
 const defaultsForm = ref({
   name: '',
   email: '',
   divers: [] as Array<{
     name: string
+    dateOfBirth: string
     certificationNumber: string
     numberOfDives: string
     height: string
@@ -147,6 +162,7 @@ const defaultsImportHint = ref('')
 function mapProfileDiverRowsToForm (rows: Array<Record<string, unknown>>) {
   defaultsForm.value.divers = rows.map((d) => ({
     name: (d.name ?? '') as string,
+    dateOfBirth: (d.date_of_birth ?? '') as string,
     certificationNumber: (d.certification_number ?? '') as string,
     numberOfDives: (d.number_of_dives ?? '') as string,
     height: (d.height ?? '') as string,
@@ -198,6 +214,7 @@ async function importDiversFromActiveChatIfNeeded (): Promise<boolean> {
 function addDefaultDiver () {
   defaultsForm.value.divers.push({
     name: '',
+    dateOfBirth: '',
     certificationNumber: '',
     numberOfDives: '',
     height: '',
@@ -231,7 +248,7 @@ async function loadDefaults () {
   try {
     const { data, error } = await client.from('profiles').select('display_name, email, default_divers').single()
     if (error || !data) {
-      if (defaultsForm.value.divers.length === 0) defaultsForm.value.divers = [{ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] }]
+      if (defaultsForm.value.divers.length === 0) defaultsForm.value.divers = [{ name: '', dateOfBirth: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] }]
       return
     }
     defaultsForm.value.name = (data.display_name ?? '') as string
@@ -240,7 +257,7 @@ async function loadDefaults () {
     if (Array.isArray(dd) && dd.length > 0) {
       mapProfileDiverRowsToForm(dd as Array<Record<string, unknown>>)
     } else if (defaultsForm.value.divers.length === 0) {
-      defaultsForm.value.divers = [{ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] }]
+      defaultsForm.value.divers = [{ name: '', dateOfBirth: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] }]
     }
   } finally {
     if (import.meta.client && user.value?.id) {
@@ -280,6 +297,7 @@ async function saveDefaults () {
   try {
     const default_divers = defaultsForm.value.divers.map(d => ({
       name: d.name ?? '',
+      date_of_birth: d.dateOfBirth ?? '',
       certification_number: d.certificationNumber ?? '',
       number_of_dives: d.numberOfDives ?? '',
       height: d.height ?? '',
@@ -295,6 +313,7 @@ async function saveDefaults () {
       default_divers: default_divers,
       default_diver: default_divers[0] ? {
         name: default_divers[0].name,
+        date_of_birth: default_divers[0].date_of_birth,
         certification_number: default_divers[0].certification_number,
         number_of_dives: default_divers[0].number_of_dives,
         height: default_divers[0].height,

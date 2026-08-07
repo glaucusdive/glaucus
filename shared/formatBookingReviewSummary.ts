@@ -1,10 +1,8 @@
-/**
- * User-visible booking summary for pre-send review (chat + orchestrator).
- * Pure helper — no server imports.
- */
+import { ageFromDateOfBirth } from './diverAge'
 
 export interface BookingReviewDiver {
   name?: string
+  dateOfBirth?: string
   certificationNumber?: string
   numberOfDives?: string
   height?: string
@@ -66,6 +64,7 @@ export function formatBookingReviewSummary (
     lines.push(label)
     if (!d) {
       lines.push('  Full name: —')
+      lines.push('  Date of birth: —')
       lines.push('  Certification #: —')
       lines.push('  Dives completed: —')
       lines.push('  Height: —')
@@ -74,6 +73,9 @@ export function formatBookingReviewSummary (
       continue
     }
     lines.push(`  Full name: ${d.name || '—'}`)
+    const dob = String(d.dateOfBirth || '').trim()
+    const age = dob ? ageFromDateOfBirth(dob) : null
+    lines.push(`  Date of birth: ${dob || '—'}${age != null ? ` (age ${age})` : ''}`)
     lines.push(`  Certification #: ${d.certificationNumber || '—'}`)
     lines.push(`  Dives completed: ${d.numberOfDives ?? '—'}`)
     const hu = String(d.heightUnit || '').trim()

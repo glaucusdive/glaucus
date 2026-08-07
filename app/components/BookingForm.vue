@@ -107,6 +107,21 @@
             <FormInput :id="`diver-name-${index}`" v-model="diver.name" type="text" required />
           </FormField>
 
+          <div class="flex flex-row gap-2 items-end">
+            <FormField label="Date of Birth" sub :field-id="`diver-dob-${index}`" class="flex-1 min-w-0">
+              <FormInput
+                :id="`diver-dob-${index}`"
+                v-model="diver.dateOfBirth"
+                type="date"
+                :max="today"
+                required
+              />
+            </FormField>
+            <p class="shrink-0 pb-2 text-sm text-zinc-500 dark:text-zinc-400 tabular-nums">
+              {{ diver.dateOfBirth ? `Age ${ageFromDateOfBirth(diver.dateOfBirth)}` : 'Age —' }}
+            </p>
+          </div>
+
           <FormField label="Certification Number" sub :field-id="`diver-cert-${index}`">
             <FormInput :id="`diver-cert-${index}`" v-model="diver.certificationNumber" type="text" required />
           </FormField>
@@ -222,6 +237,7 @@ import {
   persistBookingResumeBeforeAuth,
   BOOKING_AUTH_RESUME_REDIRECT
 } from '~/composables/useBookingAuthResume'
+import { ageFromDateOfBirth } from '~~/shared/diverAge'
 
 interface BookingApiResponse {
   sent: boolean
@@ -273,6 +289,7 @@ const formData = ref({
   divers: [
     { 
       name: '', 
+      dateOfBirth: '',
       certificationNumber: '', 
       numberOfDives: '',
       height: '',
@@ -304,6 +321,7 @@ async function applyProfilePrefill () {
       formData.value.numberOfDivers = defaultDivers.length
       formData.value.divers = defaultDivers.slice(0, 50).map((d: Record<string, unknown>) => ({
         name: (d.name != null ? String(d.name) : '') || '',
+        dateOfBirth: (d.date_of_birth != null ? String(d.date_of_birth) : '') || '',
         certificationNumber: (d.certification_number != null ? String(d.certification_number) : '') || '',
         numberOfDives: (d.number_of_dives != null ? String(d.number_of_dives) : '') || '',
         height: (d.height != null ? String(d.height) : '') || '',
@@ -314,7 +332,7 @@ async function applyProfilePrefill () {
       }))
       while (formData.value.divers.length < formData.value.numberOfDivers) {
         formData.value.divers.push({
-          name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: []
+          name: '', dateOfBirth: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: []
         })
       }
     } else {
@@ -322,6 +340,7 @@ async function applyProfilePrefill () {
       if (dd && typeof dd === 'object' && formData.value.divers[0]) {
         const d = dd as Record<string, unknown>
         formData.value.divers[0].name = (d.name != null ? String(d.name) : '') || formData.value.divers[0].name
+        formData.value.divers[0].dateOfBirth = (d.date_of_birth != null ? String(d.date_of_birth) : '') || formData.value.divers[0].dateOfBirth
         formData.value.divers[0].certificationNumber = (d.certification_number != null ? String(d.certification_number) : '') || formData.value.divers[0].certificationNumber
         formData.value.divers[0].numberOfDives = (d.number_of_dives != null ? String(d.number_of_dives) : '') || formData.value.divers[0].numberOfDives
         formData.value.divers[0].height = (d.height != null ? String(d.height) : '') || formData.value.divers[0].height
@@ -356,6 +375,7 @@ function applyInitialPayload () {
       const item = d && typeof d === 'object' ? d : {}
       return {
         name: item.name ?? '',
+        dateOfBirth: item.dateOfBirth ?? '',
         certificationNumber: item.certificationNumber ?? '',
         numberOfDives: item.numberOfDives ?? '',
         height: item.height ?? '',
@@ -367,7 +387,7 @@ function applyInitialPayload () {
     })
     while (formData.value.divers.length < numDivers) {
       formData.value.divers.push({
-        name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: []
+        name: '', dateOfBirth: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: []
       })
     }
   } else {
@@ -425,6 +445,7 @@ const updateDiversCount = (count) => {
     for (let i = currentCount; i < count; i++) {
       formData.value.divers.push({
         name: '',
+        dateOfBirth: '',
         certificationNumber: '',
         numberOfDives: '',
         height: '',
@@ -565,6 +586,7 @@ function buildPayload () {
     desiredDiveSites: formData.value.desiredDiveSites || [],
     divers: formData.value.divers.map(d => ({
       name: d.name,
+      dateOfBirth: d.dateOfBirth,
       certificationNumber: d.certificationNumber,
       numberOfDives: d.numberOfDives,
       height: d.height,
