@@ -841,6 +841,7 @@ function buildPayloadWithGearDraft (base, gearNames) {
   while (divers.length < numDivers) {
     divers.push({
       name: '',
+      dateOfBirth: '',
       certificationNumber: '',
       numberOfDives: '',
       height: '',
@@ -2283,6 +2284,7 @@ const sendMessage = async (messageText, displayText, options = {}) => {
             desiredDiveSites: Array.isArray(storedPayload.desiredDiveSites) ? storedPayload.desiredDiveSites : [],
             divers: (storedPayload.divers ?? []).map(d => ({
               name: d.name ?? '',
+              dateOfBirth: d.dateOfBirth ?? '',
               certificationNumber: d.certificationNumber ?? '',
               numberOfDives: d.numberOfDives ?? '',
               height: d.height ?? '',

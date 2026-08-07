@@ -6,6 +6,7 @@
 
 export interface ProfileDefaultDiverRow {
   name: string
+  date_of_birth: string
   certification_number: string
   number_of_dives: string
   height: string
@@ -18,6 +19,7 @@ export interface ProfileDefaultDiverRow {
 
 export interface BookingDiverLike {
   name?: string
+  dateOfBirth?: string
   certificationNumber?: string
   numberOfDives?: string
   height?: string
@@ -40,6 +42,7 @@ function normalizeExisting (existingRaw: unknown[]): ProfileDefaultDiverRow[] {
       : []
     return {
       name: String(r.name ?? ''),
+      date_of_birth: String(r.date_of_birth ?? ''),
       certification_number: String(r.certification_number ?? ''),
       number_of_dives: String(r.number_of_dives ?? ''),
       height: String(r.height ?? ''),
@@ -55,6 +58,7 @@ function normalizeExisting (existingRaw: unknown[]): ProfileDefaultDiverRow[] {
 export function diverRowFromBookingLike (d: BookingDiverLike): Omit<ProfileDefaultDiverRow, 'times_used'> {
   return {
     name: d.name ?? '',
+    date_of_birth: d.dateOfBirth ?? '',
     certification_number: d.certificationNumber ?? '',
     number_of_dives: d.numberOfDives ?? '',
     height: d.height ?? '',
@@ -87,6 +91,7 @@ function mergeDiverIncremental (
   const name = (next.name || '').trim() || (prev?.name ?? '')
   return {
     name,
+    date_of_birth: pickField(prev?.date_of_birth, next.date_of_birth),
     certification_number: pickField(prev?.certification_number, next.certification_number),
     number_of_dives: pickField(prev?.number_of_dives, next.number_of_dives),
     height: pickField(prev?.height, next.height),
@@ -114,6 +119,7 @@ function mergeCompletedBooking (
     const base = diverRowFromBookingLike(d)
     const row = {
       name: base.name,
+      date_of_birth: base.date_of_birth,
       certification_number: base.certification_number,
       number_of_dives: base.number_of_dives,
       height: base.height,
@@ -181,6 +187,7 @@ export function defaultDiverJsonFromFirst (first: ProfileDefaultDiverRow | undef
   if (!first?.name?.trim()) return null
   return {
     name: first.name,
+    date_of_birth: first.date_of_birth,
     certification_number: first.certification_number,
     number_of_dives: first.number_of_dives,
     height: first.height,

@@ -5,9 +5,11 @@ import { getShopById } from '../utils/resolveShop'
 import { createSupabaseClientForUser, getAuthUser, getBearerToken } from '../utils/getAuthUser'
 import { getSupabaseServiceRoleClient } from '../utils/supabaseServiceRole'
 import { runWithRetries } from '../utils/retryWithBackoff'
+import { ageFromDateOfBirth } from '../../shared/diverAge'
 
 interface DiverPayload {
   name?: string
+  dateOfBirth?: string
   certificationNumber?: string
   numberOfDives?: string | number
   height?: string
@@ -59,8 +61,11 @@ function buildDiveshopEmailBody (payload: BookingBody, shopName: string): string
     const gearItems = Array.isArray(d.gear) && d.gear.length > 0
       ? d.gear.map(g => g?.gearType).filter(Boolean) as string[]
       : []
+    const dob = String(d.dateOfBirth ?? '').trim()
+    const age = dob ? ageFromDateOfBirth(dob) : null
     lines.push(
       `Diver ${i + 1}: ${d.name ?? '—'}`,
+      `  Date of birth: ${dob || '—'}${age != null ? ` (age ${age})` : ''}`,
       `  Certification: ${d.certificationNumber ?? '—'}`,
       `  Dives completed: ${d.numberOfDives ?? '—'}`,
       `  Height: ${d.height ?? '—'} ${(d.heightUnit ?? '').trim()}`.trim(),

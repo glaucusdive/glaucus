@@ -46,6 +46,7 @@ import {
 } from '../../shared/bookingNounResolve'
 import { parseBookShopPickMessage, shopDisambiguationSelectableOptions, canCommitBookingHandoffForShop } from '../../shared/bookShopPick'
 import { formatBookingReviewSummary } from '../../shared/formatBookingReviewSummary'
+import { bookingDobStepMessage } from '../../shared/diverAge'
 import { extractBookingTargetFallback, extractReferredEntityPhrase, extractShopSelectionPhrase } from '../utils/extractReferredEntityPhrase'
 import { parseEntityClarifyMessage } from '../utils/entityClarify'
 import {
@@ -252,6 +253,9 @@ function orchestratorSplitBookingCopyForStep (
   const diverRow = p.divers?.[di]
   const displayName = (diverRow?.name || next.diverName || '').trim() || `Diver ${di + 1}`
 
+  if (next.step === 'dateOfBirth') {
+    return { message: bookingDobStepMessage(displayName) }
+  }
   if (next.step === 'certificationNumber') {
     return { message: `What's ${displayName}'s certification number?` }
   }
@@ -274,6 +278,7 @@ function orchestratorSplitBookingCopyForStep (
 /** Booking payload shape (frontend sends accumulated state; backend returns updated payload when in booking flow). */
 export interface BookingDiver {
   name: string
+  dateOfBirth: string
   certificationNumber: string
   numberOfDives: string
   height: string
@@ -352,6 +357,7 @@ function listIncompleteBookingTasks (
     const d = p.divers?.[i]
     const diverLabel = `Diver ${i + 1}`
     if (!String(d?.name || '').trim()) tasks.push(`${diverLabel}: add full name`)
+    if (!String(d?.dateOfBirth || '').trim()) tasks.push(`${diverLabel}: add date of birth`)
     if (!String(d?.certificationNumber || '').trim()) tasks.push(`${diverLabel}: add certification number`)
     if (d?.numberOfDives === undefined || d?.numberOfDives === null || String(d.numberOfDives).trim() === '') {
       tasks.push(`${diverLabel}: add number of dives`)
@@ -563,6 +569,7 @@ function buildBookingSystemPrompt (
     numberOfDivers: 'number of divers',
     isContactDiver1: 'confirmation if the contact is Diver 1',
     diverName: "this diver's full name",
+    dateOfBirth: 'date of birth (YYYY-MM-DD)',
     certificationNumber: 'certification number',
     numberOfDives: 'number of dives completed',
     height: 'height (with unit)',
@@ -579,7 +586,7 @@ function buildBookingSystemPrompt (
 
 Names: For the booking contact and for each diver, you need a full name (first and last). If the user gives only one name (e.g. just "Chris" or "Smith"), politely ask for their full name before moving on — e.g. "Could you give me your full name (first and last)?"
 
-Ask for ONE piece of information at a time in this order: 1) name (the person making the booking), 2) email, 3) start date and end date for diving, 4) which courses they want (optional — pick from chips or say "done" / "no" / "none" to skip; do not list course names in your message), 5) which dive sites they want (optional — same; do not list site names in your message), 6) number of divers, 7) confirm whether the person whose name you have is Diver 1 or not: ask "Is [name] one of the divers? I'll use that name for Diver 1 if yes — otherwise tell me Diver 1's full name." If they say yes (or that they are Diver 1), set Diver 1's name to that name. If they say no, ask for Diver 1's full name. 8) For each diver: certification number, number of dives completed, height (with unit: ft-in or cm), weight (with unit: lbs or kg), and any rental gear they need.
+Ask for ONE piece of information at a time in this order: 1) name (the person making the booking), 2) email, 3) start date and end date for diving, 4) which courses they want (optional — pick from chips or say "done" / "no" / "none" to skip; do not list course names in your message), 5) which dive sites they want (optional — same; do not list site names in your message), 6) number of divers, 7) confirm whether the person whose name you have is Diver 1 or not: ask "Is [name] one of the divers? I'll use that name for Diver 1 if yes — otherwise tell me Diver 1's full name." If they say yes (or that they are Diver 1), set Diver 1's name to that name. If they say no, ask for Diver 1's full name. 8) For each diver: date of birth (YYYY-MM-DD), certification number, number of dives completed, height (with unit: ft-in or cm), weight (with unit: lbs or kg), and any rental gear they need.
 
 When "Already collected" includes diver details from a previous booking (e.g. numberOfDives or gear already filled): (1) For number of dives — briefly confirm or ask to update, e.g. "Last time you had 21 dives — is this trip still 21 or have they done another?" or "Is this still 21 dives or 22 now?" so the count stays accurate. (2) For rental gear — mention what they had last time and that they can add or remove for this trip, e.g. "Last time you had Wetsuit and BCD. This shop offers [list from rental equipment]. Add or remove any for this trip?" Then let them pick from the chips or say "same" / "none" / etc.
 
@@ -589,7 +596,7 @@ Optional steps: For desiredCourses and desiredDiveSites, omit these keys from CO
 
 Weight (step 8): If the user gives only a number for weight (e.g. "200" or "85") with no unit (lbs or kg), do NOT assume a unit. Ask for clarification: "Is that [number] lbs or [number] kg?" and only set weightUnit in COLLECTED when they specify. Never record weight as e.g. "200 lbs" unless the user said "kg" or "lbs".
 
-Be warm and conversational. When you have collected all required fields (name, email, startDate, endDate, numberOfDivers, and for each diver: name, certificationNumber, numberOfDives, height, heightUnit, weight, weightUnit; gear can be empty array), output exactly:
+Be warm and conversational. When you have collected all required fields (name, email, startDate, endDate, numberOfDivers, and for each diver: name, dateOfBirth, certificationNumber, numberOfDives, height, heightUnit, weight, weightUnit; gear can be empty array), output exactly:
 
 BOOKING_READY: <valid JSON object>
 
@@ -604,6 +611,7 @@ The JSON must have this shape (use empty string "" for missing optional fields, 
   "divers": [
     {
       "name": "string",
+      "dateOfBirth": "YYYY-MM-DD",
       "certificationNumber": "string",
       "numberOfDives": "string",
       "height": "string",
@@ -1796,6 +1804,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               while (divers.length < newNum) {
                 divers.push({
                   name: '',
+                  dateOfBirth: '',
                   certificationNumber: '',
                   numberOfDives: '',
                   height: '',
@@ -2484,7 +2493,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             const numDiversEdit = Math.max(1, bookingPayload.numberOfDivers ?? 1)
             const diversEdit = Array.isArray(bookingPayload.divers) ? bookingPayload.divers.map(d => ({ ...d })) : []
             while (diversEdit.length < numDiversEdit) {
-              diversEdit.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
+              diversEdit.push({ name: '', dateOfBirth: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
             }
             const di = diverFieldEdit.diverIndex
             if (diversEdit[di]) {
@@ -2522,7 +2531,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               const numDivers = Math.max(1, bookingPayload.numberOfDivers ?? 1)
               const divers = Array.isArray(bookingPayload.divers) ? [...bookingPayload.divers] : []
               while (divers.length < numDivers) {
-                divers.push({ name: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
+                divers.push({ name: '', dateOfBirth: '', certificationNumber: '', numberOfDives: '', height: '', heightUnit: 'ft-in', weight: '', weightUnit: 'lbs', gear: [] })
               }
               const targetIdx = nextStepForGearTap.diverIndex
               const targetDiver = divers[targetIdx]

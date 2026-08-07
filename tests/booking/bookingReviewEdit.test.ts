@@ -15,6 +15,7 @@ function readyPayload (): BookingPayloadLocal {
     numberOfDivers: 1,
     divers: [{
       name: 'Chris P',
+      dateOfBirth: '1985-06-01',
       certificationNumber: '123',
       numberOfDives: '50',
       height: "5'10\"",
@@ -87,6 +88,7 @@ describe('tryHandleBookingReviewEditTurn', () => {
   it('two-step: can we change the name then chip for contact name', () => {
     const p2 = { ...readyPayload(), numberOfDivers: 2, divers: [...(readyPayload().divers || []), {
       name: 'Pat Q',
+      dateOfBirth: '1992-08-20',
       certificationNumber: '99',
       numberOfDives: '20',
       height: '5-6',

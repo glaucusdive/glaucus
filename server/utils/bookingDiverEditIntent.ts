@@ -1,10 +1,12 @@
 import type { BookingDiverLocal, BookingPayloadLocal } from './bookingFastPath'
+import { bookingDobStepMessage } from '../../shared/diverAge'
 
-export type DiverEditField = 'weight' | 'height' | 'certificationNumber' | 'numberOfDives' | 'name'
+export type DiverEditField = 'weight' | 'height' | 'certificationNumber' | 'numberOfDives' | 'name' | 'dateOfBirth'
 
 function parseEditField (msg: string): DiverEditField | null {
   // Longer / more specific phrases first so "number of dives" beats "dives", "height" beats nothing
   if (/\bnumber\s+of\s+dives\b|\bdive\s+count\b/i.test(msg)) return 'numberOfDives'
+  if (/\b(?:date\s+of\s+birth|birthday|dob)\b/i.test(msg)) return 'dateOfBirth'
   if (/\b(?:certification|cert(?:\s+number)?)\b/i.test(msg)) return 'certificationNumber'
   if (/\bweight\b/i.test(msg)) return 'weight'
   if (/\bheight\b/i.test(msg)) return 'height'
@@ -40,6 +42,11 @@ function stripTrailingFieldWord (s: string, field: DiverEditField): string {
       break
     case 'name':
       t = t.replace(/\s+name\s*$/i, '')
+      break
+    case 'dateOfBirth':
+      t = t.replace(/\s+date\s+of\s+birth\s*$/i, '')
+      t = t.replace(/\s+birthday\s*$/i, '')
+      t = t.replace(/\s+dob\s*$/i, '')
       break
   }
   return t.trim()
@@ -103,6 +110,8 @@ export function snapshotDiverField (d: BookingDiverLocal | undefined, field: Div
       return String(d.numberOfDives ?? '').trim()
     case 'name':
       return (d.name || '').trim()
+    case 'dateOfBirth':
+      return (d.dateOfBirth || '').trim()
     default:
       return ''
   }
@@ -127,6 +136,9 @@ export function clearDiverFieldOnCopy (d: BookingDiverLocal, field: DiverEditFie
       break
     case 'name':
       out.name = ''
+      break
+    case 'dateOfBirth':
+      out.dateOfBirth = ''
       break
   }
   return out
@@ -159,6 +171,10 @@ export function buildDiverFieldEditPrompt (
       return previousValue
         ? `The name on file for this diver is ${previousValue}. What should it be instead? Please give the full name (first and last).`
         : `What is this diver's full name?`
+    case 'dateOfBirth':
+      return previousValue
+        ? `${who}'s date of birth is currently ${previousValue}. What would you like to change it to? (e.g. 1990-03-15)`
+        : bookingDobStepMessage(who)
     default:
       return `What would you like to change for ${who}?`
   }

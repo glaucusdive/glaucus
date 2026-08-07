@@ -19,6 +19,7 @@ function readyPayload (): BookingPayloadLocal {
     numberOfDivers: 1,
     divers: [{
       name: 'A',
+      dateOfBirth: '1990-01-15',
       certificationNumber: '1',
       numberOfDives: '10',
       height: '5ft',
