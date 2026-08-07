@@ -14,7 +14,7 @@ from typing import Any
 
 from models.search_models import SearchAgentRequest, SearchAgentResponse, SearchFilters
 from prompts.search_prompt import SEARCH_DIVE_SYSTEM_PROMPT
-from utils.openai_client import OPENAI_CHAT_MODEL, get_openai_client
+from utils.llm_chat import run_chat_completion
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ _MAX_TOKENS = 512
 
 # Regex to capture the FILTERS: {...} block and the MESSAGE: line
 _FILTERS_RE = re.compile(
-    r"FILTERS:\s*(\{.*?\})\s*MESSAGE:\s*(.*)",
+    r"FILTERS:\s*(\{.*?})\s*MESSAGE:\s*(.*)",
     re.DOTALL | re.IGNORECASE,
 )
 
@@ -53,20 +53,19 @@ def _parse_response(raw: str) -> tuple[dict[str, Any] | None, str | None]:
 
 async def run_search_agent(request: SearchAgentRequest) -> SearchAgentResponse:
     """Call the search LLM and return validated SearchFilters + a user-facing message."""
-    client = get_openai_client()
     messages = _build_messages(request)
 
     try:
-        response = await client.chat.completions.create(
-            model=OPENAI_CHAT_MODEL,
-            messages=messages,  # type: ignore[arg-type]
+        raw = await run_chat_completion(
+            messages=messages,
             max_completion_tokens=_MAX_TOKENS,
+            run_name="search_agent",
+            metadata={"goal": "search_filter_extraction"},
         )
     except Exception as exc:
-        logger.error("Search OpenAI call failed: %s", exc)
-        return SearchAgentResponse(ok=False, error=str(exc))
+        logger.error("Search LLM call failed: %s", exc)
+        return SearchAgentResponse(ok=False, message=None, error=str(exc))
 
-    raw = response.choices[0].message.content or ""
     filters_dict, message_text = _parse_response(raw)
 
     if filters_dict is None:
@@ -86,6 +85,7 @@ async def run_search_agent(request: SearchAgentRequest) -> SearchAgentResponse:
             "minRating": filters_dict.get("minRating"),
             "languages": filters_dict.get("languages"),
             "diveTypes": filters_dict.get("diveTypes"),
+            "activityTokens": filters_dict.get("activityTokens"),
         }
         filters = SearchFilters.model_validate(normalised)
         return SearchAgentResponse(ok=True, filters=filters, message=message_text)
