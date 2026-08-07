@@ -11,6 +11,7 @@ describe('isBookingOptionalStepToken', () => {
     expect(isBookingOptionalStepToken('no')).toBe(true)
     expect(isBookingOptionalStepToken('none')).toBe(true)
     expect(isBookingOptionalStepToken('done')).toBe(true)
+    expect(isBookingOptionalStepToken('Done — Regulator, BCD')).toBe(true)
     expect(isBookingOptionalStepToken('any')).toBe(true)
   })
 

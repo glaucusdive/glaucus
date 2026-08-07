@@ -455,7 +455,11 @@ function looksLikeSingleName (s: string): boolean {
 
 /** Course/dive-site multi-select and gear "done" — never a literal certification number. */
 export function isBookingOptionalStepToken (msg: string): boolean {
-  return /^(done|none|any|no|skip|nothing|no more|that's all|finish|that's it)$/i.test(msg.trim())
+  const t = msg.trim()
+  if (/^(done|none|any|no|skip|nothing|no more|that's all|finish|that's it)$/i.test(t)) return true
+  // Chip Done label echoed in chat bubble (API message is still "done")
+  if (/^done\s*[—–-]\s*.+/i.test(t)) return true
+  return false
 }
 
 /** "any" / "no" / "none" on courses or dive sites — clear selection instead of keeping picks. */
