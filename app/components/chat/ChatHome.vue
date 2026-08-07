@@ -832,6 +832,8 @@ function patchLatestBookingPayloadInChat (merged) {
     }
   }
   pendingBookingPayload.value = merged
+  updateBookingPayloadIfOpen(merged)
+  updateLiveBookingPayloadIfOpen(merged)
 }
 
 function buildPayloadWithGearDraft (base, gearNames) {
@@ -857,7 +859,8 @@ function buildPayloadWithGearDraft (base, gearNames) {
   if (target) {
     divers[targetIdx] = {
       ...target,
-      gear: gearNames.map((name) => ({ gearType: name }))
+      gear: gearNames.map((name) => ({ gearType: name })),
+      gearAsked: false
     }
   }
   p.divers = divers
@@ -1070,7 +1073,7 @@ const {
 } = useChatSessions()
 
 // Drawer (mobile menu + booking form)
-const { openDrawer, closeDrawer, isOpen, contentType, drawerData, updateBookingPayloadIfOpen } = useDrawer()
+const { openDrawer, closeDrawer, isOpen, contentType, drawerData, updateBookingPayloadIfOpen, updateLiveBookingPayloadIfOpen } = useDrawer()
 
 const isBookingFormOpen = computed(() => isOpen.value && contentType.value === 'booking-form')
 

@@ -154,4 +154,61 @@ describe('tryFastPath', () => {
     )
     expect(fast).toBeNull()
   })
+
+  it('completes gear step when message is done and payload already has gear (chip commit)', () => {
+    const p: BookingPayloadLocal = {
+      name: 'Contact',
+      email: 'c@example.com',
+      startDate: '2026-05-05',
+      endDate: '2026-05-20',
+      desiredCourses: [],
+      coursesSelectionComplete: true,
+      desiredDiveSites: [],
+      numberOfDivers: 2,
+      divers: [
+        {
+          name: 'Chris Porter',
+          dateOfBirth: '1985-06-01',
+          certificationNumber: '123',
+          numberOfDives: '23',
+          height: "6'0\"",
+          heightUnit: 'ft-in',
+          weight: '200',
+          weightUnit: 'lbs',
+          gear: [
+            { gearType: 'Regulator' },
+            { gearType: 'Snorkel' },
+            { gearType: 'Fins' },
+            { gearType: 'BCD' }
+          ]
+        },
+        {
+          name: '',
+          dateOfBirth: '',
+          certificationNumber: '',
+          numberOfDives: '',
+          height: '',
+          heightUnit: 'ft-in',
+          weight: '',
+          weightUnit: 'lbs',
+          gear: []
+        }
+      ]
+    }
+    expect(getNextBookingStep(p)?.step).toBe('gear')
+    const fast = tryFastPath(
+      { step: 'gear', diverIndex: 0, diverName: 'Chris Porter' },
+      'done',
+      p,
+      'Shop',
+      { rentalEquipmentNames: ['Regulator', 'Snorkel', 'Fins', 'BCD', 'Mask', 'Wetsuit'] }
+    )
+    expect(fast).not.toBeNull()
+    expect(fast!.payload.divers![0].gearAsked).toBe(true)
+    expect(fast!.payload.divers![0].gear.map(g => g.gearType)).toEqual(
+      expect.arrayContaining(['Regulator', 'Snorkel', 'Fins', 'BCD'])
+    )
+    expect(String(fast!.messagePreamble || '')).toMatch(/gear is set/i)
+    expect(String(fast!.message || '')).toMatch(/Diver 2/i)
+  })
 })
