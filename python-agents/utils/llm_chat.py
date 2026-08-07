@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from utils.openai_client import (
+from utils.llm_client import (
     OPENAI_CHAT_MODEL,
     get_llm_api_key,
     get_llm_base_url,

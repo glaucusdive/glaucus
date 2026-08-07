@@ -155,6 +155,7 @@ Defaults to `http://localhost:8001` for local development.
 | Variable | Description |
 |----------|-------------|
 | `LLM_PROVIDER` | `openai` (default) or `gemini` (also accepts `google`) |
+| `LLM_CHAT_MODEL` | Optional single override for chat model regardless of provider (recommended) |
 | `OPENAI_API_KEY` | OpenAI API key (also accepts `NUXT_OPENAI_API_KEY`) |
 | `OPENAI_CHAT_MODEL` | Model name (default: `gpt-5.5`) |
 | `GOOGLE_API_KEY` | Google AI Studio key when `LLM_PROVIDER=gemini` (also accepts `GEMINI_API_KEY`) |
