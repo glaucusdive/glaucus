@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
 
   const { data: existing } = await client
     .from('blog_posts')
-    .select('status, published_at, hero_image_alt')
+    .select('status, published_at, hero_image_url, hero_image_alt')
     .eq('id', id)
     .maybeSingle()
 
@@ -33,6 +33,7 @@ export default defineEventHandler(async (event) => {
   const nextStatus = body.status ?? existing.status
   const publishErr = validateBlogPublish({
     status: nextStatus,
+    hero_image_url: body.hero_image_url ?? existing.hero_image_url ?? '',
     hero_image_alt: body.hero_image_alt ?? existing.hero_image_alt ?? ''
   })
   if (publishErr) {
