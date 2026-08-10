@@ -89,7 +89,7 @@
             kind="hero"
             v-model="form.hero_image_url"
           />
-          <FormField label="Hero image alt text" :required="form.status === 'published'" field-id="blog-hero-alt">
+          <FormField label="Hero image alt text" :required="form.status === 'published' && !!form.hero_image_url?.trim()" field-id="blog-hero-alt">
             <FormInput
               id="blog-hero-alt"
               v-model="form.hero_image_alt"
