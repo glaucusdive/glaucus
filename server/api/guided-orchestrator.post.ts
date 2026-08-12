@@ -1,6 +1,7 @@
 import { defineEventHandler, readBody, setResponseHeader, type H3Event } from 'h3'
 import { runAiSearchPostHandler, type RequestBody } from '../utils/runAiSearchPostHandler'
-import { callOrchestratorAgent, type OrchestratorRequest } from '../utils/pythonAgentsClient'
+import { callOrchestratorAgent, type OrchestratorRequest, type InterpretedTurnFromPython } from '../utils/pythonAgentsClient'
+import type { InterpretedTurn } from '../utils/interpretUserTurn'
 
 type OrchestratorMode = 'ts' | 'python' | 'hybrid'
 
@@ -23,13 +24,43 @@ function toPythonOrchestratorRequest (body: RequestBody): OrchestratorRequest {
   }
 }
 
-async function runPythonOrchestrator (body: RequestBody, onActivityLine?: (label: string) => void) {
+/**
+ * Map a Python InterpretedTurnFromPython to the TS InterpretedTurn shape.
+ * The fields are intentionally identical — this is a type-safe cast.
+ */
+function mapPythonInterpretTurn (p: InterpretedTurnFromPython): InterpretedTurn {
+  return {
+    goal: p.goal,
+    destination_text: p.destination_text ?? null,
+    shop_name_hint: p.shop_name_hint ?? null,
+    activity_terms: p.activity_terms ?? null,
+    certification_course_hint: p.certification_course_hint ?? null,
+    dive_site_type_label: p.dive_site_type_label ?? null,
+    trip_product_type: p.trip_product_type ?? null,
+    wants_booking: p.wants_booking,
+    booking_readiness: p.booking_readiness ?? null,
+    primary_verb: p.primary_verb ?? null,
+    reasoning_summary: p.reasoning_summary ?? null,
+    confidence: p.confidence
+  }
+}
+
+async function runPythonOrchestrator (event: H3Event, body: RequestBody, onActivityLine?: (label: string) => void) {
   onActivityLine?.('python_orchestrator')
   const res = await callOrchestratorAgent(toPythonOrchestratorRequest(body))
   if (!res.ok) {
     throw new Error(res.nluError || 'Python orchestrator failed')
   }
-  return res
+  // Use Python-extracted NLU to skip the TS NLU LLM call, then let the TS
+  // pipeline run all Supabase queries and build the UI-ready response.
+  const preComputedInterpretTurn: InterpretedTurn | undefined = res.nluOk
+    ? mapPythonInterpretTurn(res.interpretTurn)
+    : undefined
+  return await runAiSearchPostHandler(event, {
+    body,
+    preComputedInterpretTurn,
+    onActivityLine
+  })
 }
 
 function runPythonShadow (body: RequestBody): void {
@@ -65,7 +96,7 @@ export default defineEventHandler(async (event: H3Event) => {
         }
         try {
           const payload = mode === 'python'
-            ? await runPythonOrchestrator(body, (label) => write({ type: 'progress', label }))
+            ? await runPythonOrchestrator(event, body, (label) => write({ type: 'progress', label }))
             : await runAiSearchPostHandler(event, {
                 body,
                 onActivityLine: (label) => write({ type: 'progress', label })
@@ -92,7 +123,7 @@ export default defineEventHandler(async (event: H3Event) => {
   }
 
   if (mode === 'python') {
-    return runPythonOrchestrator(body)
+    return runPythonOrchestrator(event, body)
   }
 
   const payload = await runAiSearchPostHandler(event, { body })
