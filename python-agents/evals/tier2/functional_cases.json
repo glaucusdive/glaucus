@@ -1,0 +1,77 @@
+{
+  "version": "1.0",
+  "suite": "tier2_functional_live_agent_db",
+  "defaultJudgeThreshold": 0.75,
+  "notes": "Live functional evals: actual beta orchestrator + Supabase read path + LLM-as-judge scoring.",
+  "cases": [
+    {
+      "id": "liveaboard_fiji_functional",
+      "message": "I want liveboard in Fiji",
+      "history": [],
+      "baseFilters": {},
+      "expects": {
+        "minDbResults": 1,
+        "requiredDiveTypes": [
+          "Liveaboard"
+        ],
+        "requiredCountry": "Fiji"
+      },
+      "judge": {
+        "threshold": 0.75,
+        "rubric": "Assistant should clearly acknowledge liveaboard intent and location, and avoid asking unrelated questions."
+      }
+    },
+    {
+      "id": "resort_usa_functional",
+      "message": "show resorts in USA",
+      "history": [],
+      "baseFilters": {},
+      "expects": {
+        "minDbResults": 1,
+        "requiredDiveTypes": [
+          "Dive Resort"
+        ],
+        "requiredCountry": "United States"
+      },
+      "judge": {
+        "threshold": 0.75,
+        "rubric": "Assistant should respond concisely and align with browse intent for resorts in the United States."
+      }
+    },
+    {
+      "id": "day_trip_bahamas_functional",
+      "message": "day trips in the bahamas",
+      "history": [],
+      "baseFilters": {},
+      "expects": {
+        "minDbResults": 1,
+        "requiredDiveTypes": [
+          "Dive Shop"
+        ],
+        "requiredCountry": "Bahamas"
+      },
+      "judge": {
+        "threshold": 0.75,
+        "rubric": "Assistant should map day-trip intent to shop/day-trip style options in Bahamas context."
+      }
+    },
+    {
+      "id": "cave_diving_mexico_functional",
+      "message": "find me cave diving in Mexico",
+      "history": [],
+      "baseFilters": {},
+      "expects": {
+        "minDbResults": 1,
+        "requiredDiveTypes": [
+          "Dive Shop"
+        ],
+        "requiredCountry": "Mexico"
+      },
+      "judge": {
+        "threshold": 0.75,
+        "rubric": "Assistant should acknowledge cave-diving intent in Mexico and respond with relevant browse guidance."
+      }
+    }
+  ]
+}
+

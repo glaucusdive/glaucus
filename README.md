@@ -72,6 +72,12 @@ yarn preview
 bun run preview
 ```
 
+# Kill the process by finding its port (if you know which port it's using)
+lsof -ti:3000 | xargs kill -9   # Replace 3000 with your actual port
+
+# Or find and kill by process name
+killall node
+
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
 
 ## Environment variables

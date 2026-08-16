@@ -1,0 +1,455 @@
+{
+  "timestamp": "2026-08-16T06:22:50.133553+00:00",
+  "sessionId": "session_20260816T062222Z_78abdd75",
+  "turnIndex": 1,
+  "prompt": "find me cave diving in Mexico",
+  "promptNorm": "find me cave diving in mexico",
+  "historyBeforeTurn": [],
+  "request": {
+    "wantsBooking": false,
+    "baseFilters": {},
+    "autoAgentRouting": true,
+    "runSearchAgent": true,
+    "runBookingAgent": false,
+    "runDbProbe": false,
+    "runDbSearch": true
+  },
+  "response": {
+    "ok": true,
+    "nluOk": true,
+    "nluError": null,
+    "interpretTurn": {
+      "goal": "search_shops",
+      "destination_text": "Mexico",
+      "shop_name_hint": null,
+      "activity_terms": [
+        "cave"
+      ],
+      "certification_course_hint": null,
+      "dive_site_type_label": "cave",
+      "trip_product_type": null,
+      "wants_booking": null,
+      "booking_readiness": 6.0,
+      "primary_verb": "browse",
+      "reasoning_summary": "I am looking for cave diving options in Mexico.",
+      "confidence": 1.0
+    },
+    "bookingReadiness": {
+      "score": 6.0,
+      "primaryVerb": "browse",
+      "effectiveWantsToBook": false
+    },
+    "referentPhrase": "Mexico",
+    "mergedFilters": {
+      "country": "Mexico",
+      "place": null,
+      "region": null,
+      "minRating": null,
+      "languages": null,
+      "diveTypes": null,
+      "activityTokens": [
+        "cave"
+      ]
+    },
+    "activityLog": [
+      "nlu_ok: goal=search_shops",
+      "booking_readiness: score=6.0, primaryVerb=browse, wantsBook=False",
+      "referent_phrase: Mexico",
+      "agent_call: search (manual_override:runSearchAgent)",
+      "search_agent_ok: merged search + nlu filters",
+      "db_search_ok: count=25"
+    ],
+    "agentCall": "search",
+    "search": {
+      "ok": true,
+      "filters": {
+        "country": "Mexico",
+        "place": null,
+        "region": null,
+        "minRating": null,
+        "languages": null,
+        "diveTypes": null,
+        "activityTokens": null
+      },
+      "message": "I'll help you find the best dive shops for cave diving in Mexico!",
+      "error": null
+    },
+    "booking": null,
+    "dbProbe": null,
+    "dbSearch": {
+      "ok": true,
+      "filtersUsed": {
+        "country": "Mexico",
+        "place": null,
+        "region": null,
+        "minRating": null,
+        "languages": null,
+        "diveTypes": null,
+        "activityTokens": null
+      },
+      "count": 25,
+      "shops": [
+        {
+          "id": "81d05362-3c3b-411c-a14a-1cc86c7f0fee",
+          "business_name": "AkuMal Dive Center",
+          "city": "AkuMal",
+          "state": "Quintana Roo",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Resort",
+          "languages": null
+        },
+        {
+          "id": "7fd5306b-320e-4db8-8b5c-e65c10d2df55",
+          "business_name": "AkuMal Dive Shop",
+          "city": "AkuMal",
+          "state": "Quintana Roo",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Resort",
+          "languages": null
+        },
+        {
+          "id": "466b2fdd-0d41-4274-a6b5-2258cbd40ff0",
+          "business_name": "Aldora Divers",
+          "city": "Cozumel",
+          "state": "Quintana Roo",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "ed3d49db-0ae8-4c1e-ade1-385f5e767d9f",
+          "business_name": "Aldora Villas Dive Center",
+          "city": "Cozumel",
+          "state": "Quintana Roo",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Resort",
+          "languages": null
+        },
+        {
+          "id": "0935afea-9c7b-4402-90fb-1c51d24423f0",
+          "business_name": "Aqua Excursions",
+          "city": "Playa del Carmen",
+          "state": "Quintana Roo",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Resort",
+          "languages": null
+        },
+        {
+          "id": "0a3cb7cf-1111-4c37-96b4-a3fecdeaed1b",
+          "business_name": "Aqua Safari Cozumel",
+          "city": "Cozumel",
+          "state": "Quintana Roo",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "755ecdb0-a8e0-47ae-85a7-57a633582aea",
+          "business_name": "Aqua Sports Center Mazatl\u00e1n",
+          "city": "Mazatl\u00e1n",
+          "state": "Sinaloa",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "be7a1a13-0cd8-48c5-aeed-5ce3a22d1615",
+          "business_name": "Aquatech Divers",
+          "city": "Playa del Carmen",
+          "state": "Quintana Roo",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "3e0a0f76-90de-4456-b8b4-025145406059",
+          "business_name": "Baja Diving & Service",
+          "city": "La Paz",
+          "state": "Baja California Sur",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Resort",
+          "languages": null
+        },
+        {
+          "id": "a0eb631a-20fc-4a13-a065-1a84bd6ebb18",
+          "business_name": "Baja Expeditions",
+          "city": "La Paz",
+          "state": "Baja California Sur",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Liveaboard",
+          "languages": null
+        },
+        {
+          "id": "f70aad30-9e6a-4c9b-8560-e5791c5ff158",
+          "business_name": "Blue Experience Diving",
+          "city": "AkuMal",
+          "state": "Quintana Roo",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "7f47e0f9-eff0-4a7c-abdc-8bf3643ce561",
+          "business_name": "Blue Life",
+          "city": "Playa del Carmen",
+          "state": "Quintana Roo",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "9ac81537-5224-4f77-8740-29d48d4c1a1a",
+          "business_name": "Blue Magic Scuba",
+          "city": "Cozumel",
+          "state": "Quintana Roo",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Resort, Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "bd79d87c-cb6e-4404-93f1-2d9106d64ced",
+          "business_name": "Blue Nation Baja",
+          "city": "Loreto",
+          "state": "Baja California Sur",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "ce316eb6-354f-4b4b-b2ae-9d634e02108f",
+          "business_name": "Blue Project Cozumel",
+          "city": "Cozumel",
+          "state": "Quintana Roo",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "029f8136-afd8-4703-a617-93d20e75185d",
+          "business_name": "Bucaneros Dive Centre",
+          "city": "Mahahual",
+          "state": "Quintana Roo",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "3013ab50-3af8-45ee-bc1a-6826ff1e23c9",
+          "business_name": "Buceo Scuba Huatulco",
+          "city": "Bah\u00edas de Huatulco",
+          "state": "Oaxaca",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "aa20fc84-391c-4a57-a6d6-8fd2c51cbe55",
+          "business_name": "Cabo Private Guide",
+          "city": "Cabo San Lucas",
+          "state": "Baja California Sur",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "3249b820-1223-495b-9ce4-94e7a1b02075",
+          "business_name": "Cabo Pulmo Beach Resort",
+          "city": "Cabo Pulmo",
+          "state": "Baja California Sur",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Resort, Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "48cb95d4-2858-4fe9-93f9-51e9378b67ee",
+          "business_name": "Cabo Pulmo Diving",
+          "city": "Cabo Pulmo",
+          "state": "Baja California Sur",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "d643469f-9ef8-490e-955e-6e97af2a7fc0",
+          "business_name": "Cabo Pulmo Sport Center",
+          "city": "Cabo Pulmo",
+          "state": "Baja California Sur",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "95f39354-90eb-4737-9b4b-c972f17e0173",
+          "business_name": "Cancun Diving Adventures",
+          "city": "Canc\u00fan",
+          "state": "Quintana Roo",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "f88e3388-d360-4879-bf31-55d3cbd4951d",
+          "business_name": "Cancun Scuba Center",
+          "city": "Canc\u00fan",
+          "state": "Quintana Roo",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "5384cde1-975c-4aa7-95f2-8a4eef393fa2",
+          "business_name": "Carlo Scuba Diving Center",
+          "city": "Playa las Gatas",
+          "state": "Zihuatanejo",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Shop",
+          "languages": null
+        },
+        {
+          "id": "9d97cead-e377-4d2f-a104-cc2bd73131e9",
+          "business_name": "CenoteXperience",
+          "city": "Tulum",
+          "state": "Quintana Roo",
+          "country_id": "66ce2272-14a4-4a48-a239-e7d92e3337ab",
+          "region_id": "de2b1e67-4184-40b1-8041-b328ee22ee3c",
+          "google_rating": null,
+          "type": "Dive Shop",
+          "languages": null
+        }
+      ]
+    },
+    "selectedShop": null
+  },
+  "comparableView": {
+    "agentCall": "search",
+    "interpretTurn": {
+      "goal": "search_shops",
+      "destination_text": "Mexico",
+      "activity_terms": [
+        "cave"
+      ],
+      "dive_site_type_label": "cave",
+      "trip_product_type": null,
+      "primary_verb": "browse"
+    },
+    "mergedFilters": {
+      "country": "Mexico",
+      "place": null,
+      "region": null,
+      "diveTypes": null,
+      "activityTokens": [
+        "cave"
+      ]
+    },
+    "assistant": "I'll help you find the best dive shops for cave diving in Mexico!"
+  },
+  "comparison": {
+    "threshold": 0.8,
+    "similarityWithLatestSamePrompt": 1.0,
+    "issue": false,
+    "priorSessionId": "session_20260816T061546Z_eea9376e",
+    "priorTimestamp": "2026-08-16T06:16:14.092997+00:00"
+  },
+  "dbTop10Shops": [
+    {
+      "business_name": "AkuMal Dive Center",
+      "city": "AkuMal",
+      "type": "Dive Resort"
+    },
+    {
+      "business_name": "AkuMal Dive Shop",
+      "city": "AkuMal",
+      "type": "Dive Resort"
+    },
+    {
+      "business_name": "Aldora Divers",
+      "city": "Cozumel",
+      "type": "Dive Shop"
+    },
+    {
+      "business_name": "Aldora Villas Dive Center",
+      "city": "Cozumel",
+      "type": "Dive Resort"
+    },
+    {
+      "business_name": "Aqua Excursions",
+      "city": "Playa del Carmen",
+      "type": "Dive Resort"
+    },
+    {
+      "business_name": "Aqua Safari Cozumel",
+      "city": "Cozumel",
+      "type": "Dive Shop"
+    },
+    {
+      "business_name": "Aqua Sports Center Mazatl\u00e1n",
+      "city": "Mazatl\u00e1n",
+      "type": "Dive Shop"
+    },
+    {
+      "business_name": "Aquatech Divers",
+      "city": "Playa del Carmen",
+      "type": "Dive Shop"
+    },
+    {
+      "business_name": "Baja Diving & Service",
+      "city": "La Paz",
+      "type": "Dive Resort"
+    },
+    {
+      "business_name": "Baja Expeditions",
+      "city": "La Paz",
+      "type": "Liveaboard"
+    }
+  ],
+  "assistantResponse": "I'll help you find the best dive shops for cave diving in Mexico!",
+  "dbSearchCount": 25
+}

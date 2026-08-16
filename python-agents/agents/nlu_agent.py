@@ -14,6 +14,7 @@ from typing import Any
 from models.nlu_models import InterpretedTurn, NluRequest, NluResponse
 from prompts.nlu_prompt import NLU_SYSTEM_PROMPT
 from utils.llm_chat import run_chat_completion
+from utils.supabase_directory import normalize_trip_product_type
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ async def run_nlu_agent(request: NluRequest) -> NluResponse:
         {"role": "system", "content": NLU_SYSTEM_PROMPT},
         {"role": "user", "content": user_content},
     ]
-    print(f"NLU Agent messages: {messages}")
+    print(f"#####=====NLU Agent messages===>: {messages}")
     try:
         raw = await run_chat_completion(
             messages=messages,
@@ -80,7 +81,7 @@ async def run_nlu_agent(request: NluRequest) -> NluResponse:
         fallback = _fallback_interpreted_turn()
         return NluResponse(ok=True, data=fallback, error=f"llm_failed: {exc}")
 
-    print(f"NLU raw output: {raw[:400]}")  # Debugging
+    print(f"#####=====NLU raw output===>: {raw[:400]}")  # Debugging
     parsed = _parse_json_object(raw)
     if parsed is None:
         logger.warning("NLU parse failed: no JSON object in response")
@@ -89,24 +90,9 @@ async def run_nlu_agent(request: NluRequest) -> NluResponse:
 
     try:
         # Normalise trip_product_type 
-        print(f"NLU parsed output: {parsed}")  # Debugging
+        print(f"#####=====NLU parsed output===>: {parsed}")  # Debugging
         tpt = parsed.get("trip_product_type")
-        if tpt is None:
-            parsed["trip_product_type"] = None
-        elif isinstance(tpt, str):
-            t = tpt.lower().strip().replace(" ", "_").replace("-", "_")
-            if t in ("", "null", "none", "unknown", "n/a"):
-                parsed["trip_product_type"] = None
-            elif t in ("liveaboard", "live_aboard", "liveboard"):
-                parsed["trip_product_type"] = "liveaboard"
-            elif t in ("dive_resort", "resort", "dive_resorts"):
-                parsed["trip_product_type"] = "dive_resort"
-            elif t in ("dive_shop", "dive_shops", "day_trip", "day_trips"):
-                parsed["trip_product_type"] = "dive_shop"
-            else:
-                parsed["trip_product_type"] = None
-        else:
-            parsed["trip_product_type"] = None
+        parsed["trip_product_type"] = normalize_trip_product_type(tpt if isinstance(tpt, str) else None)
 
         data = InterpretedTurn.model_validate(parsed)
         return NluResponse(ok=True, data=data)

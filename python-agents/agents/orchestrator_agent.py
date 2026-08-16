@@ -28,7 +28,9 @@ from utils.supabase_directory import (
     get_rental_equipment_for_shop,
     get_shop_by_id,
     is_supabase_configured,
+    normalize_search_filters_aliases,
     probe_referent_phrase,
+    resolve_country_alias,
     search_shops,
 )
 
@@ -134,15 +136,37 @@ def _normalize_activity_terms(terms: list[str] | None) -> list[str]:
     return out
 
 
-def _merge_nlu_hints_into_filters(filters: SearchFilters, interpret: InterpretedTurn) -> SearchFilters:
+def _dive_types_from_trip_product_type(trip_product_type: str | None) -> list[str] | None:
+    if trip_product_type == "liveaboard":
+        return ["Liveaboard"]
+    if trip_product_type == "dive_resort":
+        return ["Dive Resort"]
+    if trip_product_type == "dive_shop":
+        return ["Dive Shop"]
+    return None
+
+
+async def _merge_nlu_hints_into_filters(filters: SearchFilters, interpret: InterpretedTurn) -> SearchFilters:
+    updates: dict[str, object] = {}
+
+    if interpret.trip_product_type:
+        inferred_dive_types = _dive_types_from_trip_product_type(interpret.trip_product_type)
+        if inferred_dive_types and not filters.dive_types:
+            updates["dive_types"] = inferred_dive_types
+
     place = _normalize_place(interpret.destination_text)
-    if not place:
+    if place:
+        if not (filters.country and filters.country.strip()):
+            resolved_country = await resolve_country_alias(place)
+            if resolved_country:
+                updates["country"] = resolved_country
+                updates["place"] = None
+            elif not (filters.place and filters.place.strip()) and not (filters.region and filters.region.strip()):
+                updates["place"] = place
+
+    if not updates:
         return filters
-    if filters.country and filters.country.strip():
-        return filters
-    if not (filters.place and filters.place.strip()) and not (filters.region and filters.region.strip()):
-        return filters.model_copy(update={"place": place})
-    return filters
+    return filters.model_copy(update=updates)
 
 
 def _merge_activity_into_filters(filters: SearchFilters, interpret: InterpretedTurn) -> SearchFilters:
@@ -227,8 +251,9 @@ async def run_orchestrator_agent(request: OrchestratorRequest) -> OrchestratorRe
         activity_log.append(f"referent_phrase: {referent}")
 
     merged_filters = request.base_filters or SearchFilters.model_validate({})
-    merged_filters = _merge_nlu_hints_into_filters(merged_filters, interpret)
+    merged_filters = await _merge_nlu_hints_into_filters(merged_filters, interpret)
     merged_filters = _merge_activity_into_filters(merged_filters, interpret)
+    merged_filters = await normalize_search_filters_aliases(merged_filters)
 
     search_result = None
     booking_result = None
@@ -247,8 +272,9 @@ async def run_orchestrator_agent(request: OrchestratorRequest) -> OrchestratorRe
             merged_filters = SearchFilters.model_validate(
                 search_result.filters.model_dump(mode="python", by_alias=False)
             )
-            merged_filters = _merge_nlu_hints_into_filters(merged_filters, interpret)
+            merged_filters = await _merge_nlu_hints_into_filters(merged_filters, interpret)
             merged_filters = _merge_activity_into_filters(merged_filters, interpret)
+            merged_filters = await normalize_search_filters_aliases(merged_filters)
             activity_log.append("search_agent_ok: merged search + nlu filters")
         else:
             activity_log.append(f"search_agent_failed: {search_result.error or 'unknown'}")
@@ -316,7 +342,7 @@ async def run_orchestrator_agent(request: OrchestratorRequest) -> OrchestratorRe
                 db_search = {"ok": False, "error": str(exc)}
                 activity_log.append(f"db_search_failed: {exc}")
                 
-    print(f"orchestrator_activity_log: {activity_log}")
+    print(f"######===orchestrator_activity_log===>>>>: {activity_log}")
     
     return OrchestratorResponse(
         ok=True,

@@ -2,8 +2,16 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from openai import AsyncOpenAI
+from dotenv import load_dotenv
+
+
+# Ensure local scripts (for example orchestrator_smoke.py) pick up python-agents/.env
+# even when they do not import main.py.
+_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(_ROOT / ".env")
 
 _LLM_PROVIDER = (os.getenv("LLM_PROVIDER", "openai") or "openai").strip().lower()
 

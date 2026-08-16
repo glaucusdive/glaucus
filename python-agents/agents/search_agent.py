@@ -15,6 +15,7 @@ from typing import Any
 from models.search_models import SearchAgentRequest, SearchAgentResponse, SearchFilters
 from prompts.search_prompt import SEARCH_DIVE_SYSTEM_PROMPT
 from utils.llm_chat import run_chat_completion
+from utils.supabase_directory import normalize_search_filters_aliases, normalize_trip_product_type
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,17 @@ async def run_search_agent(request: SearchAgentRequest) -> SearchAgentResponse:
         )
 
     try:
+        trip_type = normalize_trip_product_type(
+            filters_dict.get("trip_product_type") if isinstance(filters_dict.get("trip_product_type"), str) else None
+        )
+        dive_type_from_trip = None
+        if trip_type == "liveaboard":
+            dive_type_from_trip = ["Liveaboard"]
+        elif trip_type == "dive_resort":
+            dive_type_from_trip = ["Dive Resort"]
+        elif trip_type == "dive_shop":
+            dive_type_from_trip = ["Dive Shop"]
+
         # Map camelCase keys from model output to SearchFilters aliases
         normalised: dict[str, Any] = {
             "country": filters_dict.get("country"),
@@ -84,10 +96,11 @@ async def run_search_agent(request: SearchAgentRequest) -> SearchAgentResponse:
             "region": filters_dict.get("region"),
             "minRating": filters_dict.get("minRating"),
             "languages": filters_dict.get("languages"),
-            "diveTypes": filters_dict.get("diveTypes"),
+            "diveTypes": filters_dict.get("diveTypes") or dive_type_from_trip,
             "activityTokens": filters_dict.get("activityTokens"),
         }
         filters = SearchFilters.model_validate(normalised)
+        filters = await normalize_search_filters_aliases(filters)
         return SearchAgentResponse(ok=True, filters=filters, message=message_text)
     except Exception as exc:
         logger.warning("Search filter validation failed: %s", exc)

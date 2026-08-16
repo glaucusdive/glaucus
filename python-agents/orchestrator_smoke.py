@@ -27,7 +27,7 @@ async def _main() -> None:
         }
     )
     res = await run_orchestrator_agent(req)
-    print(json.dumps(res.model_dump(by_alias=True), indent=2, default=str))
+    print("######=>", json.dumps(res.model_dump(by_alias=True), indent=2, default=str))
 
 
 if __name__ == "__main__":
