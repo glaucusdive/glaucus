@@ -108,7 +108,7 @@
                     </button>
                   </div>
 
-                  <!-- Shop results (grouped by secondary match reason) -->
+                  <!-- Shop results (grouped by match reason; primary intent first) -->
                   <div v-if="msg.shops && msg.shops.length > 0" class="flex flex-col gap-4 md:p-2">
                     <div
                       v-for="(group, gi) in searchResultGroupsForMessage(msg)"
