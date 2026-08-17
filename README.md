@@ -122,6 +122,12 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.82.6** — Fix cave/cavern activity matching (collapse NLU synonym tokens; reclassify widened shops; drop misleading search badges on wider-match cards) (2026-08-17).
+- **0.82.5** — Activity sparse-widen: show “No matches found” and “Other matches found” when cave/activity filters have zero tight matches but geo fill-in shops exist (2026-08-17).
+- **0.82.4** — Cap wider search fill-in to three shops when there is a single exact trip-type match; add divider between exact and other sections (2026-08-16).
+- **0.82.3** — Replace six search section buckets with Exact matches and Other (wider) matches for trip-type searches (2026-08-16).
+- **0.82.2** — Fix "Load next" pagination after a widened trip-type search so remaining shops load instead of "No more results available" (2026-08-16).
+- **0.82.1** — Show "Matches your search" results first so primary-intent shops (e.g. liveaboards) appear above secondary dive-site and name sections (2026-08-16).
 - **0.82.0** — Admin dashboard with KPI stats (new/returning users, bookings, signups), split chat vs admin nav, guest booking logging (2026-08-06).
 - **0.81.1** — Stop hardcoding GA4 measurement ID so Netlify secrets scan passes (2026-07-30).
 - **0.81.0** — Add Google Analytics 4 (GA4) for Search Console integration (2026-07-30).

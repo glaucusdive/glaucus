@@ -138,3 +138,41 @@ export const SPARSE_TRIP_TYPE_WIDEN_THRESHOLD = 5
 export function shouldWidenSparseTripTypeResults (count: number, diveTypes?: string[] | null): boolean {
   return (diveTypes?.length ?? 0) > 0 && count > 0 && count <= SPARSE_TRIP_TYPE_WIDEN_THRESHOLD
 }
+
+/** When activity filter yields few or zero rows, merge geo-scoped shops without activity constraint. */
+export function shouldWidenSparseActivityResults (
+  activityExactCount: number,
+  activityTokens?: string[] | null
+): boolean {
+  return (activityTokens?.length ?? 0) > 0 && activityExactCount <= SPARSE_TRIP_TYPE_WIDEN_THRESHOLD
+}
+
+/** Merge primary + secondary; activity-exact shop IDs stay first, then rating. */
+export function mergeShopListsPreferringActivityExact (
+  primary: ShopRowLike[],
+  secondary: ShopRowLike[],
+  activityExactIds: string[]
+): ShopRowLike[] {
+  const exactSet = new Set(activityExactIds.filter(Boolean))
+  const seen = new Set<string>()
+  const out: ShopRowLike[] = []
+  const push = (s: ShopRowLike) => {
+    const id = s.id
+    if (!id || seen.has(id)) return
+    seen.add(id)
+    out.push(s)
+  }
+  for (const s of primary) push(s)
+  for (const s of secondary) push(s)
+  out.sort((a, b) => {
+    const aId = a.id ?? ''
+    const bId = b.id ?? ''
+    const exactDiff = (exactSet.has(bId) ? 1 : 0) - (exactSet.has(aId) ? 1 : 0)
+    if (exactDiff !== 0) return exactDiff
+    const ra = Number(a.google_rating) || 0
+    const rb = Number(b.google_rating) || 0
+    if (rb !== ra) return rb - ra
+    return String(a.business_name ?? '').localeCompare(String(b.business_name ?? ''))
+  })
+  return out
+}

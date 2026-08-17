@@ -110,4 +110,22 @@ describe('mergeShopListsPreferringDiveTypes', () => {
     )
     expect(merged).toHaveLength(1)
   })
+
+  it('pagination page 2 comes from the merged list, not the sparse liveaboard-only query', () => {
+    const liveaboards = [
+      { id: 'lb1', business_name: 'NAI A', type: 'Liveaboard', google_rating: 5 },
+      { id: 'lb2', business_name: 'Boat Two', type: 'Liveaboard', google_rating: 4 },
+      { id: 'lb3', business_name: 'Boat Three', type: 'Liveaboard', google_rating: 3 }
+    ]
+    const others = Array.from({ length: 14 }, (_, i) => ({
+      id: `shop${i}`,
+      business_name: `Shop ${i}`,
+      type: 'Dive Shop / Day Trip',
+      google_rating: 4
+    }))
+    const merged = mergeShopListsPreferringDiveTypes(liveaboards, [...liveaboards, ...others], ['Liveaboard'])
+    expect(merged).toHaveLength(17)
+    expect(liveaboards.slice(10, 20)).toHaveLength(0)
+    expect(merged.slice(10, 20)).toHaveLength(7)
+  })
 })
