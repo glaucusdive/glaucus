@@ -108,14 +108,17 @@
                     </button>
                   </div>
 
-                  <!-- Shop results (grouped by match reason; primary intent first) -->
+                  <!-- Shop results: exact trip-type matches, then optional wider fill-in -->
                   <div v-if="msg.shops && msg.shops.length > 0" class="flex flex-col gap-4 md:p-2">
                     <div
                       v-for="(group, gi) in searchResultGroupsForMessage(msg)"
                       :key="`${index}-${group.id}`"
                       class="flex flex-col gap-2"
                     >
-                      <div class="flex items-center gap-2 text-sm text-zinc-600">
+                      <div
+                        v-if="searchResultGroupHeadingsVisible(msg)"
+                        class="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400"
+                      >
                         <span class="font-medium">{{ group.title }}</span>
                       </div>
                       <div class="grid grid-cols-1 gap-2">
@@ -1577,6 +1580,10 @@ function searchResultGroupsForMessage (msg) {
     msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : {}
   const ctx = buildSearchMatchContext(filters)
   return groupShopsByMatchReason(shops, ctx)
+}
+
+function searchResultGroupHeadingsVisible (msg) {
+  return searchResultGroupsForMessage(msg).some(g => g.id === 'other')
 }
 
 function groupStaggerOffset (msg, groupIndex) {
