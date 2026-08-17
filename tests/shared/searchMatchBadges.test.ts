@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
+import { buildSearchMatchBadges, matchBadgesForShopCard } from '../../shared/searchMatchBadges'
 
 describe('buildSearchMatchBadges', () => {
   it('includes activity tokens and dates but not filter geo or trip type', () => {
@@ -49,5 +49,19 @@ describe('buildSearchMatchBadges', () => {
       null
     )
     expect(badges.some(b => /^Course \(directory\):\s*Advanced$/i.test(b))).toBe(true)
+  })
+})
+
+describe('matchBadgesForShopCard', () => {
+  it('drops search activity badges on wider-match cards', () => {
+    const badges = buildSearchMatchBadges({ activityTokens: ['cave', 'cavern'] }, null)
+    const filtered = matchBadgesForShopCard(badges, { activityTokens: ['cave', 'cavern'] }, 'other')
+    expect(filtered).not.toContain('Cave / cavern')
+    expect(filtered).not.toContain('Cavern')
+  })
+
+  it('keeps search activity badges on exact-match cards', () => {
+    const badges = buildSearchMatchBadges({ activityTokens: ['cave'] }, null)
+    expect(matchBadgesForShopCard(badges, { activityTokens: ['cave'] }, 'exact')).toContain('Cave / cavern')
   })
 })

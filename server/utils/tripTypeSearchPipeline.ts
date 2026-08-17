@@ -1,6 +1,6 @@
 import { type SearchFilters } from './buildDiveShopQuery'
 import { fetchSearchShopsWithSparseWiden } from './fetchSearchShopsWithSparseWiden'
-import { capSparseWidenShopList } from '../../shared/searchResultGroups'
+import { capSparseWidenShopList, buildSearchMatchContext } from '../../shared/searchResultGroups'
 import { attachParsedTripDatesToSearchFilters } from './attachParsedTripDatesToSearchFilters'
 import { carryForwardUnsetSearchAxes } from './searchFilterCarryForward'
 import {
@@ -20,6 +20,7 @@ import {
 } from '../../shared/searchPaginationChip'
 import { enrichShopsForSearchCards } from './enrichShopsForSearchCards'
 import { attachSearchMatchGroups } from './searchMatchGroups'
+import { filtersWithActivityMatchContext, formatNoActivityMatchesMessage } from './searchActivityWidenMessage'
 import { normalizeClientSearchFilters } from './normalizeClientSearchFilters'
 import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from './openAiChatModel'
 
@@ -457,8 +458,15 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     throw new Error('Failed to search dive shops')
   }
 
+  filters = filtersWithActivityMatchContext(
+    filters,
+    fetchedShops.activityExactShopIds,
+    fetchedShops.widenedActivity
+  )
+  const matchCtx = buildSearchMatchContext(filters)
+
   let shops = fetchedShops.shops as Array<{ id?: string; type?: string | null; google_rating?: number | null }>
-  shops = capSparseWidenShopList(shops, filters.diveTypes)
+  shops = capSparseWidenShopList(shops, matchCtx)
   if (effectiveCourseHint) {
     const allowedIds = new Set(await shopIdsForCourseSearch(supabaseUrl, supabaseKey, effectiveCourseHint))
     shops = (shops as { id?: string }[]).filter(s => s.id && allowedIds.has(s.id))
@@ -678,6 +686,15 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     finalMessage =
       `You've seen all ${resultCount} shop${resultCount === 1 ? '' : 's'} in this search. Try widening a filter or searching another area.`
     selectableOptions = mergeSelectableOptions(buildRelaxFilterChips(filters), selectableOptions)
+  }
+
+  if (
+    fetchedShops.widenedActivity &&
+    fetchedShops.activityExactShopIds.length === 0 &&
+    responseShops.length > 0 &&
+    paginationOffset === 0
+  ) {
+    finalMessage = formatNoActivityMatchesMessage(filters)
   }
 
   const facetHintsForBadges =

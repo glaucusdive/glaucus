@@ -6,6 +6,7 @@ import {
   mergeActivityIntoFilters,
   mergeNluHintsIntoFilters,
   normalizeActivityTerms,
+  coalesceSynonymActivityTokens,
   parseInterpretedTurnFromModelText,
   pickReferentPhraseForProbe,
   resolveEffectiveCertificationCourseHint,
@@ -161,5 +162,10 @@ describe('normalizeActivityTerms and mergeActivityIntoFilters', () => {
     )
     expect(out.country).toBe('Mexico')
     expect(out.activityTokens).toEqual(['cave'])
+  })
+
+  it('collapses cave and cavern synonyms to one token', () => {
+    expect(coalesceSynonymActivityTokens(['cave', 'cavern'])).toEqual(['cave'])
+    expect(coalesceSynonymActivityTokens(['cavern', 'cave', 'wreck'])).toEqual(['cave', 'wreck'])
   })
 })

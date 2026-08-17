@@ -66,7 +66,8 @@ import {
   fetchSearchShopsWithSparseWiden,
   sliceSearchShopPage
 } from '../utils/fetchSearchShopsWithSparseWiden'
-import { capSparseWidenShopList } from '../../shared/searchResultGroups'
+import { capSparseWidenShopList, buildSearchMatchContext } from '../../shared/searchResultGroups'
+import { filtersWithActivityMatchContext, formatNoActivityMatchesMessage } from '../utils/searchActivityWidenMessage'
 import { normalizeClientSearchFilters } from '../utils/normalizeClientSearchFilters'
 import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from '../utils/openAiChatModel'
 import { resolveOpenAiApiKey } from '../utils/openAiApiKey'
@@ -926,6 +927,8 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           let fetchedGeo = await fetchSearchShopsWithSparseWiden(supabaseUrl, supabaseKey, geoFilters)
           let geoList = fetchedGeo.shops as Array<{ id: string; business_name?: string; type?: string | null; google_rating?: number | null }>
           let widenedTripType = fetchedGeo.widenedTripType
+          let widenedActivity = fetchedGeo.widenedActivity
+          const activityExactShopIds = fetchedGeo.activityExactShopIds
           let geoError = fetchedGeo.error
           if (!geoError && geoList.length === 0 && (preferredDiveTypes?.length ?? 0) > 0) {
             const { diveTypes: _dropTypes, ...relaxedGeo } = geoFilters
@@ -935,13 +938,16 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             geoList = (retry.data || []) as typeof geoList
             widenedTripType = false
           }
+          geoFilters = filtersWithActivityMatchContext(geoFilters, activityExactShopIds, widenedActivity)
           const placeLabel = geoFilters.place?.trim() || destText
           pushActivity('probe', formatGeoDirectoryQueryLine(placeLabel, geoList.length))
           if (!geoError && geoList.length > 0) {
             const countryOnly = isCountryOnlyGeoFilters(geoFilters)
-            const geoMessage = widenedTripType
-              ? `Here are dive shops in ${placeLabel}. ${preferredDiveTypes?.join(', ') ?? 'Your trip type'} matches are listed first; we also included other operators in the area.`
-              : `Here are dive shops in ${placeLabel}.`
+            const geoMessage = widenedActivity && activityExactShopIds.length === 0
+              ? formatNoActivityMatchesMessage(geoFilters)
+              : widenedTripType
+                ? `Here are dive shops in ${placeLabel}. ${preferredDiveTypes?.join(', ') ?? 'Your trip type'} matches are listed first; we also included other operators in the area.`
+                : `Here are dive shops in ${placeLabel}.`
             // Destination-only query: always show options — never auto-book a single geo match.
             logIntentTurn('search')
             const pickMessage =
@@ -3284,7 +3290,10 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             if (fetched.error) {
               console.error('[AI Search] Pagination shop fetch error:', fetched.error)
             } else {
-              const cappedShops = capSparseWidenShopList(fetched.shops, normalizedFromClient.diveTypes)
+              const cappedShops = capSparseWidenShopList(
+                fetched.shops,
+                buildSearchMatchContext(normalizedFromClient)
+              )
               const resultCount = cappedShops.length
               const { page: nextShops } = sliceSearchShopPage(
                 cappedShops,
@@ -3364,7 +3373,10 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 throw new Error('Failed to fetch more results')
               }
 
-              const cappedShops = capSparseWidenShopList(fetched.shops, lastFilters.diveTypes)
+              const cappedShops = capSparseWidenShopList(
+                fetched.shops,
+                buildSearchMatchContext(lastFilters)
+              )
               const resultCount = cappedShops.length
               const { page: nextShops } = sliceSearchShopPage(
                 cappedShops,

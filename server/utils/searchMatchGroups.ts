@@ -11,10 +11,13 @@ export async function attachSearchMatchGroups<T extends ShopForMatchGroup> (
   _supabaseKey: string,
   shops: T[],
   filters: SearchFilters,
-  facets?: SearchMatchFacets | null
+  facets?: SearchMatchFacets | null,
+  activityExactShopIds?: string[] | null
 ): Promise<T[]> {
   if (!shops.length) return shops
-  const ctx = buildSearchMatchContext(filters, facets)
+  const ctx = buildSearchMatchContext(filters, facets, {
+    activityExactShopIds: activityExactShopIds ?? filters.activityExactShopIds ?? null
+  })
   return shops.map(shop => ({
     ...shop,
     searchMatchGroup: classifyShopMatchGroup(shop, ctx)

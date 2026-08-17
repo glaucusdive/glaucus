@@ -4,6 +4,7 @@ import {
   classifyShopMatchGroup,
   capSparseWidenShopList,
   groupShopsByMatchReason,
+  hasEmptyExactWithOtherGroups,
   MAX_OTHER_WHEN_SINGLE_EXACT
 } from '../../shared/searchResultGroups'
 
@@ -39,6 +40,16 @@ describe('classifyShopMatchGroup', () => {
     expect(
       classifyShopMatchGroup(shop({ type: 'Dive Resort', searchMatchGroup: 'dive_site' }), ctx)
     ).toBe('other')
+  })
+
+  it('uses activity exact IDs when activity filter and widen context present', () => {
+    const ctx = buildSearchMatchContext(
+      { activityTokens: ['cave'], country: 'Australia', activityExactShopIds: ['cave1'] },
+      null,
+      { activityExactShopIds: ['cave1'] }
+    )
+    expect(classifyShopMatchGroup(shop({ id: 'cave1' }), ctx)).toBe('exact')
+    expect(classifyShopMatchGroup(shop({ id: 'other1', type: 'Dive Shop / Day Trip' }), ctx)).toBe('other')
   })
 })
 
@@ -93,21 +104,54 @@ describe('groupShopsByMatchReason', () => {
     expect(groups[0]?.shops).toHaveLength(1)
     expect(groups[1]?.shops).toHaveLength(MAX_OTHER_WHEN_SINGLE_EXACT)
   })
+
+  it('activity widen with zero exact yields only other group', () => {
+    const ctx = buildSearchMatchContext({
+      activityTokens: ['cave'],
+      country: 'Australia',
+      activityExactShopIds: []
+    })
+    const groups = groupShopsByMatchReason(
+      [
+        shop({ id: 'au1', type: 'Dive Shop / Day Trip', business_name: 'Shop A' }),
+        shop({ id: 'au2', type: 'Dive Shop / Day Trip', business_name: 'Shop B' })
+      ],
+      ctx
+    )
+    expect(groups.map(g => g.id)).toEqual(['other'])
+    expect(hasEmptyExactWithOtherGroups(groups)).toBe(true)
+  })
+
+  it('caps other to three when exactly one activity-exact match', () => {
+    const ctx = buildSearchMatchContext({
+      activityTokens: ['cave'],
+      country: 'Australia',
+      activityExactShopIds: ['cave1']
+    })
+    const others = Array.from({ length: 6 }, (_, i) =>
+      shop({ id: `o${i}`, type: 'Dive Shop / Day Trip' })
+    )
+    const groups = groupShopsByMatchReason([shop({ id: 'cave1' }), ...others], ctx)
+    expect(groups[0]?.shops).toHaveLength(1)
+    expect(groups[1]?.shops).toHaveLength(MAX_OTHER_WHEN_SINGLE_EXACT)
+  })
 })
 
 describe('capSparseWidenShopList', () => {
   it('returns 1 exact plus 3 others when widen list is long', () => {
+    const ctx = buildSearchMatchContext({ diveTypes: ['Liveaboard'] })
     const others = Array.from({ length: 10 }, (_, i) =>
       shop({ id: `o${i}`, type: 'Dive Shop / Day Trip' })
     )
     const capped = capSparseWidenShopList(
       [shop({ id: 'lb', type: 'Liveaboard' }), ...others],
-      ['Liveaboard']
+      ctx
     )
     expect(capped.map(s => s.id)).toEqual(['lb', 'o0', 'o1', 'o2'])
   })
 
   it('does not cap when there are two exact matches', () => {
+    const ctx = buildSearchMatchContext({ diveTypes: ['Liveaboard'] })
     const others = Array.from({ length: 5 }, (_, i) =>
       shop({ id: `o${i}`, type: 'Dive Resort' })
     )
@@ -116,6 +160,25 @@ describe('capSparseWidenShopList', () => {
       shop({ id: 'lb2', type: 'Liveaboard' }),
       ...others
     ]
-    expect(capSparseWidenShopList(input, ['Liveaboard'])).toEqual(input)
+    expect(capSparseWidenShopList(input, ctx)).toEqual(input)
+  })
+})
+
+describe('hasEmptyExactWithOtherGroups', () => {
+  it('is false when exact group exists', () => {
+    expect(
+      hasEmptyExactWithOtherGroups([
+        { id: 'exact', title: 'Exact matches', shops: [shop()] },
+        { id: 'other', title: 'Other', shops: [shop({ id: 'o1' })] }
+      ])
+    ).toBe(false)
+  })
+
+  it('is true when only other group exists', () => {
+    expect(
+      hasEmptyExactWithOtherGroups([
+        { id: 'other', title: 'Other matches found', shops: [shop({ id: 'o1' })] }
+      ])
+    ).toBe(true)
   })
 })

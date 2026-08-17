@@ -114,6 +114,12 @@
                       v-for="(group, gi) in searchResultGroupsForMessage(msg)"
                       :key="`${index}-${group.id}`"
                     >
+                      <div
+                        v-if="group.id === 'other' && searchEmptyExactActivityVisible(msg)"
+                        class="text-sm font-medium text-zinc-600 dark:text-zinc-400"
+                      >
+                        No matches found
+                      </div>
                       <hr
                         v-if="group.id === 'other' && searchResultGroupHeadingsVisible(msg)"
                         data-search-exact-other-divider
@@ -124,7 +130,7 @@
                           v-if="searchResultGroupHeadingsVisible(msg)"
                           class="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400"
                         >
-                          <span class="font-medium">{{ group.title }}</span>
+                          <span class="font-medium">{{ searchResultGroupTitle(msg, group) }}</span>
                         </div>
                         <div class="grid grid-cols-1 gap-2">
                           <div
@@ -422,7 +428,12 @@ import {
 import { mergeProfileContactIntoBookingPayload } from '~~/shared/mergeProfileContactIntoBookingPayload'
 import { advanceStaleContactPromptsAfterProfileMerge } from '~/utils/advanceBookingChatAfterProfileMerge'
 import { buildSearchMatchBadges } from '~~/shared/searchMatchBadges'
-import { buildSearchMatchContext, groupShopsByMatchReason } from '~~/shared/searchResultGroups'
+import {
+  buildSearchMatchContext,
+  groupShopsByMatchReason,
+  hasEmptyExactWithOtherGroups,
+  SEARCH_MATCH_GROUP_LABEL_OTHER_FOUND
+} from '~~/shared/searchResultGroups'
 import {
   emptyTripRequirements,
   mergeTripRequirements,
@@ -1600,6 +1611,21 @@ function searchResultGroupsForMessage (msg) {
 
 function searchResultGroupHeadingsVisible (msg) {
   return searchResultGroupsForMessage(msg).some(g => g.id === 'other')
+}
+
+function searchEmptyExactActivityVisible (msg) {
+  const filters =
+    msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : {}
+  if (!(filters.activityTokens?.length)) return false
+  return hasEmptyExactWithOtherGroups(searchResultGroupsForMessage(msg))
+}
+
+function searchResultGroupTitle (msg, group) {
+  if (group.id !== 'other') return group.title
+  const groups = searchResultGroupsForMessage(msg)
+  const hasExact = groups.some(g => g.id === 'exact')
+  if (!hasExact) return SEARCH_MATCH_GROUP_LABEL_OTHER_FOUND
+  return group.title
 }
 
 function groupStaggerOffset (msg, groupIndex) {
