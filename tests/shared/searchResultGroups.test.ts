@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   buildSearchMatchContext,
   classifyShopMatchGroup,
-  groupShopsByMatchReason
+  capSparseWidenShopList,
+  groupShopsByMatchReason,
+  MAX_OTHER_WHEN_SINGLE_EXACT
 } from '../../shared/searchResultGroups'
 
 const shop = (overrides: Record<string, unknown> = {}) => ({
@@ -77,5 +79,43 @@ describe('groupShopsByMatchReason', () => {
     expect(groups).toHaveLength(1)
     expect(groups[0]?.id).toBe('exact')
     expect(groups[0]?.shops).toHaveLength(2)
+  })
+
+  it('caps other to three when exactly one exact match', () => {
+    const ctx = buildSearchMatchContext({ diveTypes: ['Liveaboard'], country: 'Fiji' })
+    const others = Array.from({ length: 6 }, (_, i) =>
+      shop({ id: `o${i}`, type: 'Dive Resort', business_name: `Resort ${i}` })
+    )
+    const groups = groupShopsByMatchReason(
+      [shop({ id: 'lb', type: 'Liveaboard' }), ...others],
+      ctx
+    )
+    expect(groups[0]?.shops).toHaveLength(1)
+    expect(groups[1]?.shops).toHaveLength(MAX_OTHER_WHEN_SINGLE_EXACT)
+  })
+})
+
+describe('capSparseWidenShopList', () => {
+  it('returns 1 exact plus 3 others when widen list is long', () => {
+    const others = Array.from({ length: 10 }, (_, i) =>
+      shop({ id: `o${i}`, type: 'Dive Shop / Day Trip' })
+    )
+    const capped = capSparseWidenShopList(
+      [shop({ id: 'lb', type: 'Liveaboard' }), ...others],
+      ['Liveaboard']
+    )
+    expect(capped.map(s => s.id)).toEqual(['lb', 'o0', 'o1', 'o2'])
+  })
+
+  it('does not cap when there are two exact matches', () => {
+    const others = Array.from({ length: 5 }, (_, i) =>
+      shop({ id: `o${i}`, type: 'Dive Resort' })
+    )
+    const input = [
+      shop({ id: 'lb1', type: 'Liveaboard' }),
+      shop({ id: 'lb2', type: 'Liveaboard' }),
+      ...others
+    ]
+    expect(capSparseWidenShopList(input, ['Liveaboard'])).toEqual(input)
   })
 })

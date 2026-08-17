@@ -10,6 +10,9 @@ export const SEARCH_MATCH_GROUP_LABELS: Record<SearchMatchGroupId, string> = {
 /** Section header display order (non-empty groups only). Tight matches first. */
 export const SEARCH_MATCH_GROUP_DISPLAY_ORDER: SearchMatchGroupId[] = ['exact', 'other']
 
+/** When there is a single exact trip-type match, show at most this many wider fill-in shops. */
+export const MAX_OTHER_WHEN_SINGLE_EXACT = 3
+
 export type SearchMatchFacets = {
   certification_course_hint?: string | null
   activity_terms?: string[] | null
@@ -55,12 +58,30 @@ export type SearchResultGroup = {
   shops: ShopForMatchGroup[]
 }
 
+/** Cap 1 exact + N wider shops when sparse widen would flood the results list. */
+export function capSparseWidenShopList<T extends ShopForMatchGroup> (
+  shops: T[],
+  diveTypes?: string[] | null
+): T[] {
+  if (!diveTypes?.length || shops.length <= 1) return shops
+  const ctx: SearchMatchContext = { diveTypes }
+  const exact: T[] = []
+  const other: T[] = []
+  for (const shop of shops) {
+    if (classifyShopMatchGroup(shop, ctx) === 'exact') exact.push(shop)
+    else other.push(shop)
+  }
+  if (exact.length !== 1 || other.length <= MAX_OTHER_WHEN_SINGLE_EXACT) return shops
+  return [...exact, ...other.slice(0, MAX_OTHER_WHEN_SINGLE_EXACT)]
+}
+
 export function groupShopsByMatchReason (
   shops: ShopForMatchGroup[],
   ctx: SearchMatchContext
 ): SearchResultGroup[] {
+  const capped = capSparseWidenShopList(shops, ctx.diveTypes)
   const buckets = new Map<SearchMatchGroupId, ShopForMatchGroup[]>()
-  for (const shop of shops) {
+  for (const shop of capped) {
     const groupId = classifyShopMatchGroup(shop, ctx)
     const list = buckets.get(groupId) ?? []
     list.push(shop)

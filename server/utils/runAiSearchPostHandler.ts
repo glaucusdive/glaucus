@@ -66,6 +66,7 @@ import {
   fetchSearchShopsWithSparseWiden,
   sliceSearchShopPage
 } from '../utils/fetchSearchShopsWithSparseWiden'
+import { capSparseWidenShopList } from '../../shared/searchResultGroups'
 import { normalizeClientSearchFilters } from '../utils/normalizeClientSearchFilters'
 import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from '../utils/openAiChatModel'
 import { resolveOpenAiApiKey } from '../utils/openAiApiKey'
@@ -3283,9 +3284,10 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             if (fetched.error) {
               console.error('[AI Search] Pagination shop fetch error:', fetched.error)
             } else {
-              const resultCount = fetched.shops.length
+              const cappedShops = capSparseWidenShopList(fetched.shops, normalizedFromClient.diveTypes)
+              const resultCount = cappedShops.length
               const { page: nextShops } = sliceSearchShopPage(
-                fetched.shops,
+                cappedShops,
                 alreadyShown,
                 paginationPageSize
               )
@@ -3362,9 +3364,10 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 throw new Error('Failed to fetch more results')
               }
 
-              const resultCount = fetched.shops.length
+              const cappedShops = capSparseWidenShopList(fetched.shops, lastFilters.diveTypes)
+              const resultCount = cappedShops.length
               const { page: nextShops } = sliceSearchShopPage(
-                fetched.shops,
+                cappedShops,
                 alreadyShown,
                 paginationPageSize
               )

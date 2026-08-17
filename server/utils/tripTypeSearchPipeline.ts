@@ -1,5 +1,6 @@
 import { type SearchFilters } from './buildDiveShopQuery'
 import { fetchSearchShopsWithSparseWiden } from './fetchSearchShopsWithSparseWiden'
+import { capSparseWidenShopList } from '../../shared/searchResultGroups'
 import { attachParsedTripDatesToSearchFilters } from './attachParsedTripDatesToSearchFilters'
 import { carryForwardUnsetSearchAxes } from './searchFilterCarryForward'
 import {
@@ -457,6 +458,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
   }
 
   let shops = fetchedShops.shops as Array<{ id?: string; type?: string | null; google_rating?: number | null }>
+  shops = capSparseWidenShopList(shops, filters.diveTypes)
   if (effectiveCourseHint) {
     const allowedIds = new Set(await shopIdsForCourseSearch(supabaseUrl, supabaseKey, effectiveCourseHint))
     shops = (shops as { id?: string }[]).filter(s => s.id && allowedIds.has(s.id))
