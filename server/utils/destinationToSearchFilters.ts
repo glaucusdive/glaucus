@@ -16,6 +16,32 @@ export const COUNTRY_ONLY_DESTINATIONS = new Set([
 ])
 
 /**
+ * Multi-country diving regions that map directly to the `regions` table.
+ * These must be caught BEFORE the place-fallback so they never become a raw place-text
+ * ilike query (which would produce false cross-continent matches via short directional tokens).
+ *
+ * Region names must match the `regions.name` column exactly (case-insensitive ilike is used
+ * server-side, but canonical casing is stored here for clarity).
+ */
+const REGION_DESTINATIONS: Record<string, SearchFilters> = {
+  'south asia': { region: 'South Asia' },
+  'southeast asia': { region: 'Southeast Asia' },
+  'se asia': { region: 'Southeast Asia' },
+  'southern africa': { region: 'Southern Africa' },
+  'northern africa': { region: 'Northern Africa' },
+  'north africa': { region: 'Northern Africa' },
+  'caribbean': { region: 'Caribbean' },
+  'central america': { region: 'Central America' },
+  'east asia': { region: 'East Asia' },
+  'europe': { region: 'Europe' },
+  'middle east': { region: 'Middle East' },
+  'south america': { region: 'South America' },
+  'north america': { region: 'North America' },
+  'oceania': { region: 'Oceania' },
+  'pacific islands': { region: 'Pacific Islands' },
+}
+
+/**
  * Map common travel destinations to country + place filters so we query
  * diveshops.city/state/country_id — not business_name alone.
  */
@@ -23,6 +49,9 @@ export function inferSearchFiltersFromDestination (raw: string): SearchFilters {
   const t = raw.trim().replace(/^the\s+/i, '').trim()
   if (!t) return {}
   const lower = t.toLowerCase()
+
+  // Multi-country diving regions → region filter (prevents place-text ilike across wrong continents)
+  if (REGION_DESTINATIONS[lower]) return REGION_DESTINATIONS[lower]
 
   // Islands / regions strongly tied to a country (location-first, not shop name)
   const islandOrRegion: Record<string, SearchFilters> = {
