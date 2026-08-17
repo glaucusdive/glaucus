@@ -235,6 +235,32 @@ export function normalizeActivityTerms (terms: string[] | null | undefined): str
   return out
 }
 
+/** Synonym groups — collapse to one canonical token so NLU does not AND cave + cavern to zero rows. */
+const ACTIVITY_TOKEN_SYNONYM_GROUPS: string[][] = [
+  ['cave', 'cavern'],
+  ['muck', 'macro'],
+  ['technical', 'tec']
+]
+
+/** Collapse synonymous activity tokens (e.g. cave + cavern → cave) before directory AND matching. */
+export function coalesceSynonymActivityTokens (terms: string[] | null | undefined): string[] {
+  const normalized = normalizeActivityTerms(terms)
+  if (!normalized.length) return []
+  const out: string[] = []
+  const usedGroups = new Set<number>()
+  for (const t of normalized) {
+    const gi = ACTIVITY_TOKEN_SYNONYM_GROUPS.findIndex(g => g.includes(t))
+    if (gi >= 0) {
+      if (usedGroups.has(gi)) continue
+      usedGroups.add(gi)
+      out.push(ACTIVITY_TOKEN_SYNONYM_GROUPS[gi]![0]!)
+    } else {
+      out.push(t)
+    }
+  }
+  return out
+}
+
 /** Merge NLU activity tokens into search filters (AND with geo and other filters). */
 export function mergeActivityIntoFilters (filters: SearchFilters, interpret: InterpretedTurn | null): SearchFilters {
   const activityTokens = normalizeActivityTerms(interpret?.activity_terms ?? undefined)
