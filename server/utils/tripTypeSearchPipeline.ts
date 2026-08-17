@@ -1,8 +1,5 @@
-import { buildDiveShopQuery, type SearchFilters } from './buildDiveShopQuery'
-import {
-  mergeShopListsPreferringDiveTypes,
-  shouldWidenSparseTripTypeResults
-} from './widePlaceShopSearch'
+import { type SearchFilters } from './buildDiveShopQuery'
+import { fetchSearchShopsWithSparseWiden } from './fetchSearchShopsWithSparseWiden'
 import { attachParsedTripDatesToSearchFilters } from './attachParsedTripDatesToSearchFilters'
 import { carryForwardUnsetSearchAxes } from './searchFilterCarryForward'
 import {
@@ -453,27 +450,13 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
 
   onStatus?.('Searching dive shops…')
 
-  const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, filters)
-
-  const { data: shopsRaw, error: dbError } = dbResult as { data: unknown[] | null; error: unknown }
-  if (dbError) {
-    console.error('Database error:', dbError)
+  const fetchedShops = await fetchSearchShopsWithSparseWiden(supabaseUrl, supabaseKey, filters)
+  if (fetchedShops.error) {
+    console.error('Database error:', fetchedShops.error)
     throw new Error('Failed to search dive shops')
   }
 
-  let shops = (shopsRaw || []) as Array<{ id?: string; type?: string | null; google_rating?: number | null }>
-  const preferredDiveTypes = filters.diveTypes
-  if (
-    filters.place?.trim() &&
-    shouldWidenSparseTripTypeResults(shops.length, preferredDiveTypes)
-  ) {
-    const { diveTypes: _drop, ...broader } = filters
-    const broadResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, broader)
-    const broadShops = (broadResult.data || []) as typeof shops
-    if (!broadResult.error && broadShops.length > shops.length) {
-      shops = mergeShopListsPreferringDiveTypes(shops, broadShops, preferredDiveTypes) as typeof shops
-    }
-  }
+  let shops = fetchedShops.shops as Array<{ id?: string; type?: string | null; google_rating?: number | null }>
   if (effectiveCourseHint) {
     const allowedIds = new Set(await shopIdsForCourseSearch(supabaseUrl, supabaseKey, effectiveCourseHint))
     shops = (shops as { id?: string }[]).filter(s => s.id && allowedIds.has(s.id))
