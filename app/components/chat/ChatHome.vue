@@ -116,6 +116,7 @@
                     >
                       <hr
                         v-if="group.id === 'other' && searchResultGroupHeadingsVisible(msg)"
+                        data-search-exact-other-divider
                         class="border-0 border-t border-zinc-700 my-8 dark:border-zinc-800"
                       >
                       <div class="flex flex-col gap-2">
@@ -1521,30 +1522,40 @@ onUnmounted(() => {
 watch([messages, userInput, preferGuidedThisSession, guidedSearchState, guidedBookingHints, tripRequirements], persistCache, { deep: true })
 watch([selectedShopId, detailDrawerShopId, isOpen, drawerData], persistCache, { deep: true })
 
-// Auto-scroll to bottom when new messages arrive
+// Auto-scroll when new messages arrive; stop at exact/other divider when present.
+function getLatestExactOtherDivider () {
+  const container = messagesContainer.value
+  if (!container) return null
+  const dividers = container.querySelectorAll('[data-search-exact-other-divider]')
+  return dividers.length ? dividers[dividers.length - 1] : null
+}
+
+function scrollContainerToDividerBottom (container, divider) {
+  const containerRect = container.getBoundingClientRect()
+  const dividerRect = divider.getBoundingClientRect()
+  const targetTop = container.scrollTop + (dividerRect.bottom - containerRect.bottom)
+  container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' })
+}
+
 const scrollToBottom = async () => {
   await nextTick()
-  // Use requestAnimationFrame to ensure DOM is fully rendered
-  requestAnimationFrame(() => {
-    if (messagesContainer.value) {
-      const container = messagesContainer.value
-      // Use scrollTo for better browser compatibility
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: 'smooth'
-      })
+  const runScroll = () => {
+    const container = messagesContainer.value
+    if (!container) return
+    const divider = getLatestExactOtherDivider()
+    if (divider) {
+      scrollContainerToDividerBottom(container, divider)
+      return
     }
-  })
-  // Fallback: try again after a short delay in case content is still loading
-  setTimeout(() => {
-    if (messagesContainer.value) {
-      const container = messagesContainer.value
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: 'smooth'
-      })
-    }
-  }, 150)
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'smooth'
+    })
+  }
+  requestAnimationFrame(runScroll)
+  // Retry after layout + card stagger so the divider position is stable.
+  setTimeout(runScroll, 150)
+  setTimeout(runScroll, 450)
 }
 
 // Watch for message updates and auto-scroll
