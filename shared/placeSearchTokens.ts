@@ -11,22 +11,49 @@ export function sanitizePlaceSearchToken (s: string): string {
 const MIN_TOKEN_LEN = 4
 
 /**
- * Generic words that appear in many country/region names. When the full phrase has other
- * significant words (e.g. "Solomon Islands"), do not emit these alone — they pollute worldwide OR search.
+ * Words that are too broad to use as standalone ilike tokens in a global shop directory.
+ * These appear in many unrelated place names and will produce false cross-region matches.
+ *
+ * Examples:
+ *  - "South Asia" → "south" would match shops in "South Africa" street addresses
+ *  - "North Africa" → "north" would match "North Carolina", "North Shore", etc.
+ *  - "Islands" alone matches every island nation
+ *
+ * When ALL words in the phrase are generic the individual words are still suppressed;
+ * only the full compound phrase is emitted (e.g. "South Asia" → ["South Asia"]).
  */
 export const GENERIC_PLACE_TOKEN_WORDS = new Set([
+  // Administrative suffixes
   'island',
   'islands',
   'republic',
   'kingdom',
   'federation',
   'states',
-  'united'
+  'united',
+  // Directional prefixes — alone cause continent-wide false matches
+  'south',
+  'north',
+  'east',
+  'west',
+  'southeast',
+  'southwest',
+  'northeast',
+  'northwest',
+  // Continental / ocean names — too broad as standalone tokens
+  'asia',
+  'africa',
+  'europe',
+  'america',
+  'pacific',
+  'ocean',
 ])
 
 /**
  * Tokens for directory-style place search: full phrase plus significant words (e.g. Raja Ampat → Ampat).
- * Suppresses bare generic words (Islands, Republic, …) when they are not the whole query.
+ * Generic words (directional prefixes, continental names, admin suffixes) are always suppressed
+ * as standalone tokens so they cannot pollute a worldwide ilike OR query.
+ * When every word in the phrase is generic, only the full compound phrase is emitted.
  */
 export function placeSearchTokens (placeRaw: string): string[] {
   const full = sanitizePlaceSearchToken(placeRaw)
@@ -41,9 +68,8 @@ export function placeSearchTokens (placeRaw: string): string[] {
   }
   add(full)
   const words = full.split(/\s+/).filter(w => w.length >= MIN_TOKEN_LEN)
-  const hasNonGeneric = words.some(w => !GENERIC_PLACE_TOKEN_WORDS.has(w.toLowerCase()))
   for (const word of words) {
-    if (hasNonGeneric && GENERIC_PLACE_TOKEN_WORDS.has(word.toLowerCase())) continue
+    if (GENERIC_PLACE_TOKEN_WORDS.has(word.toLowerCase())) continue
     add(word)
   }
   return out
