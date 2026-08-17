@@ -9,6 +9,8 @@ export type SearchFiltersForBadges = {
   languages?: string[]
   diveTypes?: string[]
   activityTokens?: string[]
+  /** Echo from sparse activity widen — drives exact/other UI grouping on the client. */
+  activityExactShopIds?: string[]
   /** When set (e.g. from NLU + heuristics), pairs with course directory badge / card pill logic. */
   certificationCourseHint?: string
   dates?: { start?: string; end?: string }
@@ -39,11 +41,28 @@ function titleCasePhrase (s: string): string {
     .join(' ')
 }
 
-function humanizeActivityToken (t: string): string {
+export function humanizeActivityToken (t: string): string {
   const k = t.toLowerCase().trim().replace(/\s+/g, '_')
   if (!k) return ''
   if (ACTIVITY_LABEL[k]) return ACTIVITY_LABEL[k]
   return titleCasePhrase(k.replace(/_/g, ' '))
+}
+
+/** Drop search-level activity badges on wider-match cards so pills reflect shop data, not the query. */
+export function matchBadgesForShopCard (
+  matchBadges: string[] | undefined,
+  searchFilters: SearchFiltersForBadges | null | undefined,
+  shopSearchMatchGroup?: string | null
+): string[] {
+  const badges = matchBadges || []
+  if (shopSearchMatchGroup !== 'other') return badges
+  if (!(searchFilters?.activityTokens?.length)) return badges
+  const drop = new Set<string>()
+  for (const t of searchFilters.activityTokens) {
+    const h = humanizeActivityToken(String(t))
+    if (h) drop.add(h.toLowerCase())
+  }
+  return badges.filter(b => !drop.has(b.trim().toLowerCase()))
 }
 
 function formatDateRange (d: { start?: string; end?: string }): string | null {
