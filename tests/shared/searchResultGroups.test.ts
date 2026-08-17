@@ -90,7 +90,7 @@ describe('groupShopsByMatchReason', () => {
     expect(groups).toEqual([{ id: 'general', title: 'Matches your search:', shops: [expect.objectContaining({ id: 's1' })] }])
   })
 
-  it('orders sections: dive site before city before general', () => {
+  it('orders sections: general before dive site before city', () => {
     const ctx = buildSearchMatchContext({ diveTypes: ['Liveaboard'], place: 'Ampat' })
     ctx.diveSiteNamesByShopId = new Map([['site', ['Cape Kri']]])
     const groups = groupShopsByMatchReason(
@@ -101,7 +101,7 @@ describe('groupShopsByMatchReason', () => {
       ],
       ctx
     )
-    expect(groups.map(g => g.id)).toEqual(['dive_site', 'city', 'general'])
+    expect(groups.map(g => g.id)).toEqual(['general', 'dive_site', 'city'])
   })
 
   it('business_name section when name token matches', () => {

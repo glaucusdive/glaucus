@@ -19,14 +19,14 @@ export const SEARCH_MATCH_GROUP_LABELS: Record<SearchMatchGroupId, string> = {
   general: 'Matches your search:'
 }
 
-/** Section header display order (non-empty groups only). */
+/** Section header display order (non-empty groups only). Primary-intent first. */
 export const SEARCH_MATCH_GROUP_DISPLAY_ORDER: SearchMatchGroupId[] = [
+  'general',
   'dive_site',
   'city',
   'business_name',
   'location',
-  'trip_type',
-  'general'
+  'trip_type'
 ]
 
 export type SearchMatchFacets = {
