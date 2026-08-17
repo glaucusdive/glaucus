@@ -63,9 +63,9 @@ import {
   tryBuildCourseDiscoverySearchResponse
 } from '../utils/courseDiscoveryFromSearch'
 import {
-  mergeShopListsPreferringDiveTypes,
-  shouldWidenSparseTripTypeResults
-} from '../utils/widePlaceShopSearch'
+  fetchSearchShopsWithSparseWiden,
+  sliceSearchShopPage
+} from '../utils/fetchSearchShopsWithSparseWiden'
 import { normalizeClientSearchFilters } from '../utils/normalizeClientSearchFilters'
 import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from '../utils/openAiChatModel'
 import { resolveOpenAiApiKey } from '../utils/openAiApiKey'
@@ -520,12 +520,16 @@ async function finalizeSearchPaginationApiResponse (
   }
   return {
     success: true as const,
-    message: 'No more results available.',
+    message: remaining > 0
+      ? 'Could not load this page of results. Try Load next again, or widen the search.'
+      : 'No more results available.',
     shops: [],
     totalResults: resultCount,
-    hasMoreResults: false,
+    hasMoreResults: remaining > 0,
     filters,
-    selectableOptions: undefined,
+    selectableOptions: remaining > 0
+      ? [buildSearchPaginationSelectableOption(remaining, paginationPageSize)]
+      : undefined,
     ...(searchMatchBadges.length ? { searchMatchBadges } : {})
   }
 }
@@ -917,30 +921,22 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               message
             )
           let geoFilters = buildGeoFilters()
-          let geoQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, geoFilters)
-          let geoList = (geoQuery.data || []) as Array<{ id: string; business_name?: string; type?: string | null; google_rating?: number | null }>
-          let widenedTripType = false
           const preferredDiveTypes = geoFilters.diveTypes
-          if (!geoQuery.error && geoList.length === 0 && (preferredDiveTypes?.length ?? 0) > 0) {
+          let fetchedGeo = await fetchSearchShopsWithSparseWiden(supabaseUrl, supabaseKey, geoFilters)
+          let geoList = fetchedGeo.shops as Array<{ id: string; business_name?: string; type?: string | null; google_rating?: number | null }>
+          let widenedTripType = fetchedGeo.widenedTripType
+          let geoError = fetchedGeo.error
+          if (!geoError && geoList.length === 0 && (preferredDiveTypes?.length ?? 0) > 0) {
             const { diveTypes: _dropTypes, ...relaxedGeo } = geoFilters
             geoFilters = relaxedGeo
-            geoQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, geoFilters)
-            geoList = (geoQuery.data || []) as typeof geoList
-          } else if (
-            !geoQuery.error &&
-            shouldWidenSparseTripTypeResults(geoList.length, preferredDiveTypes)
-          ) {
-            const { diveTypes: _dropTypes, ...broaderGeo } = geoFilters
-            const broadQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, broaderGeo)
-            const broadList = (broadQuery.data || []) as typeof geoList
-            if (!broadQuery.error && broadList.length > geoList.length) {
-              geoList = mergeShopListsPreferringDiveTypes(geoList, broadList, preferredDiveTypes) as typeof geoList
-              widenedTripType = true
-            }
+            const retry = await buildDiveShopQuery(supabaseUrl, supabaseKey, geoFilters)
+            geoError = retry.error
+            geoList = (retry.data || []) as typeof geoList
+            widenedTripType = false
           }
           const placeLabel = geoFilters.place?.trim() || destText
           pushActivity('probe', formatGeoDirectoryQueryLine(placeLabel, geoList.length))
-          if (!geoQuery.error && geoList.length > 0) {
+          if (!geoError && geoList.length > 0) {
             const countryOnly = isCountryOnlyGeoFilters(geoFilters)
             const geoMessage = widenedTripType
               ? `Here are dive shops in ${placeLabel}. ${preferredDiveTypes?.join(', ') ?? 'Your trip type'} matches are listed first; we also included other operators in the area.`
@@ -3279,73 +3275,34 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
 
         if (supabaseUrl && supabaseKey && normalizedFromClient != null) {
           try {
-            const clientTotal =
-              typeof bodyLastSearchTotalResults === 'number' &&
-              Number.isFinite(bodyLastSearchTotalResults) &&
-              bodyLastSearchTotalResults >= 1
-                ? Math.floor(bodyLastSearchTotalResults)
-                : null
-
-            if (clientTotal != null) {
-              console.log('[AI Search] Pagination fast path: client filters + total, LLM skipped')
-              if (alreadyShown >= clientTotal) {
-                return await finalizeSearchPaginationApiResponse(
-                  supabaseUrl,
-                  supabaseKey,
-                  message,
-                  interpretTurn,
-                  normalizedFromClient,
-                  [],
-                  clientTotal,
-                  alreadyShown,
-                  paginationPageSize
-                )
-              }
-              const queryResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, normalizedFromClient, {
-                offset: alreadyShown,
-                limit: paginationPageSize
-              })
-              const { data: pageShops, error: dbErr } = queryResult
-              if (dbErr) {
-                console.error('[AI Search] Pagination fast path DB error:', dbErr)
-              } else {
-                const nextShops = pageShops || []
-                console.log(`[AI Search] Pagination fast path: offset=${alreadyShown} limit=${paginationPageSize} rows=${nextShops.length} total=${clientTotal}`)
-                return await finalizeSearchPaginationApiResponse(
-                  supabaseUrl,
-                  supabaseKey,
-                  message,
-                  interpretTurn,
-                  normalizedFromClient,
-                  nextShops,
-                  clientTotal,
-                  alreadyShown,
-                  paginationPageSize
-                )
-              }
+            const fetched = await fetchSearchShopsWithSparseWiden(
+              supabaseUrl,
+              supabaseKey,
+              normalizedFromClient
+            )
+            if (fetched.error) {
+              console.error('[AI Search] Pagination shop fetch error:', fetched.error)
             } else {
-              console.log('[AI Search] Pagination: client filters only (no total) — DB full page, LLM skipped')
-              const queryResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, normalizedFromClient)
-              const { data: shops, error: dbErr } = queryResult
-              if (dbErr) {
-                console.error('[AI Search] Pagination filters-only path DB error:', dbErr)
-              } else {
-                const full = shops || []
-                const resultCount = full.length
-                const nextShops = full.slice(alreadyShown, alreadyShown + paginationPageSize)
-                console.log(`[AI Search] Pagination filters-only: alreadyShown=${alreadyShown} pageSize=${paginationPageSize} resultCount=${resultCount}`)
-                return await finalizeSearchPaginationApiResponse(
-                  supabaseUrl,
-                  supabaseKey,
-                  message,
-                  interpretTurn,
-                  normalizedFromClient,
-                  nextShops,
-                  resultCount,
-                  alreadyShown,
-                  paginationPageSize
-                )
-              }
+              const resultCount = fetched.shops.length
+              const { page: nextShops } = sliceSearchShopPage(
+                fetched.shops,
+                alreadyShown,
+                paginationPageSize
+              )
+              console.log(
+                `[AI Search] Pagination: offset=${alreadyShown} rows=${nextShops.length} total=${resultCount} widened=${fetched.widenedTripType}`
+              )
+              return await finalizeSearchPaginationApiResponse(
+                supabaseUrl,
+                supabaseKey,
+                message,
+                interpretTurn,
+                normalizedFromClient,
+                nextShops,
+                resultCount,
+                alreadyShown,
+                paginationPageSize
+              )
             }
           } catch (fastPathErr) {
             console.error('[AI Search] Pagination client-filters path error:', fastPathErr)
@@ -3399,18 +3356,19 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               lastFilters = JSON.parse(filtersMatch[1])
               console.log('[AI Search] Extracted filters for pagination (LLM):', lastFilters)
 
-              const queryResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, lastFilters)
-              const { data: shops, error: dbError } = queryResult
-
-              if (dbError) {
-                console.error('Database error during pagination:', dbError)
+              const fetched = await fetchSearchShopsWithSparseWiden(supabaseUrl, supabaseKey, lastFilters)
+              if (fetched.error) {
+                console.error('Database error during pagination:', fetched.error)
                 throw new Error('Failed to fetch more results')
               }
 
-              const resultCount = shops?.length || 0
+              const resultCount = fetched.shops.length
+              const { page: nextShops } = sliceSearchShopPage(
+                fetched.shops,
+                alreadyShown,
+                paginationPageSize
+              )
               console.log(`[AI Search] Pagination (LLM): already shown ${alreadyShown} shops, total results: ${resultCount}, pageSize: ${paginationPageSize}`)
-
-              const nextShops = (shops || []).slice(alreadyShown, alreadyShown + paginationPageSize)
               return await finalizeSearchPaginationApiResponse(
                 supabaseUrl,
                 supabaseKey,

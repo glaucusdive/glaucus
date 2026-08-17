@@ -24,6 +24,7 @@ import { formatEntitySearchResponse, type EntitySearchFormattedResponse } from '
 import { listShopsMatchingName } from './resolveShop'
 import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
 import { buildSearchPaginationSelectableOption, SEARCH_PAGINATION_PAGE_SIZE_DEFAULT } from '../../shared/searchPaginationChip'
+import { fetchSearchShopsWithSparseWiden, sliceSearchShopPage } from './fetchSearchShopsWithSparseWiden'
 import { normalizeClientSearchFilters } from './normalizeClientSearchFilters'
 import { shopIdsForCourseSearch } from './shopIdsForCourseSearch'
 import { enrichShopsForSearchCards } from './enrichShopsForSearchCards'
@@ -640,45 +641,24 @@ export async function runGuidedSearchTurn (
       })
     }
 
-    if (clientTotal != null) {
-      const queryResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, filters, {
-        offset: alreadyShown,
-        limit: pageSize
-      })
-      const pageShops = (queryResult.data || []) as unknown[]
-      if (alreadyShown >= clientTotal) {
-        const empty = await formatEntitySearchResponse(supabaseUrl, supabaseKey, filters, [], 'No more results for this search.')
-        return {
-          success: true,
-          intent: 'search',
-          ...empty,
-          guidedSearchState: state,
-          activityLog,
-          selectableOptions: guidedPaginationSelectableOptions(state, 0, pageSize)
-        }
-      }
-      const remaining = Math.max(0, clientTotal - alreadyShown - pageShops.length)
-      const formatted = await formatEntitySearchResponse(
-        supabaseUrl,
-        supabaseKey,
-        filters,
-        pageShops,
-        remaining > 0 ? 'Here are more dive shops for your filters.' : 'Here are the remaining dive shops for your filters.'
-      )
-      return await assembleGuidedSearchResponse(supabaseUrl, supabaseKey, state, formatted, state.courseIntent?.trim() ?? null, {
-        totalResults: clientTotal,
-        hasMoreResults: remaining > 0,
-        selectableOptions: guidedPaginationSelectableOptions(state, remaining, pageSize),
-        guidedSearchState: state,
-        activityLog
-      })
+    const fetched = await fetchSearchShopsWithSparseWiden(supabaseUrl, supabaseKey, filters)
+    if (fetched.error) {
+      console.error('[guided-flow] Pagination shop fetch error:', fetched.error)
     }
-
-    const full = await buildDiveShopQuery(supabaseUrl, supabaseKey, filters)
-    const all = (full.data || []) as unknown[]
-    const total = all.length
-    const slice = all.slice(alreadyShown, alreadyShown + pageSize)
-    const remaining = Math.max(0, total - alreadyShown - slice.length)
+    const allShops = fetched.shops as unknown[]
+    const total = allShops.length
+    if (alreadyShown >= total) {
+      const empty = await formatEntitySearchResponse(supabaseUrl, supabaseKey, filters, [], 'No more results for this search.')
+      return {
+        success: true,
+        intent: 'search',
+        ...empty,
+        guidedSearchState: state,
+        activityLog,
+        selectableOptions: guidedPaginationSelectableOptions(state, 0, pageSize)
+      }
+    }
+    const { page: slice, remaining } = sliceSearchShopPage(allShops, alreadyShown, pageSize)
     const formatted = await formatEntitySearchResponse(
       supabaseUrl,
       supabaseKey,
