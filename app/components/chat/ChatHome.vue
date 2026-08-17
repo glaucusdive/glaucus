@@ -110,35 +110,40 @@
 
                   <!-- Shop results: exact trip-type matches, then optional wider fill-in -->
                   <div v-if="msg.shops && msg.shops.length > 0" class="flex flex-col gap-4 md:p-2">
-                    <div
+                    <template
                       v-for="(group, gi) in searchResultGroupsForMessage(msg)"
                       :key="`${index}-${group.id}`"
-                      class="flex flex-col gap-2"
                     >
-                      <div
-                        v-if="searchResultGroupHeadingsVisible(msg)"
-                        class="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400"
+                      <hr
+                        v-if="group.id === 'other' && searchResultGroupHeadingsVisible(msg)"
+                        class="border-0 border-t border-zinc-700 my-8 dark:border-zinc-800"
                       >
-                        <span class="font-medium">{{ group.title }}</span>
-                      </div>
-                      <div class="grid grid-cols-1 gap-2">
+                      <div class="flex flex-col gap-2">
                         <div
-                          v-for="(shop, si) in group.shops"
-                          :key="shop.id"
-                          class="chat-shop-card-stagger min-w-0"
-                          :style="{ animationDelay: `${msg.streamingShopsPending ? 0 : (groupStaggerOffset(msg, gi) + si) * 80}ms` }"
+                          v-if="searchResultGroupHeadingsVisible(msg)"
+                          class="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400"
                         >
-                          <CardSearchResult
-                            :shop="shop"
-                            :active="selectedShopId === shop.id"
-                            :match-badges="msg.searchMatchBadges"
-                            :search-filters="msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : undefined"
-                            @start-booking="handleStartBookingFromCard"
-                            @view-details="handleViewDetails"
-                          />
+                          <span class="font-medium">{{ group.title }}</span>
+                        </div>
+                        <div class="grid grid-cols-1 gap-2">
+                          <div
+                            v-for="(shop, si) in group.shops"
+                            :key="shop.id"
+                            class="chat-shop-card-stagger min-w-0"
+                            :style="{ animationDelay: `${msg.streamingShopsPending ? 0 : (groupStaggerOffset(msg, gi) + si) * 80}ms` }"
+                          >
+                            <CardSearchResult
+                              :shop="shop"
+                              :active="selectedShopId === shop.id"
+                              :match-badges="msg.searchMatchBadges"
+                              :search-filters="msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : undefined"
+                              @start-booking="handleStartBookingFromCard"
+                              @view-details="handleViewDetails"
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </template>
 
                     <!-- Results summary: show which range we're on (e.g. results 11–15 of 16) -->
                     <div v-if="msg.totalResults && msg.totalResults > msg.shops.length" class="text-sm text-zinc-500">
