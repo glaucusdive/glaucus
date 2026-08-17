@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   buildSearchMatchContext,
   classifyShopMatchGroup,
-  getSuppressedGroupIds,
   groupShopsByMatchReason
 } from '../../shared/searchResultGroups'
 
@@ -16,100 +15,67 @@ const shop = (overrides: Record<string, unknown> = {}) => ({
   ...overrides
 })
 
-describe('getSuppressedGroupIds', () => {
-  it('suppresses trip_type when diveTypes filter set', () => {
-    const suppressed = getSuppressedGroupIds({ diveTypes: ['Liveaboard'] })
-    expect(suppressed.has('trip_type')).toBe(true)
-    expect(suppressed.has('location')).toBe(false)
-  })
-
-  it('suppresses location when place, country, or region set', () => {
-    expect(getSuppressedGroupIds({ place: 'Raja Ampat' }).has('location')).toBe(true)
-    expect(getSuppressedGroupIds({ country: 'Indonesia' }).has('location')).toBe(true)
-    expect(getSuppressedGroupIds({ region: 'Southeast Asia' }).has('location')).toBe(true)
-  })
-})
-
 describe('classifyShopMatchGroup', () => {
-  it('liveaboard-only match falls back to general when trip_type suppressed', () => {
-    const ctx = buildSearchMatchContext({ diveTypes: ['Liveaboard'], place: 'Raja Ampat' })
-    expect(classifyShopMatchGroup(shop({ type: 'Liveaboard' }), ctx)).toBe('general')
+  it('liveaboard shop is exact when diveTypes filter set', () => {
+    const ctx = buildSearchMatchContext({ diveTypes: ['Liveaboard'], country: 'Fiji' })
+    expect(classifyShopMatchGroup(shop({ type: 'Liveaboard' }), ctx)).toBe('exact')
   })
 
-  it('city match wins as secondary when trip_type suppressed', () => {
-    const ctx = buildSearchMatchContext({ diveTypes: ['Liveaboard'], place: 'Amed' })
-    expect(classifyShopMatchGroup(shop({ city: 'Amed', type: 'Liveaboard' }), ctx)).toBe('city')
+  it('resort shop is other when diveTypes filter set', () => {
+    const ctx = buildSearchMatchContext({ diveTypes: ['Liveaboard'], country: 'Fiji' })
+    expect(classifyShopMatchGroup(shop({ type: 'Dive Resort' }), ctx)).toBe('other')
   })
 
-  it('address-only match is general when location suppressed', () => {
-    const ctx = buildSearchMatchContext({ place: 'Raja Ampat' })
+  it('all shops are exact when no diveTypes filter', () => {
+    const ctx = buildSearchMatchContext({ country: 'Fiji' })
+    expect(classifyShopMatchGroup(shop({ type: 'Liveaboard' }), ctx)).toBe('exact')
+    expect(classifyShopMatchGroup(shop({ type: 'Dive Resort' }), ctx)).toBe('exact')
+  })
+
+  it('reclassifies legacy searchMatchGroup from shop.type', () => {
+    const ctx = buildSearchMatchContext({ diveTypes: ['Liveaboard'], country: 'Fiji' })
     expect(
-      classifyShopMatchGroup(
-        shop({ street_address: 'Near Raja Ampat', city: 'Remote', business_name: 'Ocean Co' }),
-        ctx
-      )
-    ).toBe('general')
-  })
-
-  it('uses pre-attached searchMatchGroup from server', () => {
-    const ctx = buildSearchMatchContext({ diveTypes: ['Liveaboard'] })
-    expect(classifyShopMatchGroup(shop({ searchMatchGroup: 'dive_site' }), ctx)).toBe('dive_site')
-  })
-
-  it('dive_site from linked names in context', () => {
-    const ctx = buildSearchMatchContext({ place: 'Raja Ampat' })
-    ctx.diveSiteNamesByShopId = new Map([['s1', ['Manta Sandy']]])
-    expect(classifyShopMatchGroup(shop(), ctx)).toBe('dive_site')
+      classifyShopMatchGroup(shop({ type: 'Dive Resort', searchMatchGroup: 'dive_site' }), ctx)
+    ).toBe('other')
   })
 })
 
 describe('groupShopsByMatchReason', () => {
-  it('groups by city section with correct title', () => {
-    const ctx = buildSearchMatchContext({ diveTypes: ['Liveaboard'], place: 'Amed' })
+  it('splits liveaboard and resort into exact then other', () => {
+    const ctx = buildSearchMatchContext({ diveTypes: ['Liveaboard'], country: 'Fiji' })
     const groups = groupShopsByMatchReason(
       [
-        shop({ id: 'a', city: 'Amed', business_name: 'Dive Concepts Amed' }),
-        shop({ id: 'b', city: 'Tulamben', business_name: 'Dive Concepts Tulamben' })
+        shop({ id: 'lb', type: 'Liveaboard', business_name: "NAI'A Liveaboard" }),
+        shop({ id: 'resort', type: 'Dive Resort', business_name: 'Aqua-Trek Beqa' })
       ],
       ctx
     )
-    const cityGroup = groups.find(g => g.id === 'city')
-    expect(cityGroup?.title).toBe('Results by city')
-    expect(cityGroup?.shops).toHaveLength(1)
-    expect(cityGroup?.shops[0]?.id).toBe('a')
+    expect(groups.map(g => g.id)).toEqual(['exact', 'other'])
+    expect(groups[0]?.shops.map(s => s.id)).toEqual(['lb'])
+    expect(groups[1]?.shops.map(s => s.id)).toEqual(['resort'])
+    expect(groups[0]?.title).toBe('Exact matches')
+    expect(groups[1]?.title).toBe('Other (wider) matches')
   })
 
-  it('omits empty groups and suppressed-only trip_type section', () => {
-    const ctx = buildSearchMatchContext({
-      diveTypes: ['Liveaboard'],
-      region: 'Southeast Asia',
-      certificationCourseHint: 'Advanced'
-    })
+  it('omits other section when all shops match trip type', () => {
+    const ctx = buildSearchMatchContext({ diveTypes: ['Liveaboard'], country: 'Indonesia' })
     const groups = groupShopsByMatchReason([shop({ type: 'Liveaboard' })], ctx)
-    expect(groups.some(g => g.id === 'trip_type')).toBe(false)
-    expect(groups).toEqual([{ id: 'general', title: 'Matches your search:', shops: [expect.objectContaining({ id: 's1' })] }])
+    expect(groups).toEqual([
+      { id: 'exact', title: 'Exact matches', shops: [expect.objectContaining({ id: 's1' })] }
+    ])
   })
 
-  it('orders sections: general before dive site before city', () => {
-    const ctx = buildSearchMatchContext({ diveTypes: ['Liveaboard'], place: 'Ampat' })
-    ctx.diveSiteNamesByShopId = new Map([['site', ['Cape Kri']]])
+  it('single exact section when no diveTypes filter', () => {
+    const ctx = buildSearchMatchContext({ country: 'Fiji' })
     const groups = groupShopsByMatchReason(
       [
-        shop({ id: 'gen', type: 'Liveaboard' }),
-        shop({ id: 'city', city: 'Ampat Bay' }),
-        shop({ id: 'site', business_name: 'Site Shop' })
+        shop({ id: 'a', type: 'Liveaboard' }),
+        shop({ id: 'b', type: 'Dive Resort' })
       ],
       ctx
     )
-    expect(groups.map(g => g.id)).toEqual(['general', 'dive_site', 'city'])
-  })
-
-  it('business_name section when name token matches', () => {
-    const ctx = buildSearchMatchContext({ place: 'Ampat' })
-    const groups = groupShopsByMatchReason(
-      [shop({ business_name: 'Ampat Adventures', city: 'Sorong' })],
-      ctx
-    )
-    expect(groups.some(g => g.id === 'business_name')).toBe(true)
+    expect(groups).toHaveLength(1)
+    expect(groups[0]?.id).toBe('exact')
+    expect(groups[0]?.shops).toHaveLength(2)
   })
 })
