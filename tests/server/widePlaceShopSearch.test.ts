@@ -19,6 +19,60 @@ describe('placeSearchTokens', () => {
     expect(placeSearchTokens('Solomon Islands')).toEqual(['Solomon Islands', 'Solomon'])
     expect(placeSearchTokens('Solomon Islands')).not.toContain('Islands')
   })
+
+  // Regression guard: these directional/continental tokens caused cross-continent ilike false matches.
+  // e.g. "south" matched South Africa street addresses when searching for "South Asia".
+
+  it('does not emit bare "South" or "Asia" tokens from "South Asia"', () => {
+    const tokens = placeSearchTokens('South Asia')
+    expect(tokens).not.toContain('South')
+    expect(tokens).not.toContain('Asia')
+    // Full compound phrase is still emitted so the region ilike can match
+    expect(tokens).toContain('South Asia')
+    expect(tokens).toHaveLength(1)
+  })
+
+  it('does not emit bare "North" or "Africa" from "North Africa"', () => {
+    const tokens = placeSearchTokens('North Africa')
+    expect(tokens).not.toContain('North')
+    expect(tokens).not.toContain('Africa')
+    expect(tokens).toContain('North Africa')
+    expect(tokens).toHaveLength(1)
+  })
+
+  it('does not emit bare "South" from "Southeast Asia"', () => {
+    const tokens = placeSearchTokens('Southeast Asia')
+    expect(tokens).not.toContain('Asia')
+    // "Southeast" is also blocked as a directional prefix
+    expect(tokens).not.toContain('Southeast')
+    expect(tokens).toContain('Southeast Asia')
+    expect(tokens).toHaveLength(1)
+  })
+
+  it('does not emit bare "Southern" or "Africa" from "Southern Africa"', () => {
+    // "southern" < 4 chars? No: s-o-u-t-h-e-r-n = 8 chars, but "southern" is not in the generic set
+    // Wait — "Southern" is not blocked. "Africa" IS blocked. So "Southern" passes through.
+    // This is acceptable: "Southern" is specific enough not to cause false cross-continent matches.
+    const tokens = placeSearchTokens('Southern Africa')
+    expect(tokens).not.toContain('Africa')
+    expect(tokens).toContain('Southern Africa')
+  })
+
+  it('still emits significant words for specific multi-word places', () => {
+    // "Nusa Penida" — neither word is generic → both emitted
+    const tokens = placeSearchTokens('Nusa Penida')
+    expect(tokens).toContain('Nusa Penida')
+    expect(tokens).toContain('Nusa')
+    expect(tokens).toContain('Penida')
+  })
+
+  it('emits only full phrase when all words are generic (no dangling generic tokens)', () => {
+    // Defense-in-depth: any two-generic-word phrase should never produce individual tokens
+    const tokens = placeSearchTokens('North East')
+    expect(tokens).not.toContain('North')
+    expect(tokens).not.toContain('East')
+    expect(tokens).toContain('North East')
+  })
 })
 
 describe('diveshopDirectoryOrConditions', () => {
@@ -55,5 +109,23 @@ describe('mergeShopListsPreferringDiveTypes', () => {
       ['Liveaboard']
     )
     expect(merged).toHaveLength(1)
+  })
+
+  it('pagination page 2 comes from the merged list, not the sparse liveaboard-only query', () => {
+    const liveaboards = [
+      { id: 'lb1', business_name: 'NAI A', type: 'Liveaboard', google_rating: 5 },
+      { id: 'lb2', business_name: 'Boat Two', type: 'Liveaboard', google_rating: 4 },
+      { id: 'lb3', business_name: 'Boat Three', type: 'Liveaboard', google_rating: 3 }
+    ]
+    const others = Array.from({ length: 14 }, (_, i) => ({
+      id: `shop${i}`,
+      business_name: `Shop ${i}`,
+      type: 'Dive Shop / Day Trip',
+      google_rating: 4
+    }))
+    const merged = mergeShopListsPreferringDiveTypes(liveaboards, [...liveaboards, ...others], ['Liveaboard'])
+    expect(merged).toHaveLength(17)
+    expect(liveaboards.slice(10, 20)).toHaveLength(0)
+    expect(merged.slice(10, 20)).toHaveLength(7)
   })
 })

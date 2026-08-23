@@ -108,34 +108,49 @@
                     </button>
                   </div>
 
-                  <!-- Shop results (grouped by secondary match reason) -->
+                  <!-- Shop results: exact trip-type matches, then optional wider fill-in -->
                   <div v-if="msg.shops && msg.shops.length > 0" class="flex flex-col gap-4 md:p-2">
-                    <div
+                    <template
                       v-for="(group, gi) in searchResultGroupsForMessage(msg)"
                       :key="`${index}-${group.id}`"
-                      class="flex flex-col gap-2"
                     >
-                      <div class="flex items-center gap-2 text-sm text-zinc-600">
-                        <span class="font-medium">{{ group.title }}</span>
+                      <div
+                        v-if="group.id === 'other' && searchEmptyExactActivityVisible(msg)"
+                        class="text-sm font-medium text-zinc-600 dark:text-zinc-400"
+                      >
+                        No matches found
                       </div>
-                      <div class="grid grid-cols-1 gap-2">
+                      <hr
+                        v-if="group.id === 'other' && searchResultGroupHeadingsVisible(msg)"
+                        data-search-exact-other-divider
+                        class="border-0 border-t border-zinc-700 my-8 dark:border-zinc-800"
+                      >
+                      <div class="flex flex-col gap-2">
                         <div
-                          v-for="(shop, si) in group.shops"
-                          :key="shop.id"
-                          class="chat-shop-card-stagger min-w-0"
-                          :style="{ animationDelay: `${msg.streamingShopsPending ? 0 : (groupStaggerOffset(msg, gi) + si) * 80}ms` }"
+                          v-if="searchResultGroupHeadingsVisible(msg)"
+                          class="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400"
                         >
-                          <CardSearchResult
-                            :shop="shop"
-                            :active="selectedShopId === shop.id"
-                            :match-badges="msg.searchMatchBadges"
-                            :search-filters="msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : undefined"
-                            @start-booking="handleStartBookingFromCard"
-                            @view-details="handleViewDetails"
-                          />
+                          <span class="font-medium">{{ searchResultGroupTitle(msg, group) }}</span>
+                        </div>
+                        <div class="grid grid-cols-1 gap-2">
+                          <div
+                            v-for="(shop, si) in group.shops"
+                            :key="shop.id"
+                            class="chat-shop-card-stagger min-w-0"
+                            :style="{ animationDelay: `${msg.streamingShopsPending ? 0 : (groupStaggerOffset(msg, gi) + si) * 80}ms` }"
+                          >
+                            <CardSearchResult
+                              :shop="shop"
+                              :active="selectedShopId === shop.id"
+                              :match-badges="msg.searchMatchBadges"
+                              :search-filters="msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : undefined"
+                              @start-booking="handleStartBookingFromCard"
+                              @view-details="handleViewDetails"
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </template>
 
                     <!-- Results summary: show which range we're on (e.g. results 11–15 of 16) -->
                     <div v-if="msg.totalResults && msg.totalResults > msg.shops.length" class="text-sm text-zinc-500">
@@ -413,7 +428,12 @@ import {
 import { mergeProfileContactIntoBookingPayload } from '~~/shared/mergeProfileContactIntoBookingPayload'
 import { advanceStaleContactPromptsAfterProfileMerge } from '~/utils/advanceBookingChatAfterProfileMerge'
 import { buildSearchMatchBadges } from '~~/shared/searchMatchBadges'
-import { buildSearchMatchContext, groupShopsByMatchReason } from '~~/shared/searchResultGroups'
+import {
+  buildSearchMatchContext,
+  groupShopsByMatchReason,
+  hasEmptyExactWithOtherGroups,
+  SEARCH_MATCH_GROUP_LABEL_OTHER_FOUND
+} from '~~/shared/searchResultGroups'
 import {
   emptyTripRequirements,
   mergeTripRequirements,
@@ -1513,30 +1533,40 @@ onUnmounted(() => {
 watch([messages, userInput, preferGuidedThisSession, guidedSearchState, guidedBookingHints, tripRequirements], persistCache, { deep: true })
 watch([selectedShopId, detailDrawerShopId, isOpen, drawerData], persistCache, { deep: true })
 
-// Auto-scroll to bottom when new messages arrive
+// Auto-scroll when new messages arrive; stop at exact/other divider when present.
+function getLatestExactOtherDivider () {
+  const container = messagesContainer.value
+  if (!container) return null
+  const dividers = container.querySelectorAll('[data-search-exact-other-divider]')
+  return dividers.length ? dividers[dividers.length - 1] : null
+}
+
+function scrollContainerToDividerBottom (container, divider) {
+  const containerRect = container.getBoundingClientRect()
+  const dividerRect = divider.getBoundingClientRect()
+  const targetTop = container.scrollTop + (dividerRect.bottom - containerRect.bottom)
+  container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' })
+}
+
 const scrollToBottom = async () => {
   await nextTick()
-  // Use requestAnimationFrame to ensure DOM is fully rendered
-  requestAnimationFrame(() => {
-    if (messagesContainer.value) {
-      const container = messagesContainer.value
-      // Use scrollTo for better browser compatibility
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: 'smooth'
-      })
+  const runScroll = () => {
+    const container = messagesContainer.value
+    if (!container) return
+    const divider = getLatestExactOtherDivider()
+    if (divider) {
+      scrollContainerToDividerBottom(container, divider)
+      return
     }
-  })
-  // Fallback: try again after a short delay in case content is still loading
-  setTimeout(() => {
-    if (messagesContainer.value) {
-      const container = messagesContainer.value
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: 'smooth'
-      })
-    }
-  }, 150)
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'smooth'
+    })
+  }
+  requestAnimationFrame(runScroll)
+  // Retry after layout + card stagger so the divider position is stable.
+  setTimeout(runScroll, 150)
+  setTimeout(runScroll, 450)
 }
 
 // Watch for message updates and auto-scroll
@@ -1577,6 +1607,25 @@ function searchResultGroupsForMessage (msg) {
     msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : {}
   const ctx = buildSearchMatchContext(filters)
   return groupShopsByMatchReason(shops, ctx)
+}
+
+function searchResultGroupHeadingsVisible (msg) {
+  return searchResultGroupsForMessage(msg).some(g => g.id === 'other')
+}
+
+function searchEmptyExactActivityVisible (msg) {
+  const filters =
+    msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : {}
+  if (!(filters.activityTokens?.length)) return false
+  return hasEmptyExactWithOtherGroups(searchResultGroupsForMessage(msg))
+}
+
+function searchResultGroupTitle (msg, group) {
+  if (group.id !== 'other') return group.title
+  const groups = searchResultGroupsForMessage(msg)
+  const hasExact = groups.some(g => g.id === 'exact')
+  if (!hasExact) return SEARCH_MATCH_GROUP_LABEL_OTHER_FOUND
+  return group.title
 }
 
 function groupStaggerOffset (msg, groupIndex) {

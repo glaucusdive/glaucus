@@ -85,6 +85,7 @@
 import { computed } from 'vue'
 import { Star, MapPin, Globe, Phone, Mail, ChevronUp } from 'lucide-vue-next'
 import { computeCardSearchPills } from '~~/shared/cardSearchPills'
+import { matchBadgesForShopCard } from '~~/shared/searchMatchBadges'
 import { formatShopCityState } from '~~/shared/bookShopPick'
 
 const props = defineProps({
@@ -116,6 +117,16 @@ const locationLine = computed(() => {
   return [cityState, country].filter(Boolean).join(', ')
 })
 
+const cardMatchBadges = computed(() =>
+  matchBadgesForShopCard(
+    Array.isArray(props.matchBadges) ? props.matchBadges : undefined,
+    props.searchFilters && typeof props.searchFilters === 'object' && !Array.isArray(props.searchFilters)
+      ? props.searchFilters
+      : null,
+    props.shop?.searchMatchGroup
+  )
+)
+
 const cardPills = computed(() =>
   computeCardSearchPills({
     shopTypeRaw: typeof props.shop?.type === 'string' ? props.shop.type : undefined,
@@ -123,7 +134,7 @@ const cardPills = computed(() =>
     cardDiveSiteTypeNames: Array.isArray(props.shop?.cardDiveSiteTypeNames)
       ? props.shop.cardDiveSiteTypeNames
       : undefined,
-    matchBadges: Array.isArray(props.matchBadges) ? props.matchBadges : undefined,
+    matchBadges: cardMatchBadges.value,
     searchFilters: props.searchFilters && typeof props.searchFilters === 'object' && !Array.isArray(props.searchFilters)
       ? props.searchFilters
       : null
