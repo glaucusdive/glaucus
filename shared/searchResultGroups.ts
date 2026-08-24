@@ -54,7 +54,7 @@ export function buildSearchMatchContext (
   }
 }
 
-function shopMatchesTripType (shop: ShopForMatchGroup, diveTypes?: string[] | null): boolean {
+export function shopMatchesTripType (shop: ShopForMatchGroup, diveTypes?: string[] | null): boolean {
   if (!diveTypes?.length) return true
   const t = String(shop.type ?? '').toLowerCase()
   return diveTypes.some(dt => t.includes(String(dt).toLowerCase()))
