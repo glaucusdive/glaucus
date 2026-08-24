@@ -112,12 +112,135 @@
           </table>
         </div>
       </section>
+
+      <section v-if="data" class="mt-8">
+        <h2 class="text-base font-semibold text-zinc-900 dark:text-white">
+          Bookings
+          <span class="ml-1 text-sm font-normal text-zinc-500 dark:text-zinc-400">
+            ({{ data.bookingRows.length }})
+          </span>
+        </h2>
+
+        <div class="mt-4 overflow-x-auto">
+          <table class="w-full min-w-[28rem] border border-zinc-300 text-sm dark:border-zinc-700 rounded-md overflow-hidden">
+            <thead>
+              <tr class="border-b border-zinc-300 bg-zinc-50 text-left dark:border-zinc-700 dark:bg-zinc-900/50">
+                <th class="px-4 py-2 font-medium text-zinc-600 dark:text-zinc-400">Name</th>
+                <th class="px-4 py-2 font-medium text-zinc-600 dark:text-zinc-400">Date booked</th>
+                <th class="px-4 py-2 font-medium text-zinc-600 dark:text-zinc-400">View</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="!data.bookingRows.length">
+                <td colspan="3" class="px-4 py-8 text-center text-zinc-500 dark:text-zinc-400">
+                  No bookings in this period.
+                </td>
+              </tr>
+              <tr
+                v-for="row in data.bookingRows"
+                :key="row.id"
+                class="border-b border-zinc-200 last:border-b-0 dark:border-zinc-800"
+              >
+                <td class="px-4 py-2 text-zinc-900 dark:text-white">
+                  {{ row.name }}
+                </td>
+                <td class="px-4 py-2 text-zinc-700 dark:text-zinc-300">
+                  {{ formatDashboardDate(row.sentAt) }}
+                </td>
+                <td class="px-4 py-2">
+                  <Button variant="secondary" @click="openBookingDrawer(row)">
+                    View
+                  </Button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
+
+    <BottomSheetDrawer
+      :open="!!selectedBooking"
+      :aria-label="bookingDrawerAriaLabel"
+      z-index-class="z-[60]"
+      sheet-height-class="max-h-[92dvh]"
+      @update:open="(v) => { if (!v) closeBookingDrawer() }"
+    >
+      <header class="flex items-center justify-between gap-2 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+        <h2 class="min-w-0 truncate text-base font-semibold text-zinc-900 dark:text-white">
+          {{ selectedBooking?.name || 'Booking' }}
+        </h2>
+        <button
+          type="button"
+          class="rounded-md p-1.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800 cursor-pointer"
+          aria-label="Close"
+          @click="closeBookingDrawer"
+        >
+          <span class="text-lg leading-none">×</span>
+        </button>
+      </header>
+      <div v-if="selectedBooking" class="overflow-y-auto grow px-4 py-4">
+        <dl class="space-y-3 text-sm">
+          <div>
+            <dt class="font-medium text-zinc-500 dark:text-zinc-400">Dive shop</dt>
+            <dd class="mt-0.5 text-zinc-900 dark:text-white">
+              {{ selectedBooking.shopName || '—' }}
+            </dd>
+          </div>
+          <div>
+            <dt class="font-medium text-zinc-500 dark:text-zinc-400">Sent to</dt>
+            <dd class="mt-0.5 text-zinc-900 dark:text-white">
+              {{ selectedBooking.shopEmail || '—' }}
+            </dd>
+          </div>
+          <div>
+            <dt class="font-medium text-zinc-500 dark:text-zinc-400">Date booked</dt>
+            <dd class="mt-0.5 text-zinc-900 dark:text-white">
+              {{ formatDashboardDate(selectedBooking.sentAt) }}
+            </dd>
+          </div>
+          <div>
+            <dt class="font-medium text-zinc-500 dark:text-zinc-400">Resend · shop email</dt>
+            <dd class="mt-0.5 text-zinc-900 dark:text-white">
+              <a
+                v-if="selectedBooking.resendShopEmailId"
+                :href="resendEmailUrl(selectedBooking.resendShopEmailId)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="break-all underline hover:no-underline"
+              >
+                {{ selectedBooking.resendShopEmailId }}
+              </a>
+              <span v-else>—</span>
+            </dd>
+          </div>
+          <div>
+            <dt class="font-medium text-zinc-500 dark:text-zinc-400">Resend · guest confirmation</dt>
+            <dd class="mt-0.5 text-zinc-900 dark:text-white">
+              <a
+                v-if="selectedBooking.resendUserEmailId"
+                :href="resendEmailUrl(selectedBooking.resendUserEmailId)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="break-all underline hover:no-underline"
+              >
+                {{ selectedBooking.resendUserEmailId }}
+              </a>
+              <span v-else>—</span>
+            </dd>
+          </div>
+        </dl>
+        <pre class="mt-6 whitespace-pre-wrap font-sans text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">{{ selectedBookingDetailText }}</pre>
+      </div>
+    </BottomSheetDrawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import BottomSheetDrawer from '~/components/ui/BottomSheetDrawer.vue'
+import { bookingReviewDetailLines } from '~~/shared/bookingReviewDetailLines'
+import type { BookingReviewPayload } from '~~/shared/bookingReviewDetailLines'
 
 definePageMeta({ layout: 'default', middleware: 'admin' })
 useSeoMeta({
@@ -134,11 +257,24 @@ interface DashboardUserRow {
   bookingsSubmitted: number
 }
 
+interface DashboardBookingRow {
+  id: string
+  name: string
+  sentAt: string | null
+  shopId: string
+  shopName: string | null
+  shopEmail: string | null
+  resendShopEmailId: string | null
+  resendUserEmailId: string | null
+  payload: Record<string, unknown>
+}
+
 interface DashboardResponse {
   range: string
   from: string
   to: string
   bookings: number
+  bookingRows: DashboardBookingRow[]
   users: number
   userRows: DashboardUserRow[]
   newVisitors: number | null
@@ -153,6 +289,30 @@ const loading = ref(true)
 const loadError = ref('')
 const selectedRange = ref('30d')
 const data = ref<DashboardResponse | null>(null)
+const selectedBooking = ref<DashboardBookingRow | null>(null)
+
+const bookingDrawerAriaLabel = computed(() =>
+  selectedBooking.value ? `Booking for ${selectedBooking.value.name}` : 'Booking details'
+)
+
+const selectedBookingDetailText = computed(() => {
+  const row = selectedBooking.value
+  if (!row) return ''
+  const lines = bookingReviewDetailLines(row.payload as BookingReviewPayload)
+  return lines.length ? lines.join('\n') : 'No details collected yet.'
+})
+
+function openBookingDrawer (row: DashboardBookingRow) {
+  selectedBooking.value = row
+}
+
+function closeBookingDrawer () {
+  selectedBooking.value = null
+}
+
+function resendEmailUrl (emailId: string): string {
+  return `https://resend.com/emails/${encodeURIComponent(emailId)}`
+}
 
 function formatCount (n: number | null | undefined): string {
   if (n == null) return '—'
