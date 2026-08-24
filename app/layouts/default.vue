@@ -3,7 +3,7 @@
     class="h-dvh w-dvw overflow-hidden"
     :class="testMode ? 'shadow-[inset_0_2px_0_0px_rgb(245_158_11)]' : ''"
   >
-    <div class="h-full w-full lg:flex lg:flex-row">
+    <div class="flex h-full w-full flex-col lg:flex-row">
       <!-- Backdrop for mobile menu -->
       <Transition @enter="onBackdropEnter" @leave="onBackdropLeave" :css="false">
         <div v-if="isMobileMenuOpen" @click="handleCloseMobileMenu" class="fixed inset-0 bg-black z-40 lg:hidden">
@@ -157,9 +157,15 @@
       </Transition>
 
       <!-- Main Content: flex-1 + min-w-0 only — never w-dvw here or the pane claims full viewport width and hides the sidebar -->
-      <div class="relative flex h-full min-h-0 min-w-0 flex-1 flex-row gap-2 p-2 lg:pl-0">
+      <div
+        class="relative flex h-full min-h-0 min-w-0 flex-1 flex-row gap-2"
+        :class="isAuthRoute ? 'p-0 lg:p-2 lg:pl-0' : 'p-2 lg:pl-0'"
+      >
         <div
-          class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-sm border border-zinc-300 bg-white lg:rounded-xl dark:border-zinc-700 dark:bg-zinc-900">
+          class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+          :class="isAuthRoute
+            ? 'rounded-none border-0 bg-white dark:bg-black lg:rounded-xl lg:border lg:border-zinc-300 lg:bg-white dark:lg:border-zinc-700 dark:lg:bg-zinc-900'
+            : 'rounded-sm border border-zinc-300 bg-white lg:rounded-xl dark:border-zinc-700 dark:bg-zinc-900'">
 
           <div class="flex min-h-0 min-w-0 flex-1 flex-col">
             <slot />
@@ -225,6 +231,7 @@ const testMode = useTestMode()
 
 const route = useRoute()
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
+const isAuthRoute = computed(() => route.path.startsWith('/auth'))
 /** Chat chrome also on auth/profile so it doesn’t vanish while signing in or on account pages. */
 const showChatInSidebar = computed(() => {
   const p = route.path
