@@ -101,13 +101,28 @@ function buildUserConfirmationBody (shopName: string, userEmail: string, shopEma
   ].join('\n')
 }
 
+interface BookingSubmissionEmailMeta {
+  shopEmailTo: string
+  resendShopEmailId: string | null
+  resendUserEmailId: string | null
+}
+
 async function logBookingSubmission (
   event: H3Event,
-  payload: BookingBody
-) {
+  payload: BookingBody,
+  emailMeta: BookingSubmissionEmailMeta
+): Promise<string | null> {
   const sentAt = new Date().toISOString()
   const user = await getAuthUser(event)
   const token = getBearerToken(event)
+  const row = {
+    shop_id: payload.shopId,
+    payload,
+    sent_at: sentAt,
+    shop_email_to: emailMeta.shopEmailTo,
+    resend_shop_email_id: emailMeta.resendShopEmailId,
+    resend_user_email_id: emailMeta.resendUserEmailId
+  }
 
   if (user && token) {
     const config = useRuntimeConfig()
@@ -117,32 +132,50 @@ async function logBookingSubmission (
       token
     )
 
-    const { error } = await client.from('booking_submissions').insert({
+    const { data, error } = await client.from('booking_submissions').insert({
       user_id: user.id,
-      shop_id: payload.shopId,
-      payload,
-      sent_at: sentAt
-    })
+      ...row
+    }).select('id').single()
 
     if (error) {
       console.error('Failed to log booking submission:', error.message)
+      return null
     }
-    return
+    return typeof data?.id === 'string' ? data.id : null
   }
 
   try {
     const serviceClient = getSupabaseServiceRoleClient()
-    const { error } = await serviceClient.from('booking_submissions').insert({
+    const { data, error } = await serviceClient.from('booking_submissions').insert({
       user_id: null,
-      shop_id: payload.shopId,
-      payload,
-      sent_at: sentAt
-    })
+      ...row
+    }).select('id').single()
     if (error) {
       console.error('Failed to log guest booking submission:', error.message)
+      return null
     }
+    return typeof data?.id === 'string' ? data.id : null
   } catch (e: any) {
     console.error('Guest booking log skipped:', e?.message || e)
+    return null
+  }
+}
+
+async function patchBookingSubmissionUserEmailId (
+  submissionId: string,
+  resendUserEmailId: string
+) {
+  try {
+    const serviceClient = getSupabaseServiceRoleClient()
+    const { error } = await serviceClient
+      .from('booking_submissions')
+      .update({ resend_user_email_id: resendUserEmailId })
+      .eq('id', submissionId)
+    if (error) {
+      console.error('Failed to patch booking submission user email id:', error.message)
+    }
+  } catch (e: any) {
+    console.error('Failed to patch booking submission user email id:', e?.message || e)
   }
 }
 
@@ -299,16 +332,21 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  await logBookingSubmission(event, payload)
+  const submissionId = await logBookingSubmission(event, payload, {
+    shopEmailTo: shopEmail,
+    resendShopEmailId: typeof toShop?.id === 'string' ? toShop.id : null,
+    resendUserEmailId: null
+  })
   await clearMatchingDraftIfAuthenticated(event, payload)
 
   const userSubject = `We've sent your booking request to ${shopName}`
   const userText = buildUserConfirmationBody(shopName, email, shopEmail)
   let errUser: { message?: string } | null = null
+  let toUser: { id?: string } | null = null
   try {
-    await runWithRetries(
+    toUser = await runWithRetries(
       async () => {
-        const { error } = await resend.emails.send({
+        const { data, error } = await resend.emails.send({
           from: fromEmail,
           to: [email],
           replyTo: shopEmail,
@@ -318,6 +356,7 @@ export default defineEventHandler(async (event) => {
         if (error) {
           throw new Error(error.message || 'Failed to send confirmation email')
         }
+        return data
       },
       {
         maxAttempts: 4,
@@ -331,6 +370,10 @@ export default defineEventHandler(async (event) => {
     errUser = { message: e?.message }
   }
 
+  if (!errUser && submissionId && typeof toUser?.id === 'string') {
+    await patchBookingSubmissionUserEmailId(submissionId, toUser.id)
+  }
+
   if (errUser) {
     return {
       sent: true,
@@ -341,6 +384,7 @@ export default defineEventHandler(async (event) => {
 
   return {
     sent: true,
-    message: 'Booking request sent. Check your email for confirmation.'
+    message: 'Booking request sent. Check your email for confirmation.',
+    emailId: toShop?.id
   }
 })
