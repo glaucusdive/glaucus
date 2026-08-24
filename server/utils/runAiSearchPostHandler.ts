@@ -67,6 +67,7 @@ import {
   sliceSearchShopPage
 } from '../utils/fetchSearchShopsWithSparseWiden'
 import { capSparseWidenShopList, buildSearchMatchContext } from '../../shared/searchResultGroups'
+import { formatHereAreOperatorsInPlace } from '../../shared/searchOperatorNoun'
 import { filtersWithActivityMatchContext, formatNoActivityMatchesMessage } from '../utils/searchActivityWidenMessage'
 import { normalizeClientSearchFilters } from '../utils/normalizeClientSearchFilters'
 import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from '../utils/openAiChatModel'
@@ -943,19 +944,30 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           pushActivity('probe', formatGeoDirectoryQueryLine(placeLabel, geoList.length))
           if (!geoError && geoList.length > 0) {
             const countryOnly = isCountryOnlyGeoFilters(geoFilters)
+            const geoIntro = formatHereAreOperatorsInPlace({
+              place: placeLabel,
+              diveTypes: preferredDiveTypes,
+              count: geoList.length,
+              shops: geoList,
+              widenedTripType
+            })
             const geoMessage = widenedActivity && activityExactShopIds.length === 0
               ? formatNoActivityMatchesMessage(geoFilters)
-              : widenedTripType
-                ? `Here are dive shops in ${placeLabel}. ${preferredDiveTypes?.join(', ') ?? 'Your trip type'} matches are listed first; we also included other operators in the area.`
-                : `Here are dive shops in ${placeLabel}.`
+              : geoIntro
             // Destination-only query: always show options — never auto-book a single geo match.
             logIntentTurn('search')
+            const pickIntro = formatHereAreOperatorsInPlace({
+              place: placeLabel,
+              diveTypes: preferredDiveTypes,
+              count: geoList.length,
+              shops: geoList,
+              placeQualifier:
+                geoList.length > 1 && !countryOnly ? ' (matched by location, not just name)' : undefined
+            })
             const pickMessage =
               geoList.length === 1
-                ? `Here is a dive shop in ${placeLabel}. Pick one to start booking, or name a city or area to narrow down.`
-                : countryOnly
-                  ? `Here are dive shops in ${placeLabel}. Which one would you like to book?`
-                  : `Here are dive shops in ${placeLabel} (matched by location, not just name). Which one would you like to book?`
+                ? `${pickIntro} Pick one to start booking, or name a city or area to narrow down.`
+                : `${pickIntro} Which one would you like to book?`
             return withAgentMeta({
               ...(await formatEntitySearchResponse(
                 supabaseUrl,
@@ -1720,9 +1732,12 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                   supabaseKey,
                   browseFilters,
                   browseList,
-                  browseList.length === 1
-                    ? `Here is a dive shop in ${placeLabel}. Pick one to start booking.`
-                    : `Here are dive shops in ${placeLabel}. Pick one to start booking.`
+                  `${formatHereAreOperatorsInPlace({
+                    place: placeLabel,
+                    diveTypes: browseFilters.diveTypes,
+                    count: browseList.length,
+                    shops: browseList as Array<{ type?: string | null }>
+                  })} Pick one to start booking.`
                 )),
                 intent: 'search' as const,
                 shopId: undefined,
