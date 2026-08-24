@@ -122,6 +122,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.82.7** — Use liveaboards / dive resorts / dive shops in the search-results sentence from the trip-type filter (skip “other operators” when every listed shop still matches) (2026-08-23).
 - **0.82.6** — Fix cave/cavern activity matching (collapse NLU synonym tokens; reclassify widened shops; drop misleading search badges on wider-match cards) (2026-08-17).
 - **0.82.5** — Activity sparse-widen: show “No matches found” and “Other matches found” when cave/activity filters have zero tight matches but geo fill-in shops exist (2026-08-17).
 - **0.82.4** — Cap wider search fill-in to three shops when there is a single exact trip-type match; add divider between exact and other sections (2026-08-16).
