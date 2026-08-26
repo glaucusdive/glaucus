@@ -1,0 +1,86 @@
+{
+  "version": "1.0",
+  "suite": "tier1_alias_and_filter_normalization",
+  "notes": "Beta regression dataset for deterministic alias normalization (country + dive type).",
+  "countryAliasMap": {
+    "fiji": "Fiji",
+    "usa": "United States",
+    "u.s.a": "United States",
+    "united states": "United States",
+    "bahamas": "Bahamas",
+    "bahama": "Bahamas"
+  },
+  "cases": [
+    {
+      "id": "liveboard_in_fiji",
+      "message": "I want liveboard in Fiji",
+      "inputFilters": {
+        "country": null,
+        "place": "Fiji",
+        "diveTypes": [
+          "liveboard"
+        ]
+      },
+      "expectedNormalizedFilters": {
+        "country": "Fiji",
+        "place": null,
+        "region": null,
+        "minRating": null,
+        "languages": null,
+        "diveTypes": [
+          "Liveaboard"
+        ],
+        "activityTokens": null
+      },
+      "assertMode": "exact"
+    },
+    {
+      "id": "resorts_in_usa",
+      "message": "show resorts in USA",
+      "inputFilters": {
+        "country": "USA",
+        "place": null,
+        "diveTypes": [
+          "resort"
+        ]
+      },
+      "expectedNormalizedFilters": {
+        "country": "United States",
+        "place": null,
+        "region": null,
+        "minRating": null,
+        "languages": null,
+        "diveTypes": [
+          "Dive Resort"
+        ],
+        "activityTokens": null
+      },
+      "assertMode": "exact"
+    },
+    {
+      "id": "day_trips_in_the_bahamas",
+      "message": "day trips in the bahamas",
+      "inputFilters": {
+        "country": null,
+        "place": "the bahamas",
+        "diveTypes": [
+          "day trips"
+        ]
+      },
+      "expectedNormalizedFilters": {
+        "country": "Bahamas",
+        "place": null,
+        "region": null,
+        "minRating": null,
+        "languages": null,
+        "diveTypes": [
+          "Dive Shop"
+        ],
+        "activityTokens": null
+      },
+      "assertMode": "exact"
+    }
+  ]
+}
+
+

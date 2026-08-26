@@ -72,6 +72,12 @@ yarn preview
 bun run preview
 ```
 
+# Kill the process by finding its port (if you know which port it's using)
+lsof -ti:3000 | xargs kill -9   # Replace 3000 with your actual port
+
+# Or find and kill by process name
+killall node
+
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
 
 ## Environment variables
@@ -105,6 +111,27 @@ PostHog dashboards: [docs/posthog-dashboard-prompts.md](docs/posthog-dashboard-p
 - **`NUXT_PUBLIC_DISABLE_CHAT_AI`** — set to `true` to turn off NLU and GPT-5.5 chat (search + booking LLM). Defaults to **`false`** (dev and production); set `true` on a deploy for chip-only / no model spend. Requires **`NUXT_OPENAI_API_KEY`** or **`OPENAI_API_KEY`** when chat AI is enabled.
 - **Test mode** — `runtimeConfig.public.testMode` in `nuxt.config.ts` as a **boolean** (`true` / `false`). When on: amber shell inset, booking sends only to Dive Porter / Dive Shash, dive shop Live/Demo toggle, chat “Step back.” Optional env override: **`NUXT_PUBLIC_TEST_MODE`** (`true` or `false` as a string).
 - Users can switch back to step-by-step chips for the session from the empty-state link (“Prefer step-by-step chips instead”).
+
+### Python orchestrator mode (optional)
+
+`/api/guided-orchestrator` now supports runtime mode switching via:
+
+- **`ORCHESTRATOR_MODE=ts`** (default) — current TypeScript orchestrator path (`runAiSearchPostHandler.ts`).
+- **`ORCHESTRATOR_MODE=python`** — primary path calls Python `POST /agents/orchestrator`.
+- **`ORCHESTRATOR_MODE=hybrid`** — TypeScript remains primary; Python orchestrator runs as a shadow call for comparison/observability.
+
+TypeScript-side connection settings:
+
+- **`NUXT_PYTHON_AGENTS_URL`** (preferred) — base URL of deployed Python agents service.
+- **`PYTHON_AGENTS_URL`** (fallback) — used if `NUXT_PYTHON_AGENTS_URL` is not set.
+
+Current behavior notes:
+
+- In `ts` mode, app works without Python deployed.
+- In `python` mode, Python availability is required (no automatic TS fallback in current implementation).
+- In `hybrid` mode, user response comes from TS path; Python runs in background and logs failures.
+
+If using `python` or `hybrid`, also configure the Python service itself (`python-agents/.env`) including its model keys and Supabase env vars for DB probe/search.
 
 ## Versioning
 

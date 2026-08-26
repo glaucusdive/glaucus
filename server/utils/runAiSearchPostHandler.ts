@@ -425,6 +425,11 @@ export interface RequestBody {
 export type RunAiSearchPostHandlerOptions = {
   body?: RequestBody
   onActivityLine?: (label: string) => void
+  /**
+   * Pre-computed NLU interpretTurn from Python orchestrator.
+   * When provided, the TS NLU LLM call is skipped and this value is used directly.
+   */
+  preComputedInterpretTurn?: InterpretedTurn
 }
 
 function inferAlreadyShownForPagination (history: Message[], shopsAlreadyShownCount: number | undefined): number {
@@ -702,9 +707,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
         activityLog: [] as { stage: string; label: string; at: number }[],
         reasoningSummary: undefined as string | undefined
       }
-      let interpretTurn: InterpretedTurn | null = null
-      let interpretNluRan = false
-      let interpretNluOk = false
+      let interpretTurn: InterpretedTurn | null = options?.preComputedInterpretTurn ?? null
+      let interpretNluRan = interpretTurn != null
+      let interpretNluOk = interpretTurn != null
       let bookingReadiness: BookingReadinessResult | null = null
       let allowAutoBook = !!continuingBooking
       const logIntentTurn = (routedIntent: string) => {
@@ -850,7 +855,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
         // forced.kind === 'browse': fall through to normal search flow (trip-type / LLM)
       } else if (!continuingBooking && !clarifyChoice && supabaseUrl && supabaseKey) {
         const referredPhraseRegex = extractReferredEntityPhrase(message) ?? extractBookingTargetFallback(message)
-        if (!chatAiOff && shouldRunInterpretNlu(message, wantsToBookRegex, referredPhraseRegex)) {
+        if (!interpretNluRan && !chatAiOff && shouldRunInterpretNlu(message, wantsToBookRegex, referredPhraseRegex)) {
           interpretNluRan = true
           const ir = await interpretUserTurn({
             message,
