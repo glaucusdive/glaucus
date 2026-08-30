@@ -5,6 +5,8 @@ export type UseBlogPostsOptions = {
   limit?: number | null
   slug?: string
   includeDrafts?: boolean
+  /** Skip Supabase fetch during SSR (e.g. landing page blog strip). */
+  clientOnly?: boolean
 }
 
 function mapCard (row: Record<string, unknown>): BlogPostCard {
@@ -35,6 +37,7 @@ type OptionsInput = UseBlogPostsOptions | (() => UseBlogPostsOptions)
 export function useBlogPosts (options: OptionsInput = {}) {
   const { client } = useSupabase()
   const resolved = computed(() => (typeof options === 'function' ? options() : options))
+  const skipServer = (typeof options === 'function' ? options() : options).clientOnly === true
 
   const { data, pending, error, refresh } = useAsyncData(
     () => {
@@ -79,7 +82,10 @@ export function useBlogPosts (options: OptionsInput = {}) {
       const posts = (rows ?? []).map(r => mapCard(r as Record<string, unknown>))
       return { post: null as BlogPost | null, posts }
     },
-    { watch: [resolved] }
+    {
+      watch: [resolved],
+      server: !skipServer
+    }
   )
 
   const post = computed(() => data.value?.post ?? null)

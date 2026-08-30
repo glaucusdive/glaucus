@@ -4,7 +4,21 @@
     :class="fill ? 'h-full w-full' : 'w-xs md:w-sm lg:w-md xl:w-lg'"
   >
     <div class="relative flex items-center justify-center">
-      <img class="z-0 block aspect-video" :src="image" :alt="imageAlt" />
+      <img
+        v-if="image"
+        class="z-0 block aspect-video w-full object-cover"
+        :src="image"
+        :alt="imageAlt"
+        width="800"
+        height="450"
+        loading="lazy"
+        decoding="async"
+      >
+      <div
+        v-else
+        class="z-0 block aspect-video w-full bg-zinc-900"
+        aria-hidden="true"
+      />
       <div
         class="pointer-events-none absolute inset-0 z-10 bg-linear-to-b from-[#101214]/0 to-[#101214]"
         aria-hidden="true"

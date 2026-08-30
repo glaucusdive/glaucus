@@ -2,15 +2,18 @@
   <main ref="mainRef" class="bg-[#101214] relative z-10">
     <LandingHeader />
     <section id="hero" class="relative min-h-[50dvh] h-[calc(65dvh-80px)] px-4 sm:px-8 lg:px-20 overflow-hidden after:h-20 after:w-full after:bottom-0 after:left-0 after:absolute after:pointer-events-none after:bg-gradient-to-b after:from-[#101214]/0 after:to-[#101214] after:content-[''] after:z-[1]">
-      <img
-        src="/images/landing/glaucus-bg-hero-waves.jpg"
-        alt=""
-        width="3456"
-        height="3850"
-        fetchpriority="high"
-        decoding="async"
-        class="pointer-events-none absolute inset-0 h-full w-full object-cover object-top"
-      >
+      <picture>
+        <source type="image/webp" srcset="/images/landing/glaucus-bg-hero-waves.webp">
+        <img
+          src="/images/landing/glaucus-bg-hero-waves.jpg"
+          alt=""
+          width="1149"
+          height="1280"
+          fetchpriority="high"
+          decoding="async"
+          class="pointer-events-none absolute inset-0 h-full w-full object-cover object-top"
+        >
+      </picture>
       <div class="relative z-[2] grid grid-cols-12 gap-4 items-center h-full">
         <div class="col-span-12 lg:col-span-8 lg:col-start-3">
           <div class="flex flex-col gap-2">
@@ -99,8 +102,8 @@
           <img
             src="/images/landing/glaucus-bg-whatisglaucus.jpg"
             alt=""
-            width="1797"
-            height="1920"
+            width="1198"
+            height="1280"
             loading="lazy"
             decoding="async"
             class="h-full w-full object-cover object-top-right sm:object-top"
@@ -230,10 +233,11 @@
 
 <script setup>
 import gsap from 'gsap'
-import { computed, nextTick, onBeforeMount, onMounted, onUnmounted, ref, shallowRef } from 'vue'
-import ChatComposer from '~/components/chat/ChatComposer.vue'
+import { computed, defineAsyncComponent, nextTick, onBeforeMount, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 
-const { posts: blogPosts, pending: blogPending } = useBlogPosts(() => ({ limit: 5 }))
+const ChatComposer = defineAsyncComponent(() => import('~/components/chat/ChatComposer.vue'))
+
+const { posts: blogPosts, pending: blogPending } = useBlogPosts(() => ({ limit: 5, clientOnly: true }))
 
 useSeoMeta({
   title: 'Your scuba life, simplified',
@@ -247,7 +251,8 @@ useHead({
     {
       rel: 'preload',
       as: 'image',
-      href: '/images/landing/glaucus-bg-hero-waves.jpg',
+      href: '/images/landing/glaucus-bg-hero-waves.webp',
+      type: 'image/webp',
       fetchpriority: 'high'
     }
   ]

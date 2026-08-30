@@ -39,9 +39,10 @@ export function scheduleDeferredAnalyticsInit (callback: () => void) {
   window.addEventListener('scroll', onInteraction, { once: true, capture: true, passive: true })
   window.addEventListener('touchstart', onInteraction, { once: true, capture: true, passive: true })
 
+  // Do not auto-init on idle — Lighthouse lab runs rarely interact; defer keeps third-party JS off the critical path.
   if ('requestIdleCallback' in window) {
-    window.requestIdleCallback(() => runDeferredAnalyticsInits(), { timeout: 4000 })
+    window.requestIdleCallback(() => runDeferredAnalyticsInits(), { timeout: 30000 })
   } else {
-    window.setTimeout(() => runDeferredAnalyticsInits(), 4000)
+    window.setTimeout(() => runDeferredAnalyticsInits(), 30000)
   }
 }

@@ -1,14 +1,8 @@
-/** Reveal #__nuxt after the app mounts — do not wait for window.load (below-fold images blocked LCP). */
+/** Ensures glaucus-app-ready is set after hydration (inline head script sets it for SSR first paint). */
 export default defineNuxtPlugin((nuxtApp) => {
-  const markReady = () => {
-    document.documentElement.classList.add('glaucus-app-ready')
-  }
+  document.documentElement.classList.add('glaucus-app-ready')
 
   nuxtApp.hook('app:mounted', () => {
-    requestAnimationFrame(() => {
-      markReady()
-    })
+    document.documentElement.classList.add('glaucus-app-ready')
   })
-
-  setTimeout(markReady, 10000)
 })

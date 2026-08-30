@@ -9,7 +9,12 @@ export default defineNuxtConfig({
       style: [
         {
           id: 'glaucus-boot',
-          innerHTML: `html,body{margin:0;background-color:#000;color:#fff}html:not(.glaucus-app-ready) #__nuxt{visibility:hidden}`
+          innerHTML: 'html,body{margin:0;background-color:#000;color:#fff}'
+        }
+      ],
+      script: [
+        {
+          innerHTML: 'document.documentElement.classList.add("glaucus-app-ready")'
         }
       ]
     }

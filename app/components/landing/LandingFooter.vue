@@ -25,8 +25,8 @@
       <img
         src="/images/landing/glaucus-bg-footer.jpg"
         alt=""
-        width="3456"
-        height="2430"
+        width="1280"
+        height="900"
         loading="lazy"
         decoding="async"
         class="h-full w-full object-cover object-bottom-right lg:object-top"
