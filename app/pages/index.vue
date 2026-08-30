@@ -14,6 +14,7 @@
 <script setup>
 import { defineAsyncComponent } from 'vue'
 import ChatHomeLoadingShell from '~/components/chat/ChatHomeLoadingShell.vue'
+import { hasSupabaseAuthCookie } from '~/utils/hasSupabaseAuthCookie'
 
 definePageMeta({ layout: false })
 
@@ -30,8 +31,15 @@ const { capture, AnalyticsEvents } = useAnalytics()
 
 const chatOpenedTracked = ref(false)
 
-/** False until client auth `init()` finishes — show neutral shell, not marketing. */
-const authResolved = ref(false)
+/** Hydrated from SSR cookie heuristic — guests render LandingHome immediately. */
+const hasAuthCookie = useState('indexHasAuthCookie', () => false)
+
+if (import.meta.server) {
+  const headers = useRequestHeaders(['cookie'])
+  hasAuthCookie.value = hasSupabaseAuthCookie(headers.cookie)
+}
+
+const authResolved = ref(!hasAuthCookie.value)
 
 const guestChat = computed(
   () => authResolved.value && !isSignedIn.value && route.query.chat === '1'

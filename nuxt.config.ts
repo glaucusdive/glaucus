@@ -135,7 +135,9 @@ export default defineNuxtConfig({
 
   gtag: {
     enabled: process.env.NUXT_PUBLIC_GA4_ENABLED === 'true',
-    id: process.env.NUXT_PUBLIC_GA4_ID || ''
+    id: process.env.NUXT_PUBLIC_GA4_ID || '',
+    initMode: 'manual',
+    loadingStrategy: 'defer'
   },
 
   posthogConfig: {

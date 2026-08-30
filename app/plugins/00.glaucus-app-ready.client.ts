@@ -1,29 +1,12 @@
-/** Reveal #__nuxt only after styles load and the app has mounted — avoids unstyled FOUC. */
+/** Reveal #__nuxt after the app mounts — do not wait for window.load (below-fold images blocked LCP). */
 export default defineNuxtPlugin((nuxtApp) => {
   const markReady = () => {
     document.documentElement.classList.add('glaucus-app-ready')
   }
 
-  let assetsLoaded = document.readyState === 'complete'
-  let appMounted = false
-
-  const maybeMarkReady = () => {
-    if (assetsLoaded && appMounted) {
-      markReady()
-    }
-  }
-
-  if (!assetsLoaded) {
-    window.addEventListener('load', () => {
-      assetsLoaded = true
-      maybeMarkReady()
-    }, { once: true })
-  }
-
   nuxtApp.hook('app:mounted', () => {
     requestAnimationFrame(() => {
-      appMounted = true
-      maybeMarkReady()
+      markReady()
     })
   })
 

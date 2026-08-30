@@ -1,4 +1,8 @@
 import { isTestModeEnabled } from '~~/shared/testMode'
+import {
+  scheduleDeferredAnalyticsInit,
+  shouldDeferLandingAnalytics
+} from '~/utils/deferAnalyticsInit'
 
 export default defineNuxtPlugin(() => {
   const config = useRuntimeConfig()
@@ -12,12 +16,22 @@ export default defineNuxtPlugin(() => {
     return
   }
 
-  posthog?.opt_in_capturing()
-
   const markTestTraffic =
     config.public.posthogMarkTestTraffic === true &&
     isTestModeEnabled(config.public.testMode)
-  registerSuperProperties({
-    test_mode: markTestTraffic
-  })
+
+  const enableCapturing = () => {
+    posthog?.opt_in_capturing()
+    registerSuperProperties({
+      test_mode: markTestTraffic
+    })
+  }
+
+  if (shouldDeferLandingAnalytics()) {
+    posthog?.opt_out_capturing()
+    scheduleDeferredAnalyticsInit(enableCapturing)
+    return
+  }
+
+  enableCapturing()
 })

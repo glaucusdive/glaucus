@@ -20,8 +20,18 @@
     </div>
     <div
       id="footer-bg"
-      class="pointer-events-none absolute top-0 left-0 bottom-0 -z-10 h-full w-full bg-[url(/images/landing/glaucus-bg-footer.jpg)] bg-bottom-right lg:bg-top bg-cover bg-no-repeat opacity-0"
-    />
+      class="pointer-events-none absolute top-0 left-0 bottom-0 -z-10 h-full w-full opacity-0"
+    >
+      <img
+        src="/images/landing/glaucus-bg-footer.jpg"
+        alt=""
+        width="3456"
+        height="2430"
+        loading="lazy"
+        decoding="async"
+        class="h-full w-full object-cover object-bottom-right lg:object-top"
+      >
+    </div>
   </footer>
 </template>
 

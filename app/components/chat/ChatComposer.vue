@@ -17,7 +17,7 @@
                 type="text"
                 :disabled="loading"
                 :placeholder="effectivePlaceholder"
-                :aria-label="showRotatingPrompt ? currentPrompt : undefined"
+                :aria-label="inputAriaLabel"
                 class="w-full h-full outline-none text-zinc-900 dark:text-white font-medium text-sm tracking-none disabled:cursor-not-allowed indent-2 p-4 bg-transparent relative z-10"
                 @focus="isFocused = true"
                 @blur="isFocused = false"
@@ -43,6 +43,7 @@
               <button
                 type="submit"
                 :disabled="loading || !String(model || '').trim()"
+                aria-label="Search"
                 class="p-2 flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-100 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-xl tracking-none cursor-pointer text-zinc-900 dark:text-zinc-900 disabled:bg-zinc-100 disabled:dark:bg-zinc-600 disabled:cursor-not-allowed font-medium disabled:*:opacity-20"
               >
                 <ArrowUp v-if="!loading" class="w-6 h-6" />
@@ -110,6 +111,10 @@ const showRotatingPrompt = computed(() =>
 
 const effectivePlaceholder = computed(() =>
   props.rotateStarterPrompts ? '' : props.placeholder
+)
+
+const inputAriaLabel = computed(() =>
+  showRotatingPrompt.value ? currentPrompt.value : props.placeholder
 )
 
 function clearRotateTimer () {

@@ -7,7 +7,7 @@
 
     <div class="grid grid-cols-12 gap-4 items-center">
       <div class="col-span-6 lg:col-span-2">
-        <NuxtLink to="/">
+        <NuxtLink to="/" aria-label="Glaucus home">
           <Logo />
         </NuxtLink>
       </div>
@@ -162,7 +162,7 @@ const navFocus =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40'
 
 const navIconBtn = [
-  'inline-flex size-6 shrink-0 items-center justify-center rounded-full',
+  'inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full p-2',
   '',
   navFocus
 ].join(' ')

@@ -1,8 +1,17 @@
 <template>
   <main ref="mainRef" class="bg-[#101214] relative z-10">
     <LandingHeader />
-    <section id="hero" class="relative bg-[url(/images/landing/glaucus-bg-hero-waves.jpg)] bg-no-repeat bg-top bg-cover min-h-[50dvh] h-[calc(65dvh-80px)] px-4 sm:px-8 lg:px-20 after:h-20 after:w-full after:bottom-0 after:left-0 after:absolute after:pointer-events-none after:bg-gradient-to-b after:from-[#101214]/0 after:to-[#101214] after:content-['']">
-      <div class="grid grid-cols-12 gap-4 items-center h-full">
+    <section id="hero" class="relative min-h-[50dvh] h-[calc(65dvh-80px)] px-4 sm:px-8 lg:px-20 overflow-hidden after:h-20 after:w-full after:bottom-0 after:left-0 after:absolute after:pointer-events-none after:bg-gradient-to-b after:from-[#101214]/0 after:to-[#101214] after:content-[''] after:z-[1]">
+      <img
+        src="/images/landing/glaucus-bg-hero-waves.jpg"
+        alt=""
+        width="3456"
+        height="3850"
+        fetchpriority="high"
+        decoding="async"
+        class="pointer-events-none absolute inset-0 h-full w-full object-cover object-top"
+      >
+      <div class="relative z-[2] grid grid-cols-12 gap-4 items-center h-full">
         <div class="col-span-12 lg:col-span-8 lg:col-start-3">
           <div class="flex flex-col gap-2">
             <div class="flex flex-col flex-wrap gap-0.5 md:gap-2 lg:flex-row lg:items-baseline lg:gap-1 px-4">
@@ -36,14 +45,14 @@
           <div class="col-span-12 lg:col-start-3 lg:col-span-8 2xl:col-start-4 2xl:col-span-6 min-w-0">
             <div class="flex min-w-0 w-full items-center py-8">
               <ClientOnly>
-                <div
-                  class="min-w-0 max-w-full text-2xl sm:text-3xl md:text-4xl xl:text-5xl font-light text-pretty leading-[1.3] text-white break-words flex flex-col gap-4"
+                <h2
+                  class="min-w-0 max-w-full text-2xl sm:text-3xl md:text-4xl xl:text-5xl font-light text-pretty leading-[1.3] text-white break-words flex flex-col gap-4 m-0"
                 >
                   <template v-if="reduceMotion">
                     <p
                       v-for="paragraph in WHATIS_INTRO_PARAGRAPHS"
                       :key="paragraph"
-                      class="text-pretty"
+                      class="text-pretty m-0 font-light"
                     >
                       {{ paragraph }}
                     </p>
@@ -53,27 +62,27 @@
                     <p
                       v-for="(words, paragraphIndex) in introParagraphWords"
                       :key="paragraphIndex"
-                      class="text-pretty"
+                      class="text-pretty m-0 font-light"
                     >
                       <template v-for="({ word, index }, wordIndex) in words" :key="`${paragraphIndex}-${wordIndex}`">
                         <span
-                          :class="index < litWordCount ? 'opacity-100' : 'opacity-10'"
+                          :class="index < litWordCount ? 'opacity-100' : 'opacity-40'"
                           class="transition-opacity duration-300"
                         >{{ word }}</span>{{ wordIndex < words.length - 1 ? ' ' : '' }}
                       </template>
                     </p>
                   </template>
-                </div>
+                </h2>
                 <template #fallback>
-                  <div class="min-w-0 max-w-full text-5xl xl:text-6xl font-light text-pretty leading-[1.1] text-white break-words">
+                  <h2 class="min-w-0 max-w-full text-2xl sm:text-3xl md:text-4xl xl:text-5xl font-light text-pretty leading-[1.3] text-white break-words m-0">
                     <p
                       v-for="paragraph in WHATIS_INTRO_PARAGRAPHS"
                       :key="paragraph"
-                      class="mb-6 last:mb-0"
+                      class="mb-6 last:mb-0 font-light"
                     >
                       {{ paragraph }}
                     </p>
-                  </div>
+                  </h2>
                 </template>
               </ClientOnly>
             </div>
@@ -85,7 +94,18 @@
         <div
           id="intro-bg"
           ref="introBgRef"
-          class="sticky top-0 h-dvh w-full bg-[url(/images/landing/glaucus-bg-whatisglaucus.jpg)] bg-no-repeat bg-top-right sm:bg-top bg-cover opacity-0" />
+          class="sticky top-0 h-dvh w-full opacity-0"
+        >
+          <img
+            src="/images/landing/glaucus-bg-whatisglaucus.jpg"
+            alt=""
+            width="1797"
+            height="1920"
+            loading="lazy"
+            decoding="async"
+            class="h-full w-full object-cover object-top-right sm:object-top"
+          >
+        </div>
       </div>
     </section>
     <section id="feature1" class="px-4 pt-20 pb-10 sm:px-8 lg:px-20 lg:pt-40 lg:pb-20 border-b border-zinc-800">
@@ -109,6 +129,7 @@
           <LandingPageVideo
             class="aspect-video w-full"
             src="/videos/landing/glaucus-video-fpo.mp4"
+            poster="/images/landing/glaucus-video-fpo-poster.jpg"
           />
         </div>
       </div>
@@ -136,6 +157,7 @@
           <LandingPageVideo
             class="aspect-video w-full"
             src="/videos/landing/glaucus-video-fpo.mp4"
+            poster="/images/landing/glaucus-video-fpo-poster.jpg"
           />
         </div>
       </div>
@@ -148,7 +170,11 @@
           </div>
         </div>
         <div class="col-span-12 lg:col-start-7 lg:col-span-6">
-          <LandingPageVideo src="/videos/landing/glaucus-about-video-comp.mp4" class="h-[90dvh] min-h-[600px] aspect-3/4 w-full" />
+          <LandingPageVideo
+            src="/videos/landing/glaucus-about-video-comp.mp4"
+            poster="/images/landing/glaucus-about-video-poster.jpg"
+            class="h-[90dvh] min-h-[600px] aspect-3/4 w-full"
+          />
         </div>
       </div>
     </section>
@@ -214,6 +240,17 @@ useSeoMeta({
   description: 'Search dive shops, resorts, and liveaboards by destination. Find and book scuba diving with Glaucus.',
   ogTitle: 'Glaucus — Your scuba life, simplified',
   ogDescription: 'Search dive shops, resorts, and liveaboards by destination. Find and book scuba diving with Glaucus.'
+})
+
+useHead({
+  link: [
+    {
+      rel: 'preload',
+      as: 'image',
+      href: '/images/landing/glaucus-bg-hero-waves.jpg',
+      fetchpriority: 'high'
+    }
+  ]
 })
 
 /** Extra viewport heights added below the sticky panel — scroll distance for word reveal (tune feel). */
@@ -325,6 +362,7 @@ onMounted(() => {
   }
 
   void nextTick(() => {
+    litWordCount.value = introWords.value.length
     updateLitFromScroll()
     window.addEventListener('scroll', scheduleUpdate, { passive: true })
     window.addEventListener('resize', onResize, { passive: true })

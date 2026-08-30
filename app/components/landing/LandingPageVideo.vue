@@ -7,7 +7,8 @@
         playsinline
         muted
         loop
-        preload="metadata"
+        preload="none"
+        :poster="poster || undefined"
         :controls="overlayDismissed || isPlaying"
         :aria-label="ariaLabel"
       >
@@ -52,6 +53,11 @@ import { PlaySolid } from '@iconoir/vue'
 const props = defineProps({
   /** MP4 URL; empty or missing shows the static placeholder (no video). */
   src: {
+    type: String,
+    default: ''
+  },
+  /** Poster image shown until playback starts. */
+  poster: {
     type: String,
     default: ''
   },
