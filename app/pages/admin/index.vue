@@ -358,7 +358,7 @@ const statCards = computed(() => {
       hint: undefined
     },
     {
-      label: 'Users',
+      label: 'New users',
       value: formatCount(d?.users),
       hint: undefined
     }
