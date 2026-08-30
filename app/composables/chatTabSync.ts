@@ -3,9 +3,16 @@ import {
   writeChatsRoot,
   normalizeRoot,
   rootMaxUpdatedAt,
+  resetChatsRootForSignOut,
   type ChatsRoot
 } from '~/composables/useSearchCache'
 import { requestChatRemoteHydrate } from '~/composables/userChatsRemote'
+import { notifyChatSidebarUpdated } from '~/composables/useChatSessions'
+import {
+  dispatchSignOutChatResetEvent,
+  isSignOutChatResetActive,
+  runWithSignOutChatReset
+} from '~/composables/signOutChatReset'
 
 const CHANNEL_NAME = 'glaucus-chats-sync'
 
@@ -19,7 +26,26 @@ export function initChatTabSync () {
   channel = new BroadcastChannel(CHANNEL_NAME)
   channel.onmessage = (ev) => {
     const data = ev.data as { type?: string; root?: ChatsRoot } | null
-    if (!data || data.type !== 'chats-root' || !data.root) return
+    if (!data?.type) return
+
+    if (data.type === 'sign-out-clear') {
+      if (isSignOutChatResetActive()) return
+      runWithSignOutChatReset(() => {
+        applyingBroadcast = true
+        try {
+          resetChatsRootForSignOut()
+          dispatchSignOutChatResetEvent()
+          notifyChatSidebarUpdated()
+          requestChatRemoteHydrate()
+        } finally {
+          applyingBroadcast = false
+        }
+      })
+      return
+    }
+
+    if (data.type !== 'chats-root' || !data.root) return
+    if (isSignOutChatResetActive()) return
 
     const incoming = normalizeRoot(data.root)
     const local = readChatsRoot()
@@ -32,6 +58,15 @@ export function initChatTabSync () {
       applyingBroadcast = false
     }
     requestChatRemoteHydrate()
+  }
+}
+
+export function broadcastSignOutClear () {
+  if (typeof window === 'undefined' || !channel || applyingBroadcast) return
+  try {
+    channel.postMessage({ type: 'sign-out-clear' })
+  } catch {
+    /* ignore */
   }
 }
 

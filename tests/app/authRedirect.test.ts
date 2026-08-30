@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeAuthRedirect } from '../../app/utils/authRedirect'
+import { DEFAULT_AUTH_REDIRECT, normalizeAuthRedirect } from '../../app/utils/authRedirect'
 
 describe('normalizeAuthRedirect', () => {
-  it('returns fallback for empty input', () => {
-    expect(normalizeAuthRedirect(undefined)).toBe('/')
-    expect(normalizeAuthRedirect('')).toBe('/')
+  it('returns chat home fallback for empty input', () => {
+    expect(normalizeAuthRedirect(undefined)).toBe(DEFAULT_AUTH_REDIRECT)
+    expect(normalizeAuthRedirect('')).toBe(DEFAULT_AUTH_REDIRECT)
+    expect(DEFAULT_AUTH_REDIRECT).toBe('/?chat=1')
   })
 
   it('decodes pre-encoded booking resume redirect', () => {
@@ -16,9 +17,10 @@ describe('normalizeAuthRedirect', () => {
   it('passes through normal paths', () => {
     expect(normalizeAuthRedirect('/?bookingResume=1')).toBe('/?bookingResume=1')
     expect(normalizeAuthRedirect('/profile')).toBe('/profile')
+    expect(normalizeAuthRedirect('/?chat=1')).toBe('/?chat=1')
   })
 
   it('rejects external URLs', () => {
-    expect(normalizeAuthRedirect('https://evil.com')).toBe('/')
+    expect(normalizeAuthRedirect('https://evil.com')).toBe(DEFAULT_AUTH_REDIRECT)
   })
 })

@@ -2,9 +2,11 @@
  * Normalize `?redirect=` from /auth (and OAuth return URLs).
  * Callers must not pre-encode — vue-router encodes query values.
  */
+export const DEFAULT_AUTH_REDIRECT = '/?chat=1'
+
 export function normalizeAuthRedirect (
   raw: string | null | undefined,
-  fallback = '/'
+  fallback = DEFAULT_AUTH_REDIRECT
 ): string {
   if (!raw || typeof raw !== 'string') return fallback
   let s = raw.trim()

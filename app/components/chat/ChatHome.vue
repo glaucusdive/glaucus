@@ -403,6 +403,7 @@ import {
   sumAssistantSearchShopsSinceIndex
 } from '~/utils/searchPaginationShownCount'
 import { initSignedInChatsFromRemote, chatRemoteHydrateTick, flushPushUserChats } from '~/composables/userChatsRemote'
+import { isSignOutChatResetActive, SIGN_OUT_CHAT_RESET_EVENT } from '~/composables/signOutChatReset'
 import {
   GUIDED_PREFIX,
   initialGuidedSearchState,
@@ -1257,13 +1258,44 @@ async function hydrateFromRecord (cachedState) {
   resumeOrchestratorTurnIfNeeded(cachedState)
 }
 
-watch(chatRemoteHydrateTick, () => {
+watch(chatRemoteHydrateTick, async () => {
   if (route.path !== '/') return
+  if (abortController.value) {
+    abortController.value.abort()
+    abortController.value = null
+    isLoading.value = false
+  }
+  clearPendingOrchestratorTurn()
+  closeDrawer()
   const root = readChatsRoot()
   const active = root ? getActiveSession(root) : null
   if (!active) return
-  void hydrateFromRecord(active)
+  isRestoringCache.value = true
+  await hydrateFromRecord(active)
 })
+
+function resetChatUiForSignOut () {
+  isRestoringCache.value = true
+  if (abortController.value) {
+    abortController.value.abort()
+    abortController.value = null
+    isLoading.value = false
+  }
+  clearPendingOrchestratorTurn()
+  closeDrawer()
+  messages.value = []
+  userInput.value = ''
+  selectedShopId.value = null
+  detailDrawerShopId.value = null
+  pendingBookingPayload.value = null
+  pendingOrchestratorTurn.value = null
+  guidedSearchState.value = initialGuidedSearchState()
+  guidedBookingHints.value = null
+  tripRequirements.value = emptyTripRequirements()
+  preferGuidedThisSession.value = false
+  isRestoringCache.value = false
+  notifyChatSidebarUpdated()
+}
 
 function handlePendingNewChatRequest () {
   if (!consumePendingNewChat()) return false
@@ -1307,7 +1339,7 @@ watch(pendingSwitchSessionId, (id) => {
 })
 
 const persistCache = () => {
-  if (isRestoringCache.value) return
+  if (isRestoringCache.value || isSignOutChatResetActive()) return
 
   setCache(buildPageCachePayload())
   notifyChatSidebarUpdated()
@@ -1519,6 +1551,7 @@ onMounted(() => {
   if (import.meta.client) {
     window.addEventListener('pageshow', onChatPageShow)
     document.addEventListener('visibilitychange', onChatVisibilityChange)
+    window.addEventListener(SIGN_OUT_CHAT_RESET_EVENT, resetChatUiForSignOut)
   }
 })
 
@@ -1526,6 +1559,7 @@ onUnmounted(() => {
   if (import.meta.client) {
     window.removeEventListener('pageshow', onChatPageShow)
     document.removeEventListener('visibilitychange', onChatVisibilityChange)
+    window.removeEventListener(SIGN_OUT_CHAT_RESET_EVENT, resetChatUiForSignOut)
   }
 })
 

@@ -122,6 +122,10 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.82.18** — Show neutral bootstrap shell while auth resolves on `/` to avoid marketing-page flash before chat (2026-08-30).
+- **0.82.17** — Redirect signed-in users to chat home (`/?chat=1`) after auth instead of marketing landing (2026-08-30).
+- **0.82.16** — Harden sign-out chat reset against persist/tab-sync races so history clears reliably (2026-08-30).
+- **0.82.15** — Sign-out clears local chat history and shows an empty chat shell at `/?chat=1` (2026-08-30).
 - **0.82.14** — Speed up admin PostHog visitor fetch with cache-first queries, parallel API calls, and stale-while-revalidate server cache (2026-08-30).
 - **0.82.13** — Fix admin PostHog visitor split HogQL (new + returning must equal total) and match Web Analytics UI totals (2026-08-30).
 - **0.82.12** — Use PostHog WebOverview + Trends first_time_for_user for admin new/returning visitors (2026-08-30).

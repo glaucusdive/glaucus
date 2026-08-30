@@ -6,10 +6,20 @@ import {
   normalizeRoot,
   getActiveSession,
   ensureChatsRoot,
+  resetChatsRootForSignOut,
   rootMaxUpdatedAt,
   type ChatsRoot
 } from '~/composables/useSearchCache'
+import { notifyChatSidebarUpdated } from '~/composables/useChatSessions'
+import { BOOKING_RESUME_SESSION_KEY } from '~~/shared/bookingPreSendTokens'
 import { extractBookingFromCache, hasBookingResumeSnapshot } from '~/utils/extractBookingFromCache'
+import { broadcastSignOutClear } from '~/composables/chatTabSync'
+import {
+  dispatchSignOutChatResetEvent,
+  runWithSignOutChatReset
+} from '~/composables/signOutChatReset'
+
+export { isSignOutChatResetActive, SIGN_OUT_CHAT_RESET_EVENT } from '~/composables/signOutChatReset'
 
 export const chatRemoteHydrateTick = ref(0)
 
@@ -153,7 +163,25 @@ export async function onSignedInSyncChats (client: SupabaseClient, userId: strin
 }
 
 export function clearLocalChatsAfterSignOut () {
-  cancelPendingUserChatsPush()
-  // Keep sessionStorage chats so sign-out from `/` stays in the same conversation as a guest.
-  requestChatRemoteHydrate()
+  runWithSignOutChatReset(() => {
+    cancelPendingUserChatsPush()
+    clearSignOutSessionKeys()
+    dispatchSignOutChatResetEvent()
+    resetChatsRootForSignOut()
+    broadcastSignOutClear()
+    notifyChatSidebarUpdated()
+    requestChatRemoteHydrate()
+  })
+}
+
+const PENDING_DRAFT_RESUME_KEY = 'glaucus-pending-draft-resume'
+const FORCE_NEW_CHAT_KEY = 'glaucus-force-new-chat'
+
+function clearSignOutSessionKeys () {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.removeItem(BOOKING_RESUME_SESSION_KEY)
+    window.sessionStorage.removeItem(PENDING_DRAFT_RESUME_KEY)
+    window.sessionStorage.removeItem(FORCE_NEW_CHAT_KEY)
+  } catch { /* ignore */ }
 }

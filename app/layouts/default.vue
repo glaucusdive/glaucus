@@ -124,7 +124,7 @@
                 </a>
               </template>
 
-              <NavLink v-if="!authLoading && !isSignedIn" to="/auth" @click="handleCloseMobileMenu">
+              <NavLink v-if="!authLoading && !isSignedIn" :to="{ path: '/auth', query: { redirect: '/?chat=1' } }" @click="handleCloseMobileMenu">
                 <LogIn class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" />
                 Sign in
               </NavLink>
@@ -276,13 +276,13 @@ const { client } = useSupabase()
 const { saveDraftFromCacheIfNeeded } = useSaveDraftFromCache()
 
 async function handleSignOut () {
-  // Stay on chat as guest (`/?chat=1`) instead of dropping to the landing page.
-  if (route.path === '/') {
-    await navigateTo({ path: '/', query: { ...route.query, chat: '1' } })
+  handleCloseMobileMenu()
+  clearLocalChatsAfterSignOut()
+  if (route.path !== '/' || route.query.chat !== '1') {
+    await navigateTo({ path: '/', query: { chat: '1' } })
     await nextTick()
   }
   await signOut()
-  handleCloseMobileMenu()
 }
 
 const { isOpen, contentType, drawerData, drawerOpenKey, isMobileMenuOpen, shouldAnimateMenu, closeMobileMenu } = useDrawer()

@@ -1,6 +1,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { User, Session } from '@supabase/supabase-js'
-import { normalizeAuthRedirect } from '~/utils/authRedirect'
+import { normalizeAuthRedirect, DEFAULT_AUTH_REDIRECT } from '~/utils/authRedirect'
 
 const user = ref<User | null>(null)
 const session = ref<Session | null>(null)
@@ -70,7 +70,7 @@ export const useAuth = () => {
       password,
       options: {
         ...(displayName ? { data: { display_name: displayName } } : {}),
-        emailRedirectTo: origin ? `${origin}/` : undefined
+        emailRedirectTo: origin ? `${origin}${DEFAULT_AUTH_REDIRECT}` : undefined
       }
     })
     if (error) throw error
@@ -93,7 +93,7 @@ export const useAuth = () => {
   async function signInWithMagicLink (email: string) {
     const { data, error } = await client.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/` }
+      options: { emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}${DEFAULT_AUTH_REDIRECT}` }
     })
     if (error) throw error
     return data

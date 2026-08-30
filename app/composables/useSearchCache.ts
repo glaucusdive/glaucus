@@ -366,6 +366,15 @@ export function clearAllChatsStorage () {
   } catch { /* ignore */ }
 }
 
+/** Wipe local chat history and persist a single empty active session (sign-out). */
+export function resetChatsRootForSignOut (): ChatsRoot {
+  clearAllChatsStorage()
+  const s = emptySession()
+  const root: ChatsRoot = { version: 1, activeSessionId: s.id, sessions: [s] }
+  writeChatsRoot(root, { skipRemote: true })
+  return root
+}
+
 export const useSearchCache = () => {
   const getCache = (): SearchCacheState | null => {
     const root = readChatsRoot()
