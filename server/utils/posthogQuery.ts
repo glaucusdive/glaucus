@@ -10,6 +10,7 @@ interface HogQLQueryResponse {
   results?: unknown[][]
   columns?: string[]
   error?: string
+  is_cached?: boolean
 }
 
 interface WebOverviewItem {
@@ -22,15 +23,95 @@ interface WebOverviewQueryResponse {
   dateFrom?: string
   dateTo?: string
   error?: string
+  is_cached?: boolean
 }
 
-const VISITOR_COUNTS_CACHE_TTL_MS = 5 * 60 * 1000
-const VISITOR_COUNTS_CACHE_VERSION = 'v7'
+interface PostHogQueryMeta {
+  is_cached?: boolean
+}
 
-const visitorCountsCache = new Map<string, { expiresAt: number; value: PostHogVisitorCounts }>()
+const VISITOR_COUNTS_FRESH_TTL_MS = 5 * 60 * 1000
+const VISITOR_COUNTS_STALE_TTL_MS = 30 * 60 * 1000
+const VISITOR_COUNTS_CACHE_VERSION = 'v8'
+
+interface VisitorCountsCacheEntry {
+  value: PostHogVisitorCounts
+  freshUntil: number
+  staleUntil: number
+}
+
+const visitorCountsCache = new Map<string, VisitorCountsCacheEntry>()
+const inFlightRefreshes = new Map<string, Promise<PostHogVisitorCounts | null>>()
 
 function escapeHogQlTimestamp (iso: string): string {
   return iso.replace(/'/g, "''")
+}
+
+function pad2 (value: number): string {
+  return String(value).padStart(2, '0')
+}
+
+/** PostHog WebOverview date strings (`YYYY-MM-DD HH:mm:ss`, UTC day bounds). */
+export function formatPostHogDateTime (date: Date): string {
+  return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())} ${pad2(date.getUTCHours())}:${pad2(date.getUTCMinutes())}:${pad2(date.getUTCSeconds())}`
+}
+
+/** Local preset bounds for HogQL; matches PostHog `-7d` / `-30d` WebOverview windows. */
+export function resolvePostHogPresetDateBounds (
+  range: DashboardRange,
+  now: Date = new Date()
+): { dateFrom: string; dateTo: string } {
+  const toEnd = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    23,
+    59,
+    59
+  ))
+
+  if (range === 'all') {
+    return {
+      dateFrom: '2025-01-01 00:00:00',
+      dateTo: formatPostHogDateTime(toEnd)
+    }
+  }
+
+  let daysBack = 30
+  switch (range) {
+    case '7d':
+      daysBack = 7
+      break
+    case '14d':
+      daysBack = 14
+      break
+    case '30d':
+      daysBack = 30
+      break
+    case '90d':
+      daysBack = 90
+      break
+    case '12m': {
+      const fromStart = new Date(toEnd)
+      fromStart.setUTCMonth(fromStart.getUTCMonth() - 12)
+      fromStart.setUTCHours(0, 0, 0, 0)
+      return {
+        dateFrom: formatPostHogDateTime(fromStart),
+        dateTo: formatPostHogDateTime(toEnd)
+      }
+    }
+    default:
+      daysBack = 30
+  }
+
+  const fromStart = new Date(toEnd)
+  fromStart.setUTCDate(fromStart.getUTCDate() - daysBack)
+  fromStart.setUTCHours(0, 0, 0, 0)
+
+  return {
+    dateFrom: formatPostHogDateTime(fromStart),
+    dateTo: formatPostHogDateTime(toEnd)
+  }
 }
 
 function postHogDateRange (range: DashboardRange) {
@@ -68,8 +149,24 @@ export function readCachedPostHogVisitorCounts (
   range: DashboardRange,
   nowMs: number = Date.now()
 ): PostHogVisitorCounts | null {
+  return readFreshCachedPostHogVisitorCounts(range, nowMs)
+}
+
+export function readFreshCachedPostHogVisitorCounts (
+  range: DashboardRange,
+  nowMs: number = Date.now()
+): PostHogVisitorCounts | null {
   const cached = visitorCountsCache.get(postHogVisitorCountsCacheKey(range))
-  if (!cached || cached.expiresAt <= nowMs) return null
+  if (!cached || cached.freshUntil <= nowMs) return null
+  return cached.value
+}
+
+export function readStaleCachedPostHogVisitorCounts (
+  range: DashboardRange,
+  nowMs: number = Date.now()
+): PostHogVisitorCounts | null {
+  const cached = visitorCountsCache.get(postHogVisitorCountsCacheKey(range))
+  if (!cached || cached.staleUntil <= nowMs) return null
   return cached.value
 }
 
@@ -79,8 +176,9 @@ export function writeCachedPostHogVisitorCounts (
   nowMs: number = Date.now()
 ): void {
   visitorCountsCache.set(postHogVisitorCountsCacheKey(range), {
-    expiresAt: nowMs + VISITOR_COUNTS_CACHE_TTL_MS,
-    value
+    value,
+    freshUntil: nowMs + VISITOR_COUNTS_FRESH_TTL_MS,
+    staleUntil: nowMs + VISITOR_COUNTS_STALE_TTL_MS
   })
 }
 
@@ -223,28 +321,38 @@ function getPostHogConfig () {
   return { apiKey, projectId, host }
 }
 
-async function postHogQuery<T> (body: Record<string, unknown>): Promise<T | null> {
+async function postHogQuery<T extends PostHogQueryMeta> (
+  body: Record<string, unknown>
+): Promise<T | null> {
   const { apiKey, projectId, host } = getPostHogConfig()
   const url = `${host}/api/projects/${projectId}/query/`
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      refresh: 'blocking',
-      ...body
-    })
-  })
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => '')
-    console.error('[posthog] query failed:', response.status, text)
-    return null
+  async function run (refresh: 'force_cache' | 'blocking'): Promise<T | null> {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        refresh,
+        ...body
+      })
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      console.error('[posthog] query failed:', response.status, text)
+      return null
+    }
+
+    return (await response.json()) as T
   }
 
-  return (await response.json()) as T
+  const cached = await run('force_cache')
+  if (cached?.is_cached) return cached
+
+  return run('blocking')
 }
 
 async function fetchWebOverviewContext (
@@ -284,22 +392,38 @@ async function fetchVisitorCountsHogql (
   return parsePostHogVisitorCountsRow(data.results?.[0])
 }
 
-export async function fetchPostHogVisitorCounts (
+function boundsMatchOverview (
+  local: { dateFrom: string; dateTo: string },
+  overview: { dateFrom: string; dateTo: string }
+): boolean {
+  return local.dateFrom === overview.dateFrom && local.dateTo === overview.dateTo
+}
+
+async function fetchAndCacheVisitorCounts (
   range: DashboardRange
 ): Promise<PostHogVisitorCounts | null> {
-  if (!isPostHogQueryConfigured()) return null
+  const localBounds = resolvePostHogPresetDateBounds(range)
 
-  const cached = readCachedPostHogVisitorCounts(range)
-  if (cached) return cached
+  const [overview, hogqlFromLocalBounds] = await Promise.all([
+    fetchWebOverviewContext(range),
+    fetchVisitorCountsHogql(
+      localBounds.dateFrom,
+      localBounds.dateTo,
+      buildPostHogVisitorCountsHogql(localBounds.dateFrom, localBounds.dateTo)
+    )
+  ])
 
-  const overview = await fetchWebOverviewContext(range)
   if (!overview) return null
 
-  let hogql = await fetchVisitorCountsHogql(
-    overview.dateFrom,
-    overview.dateTo,
-    buildPostHogVisitorCountsHogql(overview.dateFrom, overview.dateTo)
-  )
+  let hogql = hogqlFromLocalBounds
+  if (hogql && !boundsMatchOverview(localBounds, overview)) {
+    hogql = await fetchVisitorCountsHogql(
+      overview.dateFrom,
+      overview.dateTo,
+      buildPostHogVisitorCountsHogql(overview.dateFrom, overview.dateTo)
+    )
+  }
+
   let reconciled = hogql ? reconcileVisitorCounts(hogql, overview.totalVisitors) : null
 
   if (!reconciled && overview.totalVisitors != null) {
@@ -322,4 +446,37 @@ export async function fetchPostHogVisitorCounts (
 
   writeCachedPostHogVisitorCounts(range, reconciled)
   return reconciled
+}
+
+function refreshVisitorCountsInBackground (range: DashboardRange): void {
+  const key = postHogVisitorCountsCacheKey(range)
+  if (inFlightRefreshes.has(key)) return
+
+  const refresh = fetchAndCacheVisitorCounts(range)
+    .catch((error) => {
+      console.error('[posthog] background visitor refresh failed:', error)
+      return null
+    })
+    .finally(() => {
+      inFlightRefreshes.delete(key)
+    })
+
+  inFlightRefreshes.set(key, refresh)
+}
+
+export async function fetchPostHogVisitorCounts (
+  range: DashboardRange
+): Promise<PostHogVisitorCounts | null> {
+  if (!isPostHogQueryConfigured()) return null
+
+  const fresh = readFreshCachedPostHogVisitorCounts(range)
+  if (fresh) return fresh
+
+  const stale = readStaleCachedPostHogVisitorCounts(range)
+  if (stale) {
+    refreshVisitorCountsInBackground(range)
+    return stale
+  }
+
+  return fetchAndCacheVisitorCounts(range)
 }

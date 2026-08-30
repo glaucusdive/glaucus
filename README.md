@@ -122,6 +122,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.82.14** — Speed up admin PostHog visitor fetch with cache-first queries, parallel API calls, and stale-while-revalidate server cache (2026-08-30).
 - **0.82.13** — Fix admin PostHog visitor split HogQL (new + returning must equal total) and match Web Analytics UI totals (2026-08-30).
 - **0.82.12** — Use PostHog WebOverview + Trends first_time_for_user for admin new/returning visitors (2026-08-30).
 - **0.82.11** — Fix PostHog WebOverviewQuery request (required empty `properties` array) for admin visitor stats (2026-08-30).

@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest'
 import {
   buildPostHogVisitorCountsHogql,
   buildWebOverviewQuery,
+  formatPostHogDateTime,
   mapDashboardRangeToPostHogDateFrom,
   parsePostHogVisitorCountsRow,
   parseWebOverviewVisitors,
   postHogVisitorCountsCacheKey,
   readCachedPostHogVisitorCounts,
+  readFreshCachedPostHogVisitorCounts,
+  readStaleCachedPostHogVisitorCounts,
   reconcileVisitorCounts,
+  resolvePostHogPresetDateBounds,
   writeCachedPostHogVisitorCounts
 } from '../../server/utils/posthogQuery'
 
@@ -18,6 +22,20 @@ describe('posthogQuery', () => {
       expect(mapDashboardRangeToPostHogDateFrom('14d')).toBe('-14d')
       expect(mapDashboardRangeToPostHogDateFrom('30d')).toBe('-30d')
       expect(mapDashboardRangeToPostHogDateFrom('all')).toBe('2025-01-01')
+    })
+  })
+
+  describe('resolvePostHogPresetDateBounds', () => {
+    it('uses UTC day bounds for preset ranges', () => {
+      const now = new Date('2026-08-30T15:00:00.000Z')
+      expect(resolvePostHogPresetDateBounds('7d', now)).toEqual({
+        dateFrom: '2026-08-23 00:00:00',
+        dateTo: '2026-08-30 23:59:59'
+      })
+    })
+
+    it('formats PostHog timestamps with zero padding', () => {
+      expect(formatPostHogDateTime(new Date('2026-01-05T03:04:05.000Z'))).toBe('2026-01-05 03:04:05')
     })
   })
 
@@ -90,18 +108,32 @@ describe('posthogQuery', () => {
   })
 
   describe('visitor counts cache', () => {
-    it('stores and reads cached counts until ttl expires', () => {
+    it('serves fresh cache for five minutes and stale cache for thirty minutes', () => {
       writeCachedPostHogVisitorCounts('7d', {
         totalVisitors: 8,
         newVisitors: 6,
         returningVisitors: 2
       }, 1_000)
+
+      expect(readFreshCachedPostHogVisitorCounts('7d', 1_000)).toEqual({
+        totalVisitors: 8,
+        newVisitors: 6,
+        returningVisitors: 2
+      })
       expect(readCachedPostHogVisitorCounts('7d', 1_000)).toEqual({
         totalVisitors: 8,
         newVisitors: 6,
         returningVisitors: 2
       })
-      expect(readCachedPostHogVisitorCounts('7d', 301_000)).toBeNull()
+
+      expect(readFreshCachedPostHogVisitorCounts('7d', 301_000)).toBeNull()
+      expect(readStaleCachedPostHogVisitorCounts('7d', 301_000)).toEqual({
+        totalVisitors: 8,
+        newVisitors: 6,
+        returningVisitors: 2
+      })
+
+      expect(readStaleCachedPostHogVisitorCounts('7d', 1_801_000)).toBeNull()
       expect(postHogVisitorCountsCacheKey('7d')).toContain('7d')
     })
   })
