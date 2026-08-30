@@ -14,7 +14,7 @@
       <div class="hidden lg:col-span-8 lg:flex lg:justify-center">
         <div class="flex items-center justify-center">
           <div
-            class="inline-flex items-center gap-1 rounded-full bg-zinc-800 p-1 text-zinc-100"
+            class="inline-flex items-center gap-1 rounded-full bg-zinc-800 p-1 pr-4 text-zinc-100"
             :class="searchOpen ? 'w-full' : 'w-fit'"
           >
             <template v-if="!searchOpen">
