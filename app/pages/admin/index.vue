@@ -50,13 +50,13 @@
       </div>
 
       <p
-        v-if="data && !data.posthogConfigured"
+        v-if="visitorData && !visitorData.posthogConfigured"
         class="mt-6 text-sm text-zinc-500 dark:text-zinc-400"
       >
         Configure PostHog API (<code class="text-xs">POSTHOG_PERSONAL_API_KEY</code>, <code class="text-xs">POSTHOG_PROJECT_ID</code>) for new vs returning visitor counts.
       </p>
       <p
-        v-else-if="data && data.posthogConfigured && !data.posthogAvailable"
+        v-else-if="visitorData && visitorData.posthogConfigured && !visitorData.posthogAvailable && !visitorsLoading"
         class="mt-6 text-sm text-amber-600 dark:text-amber-400"
       >
         PostHog is configured but the query failed. Check server logs and API key permissions.
@@ -277,6 +277,9 @@ interface DashboardResponse {
   bookingRows: DashboardBookingRow[]
   users: number
   userRows: DashboardUserRow[]
+}
+
+interface DashboardVisitorsResponse {
   newVisitors: number | null
   returningVisitors: number | null
   posthogConfigured: boolean
@@ -286,9 +289,11 @@ interface DashboardResponse {
 const { isAppAdmin, accessToken, init } = useAuth()
 
 const loading = ref(true)
+const visitorsLoading = ref(false)
 const loadError = ref('')
-const selectedRange = ref('30d')
+const selectedRange = ref('7d')
 const data = ref<DashboardResponse | null>(null)
+const visitorData = ref<DashboardVisitorsResponse | null>(null)
 const selectedBooking = ref<DashboardBookingRow | null>(null)
 
 const bookingDrawerAriaLabel = computed(() =>
@@ -314,7 +319,8 @@ function resendEmailUrl (emailId: string): string {
   return `https://resend.com/emails/${encodeURIComponent(emailId)}`
 }
 
-function formatCount (n: number | null | undefined): string {
+function formatCount (n: number | null | undefined, loading = false): string {
+  if (loading) return '…'
   if (n == null) return '—'
   return n.toLocaleString()
 }
@@ -330,19 +336,20 @@ function formatDashboardDate (iso: string | null | undefined): string {
 
 const statCards = computed(() => {
   const d = data.value
-  const posthogHint = d && !d.posthogAvailable
-    ? (d.posthogConfigured ? 'PostHog query unavailable' : 'Configure PostHog API')
+  const v = visitorData.value
+  const posthogHint = !visitorsLoading.value && v && !v.posthogAvailable
+    ? (v.posthogConfigured ? 'PostHog query unavailable' : 'Configure PostHog API')
     : undefined
 
   return [
     {
       label: 'New visitors',
-      value: formatCount(d?.newVisitors),
+      value: formatCount(v?.newVisitors, visitorsLoading.value),
       hint: posthogHint
     },
     {
       label: 'Returning visitors',
-      value: formatCount(d?.returningVisitors),
+      value: formatCount(v?.returningVisitors, visitorsLoading.value),
       hint: posthogHint
     },
     {
@@ -358,10 +365,32 @@ const statCards = computed(() => {
   ]
 })
 
+async function loadVisitors () {
+  if (!accessToken.value) return
+  visitorsLoading.value = true
+  try {
+    visitorData.value = await $fetch<DashboardVisitorsResponse>('/api/admin/dashboard/visitors', {
+      query: { range: selectedRange.value },
+      headers: { Authorization: `Bearer ${accessToken.value}` }
+    })
+  } catch {
+    visitorData.value = {
+      newVisitors: null,
+      returningVisitors: null,
+      posthogConfigured: false,
+      posthogAvailable: false
+    }
+  } finally {
+    visitorsLoading.value = false
+  }
+}
+
 async function loadDashboard () {
   if (!accessToken.value) return
   loading.value = true
   loadError.value = ''
+  visitorData.value = null
+  void loadVisitors()
   try {
     data.value = await $fetch<DashboardResponse>('/api/admin/dashboard', {
       query: { range: selectedRange.value },

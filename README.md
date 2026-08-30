@@ -122,6 +122,12 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.82.13** — Fix admin PostHog visitor split HogQL (new + returning must equal total) and match Web Analytics UI totals (2026-08-30).
+- **0.82.12** — Use PostHog WebOverview + Trends first_time_for_user for admin new/returning visitors (2026-08-30).
+- **0.82.11** — Fix PostHog WebOverviewQuery request (required empty `properties` array) for admin visitor stats (2026-08-30).
+- **0.82.10** — Align admin PostHog visitor stats with Web Analytics via WebOverviewQuery and session-based new/returning split (2026-08-30).
+- **0.82.9** — Speed up admin PostHog visitor stats with a lighter query, server cache, and non-blocking visitor cards (2026-08-30).
+- **0.82.8** — Fix admin dashboard new/returning visitor counts to match PostHog Web Analytics unique $pageview visitors (2026-08-30).
 - **0.82.7** — Use liveaboards / dive resorts / dive shops in the search-results sentence from the trip-type filter (skip “other operators” when every listed shop still matches) (2026-08-23).
 - **0.82.6** — Fix cave/cavern activity matching (collapse NLU synonym tokens; reclassify widened shops; drop misleading search badges on wider-match cards) (2026-08-17).
 - **0.82.5** — Activity sparse-widen: show “No matches found” and “Other matches found” when cave/activity filters have zero tight matches but geo fill-in shops exist (2026-08-17).

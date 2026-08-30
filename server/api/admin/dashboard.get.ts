@@ -5,7 +5,6 @@ import {
 } from '../../utils/adminDashboardRange'
 import { listBookingsInRange } from '../../utils/adminDashboardBookings'
 import { listUsersInSignupRange } from '../../utils/adminDashboardUsers'
-import { fetchPostHogVisitorCounts, isPostHogQueryConfigured } from '../../utils/posthogQuery'
 
 export default defineEventHandler(async (event) => {
   await requireAdminUser(event)
@@ -14,10 +13,9 @@ export default defineEventHandler(async (event) => {
   const range = parseDashboardRange(typeof query.range === 'string' ? query.range : undefined)
   const window = resolveDashboardDateWindow(range)
 
-  const [bookingRows, userRows, posthogCounts] = await Promise.all([
+  const [bookingRows, userRows] = await Promise.all([
     listBookingsInRange(window.from, window.to),
-    listUsersInSignupRange(window.from, window.to),
-    fetchPostHogVisitorCounts(window.from, window.to)
+    listUsersInSignupRange(window.from, window.to)
   ])
 
   return {
@@ -27,10 +25,6 @@ export default defineEventHandler(async (event) => {
     bookings: bookingRows.length,
     bookingRows,
     users: userRows.length,
-    userRows,
-    newVisitors: posthogCounts?.newVisitors ?? null,
-    returningVisitors: posthogCounts?.returningVisitors ?? null,
-    posthogConfigured: isPostHogQueryConfigured(),
-    posthogAvailable: posthogCounts !== null
+    userRows
   }
 })
