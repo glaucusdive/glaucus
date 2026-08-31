@@ -1,13 +1,19 @@
+import { isAnalyticsExcludedPath } from '~/utils/analyticsRoutePolicy'
+
 /** Defer third-party analytics on the marketing homepage until idle or first interaction. */
 
 let analyticsInitRan = false
 const deferredCallbacks: Array<() => void> = []
 
+export function shouldDeferLandingAnalyticsForPath (path: string, search = ''): boolean {
+  if (isAnalyticsExcludedPath(path)) return false
+  const params = new URLSearchParams(search)
+  return path === '/' && params.get('chat') !== '1'
+}
+
 export function shouldDeferLandingAnalytics (): boolean {
   if (typeof window === 'undefined') return false
-  const path = window.location.pathname
-  const params = new URLSearchParams(window.location.search)
-  return path === '/' && params.get('chat') !== '1'
+  return shouldDeferLandingAnalyticsForPath(window.location.pathname, window.location.search)
 }
 
 function runDeferredAnalyticsInits () {

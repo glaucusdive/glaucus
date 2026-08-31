@@ -150,8 +150,15 @@ export default defineNuxtConfig({
     host: process.env.NUXT_PUBLIC_POSTHOG_HOST || '',
     clientConfig: {
       person_profiles: 'identified_only',
+      opt_out_capturing_by_default: true,
       capture_pageview: true,
       capture_pageleave: true,
+      before_send: (event) => {
+        if (typeof window === 'undefined') return event
+        const normalized = window.location.pathname.split('?')[0]?.replace(/\/+$/, '') || '/'
+        if (normalized === '/admin' || normalized.startsWith('/admin/')) return null
+        return event
+      },
       session_recording: {
         maskAllInputs: true,
         maskTextSelector: '[data-ph-mask]'

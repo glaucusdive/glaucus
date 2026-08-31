@@ -1,4 +1,5 @@
 import { isTestModeEnabled } from '~~/shared/testMode'
+import { isAnalyticsExcludedPath } from '~/utils/analyticsRoutePolicy'
 import {
   scheduleDeferredAnalyticsInit,
   shouldDeferLandingAnalytics
@@ -16,11 +17,20 @@ export default defineNuxtPlugin(() => {
     return
   }
 
+  if (typeof window !== 'undefined' && isAnalyticsExcludedPath(window.location.pathname)) {
+    posthog?.opt_out_capturing()
+    return
+  }
+
   const markTestTraffic =
     config.public.posthogMarkTestTraffic === true &&
     isTestModeEnabled(config.public.testMode)
 
   const enableCapturing = () => {
+    if (typeof window !== 'undefined' && isAnalyticsExcludedPath(window.location.pathname)) {
+      posthog?.opt_out_capturing()
+      return
+    }
     posthog?.opt_in_capturing()
     registerSuperProperties({
       test_mode: markTestTraffic

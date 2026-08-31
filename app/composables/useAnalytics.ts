@@ -1,5 +1,6 @@
 import type { User } from '@supabase/supabase-js'
 import { isTestModeEnabled } from '~~/shared/testMode'
+import { isAnalyticsExcludedPath } from '~/utils/analyticsRoutePolicy'
 
 /** Stable event names for PostHog insights and AI dashboard prompts. */
 export const AnalyticsEvents = {
@@ -20,10 +21,17 @@ export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof Analytics
 export function useAnalytics () {
   const config = useRuntimeConfig()
   const posthog = usePostHog()
+  const route = import.meta.client ? useRoute() : null
 
   const isEnabled = computed(
     () => config.public.posthogEnabled === true && Boolean(config.public.posthogKey)
   )
+
+  function isCaptureAllowed (): boolean {
+    if (!import.meta.client) return false
+    const path = route?.path ?? window.location.pathname
+    return !isAnalyticsExcludedPath(path)
+  }
 
   function testModeProperty (): boolean {
     return (
@@ -33,7 +41,7 @@ export function useAnalytics () {
   }
 
   function capture (event: AnalyticsEventName | string, properties?: Record<string, unknown>) {
-    if (!import.meta.client || !isEnabled.value) return
+    if (!isCaptureAllowed() || !isEnabled.value) return
     posthog?.capture(event, {
       ...properties,
       test_mode: testModeProperty()
@@ -41,12 +49,12 @@ export function useAnalytics () {
   }
 
   function registerSuperProperties (props: Record<string, unknown>) {
-    if (!import.meta.client || !isEnabled.value) return
+    if (!isCaptureAllowed() || !isEnabled.value) return
     posthog?.register(props)
   }
 
   function identifyUser (user: User) {
-    if (!import.meta.client || !isEnabled.value) return
+    if (!isCaptureAllowed() || !isEnabled.value) return
     posthog?.identify(user.id, {
       email: user.email ?? undefined
     })
