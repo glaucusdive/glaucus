@@ -3,7 +3,8 @@ import type { BlogPost, BlogPostCard } from '~~/shared/blogPost'
 export function blogSeoTitle (post: BlogPost | BlogPostCard | null | undefined): string {
   const title = post?.title?.trim()
   if (!title) return 'Blog'
-  return `${title} | Glaucus`
+  // Site name is appended by nuxt-seo-utils (`site.name`: Glaucus). Do not suffix here.
+  return title
 }
 
 export function blogSeoDescription (post: BlogPost | BlogPostCard | null | undefined): string {
