@@ -14,8 +14,8 @@
       <div class="hidden lg:col-span-8 lg:flex lg:justify-center">
         <div class="flex items-center justify-center">
           <div
-            class="inline-flex items-center gap-1 rounded-full bg-zinc-800 p-1 pr-4 text-zinc-100"
-            :class="searchOpen ? 'w-full' : 'w-fit'"
+            class="inline-flex items-center gap-1 rounded-full bg-zinc-800 p-1 text-zinc-100"
+            :class="searchOpen ? 'p-1 w-full' : 'w-fit'"
           >
             <template v-if="!searchOpen">
               <button
@@ -30,7 +30,7 @@
               >
                 <Search :width="12" :height="12" :stroke-width="1.5" aria-hidden="true" />
               </button>
-              <nav class="flex w-fit items-center gap-1" aria-label="Landing sections">
+              <nav class="flex w-fit items-center gap-1 pr-2" aria-label="Landing sections">
                 <template v-for="item in resolvedNavItems" :key="item.id">
                   <NuxtLink
                     v-if="item.to"
@@ -168,7 +168,7 @@ const navIconBtn = [
 ].join(' ')
 
 const navSearchIconWrap =
-  'inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-white/10 text-zinc-100'
+  'inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full p-2 bg-white/10'
 
 const navLinkBase = [
   'inline-flex shrink-0 items-center rounded-full px-2.5 py-1.5',
