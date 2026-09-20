@@ -1,8 +1,11 @@
 import type { BlogPost, BlogPostCard } from '~~/shared/blogPost'
+import {
+  BLOG_PUBLISHER_NAME,
+  BLOG_SITE_AUTHOR
+} from '~~/shared/blogSiteIdentity'
+import type { BlogFaqPair } from '~~/shared/extractBlogFaq'
 import { extractYoutubeIdsFromMarkdown } from '~~/shared/blogYoutube'
 import { blogSeoDescription } from '~/utils/blogSeo'
-
-const SITE_NAME = 'Glaucus'
 
 /** Google VideoObject fields for a YouTube embed (required: name, thumbnailUrl, uploadDate). */
 export function youtubeVideoObjectJsonLd (opts: {
@@ -22,10 +25,23 @@ export function youtubeVideoObjectJsonLd (opts: {
   }
 }
 
-export function blogPostingJsonLd (post: BlogPost, canonicalUrl: string) {
+function blogAuthorJsonLd () {
+  const name = BLOG_SITE_AUTHOR.name?.trim()
+  if (!name) return undefined
+  const jobTitle = BLOG_SITE_AUTHOR.jobTitle?.trim()
+  return {
+    '@type': 'Person' as const,
+    name,
+    ...(jobTitle ? { jobTitle } : {})
+  }
+}
+
+export function blogPostingJsonLd (post: BlogPost, canonicalUrl: string, siteUrl?: string) {
   const videoIds = extractYoutubeIdsFromMarkdown(post.body_markdown)
   const uploadDate = post.published_at || post.created_at
   const description = blogSeoDescription(post)
+  const author = blogAuthorJsonLd()
+  const publisherUrl = siteUrl?.replace(/\/$/, '') || undefined
 
   const video =
     videoIds.length && uploadDate
@@ -45,12 +61,33 @@ export function blogPostingJsonLd (post: BlogPost, canonicalUrl: string) {
     headline: post.title,
     description,
     image: post.hero_image_url || undefined,
+    url: canonicalUrl,
     datePublished: post.published_at || post.created_at,
     dateModified: post.updated_at,
-    author: { '@type': 'Organization', name: SITE_NAME },
-    publisher: { '@type': 'Organization', name: SITE_NAME },
+    ...(author ? { author } : {}),
+    publisher: {
+      '@type': 'Organization' as const,
+      name: BLOG_PUBLISHER_NAME,
+      ...(publisherUrl ? { url: publisherUrl } : {})
+    },
     mainEntityOfPage: canonicalUrl,
     ...(video ? { video } : {})
+  }
+}
+
+export function blogFaqPageJsonLd (pairs: BlogFaqPair[]) {
+  if (!pairs.length) return null
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: pairs.map(pair => ({
+      '@type': 'Question' as const,
+      name: pair.question,
+      acceptedAnswer: {
+        '@type': 'Answer' as const,
+        text: pair.answer
+      }
+    }))
   }
 }
 

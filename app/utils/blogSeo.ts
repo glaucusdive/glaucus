@@ -9,7 +9,7 @@ export function blogSeoTitle (post: BlogPost | BlogPostCard | null | undefined):
 
 export function blogSeoDescription (post: BlogPost | BlogPostCard | null | undefined): string {
   const excerpt = post?.excerpt?.trim()
-  if (excerpt) return excerpt.slice(0, 160)
+  if (excerpt) return excerpt
   const title = post?.title?.trim()
   if (title) return `${title} — scuba diving tips and guides from Glaucus.`
   return 'Scuba diving tips, certification guides, and trip planning from Glaucus.'

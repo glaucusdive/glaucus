@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { BlogPost } from '~~/shared/blogPost'
-import { blogPostingJsonLd, youtubeVideoObjectJsonLd } from '~/utils/blogJsonLd'
+import {
+  blogFaqPageJsonLd,
+  blogPostingJsonLd,
+  youtubeVideoObjectJsonLd
+} from '~/utils/blogJsonLd'
 
 function basePost (overrides: Partial<BlogPost> = {}): BlogPost {
   return {
@@ -8,8 +12,8 @@ function basePost (overrides: Partial<BlogPost> = {}): BlogPost {
     slug: 'choosing-right-dive-course',
     title: 'Choosing the right dive course',
     excerpt: 'How to pick the right scuba certification for your trip.',
-    hero_image_url: '',
-    hero_image_alt: '',
+    hero_image_url: 'https://cdn.example.com/hero.jpg',
+    hero_image_alt: 'Diver',
     body_markdown: 'Intro\n\nhttps://www.youtube.com/watch?v=KvzT3etZlsw\n\nMore text',
     status: 'published',
     published_at: '2026-06-01T12:00:00.000Z',
@@ -65,5 +69,57 @@ describe('blogPostingJsonLd', () => {
       'https://glaucusdive.com/blog/choosing-right-dive-course'
     )
     expect(ld).not.toHaveProperty('video')
+  })
+
+  it('uses Person author and Organization publisher with full excerpt', () => {
+    const longExcerpt =
+      'How to plan a dive trip after certification: pick destination and season, shortlist dive shops, set flights and no-fly days, then build a simple flexible itinerary that leaves room for weather.'
+    const ld = blogPostingJsonLd(
+      basePost({ excerpt: longExcerpt }),
+      'https://glaucusdive.com/blog/choosing-right-dive-course',
+      'https://glaucusdive.com'
+    )
+    expect(ld.description).toBe(longExcerpt)
+    expect(ld.description.length).toBeGreaterThan(160)
+    expect(ld.url).toBe('https://glaucusdive.com/blog/choosing-right-dive-course')
+    expect(ld.author).toEqual({
+      '@type': 'Person',
+      name: 'Chris Porter',
+      jobTitle: 'Builder of Glaucus'
+    })
+    expect(ld.publisher).toEqual({
+      '@type': 'Organization',
+      name: 'Glaucus',
+      url: 'https://glaucusdive.com'
+    })
+    expect(ld.datePublished).toBe('2026-06-01T12:00:00.000Z')
+    expect(ld.dateModified).toBe('2026-06-02T12:00:00.000Z')
+    expect(ld.image).toBe('https://cdn.example.com/hero.jpg')
+  })
+})
+
+describe('blogFaqPageJsonLd', () => {
+  it('returns null when there are no pairs', () => {
+    expect(blogFaqPageJsonLd([])).toBeNull()
+  })
+
+  it('builds FAQPage mainEntity from pairs', () => {
+    const ld = blogFaqPageJsonLd([
+      { question: 'What if the boat cancels?', answer: 'Keep a buffer day.' }
+    ])
+    expect(ld).toEqual({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: [
+        {
+          '@type': 'Question',
+          name: 'What if the boat cancels?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Keep a buffer day.'
+          }
+        }
+      ]
+    })
   })
 })

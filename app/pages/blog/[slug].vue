@@ -43,6 +43,17 @@
           <h1 class="text-3xl font-semibold text-pretty lg:text-5xl">
             {{ post.title }}
           </h1>
+          <div
+            v-if="authorByline || updatedLabel"
+            class="flex flex-col gap-2 text-sm text-zinc-400"
+          >
+            <p v-if="authorByline">
+              {{ authorByline }}
+            </p>
+            <p v-if="updatedLabel">
+              Updated {{ updatedLabel }}
+            </p>
+          </div>
           <p v-if="post.excerpt" class="text-lg text-zinc-400 text-pretty">
             {{ post.excerpt }}
           </p>
@@ -56,10 +67,16 @@
 </template>
 
 <script setup>
+import { blogAuthorByline } from '~~/shared/blogSiteIdentity'
+import { extractBlogFaq } from '~~/shared/extractBlogFaq'
 import { extractBlogToc } from '~~/shared/blogToc'
 import { renderBlogMarkdown } from '~~/shared/renderBlogMarkdown'
 import { blogPostCanonicalPath, blogSeoDescription, blogSeoTitle } from '~/utils/blogSeo'
-import { blogBreadcrumbJsonLd, blogPostingJsonLd } from '~/utils/blogJsonLd'
+import {
+  blogBreadcrumbJsonLd,
+  blogFaqPageJsonLd,
+  blogPostingJsonLd
+} from '~/utils/blogJsonLd'
 
 definePageMeta({ layout: 'blog' })
 
@@ -94,6 +111,20 @@ const nextPost = computed(() => {
   return list[(idx + 1) % list.length] ?? null
 })
 
+const authorByline = computed(() => blogAuthorByline())
+
+const updatedLabel = computed(() => {
+  const raw = post.value?.updated_at
+  if (!raw) return null
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
+})
+
 const seoTitle = computed(() => blogSeoTitle(post.value))
 const seoDescription = computed(() => blogSeoDescription(post.value))
 const canonicalPath = computed(() =>
@@ -105,6 +136,7 @@ useSeoMeta({
   description: seoDescription,
   ogTitle: seoTitle,
   ogDescription: seoDescription,
+  twitterDescription: seoDescription,
   ogType: 'article',
   ogImage: computed(() => post.value?.hero_image_url || undefined),
   articlePublishedTime: computed(() => post.value?.published_at || undefined),
@@ -119,16 +151,24 @@ useHead({
     const p = post.value
     if (!p) return []
     const canonical = `${siteUrl.value}${canonicalPath.value}`
-    return [
+    const scripts = [
       {
         type: 'application/ld+json',
-        innerHTML: JSON.stringify(blogPostingJsonLd(p, canonical))
+        innerHTML: JSON.stringify(blogPostingJsonLd(p, canonical, siteUrl.value))
       },
       {
         type: 'application/ld+json',
         innerHTML: JSON.stringify(blogBreadcrumbJsonLd(p, canonical, siteUrl.value))
       }
     ]
+    const faq = blogFaqPageJsonLd(extractBlogFaq(p.body_markdown))
+    if (faq) {
+      scripts.push({
+        type: 'application/ld+json',
+        innerHTML: JSON.stringify(faq)
+      })
+    }
+    return scripts
   })
 })
 </script>
