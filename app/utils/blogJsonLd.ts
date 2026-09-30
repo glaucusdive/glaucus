@@ -25,8 +25,8 @@ export function youtubeVideoObjectJsonLd (opts: {
   }
 }
 
-function blogAuthorJsonLd () {
-  const name = BLOG_SITE_AUTHOR.name?.trim()
+function blogAuthorJsonLd (post: BlogPost) {
+  const name = (post.author_name || BLOG_SITE_AUTHOR.name)?.trim()
   if (!name) return undefined
   const jobTitle = BLOG_SITE_AUTHOR.jobTitle?.trim()
   return {
@@ -40,7 +40,7 @@ export function blogPostingJsonLd (post: BlogPost, canonicalUrl: string, siteUrl
   const videoIds = extractYoutubeIdsFromMarkdown(post.body_markdown)
   const uploadDate = post.published_at || post.created_at
   const description = blogSeoDescription(post)
-  const author = blogAuthorJsonLd()
+  const author = blogAuthorJsonLd(post)
   const publisherUrl = siteUrl?.replace(/\/$/, '') || undefined
 
   const video =

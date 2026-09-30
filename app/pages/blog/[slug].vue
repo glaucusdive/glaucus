@@ -67,7 +67,7 @@
 </template>
 
 <script setup>
-import { blogAuthorByline } from '~~/shared/blogSiteIdentity'
+import { BLOG_SITE_AUTHOR, blogAuthorByline } from '~~/shared/blogSiteIdentity'
 import { extractBlogFaq } from '~~/shared/extractBlogFaq'
 import { extractBlogToc } from '~~/shared/blogToc'
 import { renderBlogMarkdown } from '~~/shared/renderBlogMarkdown'
@@ -111,7 +111,12 @@ const nextPost = computed(() => {
   return list[(idx + 1) % list.length] ?? null
 })
 
-const authorByline = computed(() => blogAuthorByline())
+const authorByline = computed(() =>
+  blogAuthorByline({
+    name: post.value?.author_name?.trim() || BLOG_SITE_AUTHOR.name,
+    jobTitle: BLOG_SITE_AUTHOR.jobTitle
+  })
+)
 
 const updatedLabel = computed(() => {
   const raw = post.value?.updated_at
