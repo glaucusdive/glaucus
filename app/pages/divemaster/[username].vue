@@ -40,7 +40,7 @@
           <div
             v-for="cert in profile.certifications"
             :key="cert.id || cert.name"
-            class="flex shrink-0 snap-start flex-col w-xs md:w-sm min-h-80 rounded-md border border-zinc-800 bg-transparent overflow-hidden"
+            class="flex shrink-0 snap-start flex-col w-xs md:w-sm min-h-80 rounded-md border border-zinc-800 bg-transparent overflow-hidden transition-colors hover:border-zinc-700"
           >
             <img
               v-if="cert.image_url"
@@ -76,7 +76,7 @@
           <li
             v-for="job in profile.jobs"
             :key="job.id || `${job.title}-${job.organization}`"
-            class="rounded-md border border-zinc-800 bg-transparent p-4"
+            class="rounded-md border border-zinc-800 bg-transparent p-4 transition-colors hover:border-zinc-700"
           >
             <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
               <h3 class="font-medium text-zinc-900 dark:text-white">{{ job.title }}</h3>
@@ -102,14 +102,14 @@
           <div
             v-for="site in profile.dive_sites"
             :key="site.dive_site_id"
-            class="flex flex-col rounded-md border border-zinc-800 bg-transparent overflow-hidden"
+            class="flex flex-col rounded-md border border-zinc-800 bg-transparent overflow-hidden transition-colors hover:border-zinc-700"
           >
-            <div class="relative aspect-video w-full bg-transparent">
+            <div class="relative aspect-video w-full bg-transparent p-1">
               <img
                 v-if="site.image_url"
                 :src="site.image_url"
                 :alt="site.name || 'Dive site'"
-                class="absolute inset-0 size-full object-cover"
+                class="inset-0 aspect-video object-cover rounded-xs"
                 loading="lazy"
               >
             </div>

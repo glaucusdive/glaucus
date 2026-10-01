@@ -2,10 +2,26 @@
   <div class="flex flex-col h-full min-h-0">
     <ShellPageHeader title="Admin · Dive sites">
       <template #actions>
-        <label class="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
-          <input v-model="missingOnly" type="checkbox" class="rounded border-zinc-300" @change="page = 1; load()">
-          Missing photo
-        </label>
+        <div class="flex items-center gap-4">
+          <label class="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
+            <input v-model="missingOnly" type="checkbox" class="rounded border-zinc-300" @change="page = 1; load()">
+            Missing photo
+          </label>
+          <p
+            v-if="actionMsg"
+            class="text-sm"
+            :class="actionOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
+          >
+            {{ actionMsg }}
+          </p>
+          <Button
+            variant="primary"
+            :disabled="!hasDirtyOnPage || saveAllSaving"
+            @click="saveAllDirty"
+          >
+            {{ saveAllSaving ? 'Saving…' : 'Save' }}
+          </Button>
+        </div>
       </template>
     </ShellPageHeader>
 
@@ -110,7 +126,6 @@
           Next
         </button>
       </div>
-      <p v-if="actionMsg" class="mt-2 text-sm" :class="actionOk ? 'text-green-600' : 'text-red-600'">{{ actionMsg }}</p>
     </div>
   </div>
 </template>
@@ -141,6 +156,15 @@ const uploadingId = ref('')
 const urlDrafts = reactive<Record<string, string>>({})
 const actionMsg = ref('')
 const actionOk = ref(false)
+const saveAllSaving = ref(false)
+
+const hasDirtyOnPage = computed(() =>
+  items.value.some((site) => {
+    const draft = (urlDrafts[site.id] ?? '').trim()
+    const saved = (site.image_url ?? '').trim()
+    return draft !== saved
+  })
+)
 
 async function load () {
   loading.value = true
@@ -201,7 +225,7 @@ async function onFile (event: Event, siteId: string) {
   }
 }
 
-async function saveUrl (siteId: string) {
+async function saveUrl (siteId: string): Promise<boolean> {
   actionMsg.value = ''
   try {
     await init()
@@ -211,15 +235,44 @@ async function saveUrl (siteId: string) {
         Authorization: `Bearer ${accessToken.value}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ image_url: urlDrafts[siteId] || null })
+      body: JSON.stringify({ image_url: urlDrafts[siteId]?.trim() || null })
     })
     if (!res.ok) throw new Error(await res.text())
+    const site = items.value.find((s) => s.id === siteId)
+    if (site) site.image_url = urlDrafts[siteId]?.trim() || null
     actionOk.value = true
     actionMsg.value = 'URL saved'
-    await load()
+    return true
   } catch (e) {
     actionOk.value = false
     actionMsg.value = e instanceof Error ? e.message : 'Save failed'
+    return false
+  }
+}
+
+async function saveAllDirty () {
+  if (!hasDirtyOnPage.value || saveAllSaving.value) return
+  saveAllSaving.value = true
+  actionMsg.value = ''
+  const dirtyIds = items.value
+    .filter((site) => {
+      const draft = (urlDrafts[site.id] ?? '').trim()
+      const saved = (site.image_url ?? '').trim()
+      return draft !== saved
+    })
+    .map((site) => site.id)
+  let saved = 0
+  try {
+    for (const id of dirtyIds) {
+      const ok = await saveUrl(id)
+      if (!ok) return
+      saved += 1
+    }
+    actionOk.value = true
+    actionMsg.value = saved === 1 ? 'URL saved' : `${saved} URLs saved`
+    await load()
+  } finally {
+    saveAllSaving.value = false
   }
 }
 
