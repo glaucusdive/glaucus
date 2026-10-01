@@ -1,6 +1,5 @@
 import { requireAdminUser } from '../../../utils/requireAdminUser'
 import { getSupabaseServiceRoleClient } from '../../../utils/supabaseServiceRole'
-import { parseStudentsByCert } from '~~/shared/divemasterProfile'
 
 export default defineEventHandler(async (event) => {
   await requireAdminUser(event)
@@ -34,10 +33,7 @@ export default defineEventHandler(async (event) => {
 
   return {
     profile,
-    divemaster: {
-      ...dm,
-      students_by_cert: parseStudentsByCert(dm.students_by_cert)
-    },
+    divemaster: dm,
     certifications: certs ?? [],
     jobs: jobs ?? [],
     dive_site_ids: (sites ?? []).map((s: { dive_site_id: string }) => s.dive_site_id)

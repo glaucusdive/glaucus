@@ -122,6 +122,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.84.2** — Tie students certified counts to each divemaster certification (settings/admin/public); drop orphan JSON counts (2026-10-01).
 - **0.84.1** — Admin divemaster list/detail: blue Approve + outline Edit/Save, labeled course/agency selects, row-based dive sites (2026-09-30).
 - **0.84.0** — Divemaster profiles: settings IA, public `/divemaster/[username]`, apply/approve flow, admin profile + dive-site photo tools, DB schema (2026-09-30).
 - **0.83.0** — Blog post SEO: full excerpt meta, FAQPage JSON-LD from markdown FAQ sections, Person author byline and updated date on the post template (2026-09-19).

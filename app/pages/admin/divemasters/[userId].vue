@@ -60,44 +60,6 @@
 
         <div class="space-y-2">
           <div class="flex items-center justify-between">
-            <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Students certified</h3>
-            <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addStudentRow">
-              + Add type
-            </button>
-          </div>
-          <div
-            v-for="(row, idx) in studentRows"
-            :key="idx"
-            class="grid gap-2 items-end"
-            :class="studentRows.length > 1 ? 'grid-cols-[minmax(0,1fr)_6rem_auto]' : 'grid-cols-[minmax(0,1fr)_6rem]'"
-          >
-            <FormField label="Cert type" label-style="auth">
-              <SearchMultiSelect
-                :model-value="row.label ? [row.label] : []"
-                :options="optionsWithLegacy(courseCertOptions, row.label)"
-                searchable
-                wrap-chips
-                single-select
-                singular-label="cert"
-                @update:model-value="(ids) => { row.label = ids[0] ? String(ids[0]) : '' }"
-              />
-            </FormField>
-            <FormField label="Students" label-style="auth">
-              <FormInput v-model="row.count" type="number" size="sm" min="0" />
-            </FormField>
-            <button
-              v-if="studentRows.length > 1"
-              type="button"
-              class="text-xs text-red-600 dark:text-red-400 pb-2 cursor-pointer"
-              @click="studentRows.splice(idx, 1)"
-            >
-              Remove
-            </button>
-          </div>
-        </div>
-
-        <div class="space-y-2">
-          <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Certifications</h3>
             <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addCert">
               + Add
@@ -136,6 +98,9 @@
               </FormField>
               <FormField label="Issued" label-style="auth">
                 <FormInput v-model="c.issued_at" type="date" size="sm" />
+              </FormField>
+              <FormField label="Students certified" label-style="auth">
+                <FormInput v-model="c.students_certified" type="number" size="sm" min="0" />
               </FormField>
             </div>
             <button type="button" class="text-xs text-red-600 dark:text-red-400 cursor-pointer" @click="certifications.splice(idx, 1)">Remove</button>
@@ -257,7 +222,7 @@
 </template>
 
 <script setup lang="ts">
-import type { DivemasterCertification, DivemasterJob, DivemasterProfileStatus } from '~~/shared/divemasterProfile'
+import { parseStudentsCertified, type DivemasterCertification, type DivemasterJob, type DivemasterProfileStatus } from '~~/shared/divemasterProfile'
 
 definePageMeta({ layout: 'default', middleware: 'admin' })
 useSeoMeta({ title: 'Admin · Edit divemaster', robots: 'noindex, nofollow' })
@@ -283,22 +248,17 @@ const form = reactive({
   avatar_url: '',
   admin_notes: ''
 })
-const studentRows = ref<Array<{ label: string; count: string }>>([])
 const courseCertOptions = ref<Array<{ id: string; label: string }>>([])
 const agencyOptions = ref<Array<{ id: string; label: string }>>([])
-const certifications = ref<Array<DivemasterCertification & { agency: string; cert_number: string; issued_at: string }>>([])
+const certifications = ref<Array<DivemasterCertification & { agency: string; cert_number: string; issued_at: string; students_certified: number }>>([])
 const jobs = ref<Array<DivemasterJob & { location: string; start_date: string; end_date: string; description: string; is_current: boolean }>>([])
 const diveSiteIds = ref<string[]>([])
 const diveSiteOptions = ref<Array<{ id: string; label: string }>>([])
 
 const headerTitle = computed(() => `Admin · ${form.display_name || form.username || 'Divemaster'}`)
 
-function addStudentRow () {
-  studentRows.value.push({ label: '', count: '0' })
-}
-
 function addCert () {
-  certifications.value.push({ name: '', agency: '', cert_number: '', issued_at: '' })
+  certifications.value.push({ name: '', agency: '', cert_number: '', issued_at: '', students_certified: 0 })
 }
 
 function addJob () {
@@ -345,16 +305,6 @@ function diveSiteOptionsForRow (idx: number) {
   )
   const base = diveSiteOptions.value.filter(o => !taken.has(o.id))
   return optionsWithLegacy(base, current)
-}
-
-function studentsJson () {
-  const out: Record<string, number> = {}
-  for (const row of studentRows.value) {
-    const label = row.label.trim()
-    const n = Number(row.count)
-    if (label && Number.isFinite(n)) out[label] = Math.floor(n)
-  }
-  return out
 }
 
 async function authHeaders () {
@@ -418,13 +368,12 @@ async function load () {
     form.location = json.divemaster?.location || ''
     form.avatar_url = json.divemaster?.avatar_url || ''
     form.admin_notes = json.divemaster?.admin_notes || ''
-    const students = json.divemaster?.students_by_cert || {}
-    studentRows.value = Object.entries(students).map(([label, count]) => ({ label, count: String(count) }))
     certifications.value = (json.certifications ?? []).map((c: Record<string, unknown>) => ({
       name: String(c.name || ''),
       agency: String(c.agency || ''),
       cert_number: String(c.cert_number || ''),
-      issued_at: String(c.issued_at || '')
+      issued_at: String(c.issued_at || ''),
+      students_certified: parseStudentsCertified(c.students_certified)
     }))
     jobs.value = (json.jobs ?? []).map((j: Record<string, unknown>) => ({
       title: String(j.title || ''),
@@ -476,8 +425,10 @@ async function save () {
     location: form.location,
     avatar_url: form.avatar_url,
     admin_notes: form.admin_notes,
-    students_by_cert: studentsJson(),
-    certifications: certifications.value,
+    certifications: certifications.value.map(c => ({
+      ...c,
+      students_certified: parseStudentsCertified(c.students_certified)
+    })),
     jobs: jobs.value.map(j => {
       const end = String(j.end_date || '').trim() || null
       return {

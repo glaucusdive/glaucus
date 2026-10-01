@@ -33,19 +33,6 @@
         </div>
       </header>
 
-      <!-- Student counters -->
-      <section v-if="studentEntries.length" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        <div
-          v-for="[label, count] in studentEntries"
-          :key="label"
-          class="rounded-md border border-zinc-800 bg-transparent p-4"
-        >
-          <p class="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white">{{ count }}</p>
-          <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ label }}</p>
-          <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-500">Students certified</p>
-        </div>
-      </section>
-
       <!-- Certifications horizontal strip -->
       <section v-if="profile.certifications.length" class="space-y-4">
         <h2 class="text-xl font-semibold text-zinc-900 dark:text-white">Certifications</h2>
@@ -70,6 +57,13 @@
                 <span v-if="cert.issued_at">Issued {{ formatMonthYear(cert.issued_at) }}</span>
               </p>
               <p v-if="cert.cert_number" class="text-xs text-zinc-500">#{{ cert.cert_number }}</p>
+              <div
+                v-if="(cert.students_certified ?? 0) > 0"
+                class="mt-auto pt-4"
+              >
+                <p class="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white">{{ cert.students_certified }}</p>
+                <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-500">Students certified</p>
+              </div>
             </div>
           </div>
         </div>
@@ -174,11 +168,6 @@ const profile = computed(() => {
 })
 
 const displayName = computed(() => profile.value?.display_name || profile.value?.username || 'Divemaster')
-
-const studentEntries = computed(() => {
-  const map = profile.value?.students_by_cert ?? {}
-  return Object.entries(map).filter(([, n]) => n > 0)
-})
 
 const seoTitle = computed(() => `${displayName.value} · Divemaster`)
 const seoDescription = computed(() => {

@@ -2,8 +2,7 @@ import { requireAdminUser } from '../../../utils/requireAdminUser'
 import { getSupabaseServiceRoleClient } from '../../../utils/supabaseServiceRole'
 import {
   isValidUsername,
-  normalizeUsername,
-  parseStudentsByCert
+  normalizeUsername
 } from '~~/shared/divemasterProfile'
 
 /**
@@ -110,8 +109,6 @@ export default defineEventHandler(async (event) => {
 
   return {
     user_id: userId,
-    profile: dm
-      ? { ...dm, students_by_cert: parseStudentsByCert(dm.students_by_cert) }
-      : null
+    profile: dm ?? null
   }
 })

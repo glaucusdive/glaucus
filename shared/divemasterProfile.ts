@@ -12,6 +12,8 @@ export interface DivemasterCertification {
   issued_at?: string | null
   expires_at?: string | null
   image_url?: string | null
+  /** Students certified while holding this certification. */
+  students_certified?: number
   sort_order?: number
 }
 
@@ -59,7 +61,6 @@ export interface PublicDivemasterProfile {
   bio: string | null
   location: string | null
   avatar_url: string | null
-  students_by_cert: Record<string, number>
   certifications: DivemasterCertification[]
   jobs: DivemasterJob[]
   dive_sites: DivemasterDiveSiteLink[]
@@ -125,4 +126,11 @@ export function parseStudentsByCert (value: unknown): Record<string, number> {
     if (k.trim() && Number.isFinite(n) && n >= 0) out[k.trim()] = Math.floor(n)
   }
   return out
+}
+
+/** Normalize a students_certified value from forms/API (floor, clamp at 0). */
+export function parseStudentsCertified (value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n) || n < 0) return 0
+  return Math.floor(n)
 }

@@ -115,44 +115,6 @@
 
             <div class="space-y-2">
               <div class="flex items-center justify-between">
-                <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Students certified</h3>
-                <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addStudentRow">
-                  + Add type
-                </button>
-              </div>
-              <div
-                v-for="(row, idx) in studentRows"
-                :key="idx"
-                class="grid gap-2 items-end"
-                :class="studentRows.length > 1 ? 'grid-cols-[minmax(0,1fr)_6rem_auto]' : 'grid-cols-[minmax(0,1fr)_6rem]'"
-              >
-                <FormField label="Cert type" label-style="auth">
-                  <SearchMultiSelect
-                    :model-value="row.label ? [row.label] : []"
-                    :options="optionsWithLegacy(courseCertOptions, row.label)"
-                    searchable
-                    wrap-chips
-                    single-select
-                    singular-label="cert"
-                    @update:model-value="(ids) => { row.label = ids[0] ? String(ids[0]) : '' }"
-                  />
-                </FormField>
-                <FormField label="Students" label-style="auth">
-                  <FormInput v-model="row.count" type="number" size="sm" min="0" />
-                </FormField>
-                <button
-                  v-if="studentRows.length > 1"
-                  type="button"
-                  class="text-xs text-red-600 dark:text-red-400 pb-2 cursor-pointer"
-                  @click="studentRows.splice(idx, 1)"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-
-            <div class="space-y-2">
-              <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Certifications</h3>
                 <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addCert">
                   + Add
@@ -191,6 +153,9 @@
                   </FormField>
                   <FormField label="Issued" label-style="auth">
                     <FormInput v-model="c.issued_at" type="date" size="sm" />
+                  </FormField>
+                  <FormField label="Students certified" label-style="auth">
+                    <FormInput v-model="c.students_certified" type="number" size="sm" min="0" />
                   </FormField>
                 </div>
                 <button type="button" class="text-xs text-red-600 dark:text-red-400 cursor-pointer" @click="certifications.splice(idx, 1)">Remove</button>
@@ -324,7 +289,7 @@ import {
   formatUsernameCooldownMessage,
   isValidUsername,
   normalizeUsername,
-  parseStudentsByCert,
+  parseStudentsCertified,
   usernameChangeAvailableAt,
   type DivemasterCertification,
   type DivemasterJob,
@@ -369,10 +334,9 @@ const form = reactive({
   avatar_url: ''
 })
 
-const studentRows = ref<Array<{ label: string; count: string }>>([])
 const courseCertOptions = ref<Array<{ id: string; label: string }>>([])
 const agencyOptions = ref<Array<{ id: string; label: string }>>([])
-const certifications = ref<Array<DivemasterCertification & { agency: string; cert_number: string; issued_at: string }>>([])
+const certifications = ref<Array<DivemasterCertification & { agency: string; cert_number: string; issued_at: string; students_certified: number }>>([])
 const jobs = ref<Array<DivemasterJob & { location: string; start_date: string; end_date: string; description: string; is_current: boolean }>>([])
 const selectedDiveSiteIds = ref<string[]>([])
 const diveSiteOptions = ref<Array<{ id: string; label: string }>>([])
@@ -384,16 +348,13 @@ const statusLabel = computed(() => {
   return ''
 })
 
-function addStudentRow () {
-  studentRows.value.push({ label: '', count: '0' })
-}
-
 function addCert () {
   certifications.value.push({
     name: '',
     agency: '',
     cert_number: '',
     issued_at: '',
+    students_certified: 0,
     sort_order: certifications.value.length
   })
 }
@@ -428,16 +389,6 @@ function jobEndDateForSave (j: { is_current: boolean; end_date: string }) {
 function jobIsCurrentForSave (j: { is_current: boolean; end_date: string }) {
   if (String(j.end_date || '').trim()) return false
   return !!j.is_current
-}
-
-function studentsToJson (): Record<string, number> {
-  const out: Record<string, number> = {}
-  for (const row of studentRows.value) {
-    const label = row.label.trim()
-    const n = Number(row.count)
-    if (label && Number.isFinite(n) && n >= 0) out[label] = Math.floor(n)
-  }
-  return out
 }
 
 function addDiveSiteRow () {
@@ -538,9 +489,6 @@ async function loadAll () {
     form.bio = (dm.bio as string) || ''
     form.location = (dm.location as string) || ''
     form.avatar_url = (dm.avatar_url as string) || ''
-    const students = parseStudentsByCert(dm.students_by_cert)
-    studentRows.value = Object.entries(students).map(([label, count]) => ({ label, count: String(count) }))
-    if (!studentRows.value.length) studentRows.value = [{ label: '', count: '0' }]
 
     const [{ data: certs }, { data: jobRows }, { data: siteLinks }] = await Promise.all([
       client.from('divemaster_certifications').select('*').eq('user_id', id).order('sort_order'),
@@ -556,6 +504,7 @@ async function loadAll () {
       issued_at: c.issued_at || '',
       expires_at: c.expires_at,
       image_url: c.image_url,
+      students_certified: parseStudentsCertified(c.students_certified),
       sort_order: c.sort_order ?? 0
     }))
 
@@ -653,8 +602,7 @@ async function saveDraft () {
       headline: form.headline || null,
       bio: form.bio || null,
       location: form.location || null,
-      avatar_url: form.avatar_url || null,
-      students_by_cert: studentsToJson()
+      avatar_url: form.avatar_url || null
     }).eq('user_id', id)
     if (dmErr) throw dmErr
 
@@ -671,6 +619,7 @@ async function saveDraft () {
             issued_at: c.issued_at || null,
             expires_at: c.expires_at || null,
             image_url: c.image_url || null,
+            students_certified: parseStudentsCertified(c.students_certified),
             sort_order: i
           }))
       )
@@ -765,7 +714,6 @@ async function cancelApplication () {
     form.bio = ''
     form.location = ''
     form.avatar_url = ''
-    studentRows.value = []
     certifications.value = []
     jobs.value = []
     selectedDiveSiteIds.value = []

@@ -1,6 +1,6 @@
 import { getSupabaseServiceRoleClient } from '../../utils/supabaseServiceRole'
 import {
-  parseStudentsByCert,
+  parseStudentsCertified,
   type PublicDivemasterProfile
 } from '~~/shared/divemasterProfile'
 
@@ -122,7 +122,6 @@ export default defineEventHandler(async (event): Promise<DivemasterApiResult> =>
     bio: dm.bio ?? null,
     location: dm.location ?? null,
     avatar_url: dm.avatar_url ?? null,
-    students_by_cert: parseStudentsByCert(dm.students_by_cert),
     certifications: (certs ?? []).map((c: Record<string, unknown>) => ({
       id: c.id as string | undefined,
       agency: c.agency as string | null,
@@ -131,6 +130,7 @@ export default defineEventHandler(async (event): Promise<DivemasterApiResult> =>
       issued_at: c.issued_at as string | null,
       expires_at: c.expires_at as string | null,
       image_url: c.image_url as string | null,
+      students_certified: parseStudentsCertified(c.students_certified),
       sort_order: typeof c.sort_order === 'number' ? c.sort_order : 0
     })),
     jobs: (jobs ?? []).map((j: Record<string, unknown>) => ({

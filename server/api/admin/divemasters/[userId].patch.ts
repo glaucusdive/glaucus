@@ -3,7 +3,7 @@ import { getSupabaseServiceRoleClient } from '../../../utils/supabaseServiceRole
 import {
   isValidUsername,
   normalizeUsername,
-  parseStudentsByCert,
+  parseStudentsCertified,
   type DivemasterCertification,
   type DivemasterJob,
   type DivemasterProfileStatus
@@ -24,7 +24,6 @@ export default defineEventHandler(async (event) => {
     bio?: string
     location?: string
     avatar_url?: string
-    students_by_cert?: Record<string, number>
     admin_notes?: string
     certifications?: DivemasterCertification[]
     jobs?: DivemasterJob[]
@@ -105,7 +104,6 @@ export default defineEventHandler(async (event) => {
   if (body.bio !== undefined) patch.bio = body.bio || null
   if (body.location !== undefined) patch.location = body.location || null
   if (body.avatar_url !== undefined) patch.avatar_url = body.avatar_url || null
-  if (body.students_by_cert !== undefined) patch.students_by_cert = parseStudentsByCert(body.students_by_cert)
   if (body.admin_notes !== undefined) patch.admin_notes = body.admin_notes || null
   if (body.status === 'draft' || body.status === 'pending_review' || body.status === 'published') {
     patch.status = body.status
@@ -137,6 +135,7 @@ export default defineEventHandler(async (event) => {
         issued_at: c.issued_at || null,
         expires_at: c.expires_at || null,
         image_url: c.image_url || null,
+        students_certified: parseStudentsCertified(c.students_certified),
         sort_order: i
       }))
     if (rows.length) {

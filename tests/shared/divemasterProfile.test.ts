@@ -4,6 +4,7 @@ import {
   isValidUsername,
   normalizeUsername,
   parseStudentsByCert,
+  parseStudentsCertified,
   usernameChangeAvailableAt
 } from '../../shared/divemasterProfile'
 
@@ -19,6 +20,14 @@ describe('divemasterProfile helpers', () => {
   it('parses students_by_cert', () => {
     expect(parseStudentsByCert({ 'Open Water': 12, bad: 'x', '': 3 })).toEqual({ 'Open Water': 12 })
     expect(parseStudentsByCert(null)).toEqual({})
+  })
+
+  it('parses students_certified', () => {
+    expect(parseStudentsCertified(12.7)).toBe(12)
+    expect(parseStudentsCertified('8')).toBe(8)
+    expect(parseStudentsCertified(-1)).toBe(0)
+    expect(parseStudentsCertified('x')).toBe(0)
+    expect(parseStudentsCertified(null)).toBe(0)
   })
 
   it('computes username change cooldown', () => {
