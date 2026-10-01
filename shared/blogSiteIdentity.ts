@@ -8,8 +8,8 @@ export type BlogSiteAuthor = {
 }
 
 export const BLOG_SITE_AUTHOR: BlogSiteAuthor = {
-  name: 'Chris Porter',
-  jobTitle: 'Builder of Glaucus'
+  name: 'Shashwat Rajvaidya',
+  jobTitle: 'Founder of Glaucus'
 }
 
 export const BLOG_PUBLISHER_NAME = 'Glaucus'

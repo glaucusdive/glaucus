@@ -7,6 +7,7 @@ export const blogPostWriteSchema = z.object({
   hero_image_url: z.string().optional(),
   hero_image_alt: z.string().optional(),
   body_markdown: z.string().optional(),
+  author_name: z.string().optional(),
   status: z.enum(['draft', 'published']).optional(),
   sort_order: z.number().int().optional()
 })

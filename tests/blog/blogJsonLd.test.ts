@@ -15,6 +15,7 @@ function basePost (overrides: Partial<BlogPost> = {}): BlogPost {
     hero_image_url: 'https://cdn.example.com/hero.jpg',
     hero_image_alt: 'Diver',
     body_markdown: 'Intro\n\nhttps://www.youtube.com/watch?v=KvzT3etZlsw\n\nMore text',
+    author_name: 'Shashwat Rajvaidya',
     status: 'published',
     published_at: '2026-06-01T12:00:00.000Z',
     sort_order: 0,
@@ -84,8 +85,8 @@ describe('blogPostingJsonLd', () => {
     expect(ld.url).toBe('https://glaucusdive.com/blog/choosing-right-dive-course')
     expect(ld.author).toEqual({
       '@type': 'Person',
-      name: 'Chris Porter',
-      jobTitle: 'Builder of Glaucus'
+      name: 'Shashwat Rajvaidya',
+      jobTitle: 'Founder of Glaucus'
     })
     expect(ld.publisher).toEqual({
       '@type': 'Organization',
@@ -95,6 +96,19 @@ describe('blogPostingJsonLd', () => {
     expect(ld.datePublished).toBe('2026-06-01T12:00:00.000Z')
     expect(ld.dateModified).toBe('2026-06-02T12:00:00.000Z')
     expect(ld.image).toBe('https://cdn.example.com/hero.jpg')
+  })
+
+  it('uses post author_name over site default when set', () => {
+    const ld = blogPostingJsonLd(
+      basePost({ author_name: 'Guest Writer' }),
+      'https://glaucusdive.com/blog/choosing-right-dive-course',
+      'https://glaucusdive.com'
+    )
+    expect(ld.author).toEqual({
+      '@type': 'Person',
+      name: 'Guest Writer',
+      jobTitle: 'Founder of Glaucus'
+    })
   })
 })
 
