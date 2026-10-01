@@ -60,91 +60,196 @@
 
         <div class="space-y-2">
           <div class="flex items-center justify-between">
-            <h3 class="text-sm font-medium">Students by cert</h3>
-            <button type="button" class="text-xs cursor-pointer" @click="studentRows.push({ label: '', count: '0' })">+ Add</button>
+            <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Students certified</h3>
+            <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addStudentRow">
+              + Add type
+            </button>
           </div>
-          <div v-for="(row, idx) in studentRows" :key="idx" class="flex gap-2">
-            <FormInput v-model="row.label" type="text" size="sm" class="flex-1" placeholder="Open Water" />
-            <FormInput v-model="row.count" type="number" size="sm" class="w-24" />
-            <button type="button" class="text-xs text-red-600 cursor-pointer" @click="studentRows.splice(idx, 1)">×</button>
+          <div
+            v-for="(row, idx) in studentRows"
+            :key="idx"
+            class="grid gap-2 items-end"
+            :class="studentRows.length > 1 ? 'grid-cols-[minmax(0,1fr)_6rem_auto]' : 'grid-cols-[minmax(0,1fr)_6rem]'"
+          >
+            <FormField label="Cert type" label-style="auth">
+              <SearchMultiSelect
+                :model-value="row.label ? [row.label] : []"
+                :options="optionsWithLegacy(courseCertOptions, row.label)"
+                searchable
+                wrap-chips
+                single-select
+                singular-label="cert"
+                @update:model-value="(ids) => { row.label = ids[0] ? String(ids[0]) : '' }"
+              />
+            </FormField>
+            <FormField label="Students" label-style="auth">
+              <FormInput v-model="row.count" type="number" size="sm" min="0" />
+            </FormField>
+            <button
+              v-if="studentRows.length > 1"
+              type="button"
+              class="text-xs text-red-600 dark:text-red-400 pb-2 cursor-pointer"
+              @click="studentRows.splice(idx, 1)"
+            >
+              Remove
+            </button>
           </div>
         </div>
 
         <div class="space-y-2">
           <div class="flex items-center justify-between">
-            <h3 class="text-sm font-medium">Certifications</h3>
-            <button type="button" class="text-xs cursor-pointer" @click="addCert">+ Add</button>
+            <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Certifications</h3>
+            <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addCert">
+              + Add
+            </button>
           </div>
-          <div v-for="(c, idx) in certifications" :key="idx" class="border border-zinc-200 dark:border-zinc-700 rounded p-3 space-y-2">
-            <div class="grid grid-cols-2 gap-2">
-              <FormInput v-model="c.name" type="text" size="sm" placeholder="Name" />
-              <FormInput v-model="c.agency" type="text" size="sm" placeholder="Agency" />
-              <FormInput v-model="c.cert_number" type="text" size="sm" placeholder="Number" />
-              <FormInput v-model="c.issued_at" type="date" size="sm" />
+          <div
+            v-for="(c, idx) in certifications"
+            :key="idx"
+            class="border border-zinc-200 dark:border-zinc-700 rounded-md p-3 space-y-2"
+          >
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <FormField label="Name" label-style="auth">
+                <SearchMultiSelect
+                  :model-value="c.name ? [c.name] : []"
+                  :options="optionsWithLegacy(courseCertOptions, c.name)"
+                  searchable
+                  wrap-chips
+                  single-select
+                  singular-label="cert"
+                  @update:model-value="(ids) => { c.name = ids[0] ? String(ids[0]) : '' }"
+                />
+              </FormField>
+              <FormField label="Agency" label-style="auth">
+                <SearchMultiSelect
+                  :model-value="c.agency ? [c.agency] : []"
+                  :options="optionsWithLegacy(agencyOptions, c.agency)"
+                  searchable
+                  wrap-chips
+                  single-select
+                  singular-label="agency"
+                  @update:model-value="(ids) => { c.agency = ids[0] ? String(ids[0]) : '' }"
+                />
+              </FormField>
+              <FormField label="Number" label-style="auth">
+                <FormInput v-model="c.cert_number" type="text" size="sm" />
+              </FormField>
+              <FormField label="Issued" label-style="auth">
+                <FormInput v-model="c.issued_at" type="date" size="sm" />
+              </FormField>
             </div>
-            <button type="button" class="text-xs text-red-600 cursor-pointer" @click="certifications.splice(idx, 1)">Remove</button>
+            <button type="button" class="text-xs text-red-600 dark:text-red-400 cursor-pointer" @click="certifications.splice(idx, 1)">Remove</button>
           </div>
         </div>
 
         <div class="space-y-2">
           <div class="flex items-center justify-between">
-            <h3 class="text-sm font-medium">Jobs</h3>
-            <button type="button" class="text-xs cursor-pointer" @click="addJob">+ Add</button>
+            <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Past jobs</h3>
+            <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addJob">
+              + Add
+            </button>
           </div>
-          <div v-for="(j, idx) in jobs" :key="idx" class="border border-zinc-200 dark:border-zinc-700 rounded p-3 space-y-2">
-            <div class="grid grid-cols-2 gap-2">
-              <FormInput v-model="j.title" type="text" size="sm" placeholder="Title" />
-              <FormInput v-model="j.organization" type="text" size="sm" placeholder="Organization" />
-              <FormInput v-model="j.location" type="text" size="sm" placeholder="Location" />
-              <FormInput v-model="j.start_date" type="date" size="sm" />
-              <FormInput v-model="j.end_date" type="date" size="sm" :disabled="j.is_current" />
-              <label class="flex items-center gap-2 text-sm cursor-pointer">
-                <input v-model="j.is_current" type="checkbox"> Current
+          <div
+            v-for="(j, idx) in jobs"
+            :key="idx"
+            class="border border-zinc-200 dark:border-zinc-700 rounded-md p-3 space-y-2"
+          >
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <FormField label="Title" label-style="auth">
+                <FormInput v-model="j.title" type="text" size="sm" />
+              </FormField>
+              <FormField label="Organization" label-style="auth">
+                <FormInput v-model="j.organization" type="text" size="sm" />
+              </FormField>
+              <FormField label="Location" label-style="auth">
+                <FormInput v-model="j.location" type="text" size="sm" />
+              </FormField>
+              <FormField label="Start" label-style="auth">
+                <FormInput v-model="j.start_date" type="date" size="sm" />
+              </FormField>
+              <FormField label="End" label-style="auth">
+                <FormInput
+                  v-model="j.end_date"
+                  type="date"
+                  size="sm"
+                  :disabled="j.is_current"
+                  @update:model-value="onJobEndDateChange(j)"
+                />
+              </FormField>
+              <label class="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300 pt-6 cursor-pointer">
+                <input
+                  v-model="j.is_current"
+                  type="checkbox"
+                  class="rounded border-zinc-300"
+                  @change="onJobCurrentChange(j)"
+                >
+                Current role
               </label>
             </div>
-            <FormTextarea v-model="j.description" :rows="2" />
-            <button type="button" class="text-xs text-red-600 cursor-pointer" @click="jobs.splice(idx, 1)">Remove</button>
+            <FormField label="Description" label-style="auth">
+              <FormTextarea v-model="j.description" :rows="2" />
+            </FormField>
+            <button type="button" class="text-xs text-red-600 dark:text-red-400 cursor-pointer" @click="jobs.splice(idx, 1)">Remove</button>
           </div>
         </div>
 
         <div class="space-y-2">
-          <h3 class="text-sm font-medium">Dive sites</h3>
-          <SearchMultiSelect
-            v-model="diveSiteIds"
-            :options="diveSiteOptions"
-            wrap-chips
-            searchable
-          />
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Past dive sites</h3>
+            <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addDiveSiteRow">
+              + Add
+            </button>
+          </div>
+          <div
+            v-for="(siteId, idx) in diveSiteIds"
+            :key="idx"
+            class="flex gap-2 items-center"
+          >
+            <div class="min-w-0 flex-1">
+              <SearchMultiSelect
+                :model-value="siteId ? [siteId] : []"
+                :options="diveSiteOptionsForRow(idx)"
+                searchable
+                wrap-chips
+                single-select
+                singular-label="dive site"
+                @update:model-value="(ids) => { diveSiteIds[idx] = ids[0] ? String(ids[0]) : '' }"
+              />
+            </div>
+            <button
+              type="button"
+              class="text-xs text-red-600 dark:text-red-400 shrink-0 cursor-pointer"
+              @click="diveSiteIds.splice(idx, 1)"
+            >
+              Remove
+            </button>
+          </div>
         </div>
 
-        <div v-if="msg" class="text-sm" :class="ok ? 'text-green-600' : 'text-red-600'">{{ msg }}</div>
+        <div v-if="msg" class="text-sm" :class="ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">{{ msg }}</div>
 
         <div class="flex flex-wrap gap-2">
-          <button
-            type="submit"
-            class="px-4 py-2 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-medium disabled:opacity-50 cursor-pointer"
-            :disabled="saving"
-          >
+          <Button type="submit" variant="secondary" :disabled="saving">
             {{ saving ? 'Saving…' : 'Save' }}
-          </button>
-          <button
+          </Button>
+          <Button
             v-if="dm.status !== 'published'"
             type="button"
-            class="px-4 py-2 rounded-md bg-green-600 text-white text-sm font-medium disabled:opacity-50 cursor-pointer"
+            variant="primary"
             :disabled="saving"
             @click="approve"
           >
-            Approve & publish
-          </button>
-          <button
+            Approve
+          </Button>
+          <Button
             v-if="dm.status === 'published'"
             type="button"
-            class="px-4 py-2 rounded-md border border-zinc-300 dark:border-zinc-600 text-sm font-medium cursor-pointer"
+            variant="secondary"
             :disabled="saving"
             @click="unpublish"
           >
             Unpublish
-          </button>
+          </Button>
         </div>
       </form>
     </div>
@@ -179,6 +284,8 @@ const form = reactive({
   admin_notes: ''
 })
 const studentRows = ref<Array<{ label: string; count: string }>>([])
+const courseCertOptions = ref<Array<{ id: string; label: string }>>([])
+const agencyOptions = ref<Array<{ id: string; label: string }>>([])
 const certifications = ref<Array<DivemasterCertification & { agency: string; cert_number: string; issued_at: string }>>([])
 const jobs = ref<Array<DivemasterJob & { location: string; start_date: string; end_date: string; description: string; is_current: boolean }>>([])
 const diveSiteIds = ref<string[]>([])
@@ -186,9 +293,14 @@ const diveSiteOptions = ref<Array<{ id: string; label: string }>>([])
 
 const headerTitle = computed(() => `Admin · ${form.display_name || form.username || 'Divemaster'}`)
 
+function addStudentRow () {
+  studentRows.value.push({ label: '', count: '0' })
+}
+
 function addCert () {
   certifications.value.push({ name: '', agency: '', cert_number: '', issued_at: '' })
 }
+
 function addJob () {
   jobs.value.push({
     title: '',
@@ -199,6 +311,40 @@ function addJob () {
     is_current: false,
     description: ''
   })
+}
+
+function onJobCurrentChange (j: { is_current: boolean; end_date: string }) {
+  if (j.is_current) j.end_date = ''
+}
+
+function onJobEndDateChange (j: { is_current: boolean; end_date: string }) {
+  if (String(j.end_date || '').trim()) j.is_current = false
+}
+
+function addDiveSiteRow () {
+  diveSiteIds.value.push('')
+}
+
+function optionsWithLegacy (
+  options: Array<{ id: string; label: string }>,
+  value: string
+) {
+  const trimmed = value.trim()
+  if (!trimmed) return options
+  if (options.some(o => o.id === trimmed)) return options
+  return [{ id: trimmed, label: trimmed }, ...options]
+}
+
+function diveSiteOptionsForRow (idx: number) {
+  const current = (diveSiteIds.value[idx] || '').trim()
+  const taken = new Set(
+    diveSiteIds.value
+      .filter((_, i) => i !== idx)
+      .map(id => id.trim())
+      .filter(Boolean)
+  )
+  const base = diveSiteOptions.value.filter(o => !taken.has(o.id))
+  return optionsWithLegacy(base, current)
 }
 
 function studentsJson () {
@@ -228,6 +374,32 @@ async function loadDiveSites () {
       label: `${row.name}${country?.name ? ` (${country.name})` : ''}`
     }
   })
+}
+
+async function loadCourseCertOptions () {
+  const { data } = await client
+    .from('courses')
+    .select('certification_name')
+    .order('certification_name')
+  const names = new Set<string>()
+  for (const row of data ?? []) {
+    const n = String(row.certification_name || '').trim()
+    if (n) names.add(n)
+  }
+  courseCertOptions.value = [...names]
+    .sort((a, b) => a.localeCompare(b))
+    .map(name => ({ id: name, label: name }))
+}
+
+async function loadAgencyOptions () {
+  const { data } = await client
+    .from('agencies')
+    .select('name')
+    .order('name')
+  agencyOptions.value = (data ?? [])
+    .map(row => String(row.name || '').trim())
+    .filter(Boolean)
+    .map(name => ({ id: name, label: name }))
 }
 
 async function load () {
@@ -264,7 +436,7 @@ async function load () {
       description: String(j.description || '')
     }))
     diveSiteIds.value = (json.dive_site_ids ?? []).map(String)
-    await loadDiveSites()
+    await Promise.all([loadDiveSites(), loadCourseCertOptions(), loadAgencyOptions()])
   } catch (e) {
     loadError.value = e instanceof Error ? e.message : 'Failed to load'
   } finally {
@@ -306,8 +478,15 @@ async function save () {
     admin_notes: form.admin_notes,
     students_by_cert: studentsJson(),
     certifications: certifications.value,
-    jobs: jobs.value,
-    dive_site_ids: diveSiteIds.value
+    jobs: jobs.value.map(j => {
+      const end = String(j.end_date || '').trim() || null
+      return {
+        ...j,
+        end_date: end,
+        is_current: end ? false : !!j.is_current
+      }
+    }),
+    dive_site_ids: diveSiteIds.value.map(id => id.trim()).filter(Boolean)
   })
 }
 

@@ -149,18 +149,22 @@ export default defineEventHandler(async (event) => {
     await service.from('divemaster_jobs').delete().eq('user_id', userId)
     const rows = body.jobs
       .filter(j => j.title?.trim() && j.organization?.trim())
-      .map((j, i) => ({
-        user_id: userId,
-        title: j.title.trim(),
-        organization: j.organization.trim(),
-        location: j.location?.trim() || null,
-        start_date: j.start_date || null,
-        end_date: j.is_current ? null : (j.end_date || null),
-        is_current: !!j.is_current,
-        description: j.description?.trim() || null,
-        diveshop_id: j.diveshop_id || null,
-        sort_order: i
-      }))
+      .map((j, i) => {
+        const endDate = j.end_date?.trim() ? j.end_date.trim() : null
+        const isCurrent = endDate ? false : !!j.is_current
+        return {
+          user_id: userId,
+          title: j.title.trim(),
+          organization: j.organization.trim(),
+          location: j.location?.trim() || null,
+          start_date: j.start_date || null,
+          end_date: endDate,
+          is_current: isCurrent,
+          description: j.description?.trim() || null,
+          diveshop_id: j.diveshop_id || null,
+          sort_order: i
+        }
+      })
     if (rows.length) {
       const { error } = await service.from('divemaster_jobs').insert(rows)
       if (error) throw createError({ statusCode: 500, statusMessage: error.message })

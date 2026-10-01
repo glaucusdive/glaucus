@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-zinc-50 dark:bg-zinc-900">
+  <div class="h-full overflow-y-auto bg-zinc-50 dark:bg-zinc-900">
     <div v-if="pending" class="flex items-center justify-center py-24">
       <span class="text-sm text-zinc-500 dark:text-zinc-400">Loading profile…</span>
     </div>
@@ -28,7 +28,6 @@
         <div class="min-w-0 flex-1 space-y-2">
           <h1 class="text-3xl font-semibold text-zinc-900 dark:text-white">{{ displayName }}</h1>
           <p class="text-sm text-zinc-500 dark:text-zinc-400">@{{ profile.username }}</p>
-          <p v-if="profile.headline" class="text-lg text-zinc-800 dark:text-zinc-200">{{ profile.headline }}</p>
           <p v-if="profile.location" class="text-sm text-zinc-500 dark:text-zinc-400">{{ profile.location }}</p>
           <p v-if="profile.bio" class="text-base text-zinc-600 dark:text-zinc-300 max-w-2xl whitespace-pre-wrap">{{ profile.bio }}</p>
         </div>
@@ -39,7 +38,7 @@
         <div
           v-for="[label, count] in studentEntries"
           :key="label"
-          class="rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4"
+          class="rounded-md border border-zinc-200 dark:border-zinc-700 bg-transparent p-4"
         >
           <p class="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white">{{ count }}</p>
           <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ label }}</p>
@@ -53,9 +52,9 @@
           <div
             v-for="cert in profile.certifications"
             :key="cert.id || cert.name"
-            class="flex shrink-0 snap-start flex-col w-xs md:w-sm bg-black"
+            class="flex shrink-0 snap-start flex-col w-xs md:w-sm bg-transparent"
           >
-            <div class="relative aspect-video w-full bg-zinc-900">
+            <div class="relative aspect-video w-full bg-transparent">
               <img
                 v-if="cert.image_url"
                 :src="cert.image_url"
@@ -65,8 +64,8 @@
               >
             </div>
             <div class="flex flex-col gap-2 p-6 grow">
-              <h3 class="text-xl text-white text-pretty">{{ cert.name }}</h3>
-              <p class="text-sm text-zinc-400">
+              <h3 class="text-xl text-zinc-900 dark:text-white text-pretty">{{ cert.name }}</h3>
+              <p class="text-sm text-zinc-500 dark:text-zinc-400">
                 <span v-if="cert.agency">{{ cert.agency }}</span>
                 <span v-if="cert.agency && cert.issued_at"> · </span>
                 <span v-if="cert.issued_at">Issued {{ formatMonthYear(cert.issued_at) }}</span>
@@ -84,7 +83,7 @@
           <li
             v-for="job in profile.jobs"
             :key="job.id || `${job.title}-${job.organization}`"
-            class="rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4"
+            class="rounded-md border border-zinc-200 dark:border-zinc-700 bg-transparent p-4"
           >
             <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
               <h3 class="font-medium text-zinc-900 dark:text-white">{{ job.title }}</h3>
@@ -106,13 +105,13 @@
       <!-- Dive sites grid -->
       <section v-if="profile.dive_sites.length" class="space-y-4">
         <h2 class="text-xl font-semibold text-zinc-900 dark:text-white">Past dive sites</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px border border-zinc-800 bg-zinc-800">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px border border-zinc-800">
           <div
             v-for="site in profile.dive_sites"
             :key="site.dive_site_id"
-            class="flex flex-col bg-black"
+            class="flex flex-col bg-transparent"
           >
-            <div class="relative aspect-video w-full bg-zinc-900">
+            <div class="relative aspect-video w-full bg-transparent">
               <img
                 v-if="site.image_url"
                 :src="site.image_url"
@@ -122,8 +121,8 @@
               >
             </div>
             <div class="p-6 space-y-1">
-              <h3 class="text-lg text-white">{{ site.name }}</h3>
-              <p v-if="site.country_name" class="text-sm text-zinc-400">{{ site.country_name }}</p>
+              <h3 class="text-lg text-zinc-900 dark:text-white">{{ site.name }}</h3>
+              <p v-if="site.country_name" class="text-sm text-zinc-500 dark:text-zinc-400">{{ site.country_name }}</p>
               <p v-if="site.note" class="text-sm text-zinc-500">{{ site.note }}</p>
             </div>
           </div>
@@ -186,7 +185,7 @@ const seoTitle = computed(() => `${displayName.value} · Divemaster`)
 const seoDescription = computed(() => {
   const p = profile.value
   if (!p) return 'Divemaster profile on Glaucus Dive'
-  return p.headline || p.bio || `${displayName.value} is a divemaster on Glaucus Dive.`
+  return p.bio || `${displayName.value} is a divemaster on Glaucus Dive.`
 })
 
 useSeoMeta({

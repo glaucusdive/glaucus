@@ -94,11 +94,8 @@
               View public profile →
             </NuxtLink>
           </p>
-          <p v-if="dmStatus === 'published'" class="text-sm text-zinc-500 dark:text-zinc-400">
-            Published profiles are edited by admins. Contact support if you need changes.
-          </p>
 
-          <form v-else class="space-y-4" @submit.prevent="saveDraft">
+          <form class="space-y-4" @submit.prevent="saveDraft">
             <FormField label="Headline" label-style="auth" class="space-y-1">
               <FormInput v-model="form.headline" type="text" size="md" placeholder="PADI Divemaster · Cozumel" />
             </FormField>
@@ -226,10 +223,21 @@
                     <FormInput v-model="j.start_date" type="date" size="sm" />
                   </FormField>
                   <FormField label="End" label-style="auth">
-                    <FormInput v-model="j.end_date" type="date" size="sm" :disabled="j.is_current" />
+                    <FormInput
+                      v-model="j.end_date"
+                      type="date"
+                      size="sm"
+                      :disabled="j.is_current"
+                      @update:model-value="onJobEndDateChange(j)"
+                    />
                   </FormField>
                   <label class="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300 pt-6 cursor-pointer">
-                    <input v-model="j.is_current" type="checkbox" class="rounded border-zinc-300">
+                    <input
+                      v-model="j.is_current"
+                      type="checkbox"
+                      class="rounded border-zinc-300"
+                      @change="onJobCurrentChange(j)"
+                    >
                     Current role
                   </label>
                 </div>
@@ -283,7 +291,7 @@
                 class="px-4 py-2 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 cursor-pointer"
                 :disabled="saving || cancelling"
               >
-                {{ saving ? 'Saving…' : 'Save draft' }}
+                {{ saving ? 'Saving…' : (dmStatus === 'published' ? 'Save changes' : 'Save draft') }}
               </button>
               <button
                 v-if="dmStatus === 'draft'"
@@ -295,6 +303,7 @@
                 {{ submitting ? 'Submitting…' : 'Submit for review' }}
               </button>
               <button
+                v-if="dmStatus !== 'published'"
                 type="button"
                 class="text-xs text-red-600 dark:text-red-400 hover:underline cursor-pointer disabled:opacity-50"
                 :disabled="saving || submitting || cancelling"
@@ -399,6 +408,25 @@ function addJob () {
     description: '',
     sort_order: jobs.value.length
   })
+}
+
+function onJobCurrentChange (j: { is_current: boolean; end_date: string }) {
+  if (j.is_current) j.end_date = ''
+}
+
+function onJobEndDateChange (j: { is_current: boolean; end_date: string }) {
+  if (String(j.end_date || '').trim()) j.is_current = false
+}
+
+/** Prefer a filled end date over Current — avoids wiping dates when Current is checked but End still shows. */
+function jobEndDateForSave (j: { is_current: boolean; end_date: string }) {
+  const end = String(j.end_date || '').trim()
+  return end || null
+}
+
+function jobIsCurrentForSave (j: { is_current: boolean; end_date: string }) {
+  if (String(j.end_date || '').trim()) return false
+  return !!j.is_current
 }
 
 function studentsToJson (): Record<string, number> {
@@ -615,7 +643,7 @@ async function applyAsDivemaster () {
 }
 
 async function saveDraft () {
-  if (!user.value?.id || !dmStatus.value || dmStatus.value === 'published') return
+  if (!user.value?.id || !dmStatus.value) return
   saving.value = true
   saveMessage.value = ''
   try {
@@ -659,8 +687,8 @@ async function saveDraft () {
             organization: j.organization.trim(),
             location: j.location?.trim() || null,
             start_date: j.start_date || null,
-            end_date: j.is_current ? null : (j.end_date || null),
-            is_current: !!j.is_current,
+            end_date: jobEndDateForSave(j),
+            is_current: jobIsCurrentForSave(j),
             description: j.description?.trim() || null,
             diveshop_id: j.diveshop_id || null,
             sort_order: i
@@ -683,7 +711,7 @@ async function saveDraft () {
     }
 
     saveOk.value = true
-    saveMessage.value = 'Draft saved.'
+    saveMessage.value = dmStatus.value === 'published' ? 'Profile saved.' : 'Draft saved.'
   } catch (e: unknown) {
     saveOk.value = false
     saveMessage.value = (e as Error)?.message ?? 'Failed to save'

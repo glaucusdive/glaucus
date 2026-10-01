@@ -69,6 +69,7 @@
       <p class="text-sm text-red-600 dark:text-red-400">{{ loadError }}</p>
     </div>
     <div v-else class="flex-1 overflow-y-auto p-4">
+      <p v-if="actionError" class="mb-3 text-sm text-red-600 dark:text-red-400">{{ actionError }}</p>
       <ul class="flex flex-col gap-2">
         <li v-if="!items.length" class="text-sm text-zinc-500 dark:text-zinc-400 py-8 text-center">
           No divemaster profiles yet.
@@ -94,12 +95,22 @@
           >
             {{ item.status }}
           </span>
-          <NuxtLink
-            :to="`/admin/divemasters/${item.user_id}`"
-            class="shrink-0 text-sm font-medium text-blue-600 hover:underline dark:text-blue-400 cursor-pointer"
-          >
-            Edit
-          </NuxtLink>
+          <div class="shrink-0 flex items-center gap-2">
+            <Button
+              variant="secondary"
+              @click="navigateTo(`/admin/divemasters/${item.user_id}`)"
+            >
+              Edit
+            </Button>
+            <Button
+              v-if="item.status !== 'published'"
+              variant="primary"
+              :disabled="approvingId === item.user_id"
+              @click="approveItem(item)"
+            >
+              {{ approvingId === item.user_id ? 'Approving…' : 'Approve' }}
+            </Button>
+          </div>
         </li>
       </ul>
     </div>
@@ -120,6 +131,8 @@ const items = ref<AdminDivemasterListItem[]>([])
 const statusFilter = ref('')
 const searchQ = ref('')
 const creating = ref(false)
+const approvingId = ref<string | null>(null)
+const actionError = ref('')
 const manualMsg = ref('')
 const manualOk = ref(false)
 const manual = reactive({
@@ -133,6 +146,29 @@ function statusClass (status: string) {
   if (status === 'published') return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
   if (status === 'pending_review') return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
   return 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+}
+
+async function approveItem (item: AdminDivemasterListItem) {
+  if (item.status === 'published' || approvingId.value) return
+  approvingId.value = item.user_id
+  actionError.value = ''
+  try {
+    await init()
+    const res = await fetch(`/api/admin/divemasters/${item.user_id}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${accessToken.value}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ action: 'approve' })
+    })
+    if (!res.ok) throw new Error(await res.text())
+    await loadItems()
+  } catch (e) {
+    actionError.value = e instanceof Error ? e.message : 'Failed to approve'
+  } finally {
+    approvingId.value = null
+  }
 }
 
 async function loadItems () {
