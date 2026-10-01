@@ -1,6 +1,6 @@
 <template>
   <nav aria-label="Breadcrumb" class="min-w-0">
-    <ol class="flex min-w-0 items-center gap-2 text-base font-semibold sm:text-lg lg:text-2xl">
+    <ol class="flex min-w-0 items-center gap-2 text-base font-semibold sm:text-lg">
       <li
         v-for="(item, index) in items"
         :key="`${item.label}-${index}`"
