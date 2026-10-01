@@ -1,25 +1,35 @@
 <template>
-  <div class="max-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4 overflow-y-auto">
-    <NuxtLink
-      to="/settings"
-      class="inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white mb-4 cursor-pointer"
-    >
-      ← Settings
-    </NuxtLink>
-    <h1 class="text-xl font-bold text-zinc-900 dark:text-white mb-2">Profile Settings</h1>
-    <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
-      Username and divemaster profile. Public pages go live after admin approval.
-    </p>
-
+  <div class="max-h-screen bg-zinc-900 h-full p-0 overflow-y-auto divide-y divide-zinc-800">
+    
+    <div class="flex flex-row divide-x divide-zinc-800 h-20">
+      <NuxtLink to="/settings"
+        class="flex justify-center items-center gap-1 text-sm text-zinc-400 hover:text-white cursor-pointer aspect-square size-20">
+        <ChevronLeft class="size-4" />
+      </NuxtLink>
+      <div class="p-4">
+        <h1 class="text-base font-bold text-white">Profile Settings</h1>
+        <p class="text-sm text-zinc-400">
+          Username and divemaster profile. Public pages go live after admin approval.
+        </p>
+      </div>
+    </div>
+    
     <div v-if="loading" class="text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
 
-    <div v-else class="space-y-6 max-w-2xl">
-      <section class="rounded-lg border border-zinc-800 bg-transparent p-4 space-y-3">
-        <h2 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Account</h2>
+    <div v-else class="">
+      <section class="py-12 px-24">
+        <h2 class="text-base font-bold text-white">Account</h2>
         <FormField label="Username" label-style="auth" field-id="dm-username" class="space-y-1">
-          <!-- Locked: show current username as plain text, not an empty editable field -->
+          <!-- Locked: show current username in a disabled input -->
           <template v-if="usernameLocked && username">
-            <p class="text-base font-medium text-zinc-900 dark:text-white">@{{ username }}</p>
+            <FormInput
+              id="dm-username"
+              :model-value="`@${username}`"
+              type="text"
+              size="md"
+              disabled
+              class="!p-4 !text-lg disabled:!text-zinc-200"
+            />
             <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
               Used for glaucusdive.com/divemaster/{{ username }}
             </p>
@@ -285,6 +295,7 @@
 </template>
 
 <script setup lang="ts">
+import { ChevronLeft } from 'lucide-vue-next'
 import {
   formatUsernameCooldownMessage,
   isValidUsername,
