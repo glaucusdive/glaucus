@@ -1,16 +1,21 @@
 <template>
-  <div class="h-full overflow-y-auto bg-zinc-50 dark:bg-zinc-900">
-    <div v-if="pending" class="flex items-center justify-center py-24">
-      <span class="text-sm text-zinc-500 dark:text-zinc-400">Loading profile…</span>
-    </div>
-    <div v-else-if="error" class="flex flex-col items-center justify-center py-24 px-4 text-center">
-      <h1 class="text-2xl font-semibold text-zinc-900 dark:text-white mb-2">Profile not found</h1>
-      <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-4">This divemaster profile is not available.</p>
-      <NuxtLink to="/" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
-        Back home
-      </NuxtLink>
-    </div>
-    <div v-else-if="profile" class="mx-auto flex flex-col divide-y divide-zinc-700 *:p-4">
+  <div class="flex h-full min-h-0 flex-col bg-zinc-50 dark:bg-zinc-900">
+    <ShellPageHeader>
+      <Breadcrumb :items="breadcrumbItems" />
+    </ShellPageHeader>
+
+    <div class="min-h-0 flex-1 overflow-y-auto">
+      <div v-if="pending" class="flex items-center justify-center py-24">
+        <span class="text-sm text-zinc-500 dark:text-zinc-400">Loading profile…</span>
+      </div>
+      <div v-else-if="error" class="flex flex-col items-center justify-center py-24 px-4 text-center">
+        <h1 class="text-2xl font-semibold text-zinc-900 dark:text-white mb-2">Profile not found</h1>
+        <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-4">This divemaster profile is not available.</p>
+        <NuxtLink to="/" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
+          Back home
+        </NuxtLink>
+      </div>
+      <div v-else-if="profile" class="mx-auto flex flex-col divide-y divide-zinc-700 *:p-4">
       <!-- Basic info -->
       <header class="flex flex-col sm:flex-row gap-6 items-center">
         <div
@@ -133,6 +138,7 @@
           </div>
         </div>
       </section>
+      </div>
     </div>
   </div>
 </template>
@@ -180,6 +186,11 @@ const profile = computed(() => {
 })
 
 const displayName = computed(() => profile.value?.display_name || profile.value?.username || 'Divemaster')
+
+const breadcrumbItems = computed(() => [
+  { label: 'Divemaster' },
+  { label: displayName.value }
+])
 
 const seoTitle = computed(() => `${displayName.value} / Divemaster`)
 const seoDescription = computed(() => {

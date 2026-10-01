@@ -13,11 +13,15 @@
       >
         <Menu class="h-5 w-5" />
       </button>
-      <h1
-        class="min-w-0 truncate text-base font-semibold text-zinc-900 dark:text-white sm:text-lg lg:text-2xl"
-      >
-        <slot>{{ title }}</slot>
-      </h1>
+      <div class="min-w-0 flex-1">
+        <slot>
+          <h1
+            class="min-w-0 truncate text-base font-semibold text-zinc-900 dark:text-white sm:text-lg lg:text-2xl"
+          >
+            {{ title }}
+          </h1>
+        </slot>
+      </div>
     </div>
     <div class="flex shrink-0 flex-wrap items-center gap-1 p-1 lg:gap-2 lg:p-4">
       <slot name="actions" />
