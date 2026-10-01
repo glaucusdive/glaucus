@@ -6,7 +6,7 @@
     >
       ← Settings
     </NuxtLink>
-    <h1 class="text-xl font-bold text-zinc-900 dark:text-white mb-2">Profile settings</h1>
+    <h1 class="text-xl font-bold text-zinc-900 dark:text-white mb-2">Profile Settings</h1>
     <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
       Username and divemaster profile. Public pages go live after admin approval.
     </p>
@@ -14,7 +14,7 @@
     <div v-if="loading" class="text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
 
     <div v-else class="space-y-6 max-w-2xl">
-      <section class="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4 space-y-3">
+      <section class="rounded-lg border border-zinc-800 bg-transparent p-4 space-y-3">
         <h2 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Account</h2>
         <FormField label="Username" label-style="auth" field-id="dm-username" class="space-y-1">
           <!-- Locked: show current username as plain text, not an empty editable field -->
@@ -59,7 +59,7 @@
         </button>
       </section>
 
-      <section class="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4 space-y-3">
+      <section class="rounded-lg border border-zinc-800 bg-transparent p-4 space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <h2 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Divemaster</h2>
           <span
@@ -161,7 +161,7 @@
               <div
                 v-for="(c, idx) in certifications"
                 :key="c.id || idx"
-                class="border border-zinc-200 dark:border-zinc-600 rounded-md p-3 space-y-2"
+                class="rounded-md bg-zinc-100 dark:bg-zinc-800/20 p-3 space-y-2"
               >
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <FormField label="Name" label-style="auth">
@@ -207,7 +207,7 @@
               <div
                 v-for="(j, idx) in jobs"
                 :key="j.id || idx"
-                class="border border-zinc-200 dark:border-zinc-600 rounded-md p-3 space-y-2"
+                class="rounded-md bg-zinc-100 dark:bg-zinc-800/20 p-3 space-y-2"
               >
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <FormField label="Title" label-style="auth">
@@ -286,22 +286,22 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
-              <button
+              <Button
                 type="submit"
-                class="px-4 py-2 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 cursor-pointer"
+                variant="primary"
                 :disabled="saving || cancelling"
               >
                 {{ saving ? 'Saving…' : (dmStatus === 'published' ? 'Save changes' : 'Save draft') }}
-              </button>
-              <button
+              </Button>
+              <Button
                 v-if="dmStatus === 'draft'"
                 type="button"
-                class="px-4 py-2 rounded-md border border-zinc-300 dark:border-zinc-600 text-sm font-medium text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-50 cursor-pointer"
+                variant="secondary"
                 :disabled="saving || submitting || cancelling"
                 @click="submitForReview"
               >
                 {{ submitting ? 'Submitting…' : 'Submit for review' }}
-              </button>
+              </Button>
               <button
                 v-if="dmStatus !== 'published'"
                 type="button"
@@ -333,6 +333,7 @@ import {
 
 definePageMeta({ layout: 'default', middleware: 'auth' })
 usePrivatePageSeo()
+useSeoMeta({ title: 'Profile Settings' })
 
 const { user, accessToken } = useAuth()
 const { client } = useSupabase()

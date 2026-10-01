@@ -38,31 +38,30 @@
         <div
           v-for="[label, count] in studentEntries"
           :key="label"
-          class="rounded-md border border-zinc-200 dark:border-zinc-700 bg-transparent p-4"
+          class="rounded-md border border-zinc-800 bg-transparent p-4"
         >
           <p class="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white">{{ count }}</p>
           <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ label }}</p>
+          <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-500">Students certified</p>
         </div>
       </section>
 
       <!-- Certifications horizontal strip -->
       <section v-if="profile.certifications.length" class="space-y-4">
         <h2 class="text-xl font-semibold text-zinc-900 dark:text-white">Certifications</h2>
-        <div class="flex gap-px overflow-x-auto snap-x snap-mandatory border border-zinc-800">
+        <div class="flex gap-3 overflow-x-auto snap-x snap-mandatory">
           <div
             v-for="cert in profile.certifications"
             :key="cert.id || cert.name"
-            class="flex shrink-0 snap-start flex-col w-xs md:w-sm bg-transparent"
+            class="flex shrink-0 snap-start flex-col w-xs md:w-sm min-h-80 rounded-md border border-zinc-800 bg-transparent overflow-hidden"
           >
-            <div class="relative aspect-video w-full bg-transparent">
-              <img
-                v-if="cert.image_url"
-                :src="cert.image_url"
-                :alt="cert.name"
-                class="absolute inset-0 size-full object-cover"
-                loading="lazy"
-              >
-            </div>
+            <img
+              v-if="cert.image_url"
+              :src="cert.image_url"
+              :alt="cert.name"
+              class="aspect-video w-full object-cover"
+              loading="lazy"
+            >
             <div class="flex flex-col gap-2 p-6 grow">
               <h3 class="text-xl text-zinc-900 dark:text-white text-pretty">{{ cert.name }}</h3>
               <p class="text-sm text-zinc-500 dark:text-zinc-400">
@@ -83,7 +82,7 @@
           <li
             v-for="job in profile.jobs"
             :key="job.id || `${job.title}-${job.organization}`"
-            class="rounded-md border border-zinc-200 dark:border-zinc-700 bg-transparent p-4"
+            class="rounded-md border border-zinc-800 bg-transparent p-4"
           >
             <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
               <h3 class="font-medium text-zinc-900 dark:text-white">{{ job.title }}</h3>
@@ -105,11 +104,11 @@
       <!-- Dive sites grid -->
       <section v-if="profile.dive_sites.length" class="space-y-4">
         <h2 class="text-xl font-semibold text-zinc-900 dark:text-white">Past dive sites</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px border border-zinc-800">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div
             v-for="site in profile.dive_sites"
             :key="site.dive_site_id"
-            class="flex flex-col bg-transparent"
+            class="flex flex-col rounded-md border border-zinc-800 bg-transparent overflow-hidden"
           >
             <div class="relative aspect-video w-full bg-transparent">
               <img
