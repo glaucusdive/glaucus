@@ -10,11 +10,11 @@
         Back home
       </NuxtLink>
     </div>
-    <div v-else-if="profile" class="mx-auto max-w-5xl px-4 py-8 space-y-10">
+    <div v-else-if="profile" class="mx-auto flex flex-col divide-y divide-zinc-700 *:p-4">
       <!-- Basic info -->
-      <header class="flex flex-col sm:flex-row gap-6 items-start">
+      <header class="flex flex-col sm:flex-row gap-6 items-center">
         <div
-          class="size-28 sm:size-32 shrink-0 rounded-full overflow-hidden bg-zinc-200 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700"
+          class="size-28 sm:size-32 shrink-0 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-700"
         >
           <img
             v-if="profile.avatar_url"
@@ -25,35 +25,41 @@
             height="128"
           >
         </div>
-        <div class="min-w-0 flex-1 space-y-2">
-          <h1 class="text-3xl font-semibold text-zinc-900 dark:text-white">{{ displayName }}</h1>
-          <p class="text-sm text-zinc-500 dark:text-zinc-400">@{{ profile.username }}</p>
-          <p v-if="profile.location" class="text-sm text-zinc-500 dark:text-zinc-400">{{ profile.location }}</p>
-          <p v-if="profile.bio" class="text-base text-zinc-600 dark:text-zinc-300 max-w-2xl whitespace-pre-wrap">{{ profile.bio }}</p>
+        <div class="min-w-0 flex-1 flex flex-col gap-2">
+          <div class="flex flex-col gap-0">
+            <h1 class="text-3xl font-semibold text-zinc-900 dark:text-white">{{ displayName }}</h1>
+            <div class="flex flex-row items-baseline gap-2">
+              <p class="text-sm text-zinc-400">@{{ profile.username }}</p>
+              <p class="text-sm text-zinc-500">/</p>
+              <p v-if="profile.location" class="text-sm text-zinc-400">{{ profile.location }}</p>
+            </div>
+          </div>
+          <p v-if="profile.bio" class="text-sm text-zinc-300 max-w-2xl whitespace-pre-wrap">{{ profile.bio }}</p>
         </div>
       </header>
 
-      <!-- Certifications horizontal strip -->
+      <!-- Certifications -->
       <section v-if="profile.certifications.length" class="space-y-4">
         <h2 class="text-xl font-semibold text-zinc-900 dark:text-white">Certifications</h2>
-        <div class="flex gap-3 overflow-x-auto snap-x snap-mandatory">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div
             v-for="cert in profile.certifications"
             :key="cert.id || cert.name"
-            class="flex shrink-0 snap-start flex-col w-xs md:w-sm min-h-80 rounded-md border border-zinc-800 bg-transparent overflow-hidden transition-colors hover:border-zinc-700"
+            class="flex flex-col rounded-md border border-zinc-800 bg-transparent overflow-hidden transition-colors hover:border-zinc-700"
           >
-            <img
-              v-if="cert.image_url"
-              :src="cert.image_url"
-              :alt="cert.name"
-              class="aspect-video w-full object-cover"
-              loading="lazy"
-            >
-            <div class="flex flex-col gap-2 p-6 grow">
-              <h3 class="text-xl text-zinc-900 dark:text-white text-pretty">{{ cert.name }}</h3>
+            <div v-if="cert.image_url" class="relative aspect-video w-full bg-transparent p-1">
+              <img
+                :src="cert.image_url"
+                :alt="cert.name"
+                class="inset-0 aspect-video w-full object-cover rounded-xs"
+                loading="lazy"
+              >
+            </div>
+            <div class="flex flex-col gap-1 p-6 grow">
+              <h3 class="text-lg text-zinc-900 dark:text-white">{{ cert.name }}</h3>
               <p class="text-sm text-zinc-500 dark:text-zinc-400">
                 <span v-if="cert.agency">{{ cert.agency }}</span>
-                <span v-if="cert.agency && cert.issued_at"> · </span>
+                <span v-if="cert.agency && cert.issued_at"> / </span>
                 <span v-if="cert.issued_at">Issued {{ formatMonthYear(cert.issued_at) }}</span>
               </p>
               <p v-if="cert.cert_number" class="text-xs text-zinc-500">#{{ cert.cert_number }}</p>
@@ -84,9 +90,10 @@
                 {{ formatJobDates(job.start_date, job.end_date, job.is_current) }}
               </p>
             </div>
-            <p class="text-sm text-zinc-700 dark:text-zinc-300 mt-1">
+            <p class="text-sm text-zinc-700 dark:text-zinc-300 flex flex-row gap-2">
               {{ job.organization }}
-              <span v-if="job.location"> · {{ job.location }}</span>
+              <span v-if="job.location" class="text-zinc-500"> / </span>
+              <span v-if="job.location">{{ job.location }}</span>
             </p>
             <p v-if="job.description" class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap">
               {{ job.description }}
@@ -112,6 +119,11 @@
                 class="inset-0 aspect-video object-cover rounded-xs"
                 loading="lazy"
               >
+              <div
+                v-else
+                class="rounded-xs bg-zinc-800 aspect-video"
+                aria-hidden="true"
+              />
             </div>
             <div class="p-6 space-y-1">
               <h3 class="text-lg text-zinc-900 dark:text-white">{{ site.name }}</h3>
@@ -169,7 +181,7 @@ const profile = computed(() => {
 
 const displayName = computed(() => profile.value?.display_name || profile.value?.username || 'Divemaster')
 
-const seoTitle = computed(() => `${displayName.value} · Divemaster`)
+const seoTitle = computed(() => `${displayName.value} / Divemaster`)
 const seoDescription = computed(() => {
   const p = profile.value
   if (!p) return 'Divemaster profile on Glaucus Dive'
