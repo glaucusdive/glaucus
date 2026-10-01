@@ -1,1 +1,1 @@
-export type FormControlSize = 'default' | 'sm' | 'md'
+export type FormControlSize = 'default' | 'sm' | 'md' | 'lg'

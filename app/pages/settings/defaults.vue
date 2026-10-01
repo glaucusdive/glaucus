@@ -11,7 +11,7 @@
       <form v-else @submit.prevent="saveDefaults" class="space-y-4 max-w-xl">
         <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4 space-y-3">
           <h2 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Contact</h2>
-          <FormField label="Name" label-style="auth" field-id="profile-name" class="space-y-1">
+          <FormField label="Name" label-style="auth" field-id="profile-name">
             <FormInput
               id="profile-name"
               v-model="defaultsForm.name"
@@ -21,7 +21,7 @@
               placeholder="Your name"
             />
           </FormField>
-          <FormField label="Email" label-style="auth" field-id="profile-email" class="space-y-1">
+          <FormField label="Email" label-style="auth" field-id="profile-email">
             <FormInput
               id="profile-email"
               v-model="defaultsForm.email"

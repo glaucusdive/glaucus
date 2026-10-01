@@ -1,34 +1,33 @@
 <template>
   <div class="max-h-screen bg-zinc-900 h-full p-0 overflow-y-auto divide-y divide-zinc-800">
     
-    <div class="flex flex-row divide-x divide-zinc-800 h-20">
+    <div class="flex flex-row divide-x divide-zinc-800 h-20 bg-zinc-900 sticky top-0 z-50">
       <NuxtLink to="/settings"
         class="flex justify-center items-center gap-1 text-sm text-zinc-400 hover:text-white cursor-pointer aspect-square size-20">
         <ChevronLeft class="size-4" />
       </NuxtLink>
-      <div class="p-4">
+      <div class="p-4 flex flex-col justify-center">
         <h1 class="text-base font-bold text-white">Profile Settings</h1>
-        <p class="text-sm text-zinc-400">
+        <p class="hidden lg:flex text-sm text-zinc-400">
           Username and divemaster profile. Public pages go live after admin approval.
         </p>
       </div>
     </div>
     
-    <div v-if="loading" class="text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
+    <div v-if="loading" class="p-4 lg:py-12 lg:px-24 text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
 
-    <div v-else class="">
-      <section class="py-12 px-24">
+    <div v-else class="divide-y divide-zinc-800">
+      <section class="p-4 lg:py-12 lg:px-24">
         <h2 class="text-base font-bold text-white">Account</h2>
-        <FormField label="Username" label-style="auth" field-id="dm-username" class="space-y-1">
+        <FormField label="Username" label-style="auth" field-id="dm-username">
           <!-- Locked: show current username in a disabled input -->
           <template v-if="usernameLocked && username">
             <FormInput
               id="dm-username"
               :model-value="`@${username}`"
               type="text"
-              size="md"
+              size="lg"
               disabled
-              class="!p-4 !text-lg disabled:!text-zinc-200"
             />
             <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
               Used for glaucusdive.com/divemaster/{{ username }}
@@ -69,9 +68,9 @@
         </button>
       </section>
 
-      <section class="rounded-lg border border-zinc-800 bg-transparent p-4 space-y-3">
+      <section class="p-4 lg:py-12 lg:px-24 flex flex-col gap-8">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <h2 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Divemaster</h2>
+          <h2 class="text-base font-bold text-white">Divemaster</h2>
           <span
             v-if="dmStatus"
             class="text-xs font-medium px-2 py-1 rounded bg-zinc-100 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200"
@@ -96,32 +95,23 @@
         </template>
 
         <template v-else>
-          <p v-if="dmStatus === 'published' && username" class="text-sm">
-            <NuxtLink
-              :to="`/divemaster/${username}`"
-              class="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-            >
-              View public profile →
-            </NuxtLink>
-          </p>
+          <form class="flex flex-col gap-8" @submit.prevent="saveDraft">
+            
+            <FormField label="Avatar" label-style="auth">
+              <DivemasterAvatarUpload v-if="user?.id" v-model="form.avatar_url" :user-id="user.id" />
+            </FormField>
 
-          <form class="space-y-4" @submit.prevent="saveDraft">
-            <FormField label="Headline" label-style="auth" class="space-y-1">
-              <FormInput v-model="form.headline" type="text" size="md" placeholder="PADI Divemaster · Cozumel" />
-            </FormField>
-            <FormField label="Location" label-style="auth" class="space-y-1">
-              <FormInput v-model="form.location" type="text" size="md" placeholder="Bali, Indonesia" />
-            </FormField>
-            <FormField label="Bio" label-style="auth" class="space-y-1">
-              <FormTextarea v-model="form.bio" :rows="4" placeholder="Short intro for divers booking with you." />
-            </FormField>
-            <FormField label="Avatar" label-style="auth" class="space-y-1">
-              <DivemasterAvatarUpload
-                v-if="user?.id"
-                v-model="form.avatar_url"
-                :user-id="user.id"
-              />
-            </FormField>
+            <div class="flex flex-col gap-4">
+              <FormField label="Headline" label-style="auth">
+                <FormInput v-model="form.headline" type="text" size="md" placeholder="PADI Divemaster · Cozumel" />
+              </FormField>
+              <FormField label="Location" label-style="auth">
+                <FormInput v-model="form.location" type="text" size="md" placeholder="Bali, Indonesia" />
+              </FormField>
+              <FormField label="Bio" label-style="auth">
+                <FormTextarea v-model="form.bio" :rows="4" placeholder="Short intro for divers booking with you." />
+              </FormField>
+            </div>
 
             <div class="space-y-2">
               <div class="flex items-center justify-between">

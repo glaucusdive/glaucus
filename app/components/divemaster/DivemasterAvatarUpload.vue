@@ -1,6 +1,6 @@
 <template>
-  <div class="flex flex-col gap-3">
-    <div class="flex items-center gap-4">
+  <div class="flex flex-col gap-4">
+    <div class="flex items-center gap-2">
       <div
         class="size-20 shrink-0 overflow-hidden rounded-full border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900"
       >
