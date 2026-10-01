@@ -253,7 +253,7 @@ interface DashboardUserRow {
   email: string | null
   signedUpAt: string | null
   lastSignedInAt: string | null
-  userType: 'normal' | 'admin'
+  userType: 'normal' | 'divemaster' | 'admin'
   bookingsSubmitted: number
 }
 

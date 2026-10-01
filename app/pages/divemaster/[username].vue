@@ -1,0 +1,218 @@
+<template>
+  <div class="min-h-screen bg-zinc-50 dark:bg-zinc-900">
+    <div v-if="pending" class="flex items-center justify-center py-24">
+      <span class="text-sm text-zinc-500 dark:text-zinc-400">Loading profile…</span>
+    </div>
+    <div v-else-if="error" class="flex flex-col items-center justify-center py-24 px-4 text-center">
+      <h1 class="text-2xl font-semibold text-zinc-900 dark:text-white mb-2">Profile not found</h1>
+      <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-4">This divemaster profile is not available.</p>
+      <NuxtLink to="/" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
+        Back home
+      </NuxtLink>
+    </div>
+    <div v-else-if="profile" class="mx-auto max-w-5xl px-4 py-8 space-y-10">
+      <!-- Basic info -->
+      <header class="flex flex-col sm:flex-row gap-6 items-start">
+        <div
+          class="size-28 sm:size-32 shrink-0 rounded-full overflow-hidden bg-zinc-200 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700"
+        >
+          <img
+            v-if="profile.avatar_url"
+            :src="profile.avatar_url"
+            :alt="displayName"
+            class="size-full object-cover"
+            width="128"
+            height="128"
+          >
+        </div>
+        <div class="min-w-0 flex-1 space-y-2">
+          <h1 class="text-3xl font-semibold text-zinc-900 dark:text-white">{{ displayName }}</h1>
+          <p class="text-sm text-zinc-500 dark:text-zinc-400">@{{ profile.username }}</p>
+          <p v-if="profile.headline" class="text-lg text-zinc-800 dark:text-zinc-200">{{ profile.headline }}</p>
+          <p v-if="profile.location" class="text-sm text-zinc-500 dark:text-zinc-400">{{ profile.location }}</p>
+          <p v-if="profile.bio" class="text-base text-zinc-600 dark:text-zinc-300 max-w-2xl whitespace-pre-wrap">{{ profile.bio }}</p>
+        </div>
+      </header>
+
+      <!-- Student counters -->
+      <section v-if="studentEntries.length" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        <div
+          v-for="[label, count] in studentEntries"
+          :key="label"
+          class="rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4"
+        >
+          <p class="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white">{{ count }}</p>
+          <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ label }}</p>
+        </div>
+      </section>
+
+      <!-- Certifications horizontal strip -->
+      <section v-if="profile.certifications.length" class="space-y-4">
+        <h2 class="text-xl font-semibold text-zinc-900 dark:text-white">Certifications</h2>
+        <div class="flex gap-px overflow-x-auto snap-x snap-mandatory border border-zinc-800">
+          <div
+            v-for="cert in profile.certifications"
+            :key="cert.id || cert.name"
+            class="flex shrink-0 snap-start flex-col w-xs md:w-sm bg-black"
+          >
+            <div class="relative aspect-video w-full bg-zinc-900">
+              <img
+                v-if="cert.image_url"
+                :src="cert.image_url"
+                :alt="cert.name"
+                class="absolute inset-0 size-full object-cover"
+                loading="lazy"
+              >
+            </div>
+            <div class="flex flex-col gap-2 p-6 grow">
+              <h3 class="text-xl text-white text-pretty">{{ cert.name }}</h3>
+              <p class="text-sm text-zinc-400">
+                <span v-if="cert.agency">{{ cert.agency }}</span>
+                <span v-if="cert.agency && cert.issued_at"> · </span>
+                <span v-if="cert.issued_at">Issued {{ formatMonthYear(cert.issued_at) }}</span>
+              </p>
+              <p v-if="cert.cert_number" class="text-xs text-zinc-500">#{{ cert.cert_number }}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Past jobs -->
+      <section v-if="profile.jobs.length" class="space-y-4">
+        <h2 class="text-xl font-semibold text-zinc-900 dark:text-white">Experience</h2>
+        <ul class="space-y-4">
+          <li
+            v-for="job in profile.jobs"
+            :key="job.id || `${job.title}-${job.organization}`"
+            class="rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4"
+          >
+            <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
+              <h3 class="font-medium text-zinc-900 dark:text-white">{{ job.title }}</h3>
+              <p class="text-sm text-zinc-500 dark:text-zinc-400 tabular-nums">
+                {{ formatJobDates(job.start_date, job.end_date, job.is_current) }}
+              </p>
+            </div>
+            <p class="text-sm text-zinc-700 dark:text-zinc-300 mt-1">
+              {{ job.organization }}
+              <span v-if="job.location"> · {{ job.location }}</span>
+            </p>
+            <p v-if="job.description" class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap">
+              {{ job.description }}
+            </p>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Dive sites grid -->
+      <section v-if="profile.dive_sites.length" class="space-y-4">
+        <h2 class="text-xl font-semibold text-zinc-900 dark:text-white">Past dive sites</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px border border-zinc-800 bg-zinc-800">
+          <div
+            v-for="site in profile.dive_sites"
+            :key="site.dive_site_id"
+            class="flex flex-col bg-black"
+          >
+            <div class="relative aspect-video w-full bg-zinc-900">
+              <img
+                v-if="site.image_url"
+                :src="site.image_url"
+                :alt="site.name || 'Dive site'"
+                class="absolute inset-0 size-full object-cover"
+                loading="lazy"
+              >
+            </div>
+            <div class="p-6 space-y-1">
+              <h3 class="text-lg text-white">{{ site.name }}</h3>
+              <p v-if="site.country_name" class="text-sm text-zinc-400">{{ site.country_name }}</p>
+              <p v-if="site.note" class="text-sm text-zinc-500">{{ site.note }}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { PublicDivemasterProfile } from '~~/shared/divemasterProfile'
+
+definePageMeta({ layout: 'default' })
+
+const route = useRoute()
+const username = computed(() => {
+  const raw = route.params.username
+  return Array.isArray(raw) ? raw[0] : String(raw || '')
+})
+
+type DivemasterFetch = PublicDivemasterProfile | { redirectTo: string }
+
+function isRedirect (value: DivemasterFetch | null | undefined): value is { redirectTo: string } {
+  return !!value && typeof value === 'object' && 'redirectTo' in value
+}
+
+const { data: fetchResult, pending, error } = await useAsyncData(
+  () => `divemaster-${username.value}`,
+  () => $fetch<DivemasterFetch>(`/api/divemaster/${encodeURIComponent(username.value || '')}`),
+  { watch: [username] }
+)
+
+if (import.meta.server && isRedirect(fetchResult.value)) {
+  await navigateTo(`/divemaster/${fetchResult.value.redirectTo}`, { redirectCode: 301, replace: true })
+}
+
+watch(
+  fetchResult,
+  async (val) => {
+    if (!import.meta.client || !isRedirect(val)) return
+    await navigateTo(`/divemaster/${val.redirectTo}`, { redirectCode: 301, replace: true })
+  },
+  { immediate: true }
+)
+
+const profile = computed(() => {
+  const val = fetchResult.value
+  if (!val || isRedirect(val)) return null
+  return val
+})
+
+const displayName = computed(() => profile.value?.display_name || profile.value?.username || 'Divemaster')
+
+const studentEntries = computed(() => {
+  const map = profile.value?.students_by_cert ?? {}
+  return Object.entries(map).filter(([, n]) => n > 0)
+})
+
+const seoTitle = computed(() => `${displayName.value} · Divemaster`)
+const seoDescription = computed(() => {
+  const p = profile.value
+  if (!p) return 'Divemaster profile on Glaucus Dive'
+  return p.headline || p.bio || `${displayName.value} is a divemaster on Glaucus Dive.`
+})
+
+useSeoMeta({
+  title: seoTitle,
+  description: seoDescription,
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
+  ogImage: computed(() => profile.value?.avatar_url || undefined)
+})
+
+function formatMonthYear (iso: string | null | undefined) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+}
+
+function formatJobDates (
+  start: string | null | undefined,
+  end: string | null | undefined,
+  isCurrent?: boolean
+) {
+  const s = formatMonthYear(start)
+  if (isCurrent) return s ? `${s} – Present` : 'Present'
+  const e = formatMonthYear(end)
+  if (s && e) return `${s} – ${e}`
+  return s || e || ''
+}
+</script>

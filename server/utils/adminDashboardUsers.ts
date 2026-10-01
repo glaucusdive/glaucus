@@ -6,12 +6,14 @@ export interface DashboardUserRow {
   email: string | null
   signedUpAt: string | null
   lastSignedInAt: string | null
-  userType: 'normal' | 'admin'
+  userType: 'normal' | 'divemaster' | 'admin'
   bookingsSubmitted: number
 }
 
-export function userTypeFromRole (role: string | null | undefined): 'normal' | 'admin' {
-  return role === 'admin' ? 'admin' : 'normal'
+export function userTypeFromRole (role: string | null | undefined): 'normal' | 'divemaster' | 'admin' {
+  if (role === 'admin') return 'admin'
+  if (role === 'divemaster') return 'divemaster'
+  return 'normal'
 }
 
 export function isSignupInRange (

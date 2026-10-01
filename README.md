@@ -122,6 +122,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.84.0** — Divemaster profiles: settings IA, public `/divemaster/[username]`, apply/approve flow, admin profile + dive-site photo tools, DB schema (2026-09-30).
 - **0.83.0** — Blog post SEO: full excerpt meta, FAQPage JSON-LD from markdown FAQ sections, Person author byline and updated date on the post template (2026-09-19).
 - **0.82.19** — Fix duplicate `| Glaucus` in blog document titles (rely on Nuxt site name once) (2026-09-19).
 - **0.82.18** — Show neutral bootstrap shell while auth resolves on `/` to avoid marketing-page flash before chat (2026-08-30).

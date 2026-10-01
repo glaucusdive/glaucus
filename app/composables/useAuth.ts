@@ -5,7 +5,7 @@ import { normalizeAuthRedirect, DEFAULT_AUTH_REDIRECT } from '~/utils/authRedire
 const user = ref<User | null>(null)
 const session = ref<Session | null>(null)
 const loading = ref(true)
-const userRole = ref<'standard' | 'admin'>('standard')
+const userRole = ref<'standard' | 'divemaster' | 'admin'>('standard')
 
 export const useAuth = () => {
   const { client } = useSupabase()
@@ -24,7 +24,8 @@ export const useAuth = () => {
         .select('role')
         .eq('id', id)
         .maybeSingle()
-      userRole.value = data?.role === 'admin' ? 'admin' : 'standard'
+      const role = data?.role
+      userRole.value = role === 'admin' || role === 'divemaster' ? role : 'standard'
     } catch {
       userRole.value = 'standard'
     }
@@ -119,6 +120,7 @@ export const useAuth = () => {
 
   /** Matches RLS public.is_app_admin(): set profiles.role = 'admin' in the Supabase Table Editor */
   const isAppAdmin = computed(() => userRole.value === 'admin')
+  const isDivemaster = computed(() => userRole.value === 'divemaster')
 
   return {
     user,
@@ -126,6 +128,7 @@ export const useAuth = () => {
     loading,
     isSignedIn,
     isAppAdmin,
+    isDivemaster,
     accessToken,
     init,
     onAuthStateChange,

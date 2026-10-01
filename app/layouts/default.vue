@@ -47,7 +47,7 @@
                     :key="c.id"
                     type="button"
                     class="w-full text-left py-2 px-3 rounded-md text-sm border  cursor-pointer flex flex-row justify-between items-baseline gap-0.5"
-                    :class="c.isActive
+                    :class="c.isActive && isOnChatHome
                       ? 'border-blue-500 bg-blue-50 dark:bg-zinc-900 text-zinc-900 dark:text-white'
                       : 'border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'"
                     @click="onSelectChat(c.id)"
@@ -56,9 +56,23 @@
                     <span v-if="formatChatUpdated(c.updatedAt)" class="text-xs text-zinc-500 dark:text-zinc-400">{{ formatChatUpdated(c.updatedAt) }}</span>
                   </button>
                 </div>
-                <NavLink v-if="isSignedIn" to="/profile" @click="handleCloseMobileMenu">
+                <NavLink
+                  v-if="isSignedIn && hasPublicDivemasterProfile"
+                  to="/profile"
+                  active-prefix="/divemaster"
+                  @click="handleCloseMobileMenu"
+                >
                   <CircleUser class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
                   Profile
+                </NavLink>
+                <NavLink
+                  v-if="isSignedIn"
+                  to="/settings"
+                  active-prefix="/settings"
+                  @click="handleCloseMobileMenu"
+                >
+                  <Settings class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                  Settings
                 </NavLink>
                 <NavLink v-if="showAdminNav" to="/admin" @click="handleCloseMobileMenu">
                   <Shield class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
@@ -91,6 +105,21 @@
                 >
                   <FileText class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
                   Manage blog
+                </NavLink>
+                <NavLink
+                  to="/admin/divemasters"
+                  active-prefix="/admin/divemasters"
+                  @click="handleCloseMobileMenu"
+                >
+                  <CircleUser class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                  Divemasters
+                </NavLink>
+                <NavLink
+                  to="/admin/dive-sites"
+                  @click="handleCloseMobileMenu"
+                >
+                  <MapPin class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                  Dive sites
                 </NavLink>
                 <a
                   href="https://us.posthog.com"
@@ -203,6 +232,7 @@ import {
   X,
   FilePlus,
   CircleUser,
+  Settings,
   LogIn,
   LogOut,
   CircleHelp,
@@ -214,7 +244,8 @@ import {
   FileText,
   BarChart3,
   LineChart,
-  Search
+  Search,
+  MapPin
 } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
 import { useAuth } from '~/composables/useAuth'
@@ -232,15 +263,55 @@ const testMode = useTestMode()
 const route = useRoute()
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 const isAuthRoute = computed(() => route.path.startsWith('/auth'))
-/** Chat chrome also on auth/profile so it doesn’t vanish while signing in or on account pages. */
+/** Only highlight the active chat session while actually on the chat home. */
+const isOnChatHome = computed(() => route.path === '/')
+/** Chat chrome also on auth/settings so it doesn’t vanish while signing in or on account pages. */
 const showChatInSidebar = computed(() => {
   const p = route.path
-  return p === '/' || p.startsWith('/auth') || p.startsWith('/profile')
+  return p === '/' || p.startsWith('/auth') || p.startsWith('/profile') || p.startsWith('/settings')
 })
 const { sidebarChats, requestNewChat, requestSwitchSession } = useChatSessions()
-const { isSignedIn, isAppAdmin, signOut, onAuthStateChange, accessToken, loading: authLoading } = useAuth()
+const { isSignedIn, isAppAdmin, signOut, onAuthStateChange, accessToken, loading: authLoading, user } = useAuth()
+const { client } = useSupabase()
 
 const showAdminNav = computed(() => !authLoading.value && isSignedIn.value && isAppAdmin.value)
+
+/** Sidebar Profile → public page; only for published divemaster profiles. */
+const hasPublicDivemasterProfile = ref(false)
+
+async function refreshPublicProfileNav () {
+  const id = user.value?.id
+  if (!id || !isSignedIn.value) {
+    hasPublicDivemasterProfile.value = false
+    return
+  }
+  try {
+    const { data: profile } = await client
+      .from('profiles')
+      .select('username')
+      .eq('id', id)
+      .maybeSingle()
+    const username = profile?.username
+    if (!username) {
+      hasPublicDivemasterProfile.value = false
+      return
+    }
+    const { data: dm } = await client
+      .from('divemaster_profiles')
+      .select('status')
+      .eq('user_id', id)
+      .maybeSingle()
+    hasPublicDivemasterProfile.value = dm?.status === 'published'
+  } catch {
+    hasPublicDivemasterProfile.value = false
+  }
+}
+
+watch(
+  [isSignedIn, () => user.value?.id],
+  () => { void refreshPublicProfileNav() },
+  { immediate: true }
+)
 
 async function runChatActionFromSidebar (action) {
   const needNav =
@@ -272,7 +343,6 @@ function formatChatUpdated (ts) {
   }
 }
 
-const { client } = useSupabase()
 const { saveDraftFromCacheIfNeeded } = useSaveDraftFromCache()
 
 async function handleSignOut () {

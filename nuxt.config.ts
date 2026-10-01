@@ -8,13 +8,12 @@ export default defineNuxtConfig({
       ],
       style: [
         {
+          // Black shell until client marks ready — avoids FOUC of unstyled SVGs (logo) before CSS/JS.
           id: 'glaucus-boot',
-          innerHTML: 'html,body{margin:0;background-color:#000;color:#fff}'
-        }
-      ],
-      script: [
-        {
-          innerHTML: 'document.documentElement.classList.add("glaucus-app-ready")'
+          innerHTML:
+            'html,body{margin:0;background-color:#000;color:#fff}' +
+            '#__nuxt{opacity:0}' +
+            'html.glaucus-app-ready #__nuxt{opacity:1}'
         }
       ]
     }
@@ -31,10 +30,11 @@ export default defineNuxtConfig({
     '/partner/**': { robots: false },
     '/auth/**': { robots: false },
     '/profile/**': { robots: false },
+    '/settings/**': { robots: false },
     '/community': { robots: false }
   },
   robots: {
-    disallow: ['/admin/', '/partner/', '/auth/', '/profile/', '/community', '/api/']
+    disallow: ['/admin/', '/partner/', '/auth/', '/profile/', '/settings/', '/community', '/api/']
   },
   sitemap: {
     excludeAppSources: true,

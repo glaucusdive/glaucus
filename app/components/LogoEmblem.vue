@@ -4,6 +4,9 @@
     alt=""
     class="shrink-0"
     :class="imgClass"
+    width="40"
+    height="40"
+    style="width: 40px; height: 40px; flex-shrink: 0"
   />
 </template>
 
