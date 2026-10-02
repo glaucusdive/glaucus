@@ -32,16 +32,15 @@ export const useAuth = () => {
   }
 
   async function init () {
-    loading.value = true
-    try {
-      const { data: { session: s } } = await client.auth.getSession()
-      session.value = s
-      user.value = s?.user ?? null
-      await loadUserRole()
-    } finally {
-      loading.value = false
-    }
+  try {
+    const { data: { session: s } } = await client.auth.getSession()
+    session.value = s
+    user.value = s?.user ?? null
+    await loadUserRole()
+  } finally {
+    loading.value = false
   }
+}
 
   function onAuthStateChange (callback: (event: string, s: Session | null) => void) {
     const { data: { subscription } } = client.auth.onAuthStateChange((event, s) => {

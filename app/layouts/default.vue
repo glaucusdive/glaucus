@@ -265,16 +265,14 @@ const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 const isAuthRoute = computed(() => route.path.startsWith('/auth'))
 /** Only highlight the active chat session while actually on the chat home. */
 const isOnChatHome = computed(() => route.path === '/')
-/** Chat chrome also on auth/settings so it doesn’t vanish while signing in or on account pages. */
-const showChatInSidebar = computed(() => {
-  const p = route.path
-  return p === '/' || p.startsWith('/auth') || p.startsWith('/profile') || p.startsWith('/settings')
-})
+/** Chat list on every non-admin shell page (home, auth, settings, public profile, etc.). */
+const showChatInSidebar = computed(() => !isAdminRoute.value)
 const { sidebarChats, requestNewChat, requestSwitchSession } = useChatSessions()
 const { isSignedIn, isAppAdmin, signOut, onAuthStateChange, accessToken, loading: authLoading, user } = useAuth()
 const { client } = useSupabase()
 
-const showAdminNav = computed(() => !authLoading.value && isSignedIn.value && isAppAdmin.value)
+/** Keep Admin visible once known — don’t hide it while auth middleware re-inits. */
+const showAdminNav = computed(() => isSignedIn.value && isAppAdmin.value)
 
 /** Sidebar Profile → public page; only for published divemaster profiles. */
 const hasPublicDivemasterProfile = ref(false)
@@ -303,7 +301,7 @@ async function refreshPublicProfileNav () {
       .maybeSingle()
     hasPublicDivemasterProfile.value = dm?.status === 'published'
   } catch {
-    hasPublicDivemasterProfile.value = false
+    // Keep previous value on transient errors so Profile doesn’t flicker out of the nav.
   }
 }
 
