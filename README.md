@@ -386,5 +386,3 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 - **0.1.2** — Refined the dive shops directory layout for better responsiveness. Updated table structure to enhance readability and usability. Improved styling for consistent display across devices. (2025-08-07).
 - **0.1.1** — Convert table to responsive grid layout with horizontal scrolling (2025-08-07).
 - **0.1.0** — Initial Nuxt minimal starter.
-
-dummy change
