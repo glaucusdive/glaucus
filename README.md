@@ -38,6 +38,17 @@ yarn dev
 bun run dev
 ```
 
+### Auth / Google OAuth on localhost
+
+Google sign-in uses `window.location.origin` as the OAuth `redirectTo`. If localhost is missing from the **hosted** Supabase project’s **Authentication → URL Configuration → Additional Redirect URLs**, Supabase falls back to **Site URL** (production).
+
+Add (keep production Site URL unchanged):
+
+- `http://localhost:3000/**`
+- `http://127.0.0.1:3000/**`
+
+Google-only users can attach email/password under **Settings → Account security**, then sign in with email locally without OAuth. Password reset emails also use the current origin (`/auth?reset=1`).
+
 ## Production
 
 Build the application for production:
@@ -122,6 +133,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.86.0** — Google accounts can set email/password (Settings → Account security); forgot-password on /auth; localhost OAuth redirect docs (2026-10-02).
 - **0.85.0** — SEO cycle: non-indexable shops, hard 404s, privacy/legal drafts, for-businesses SSR intro, title/copy fixes (2026-10-02).
 - **0.84.2** — Tie students certified counts to each divemaster certification (settings/admin/public); drop orphan JSON counts (2026-10-01).
 - **0.84.1** — Admin divemaster list/detail: blue Approve + outline Edit/Save, labeled course/agency selects, row-based dive sites (2026-09-30).
