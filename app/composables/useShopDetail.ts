@@ -51,7 +51,7 @@ export function useShopDetail (shopLookup: string) {
         throw createError({
           statusCode: 404,
           statusMessage: 'Dive shop not found',
-          fatal: false
+          fatal: true
         })
       }
 

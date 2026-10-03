@@ -6,7 +6,7 @@
           Logs
         </h1>
         <p class="text-lg text-zinc-400 text-pretty">
-          Evergreen scuba guides — certification, gear, trip planning, and more.
+          Scuba diving guides — certification, gear, trip planning, and more.
         </p>
       </div>
     </section>
@@ -65,9 +65,9 @@ const siteConfig = useSiteConfig()
 const siteUrl = computed(() => siteConfig.url || 'https://glaucusdive.com')
 
 useSeoMeta({
-  title: 'Logs | Glaucus',
+  title: 'Scuba diving guides',
   description: 'Evergreen scuba diving guides — courses, certification, gear, and trip planning.',
-  ogTitle: 'Logs | Glaucus',
+  ogTitle: 'Scuba diving guides',
   ogDescription: 'Evergreen scuba diving guides from Glaucus.',
   ogType: 'website'
 })

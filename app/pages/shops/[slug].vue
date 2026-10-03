@@ -30,6 +30,8 @@ import { shopSeoDescription, shopSeoTitle } from '~/utils/shopSeo'
 
 definePageMeta({ layout: 'default' })
 
+usePrivatePageSeo()
+
 const route = useRoute()
 const router = useRouter()
 const shopLookup = Array.isArray(route.params.slug) ? route.params.slug[0] : route.params.slug

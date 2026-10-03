@@ -31,10 +31,11 @@ export default defineNuxtConfig({
     '/auth/**': { robots: false },
     '/profile/**': { robots: false },
     '/settings/**': { robots: false },
-    '/community': { robots: false }
+    '/community': { robots: false },
+    '/shops/**': { robots: false }
   },
   robots: {
-    disallow: ['/admin/', '/partner/', '/auth/', '/profile/', '/settings/', '/community', '/api/']
+    disallow: ['/admin/', '/partner/', '/auth/', '/profile/', '/settings/', '/community', '/shops/', '/api/']
   },
   sitemap: {
     excludeAppSources: true,
@@ -42,7 +43,9 @@ export default defineNuxtConfig({
     urls: [
       { loc: '/' },
       { loc: '/for-businesses' },
-      { loc: '/blog' }
+      { loc: '/blog' },
+      { loc: '/privacy' },
+      { loc: '/legal' }
     ]
   },
   components: [

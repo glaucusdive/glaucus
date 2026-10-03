@@ -1,6 +1,6 @@
 <template>
   <main class="min-h-dvh bg-[#101214] text-white">
-    <header v-if="!loading" class="border-b border-zinc-800 px-4 py-4 sm:px-8">
+    <header class="border-b border-zinc-800 px-4 py-4 sm:px-8">
       <div class="mx-auto flex max-w-3xl items-center justify-between gap-4">
         <NuxtLink to="/" class="shrink-0">
           <Logo />
@@ -8,76 +8,96 @@
       </div>
     </header>
 
-    <div v-if="loading" class="mx-auto max-w-3xl px-4 py-16 sm:px-8 text-center text-sm text-zinc-400">
-      Loading form…
-    </div>
+    <div class="mx-auto max-w-3xl px-4 py-8 sm:px-8">
+      <div class="mb-8">
+        <h1 class="text-xl font-medium">List your dive shop on Glaucus</h1>
+        <p class="mt-2 text-sm text-zinc-400 text-pretty">
+          Dive shops, resorts, and liveaboards can request a listing. Tell us who you are, how divers
+          reach you, and what you offer. Our team reviews each inquiry and follows up if we need more
+          detail or are ready to proceed.
+        </p>
+        <ul class="mt-4 list-disc space-y-1 pl-5 text-sm text-zinc-400">
+          <li>Who can list: independent shops, resorts, and liveaboard operators.</li>
+          <li>What you’ll need: business contact details, location, and offerings (courses, gear, sites).</li>
+          <li>What happens next: we review the submission; listing is not automatic or guaranteed.</li>
+        </ul>
+      </div>
 
-    <div v-else class="mx-auto max-w-3xl px-4 py-8 sm:px-8">
-      <div v-if="loadError" class="py-16 text-center">
-        <h1 class="text-lg font-medium text-white">Could not load form</h1>
+      <div
+        v-if="loading"
+        class="py-12 text-center text-sm text-zinc-400"
+      >
+        Loading form…
+      </div>
+
+      <div
+        v-else-if="loadError"
+        class="py-12 text-center"
+      >
+        <h2 class="text-lg font-medium text-white">Could not load form</h2>
         <p class="mt-2 text-sm text-zinc-400">{{ loadError }}</p>
       </div>
-      <div v-else-if="submitted" class="py-16 text-center">
-        <h1 class="text-xl font-medium">Thanks — we received your inquiry</h1>
+
+      <div
+        v-else-if="submitted"
+        class="py-12 text-center"
+      >
+        <h2 class="text-xl font-medium">Thanks — we received your inquiry</h2>
         <p class="mt-2 text-sm text-zinc-400">Our team will review your business details and follow up if needed.</p>
       </div>
-      <div v-else>
-        <div class="mb-8">
-          <h1 class="text-xl font-medium">List your dive shop on Glaucus</h1>
-          <p class="mt-1 text-sm text-zinc-400">
-            Submit your business details below. Our team will evaluate your listing for Glaucus.
-          </p>
-        </div>
 
-        <form class="space-y-8" @submit.prevent="submit">
-          <ShopDataForm
-            v-model="form"
-            :lookups="lookups"
-            portal-mode
-            :pending-lookups="pendingLookups"
-            email-label="Booking email"
-            phone-label="Booking phone"
-          />
+      <form
+        v-else
+        class="space-y-8"
+        @submit.prevent="submit"
+      >
+        <ShopDataForm
+          v-model="form"
+          :lookups="lookups"
+          portal-mode
+          :pending-lookups="pendingLookups"
+          email-label="Booking email"
+          phone-label="Booking phone"
+        />
 
-          <FormFieldset label="Your contact info" wide-gap>
-            <div class="flex flex-col gap-4">
-              <FormField label="Your name" required field-id="submitter-name">
-                <FormInput
-                  id="submitter-name"
-                  v-model="submitterName"
-                  type="text"
-                  required
-                />
-              </FormField>
-              <FormField label="Your email" required field-id="submitter-email">
-                <FormInput
-                  id="submitter-email"
-                  v-model="submitterEmail"
-                  type="email"
-                  required
-                />
-              </FormField>
-              <FormField label="Notes (optional)" field-id="submitter-notes">
-                <FormTextarea
-                  id="submitter-notes"
-                  v-model="submitterNotes"
-                  :rows="3"
-                  :resize="false"
-                  placeholder="Anything else we should know?"
-                />
-              </FormField>
-            </div>
-          </FormFieldset>
-
-          <p v-if="submitError" class="text-sm text-red-400">{{ submitError }}</p>
-
-          <div class="flex justify-end">
-            <Button type="submit" variant="primary" :disabled="submitting">
-              {{ submitting ? 'Submitting…' : 'Submit inquiry' }}
-            </Button>
+        <FormFieldset label="Your contact info" wide-gap>
+          <div class="flex flex-col gap-4">
+            <FormField label="Your name" required field-id="submitter-name">
+              <FormInput
+                id="submitter-name"
+                v-model="submitterName"
+                type="text"
+                required
+              />
+            </FormField>
+            <FormField label="Your email" required field-id="submitter-email">
+              <FormInput
+                id="submitter-email"
+                v-model="submitterEmail"
+                type="email"
+                required
+              />
+            </FormField>
+            <FormField label="Notes (optional)" field-id="submitter-notes">
+              <FormTextarea
+                id="submitter-notes"
+                v-model="submitterNotes"
+                :rows="3"
+                :resize="false"
+                placeholder="Anything else we should know?"
+              />
+            </FormField>
           </div>
-        </form>
-      </div>
+        </FormFieldset>
+
+        <p v-if="submitError" class="text-sm text-red-400">{{ submitError }}</p>
+
+        <div class="flex justify-end">
+          <Button type="submit" variant="primary" :disabled="submitting">
+            {{ submitting ? 'Submitting…' : 'Submit inquiry' }}
+          </Button>
+        </div>
+      </form>
     </div>
   </main>
 </template>
