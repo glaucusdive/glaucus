@@ -71,6 +71,10 @@ export default defineNuxtConfig({
     resendApiKey: '',
     /** From address for booking emails (e.g. "Glaucus <bookings@yourdomain.com>"). Defaults to Resend onboarding domain if unset. */
     bookingFromEmail: process.env.BOOKING_FROM_EMAIL || 'Glaucus <onboarding@resend.dev>',
+    /** Comma-separated BCC recipients for all booking notification emails. */
+    bookingBccEmails: process.env.BOOKING_BCC_EMAILS || 'chris@glaucusdive.com,shash@glaucusdive.com,ashok@glaucusdive.com',
+    /** Comma-separated recipients for booking notifications submitted with an @glaucusdive.com address. */
+    bookingFallbackEmailsList: process.env.BOOKING_FALLBACK_EMAILS_LIST || 'chris@glaucusdive.com,shash@glaucusdive.com,ashok@glaucusdive.com',
     /** Comma-separated internal recipients for profile-default saves. */
     profileUpdateNotifyEmails: process.env.PROFILE_UPDATE_NOTIFY_EMAILS || 'rshashwat@gmail.com,general@madebyporter.com',
     /** Comma-separated internal recipients when a shop owner submits portal listing changes. */
