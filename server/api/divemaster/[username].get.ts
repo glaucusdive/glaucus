@@ -88,23 +88,46 @@ export default defineEventHandler(async (event): Promise<DivemasterApiResult> =>
     throw createError({ statusCode: 404, statusMessage: 'Divemaster not found' })
   }
 
-  const [{ data: certs }, { data: jobs }, { data: siteLinks }] = await Promise.all([
+  const favoriteLocalId = (dm.favorite_local_dive_site_id as string | null) || null
+  const favoriteDestinationId = (dm.favorite_destination_dive_site_id as string | null) || null
+  const favoriteIds = [favoriteLocalId, favoriteDestinationId].filter(Boolean) as string[]
+
+  const [{ data: certs }, { data: jobs }, { data: siteLinks }, { data: favoriteRows }] = await Promise.all([
     client.from('divemaster_certifications').select('*').eq('user_id', profile.id).order('sort_order'),
     client.from('divemaster_jobs').select('*').eq('user_id', profile.id).order('sort_order'),
     client
       .from('divemaster_dive_sites')
       .select('dive_site_id, note, sort_order, dive_sites(id, name, image_url, countries(name))')
       .eq('user_id', profile.id)
-      .order('sort_order')
+      .order('sort_order'),
+    favoriteIds.length
+      ? client
+        .from('dive_sites')
+        .select('id, name, countries(name)')
+        .in('id', favoriteIds)
+      : Promise.resolve({ data: [] as Array<Record<string, unknown>> })
   ])
 
+  type SiteJoin = {
+    id?: string
+    name?: string
+    image_url?: string | null
+    countries?: { name?: string } | null
+  }
+
+  const favoriteById = new Map<string, { id: string; name: string; country_name: string | null }>()
+  for (const row of favoriteRows ?? []) {
+    const r = row as SiteJoin
+    if (!r.id) continue
+    favoriteById.set(String(r.id), {
+      id: String(r.id),
+      name: r.name ?? 'Dive site',
+      country_name: r.countries?.name ?? null
+    })
+  }
+
   const dive_sites = (siteLinks ?? []).map((row: Record<string, unknown>) => {
-    const site = row.dive_sites as {
-      id?: string
-      name?: string
-      image_url?: string | null
-      countries?: { name?: string } | null
-    } | null
+    const site = row.dive_sites as SiteJoin | null
     return {
       dive_site_id: String(row.dive_site_id ?? site?.id ?? ''),
       note: (row.note as string | null) ?? null,
@@ -122,6 +145,12 @@ export default defineEventHandler(async (event): Promise<DivemasterApiResult> =>
     bio: dm.bio ?? null,
     location: dm.location ?? null,
     avatar_url: dm.avatar_url ?? null,
+    last_formal_training_name: (dm.last_formal_training_name as string | null) ?? null,
+    last_formal_training_date: (dm.last_formal_training_date as string | null) ?? null,
+    favorite_local_dive_site: favoriteLocalId ? (favoriteById.get(favoriteLocalId) ?? null) : null,
+    favorite_destination_dive_site: favoriteDestinationId
+      ? (favoriteById.get(favoriteDestinationId) ?? null)
+      : null,
     certifications: (certs ?? []).map((c: Record<string, unknown>) => ({
       id: c.id as string | undefined,
       agency: c.agency as string | null,

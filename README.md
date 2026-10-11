@@ -133,6 +133,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.87.0** — Dive Pro profile fields: last formal training, favorite local/destination dive spots (with add-new site), Sites Dived rename (2026-10-11).
 - **0.86.0** — Google accounts can set email/password (Settings → Account security); forgot-password on /auth; localhost OAuth redirect docs (2026-10-02).
 - **0.85.0** — SEO cycle: non-indexable shops, hard 404s, privacy/legal drafts, for-businesses SSR intro, title/copy fixes (2026-10-02).
 - **0.84.2** — Tie students certified counts to each divemaster certification (settings/admin/public); drop orphan JSON counts (2026-10-01).

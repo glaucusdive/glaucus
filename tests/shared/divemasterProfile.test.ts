@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  DIVE_SITE_ADD_NEW_ID,
   formatUsernameCooldownMessage,
   isValidUsername,
+  LAST_FORMAL_TRAINING_NAMES,
+  LAST_FORMAL_TRAINING_OTHER,
+  lastFormalTrainingSelectValue,
   normalizeUsername,
   parseStudentsByCert,
   parseStudentsCertified,
@@ -9,6 +13,15 @@ import {
 } from '../../shared/divemasterProfile'
 
 describe('divemasterProfile helpers', () => {
+  it('includes Other in last formal training names and maps custom names to Other select', () => {
+    expect(LAST_FORMAL_TRAINING_NAMES[LAST_FORMAL_TRAINING_NAMES.length - 1]).toBe(LAST_FORMAL_TRAINING_OTHER)
+    expect(LAST_FORMAL_TRAINING_NAMES).toContain('Rescue Diver')
+    expect(lastFormalTrainingSelectValue('Rescue Diver')).toBe('Rescue Diver')
+    expect(lastFormalTrainingSelectValue('Custom Workshop')).toBe(LAST_FORMAL_TRAINING_OTHER)
+    expect(lastFormalTrainingSelectValue('')).toBe('')
+    expect(DIVE_SITE_ADD_NEW_ID).toBe('__add_new__')
+  })
+
   it('normalizes and validates usernames', () => {
     expect(normalizeUsername('  Chris_Porter!! ')).toBe('chrisporter')
     expect(normalizeUsername('Chris--Porter')).toBe('chris-porter')

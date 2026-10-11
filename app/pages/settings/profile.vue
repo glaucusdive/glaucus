@@ -113,6 +113,121 @@
               </FormField>
             </div>
 
+            <div class="flex flex-col gap-4">
+              <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Profile highlights</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FormField label="Last formal training" label-style="auth">
+                  <SearchMultiSelect
+                    :model-value="lastTrainingSelect ? [lastTrainingSelect] : []"
+                    :options="trainingNameOptions"
+                    searchable
+                    wrap-chips
+                    single-select
+                    singular-label="training"
+                    @update:model-value="onLastTrainingSelect"
+                  />
+                </FormField>
+                <FormField label="Training date" label-style="auth">
+                  <FormInput v-model="form.last_formal_training_date" type="date" size="sm" />
+                </FormField>
+                <FormField
+                  v-if="lastTrainingSelect === LAST_FORMAL_TRAINING_OTHER"
+                  label="Training name (other)"
+                  label-style="auth"
+                  class="sm:col-span-2"
+                >
+                  <FormInput
+                    v-model="form.last_formal_training_other"
+                    type="text"
+                    size="sm"
+                    placeholder="Describe the training"
+                  />
+                </FormField>
+              </div>
+
+              <FormField label="Favorite local dive spot" label-style="auth">
+                <SearchMultiSelect
+                  :model-value="favoritePickerValue(favoriteLocalId)"
+                  :options="favoriteDiveSiteOptions"
+                  searchable
+                  wrap-chips
+                  single-select
+                  singular-label="dive site"
+                  @update:model-value="(ids) => onFavoriteSelect('local', ids)"
+                />
+                <div
+                  v-if="favoriteLocalId === DIVE_SITE_ADD_NEW_ID"
+                  class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-md bg-zinc-100 dark:bg-zinc-800/20 p-3"
+                >
+                  <FormField label="New site name" label-style="auth">
+                    <FormInput v-model="newLocalSite.name" type="text" size="sm" placeholder="Blue Hole" />
+                  </FormField>
+                  <FormField label="Country" label-style="auth">
+                    <SearchMultiSelect
+                      :model-value="newLocalSite.country_id ? [newLocalSite.country_id] : []"
+                      :options="countryOptions"
+                      searchable
+                      wrap-chips
+                      single-select
+                      singular-label="country"
+                      @update:model-value="(ids) => { newLocalSite.country_id = ids[0] ? String(ids[0]) : '' }"
+                    />
+                  </FormField>
+                  <div class="sm:col-span-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      :disabled="creatingLocalSite || !newLocalSite.name.trim() || !newLocalSite.country_id"
+                      @click="createFavoriteSite('local')"
+                    >
+                      {{ creatingLocalSite ? 'Adding…' : 'Add dive site' }}
+                    </Button>
+                  </div>
+                </div>
+              </FormField>
+
+              <FormField label="Favorite destination dive spot" label-style="auth">
+                <SearchMultiSelect
+                  :model-value="favoritePickerValue(favoriteDestinationId)"
+                  :options="favoriteDiveSiteOptions"
+                  searchable
+                  wrap-chips
+                  single-select
+                  singular-label="dive site"
+                  @update:model-value="(ids) => onFavoriteSelect('destination', ids)"
+                />
+                <div
+                  v-if="favoriteDestinationId === DIVE_SITE_ADD_NEW_ID"
+                  class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-md bg-zinc-100 dark:bg-zinc-800/20 p-3"
+                >
+                  <FormField label="New site name" label-style="auth">
+                    <FormInput v-model="newDestinationSite.name" type="text" size="sm" placeholder="Blue Corner" />
+                  </FormField>
+                  <FormField label="Country" label-style="auth">
+                    <SearchMultiSelect
+                      :model-value="newDestinationSite.country_id ? [newDestinationSite.country_id] : []"
+                      :options="countryOptions"
+                      searchable
+                      wrap-chips
+                      single-select
+                      singular-label="country"
+                      @update:model-value="(ids) => { newDestinationSite.country_id = ids[0] ? String(ids[0]) : '' }"
+                    />
+                  </FormField>
+                  <div class="sm:col-span-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      :disabled="creatingDestinationSite || !newDestinationSite.name.trim() || !newDestinationSite.country_id"
+                      @click="createFavoriteSite('destination')"
+                    >
+                      {{ creatingDestinationSite ? 'Adding…' : 'Add dive site' }}
+                    </Button>
+                  </div>
+                </div>
+              </FormField>
+            </div>
+
             <div class="space-y-2">
               <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Certifications</h3>
@@ -215,7 +330,7 @@
 
             <div class="space-y-2">
               <div class="flex items-center justify-between">
-                <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Past dive sites</h3>
+                <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Sites Dived</h3>
                 <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addDiveSiteRow">
                   + Add
                 </button>
@@ -287,8 +402,12 @@
 <script setup lang="ts">
 import { ChevronLeft } from 'lucide-vue-next'
 import {
+  DIVE_SITE_ADD_NEW_ID,
   formatUsernameCooldownMessage,
   isValidUsername,
+  LAST_FORMAL_TRAINING_NAMES,
+  LAST_FORMAL_TRAINING_OTHER,
+  lastFormalTrainingSelectValue,
   normalizeUsername,
   parseStudentsCertified,
   usernameChangeAvailableAt,
@@ -332,8 +451,19 @@ const form = reactive({
   headline: '',
   bio: '',
   location: '',
-  avatar_url: ''
+  avatar_url: '',
+  last_formal_training_date: '',
+  last_formal_training_other: ''
 })
+
+const lastTrainingSelect = ref('')
+const favoriteLocalId = ref('')
+const favoriteDestinationId = ref('')
+const countryOptions = ref<Array<{ id: string; label: string }>>([])
+const newLocalSite = reactive({ name: '', country_id: '' })
+const newDestinationSite = reactive({ name: '', country_id: '' })
+const creatingLocalSite = ref(false)
+const creatingDestinationSite = ref(false)
 
 const courseCertOptions = ref<Array<{ id: string; label: string }>>([])
 const agencyOptions = ref<Array<{ id: string; label: string }>>([])
@@ -341,6 +471,13 @@ const certifications = ref<Array<DivemasterCertification & { agency: string; cer
 const jobs = ref<Array<DivemasterJob & { location: string; start_date: string; end_date: string; description: string; is_current: boolean }>>([])
 const selectedDiveSiteIds = ref<string[]>([])
 const diveSiteOptions = ref<Array<{ id: string; label: string }>>([])
+
+const trainingNameOptions = LAST_FORMAL_TRAINING_NAMES.map(name => ({ id: name, label: name }))
+
+const favoriteDiveSiteOptions = computed(() => [
+  ...diveSiteOptions.value,
+  { id: DIVE_SITE_ADD_NEW_ID, label: 'Add new dive site' }
+])
 
 const statusLabel = computed(() => {
   if (dmStatus.value === 'draft') return 'Draft'
@@ -418,6 +555,88 @@ function diveSiteOptionsForRow (idx: number) {
   return optionsWithLegacy(base, current)
 }
 
+function favoritePickerValue (id: string) {
+  return id ? [id] : []
+}
+
+function onLastTrainingSelect (ids: string[]) {
+  const next = ids[0] ? String(ids[0]) : ''
+  lastTrainingSelect.value = next
+  if (next !== LAST_FORMAL_TRAINING_OTHER) {
+    form.last_formal_training_other = ''
+  }
+}
+
+function onFavoriteSelect (kind: 'local' | 'destination', ids: string[]) {
+  const next = ids[0] ? String(ids[0]) : ''
+  if (kind === 'local') {
+    favoriteLocalId.value = next
+    if (next !== DIVE_SITE_ADD_NEW_ID) {
+      newLocalSite.name = ''
+      newLocalSite.country_id = ''
+    }
+  } else {
+    favoriteDestinationId.value = next
+    if (next !== DIVE_SITE_ADD_NEW_ID) {
+      newDestinationSite.name = ''
+      newDestinationSite.country_id = ''
+    }
+  }
+}
+
+function resolvedLastTrainingName (): string | null {
+  if (!lastTrainingSelect.value) return null
+  if (lastTrainingSelect.value === LAST_FORMAL_TRAINING_OTHER) {
+    return form.last_formal_training_other.trim() || LAST_FORMAL_TRAINING_OTHER
+  }
+  return lastTrainingSelect.value
+}
+
+function favoriteIdForSave (id: string): string | null {
+  const trimmed = id.trim()
+  if (!trimmed || trimmed === DIVE_SITE_ADD_NEW_ID) return null
+  return trimmed
+}
+
+async function createFavoriteSite (kind: 'local' | 'destination') {
+  const draft = kind === 'local' ? newLocalSite : newDestinationSite
+  const creating = kind === 'local' ? creatingLocalSite : creatingDestinationSite
+  if (!draft.name.trim() || !draft.country_id) return
+  creating.value = true
+  try {
+    const token = accessToken.value || (await client.auth.getSession()).data.session?.access_token
+    if (!token) {
+      saveOk.value = false
+      saveMessage.value = 'Sign in again to add a dive site.'
+      return
+    }
+    const created = await $fetch<{ id: string; label: string }>('/api/settings/divemaster/dive-site', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: { name: draft.name.trim(), country_id: draft.country_id }
+    })
+    if (!diveSiteOptions.value.some(o => o.id === created.id)) {
+      diveSiteOptions.value = [...diveSiteOptions.value, { id: created.id, label: created.label }]
+        .sort((a, b) => a.label.localeCompare(b.label))
+    }
+    if (kind === 'local') {
+      favoriteLocalId.value = created.id
+      newLocalSite.name = ''
+      newLocalSite.country_id = ''
+    } else {
+      favoriteDestinationId.value = created.id
+      newDestinationSite.name = ''
+      newDestinationSite.country_id = ''
+    }
+  } catch (e: unknown) {
+    saveOk.value = false
+    const err = e as { data?: { statusMessage?: string }; statusMessage?: string; message?: string }
+    saveMessage.value = err?.data?.statusMessage || err?.statusMessage || err?.message || 'Failed to add dive site'
+  } finally {
+    creating.value = false
+  }
+}
+
 async function loadCourseCertOptions () {
   const { data } = await client
     .from('courses')
@@ -458,6 +677,19 @@ async function loadDiveSiteOptions () {
   })
 }
 
+async function loadCountryOptions () {
+  const { data } = await client
+    .from('countries')
+    .select('id, name')
+    .order('name')
+  countryOptions.value = (data ?? [])
+    .map(row => ({
+      id: String(row.id),
+      label: String(row.name || '').trim()
+    }))
+    .filter(o => o.label)
+}
+
 async function loadAll () {
   loading.value = true
   try {
@@ -490,6 +722,15 @@ async function loadAll () {
     form.bio = (dm.bio as string) || ''
     form.location = (dm.location as string) || ''
     form.avatar_url = (dm.avatar_url as string) || ''
+    form.last_formal_training_date = (dm.last_formal_training_date as string) || ''
+    const storedTraining = (dm.last_formal_training_name as string) || ''
+    lastTrainingSelect.value = lastFormalTrainingSelectValue(storedTraining)
+    form.last_formal_training_other =
+      lastTrainingSelect.value === LAST_FORMAL_TRAINING_OTHER && storedTraining !== LAST_FORMAL_TRAINING_OTHER
+        ? storedTraining
+        : ''
+    favoriteLocalId.value = (dm.favorite_local_dive_site_id as string) || ''
+    favoriteDestinationId.value = (dm.favorite_destination_dive_site_id as string) || ''
 
     const [{ data: certs }, { data: jobRows }, { data: siteLinks }] = await Promise.all([
       client.from('divemaster_certifications').select('*').eq('user_id', id).order('sort_order'),
@@ -523,7 +764,12 @@ async function loadAll () {
     }))
 
     selectedDiveSiteIds.value = (siteLinks ?? []).map(s => String(s.dive_site_id))
-    await Promise.all([loadDiveSiteOptions(), loadCourseCertOptions(), loadAgencyOptions()])
+    await Promise.all([
+      loadDiveSiteOptions(),
+      loadCourseCertOptions(),
+      loadAgencyOptions(),
+      loadCountryOptions()
+    ])
   } finally {
     loading.value = false
   }
@@ -603,7 +849,11 @@ async function saveDraft () {
       headline: form.headline || null,
       bio: form.bio || null,
       location: form.location || null,
-      avatar_url: form.avatar_url || null
+      avatar_url: form.avatar_url || null,
+      last_formal_training_name: resolvedLastTrainingName(),
+      last_formal_training_date: form.last_formal_training_date || null,
+      favorite_local_dive_site_id: favoriteIdForSave(favoriteLocalId.value),
+      favorite_destination_dive_site_id: favoriteIdForSave(favoriteDestinationId.value)
     }).eq('user_id', id)
     if (dmErr) throw dmErr
 
@@ -715,6 +965,11 @@ async function cancelApplication () {
     form.bio = ''
     form.location = ''
     form.avatar_url = ''
+    form.last_formal_training_date = ''
+    form.last_formal_training_other = ''
+    lastTrainingSelect.value = ''
+    favoriteLocalId.value = ''
+    favoriteDestinationId.value = ''
     certifications.value = []
     jobs.value = []
     selectedDiveSiteIds.value = []

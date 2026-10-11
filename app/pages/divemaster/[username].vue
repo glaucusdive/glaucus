@@ -43,6 +43,52 @@
         </div>
       </header>
 
+      <!-- Dive Pro highlights -->
+      <section v-if="hasHighlights" class="space-y-3">
+        <h2 class="text-xl font-semibold text-zinc-900 dark:text-white">Highlights</h2>
+        <dl class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div
+            v-if="profile.last_formal_training_name"
+            class="rounded-md border border-zinc-800 bg-transparent p-4"
+          >
+            <dt class="text-xs text-zinc-500 dark:text-zinc-500">Last formal training</dt>
+            <dd class="mt-1 text-sm text-zinc-900 dark:text-white">{{ profile.last_formal_training_name }}</dd>
+            <dd
+              v-if="profile.last_formal_training_date"
+              class="mt-0.5 text-xs text-zinc-500 tabular-nums"
+            >
+              {{ formatMonthYear(profile.last_formal_training_date) }}
+            </dd>
+          </div>
+          <div
+            v-if="profile.favorite_local_dive_site"
+            class="rounded-md border border-zinc-800 bg-transparent p-4"
+          >
+            <dt class="text-xs text-zinc-500 dark:text-zinc-500">Favorite local dive spot</dt>
+            <dd class="mt-1 text-sm text-zinc-900 dark:text-white">{{ profile.favorite_local_dive_site.name }}</dd>
+            <dd
+              v-if="profile.favorite_local_dive_site.country_name"
+              class="mt-0.5 text-xs text-zinc-500"
+            >
+              {{ profile.favorite_local_dive_site.country_name }}
+            </dd>
+          </div>
+          <div
+            v-if="profile.favorite_destination_dive_site"
+            class="rounded-md border border-zinc-800 bg-transparent p-4"
+          >
+            <dt class="text-xs text-zinc-500 dark:text-zinc-500">Favorite destination dive spot</dt>
+            <dd class="mt-1 text-sm text-zinc-900 dark:text-white">{{ profile.favorite_destination_dive_site.name }}</dd>
+            <dd
+              v-if="profile.favorite_destination_dive_site.country_name"
+              class="mt-0.5 text-xs text-zinc-500"
+            >
+              {{ profile.favorite_destination_dive_site.country_name }}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
       <!-- Certifications -->
       <section v-if="profile.certifications.length" class="space-y-4">
         <h2 class="text-xl font-semibold text-zinc-900 dark:text-white">Certifications</h2>
@@ -109,7 +155,7 @@
 
       <!-- Dive sites grid -->
       <section v-if="profile.dive_sites.length" class="space-y-4">
-        <h2 class="text-xl font-semibold text-zinc-900 dark:text-white">Past dive sites</h2>
+        <h2 class="text-xl font-semibold text-zinc-900 dark:text-white">Sites Dived</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div
             v-for="site in profile.dive_sites"
@@ -186,6 +232,16 @@ const profile = computed(() => {
 })
 
 const displayName = computed(() => profile.value?.display_name || profile.value?.username || 'Divemaster')
+
+const hasHighlights = computed(() => {
+  const p = profile.value
+  if (!p) return false
+  return !!(
+    p.last_formal_training_name ||
+    p.favorite_local_dive_site ||
+    p.favorite_destination_dive_site
+  )
+})
 
 const breadcrumbItems = computed(() => [
   { label: 'Divemaster' },

@@ -1,8 +1,27 @@
 /** Shared types and helpers for divemaster public profiles. */
 
+import {
+  LAST_FORMAL_TRAINING_NAMES,
+  LAST_FORMAL_TRAINING_OTHER
+} from './lastFormalTrainingNames'
+
+export {
+  DIVE_SITE_ADD_NEW_ID,
+  LAST_FORMAL_TRAINING_NAMES,
+  LAST_FORMAL_TRAINING_OTHER,
+  type LastFormalTrainingName
+} from './lastFormalTrainingNames'
+
 export type ProfileRole = 'standard' | 'divemaster' | 'admin'
 
 export type DivemasterProfileStatus = 'draft' | 'pending_review' | 'published'
+
+/** Resolved dive site for public favorite-spot display. */
+export interface DivemasterFavoriteDiveSite {
+  id: string
+  name: string
+  country_name?: string | null
+}
 
 export interface DivemasterCertification {
   id?: string
@@ -45,6 +64,10 @@ export interface DivemasterProfileRecord {
   bio: string | null
   location: string | null
   avatar_url: string | null
+  last_formal_training_name: string | null
+  last_formal_training_date: string | null
+  favorite_local_dive_site_id: string | null
+  favorite_destination_dive_site_id: string | null
   students_by_cert: Record<string, number>
   status: DivemasterProfileStatus
   submitted_at: string | null
@@ -61,9 +84,34 @@ export interface PublicDivemasterProfile {
   bio: string | null
   location: string | null
   avatar_url: string | null
+  last_formal_training_name: string | null
+  last_formal_training_date: string | null
+  favorite_local_dive_site: DivemasterFavoriteDiveSite | null
+  favorite_destination_dive_site: DivemasterFavoriteDiveSite | null
   certifications: DivemasterCertification[]
   jobs: DivemasterJob[]
   dive_sites: DivemasterDiveSiteLink[]
+}
+
+/** True when name is the Other sentinel or not in the curated list (custom Other text). */
+export function isLastFormalTrainingOther (name: string | null | undefined): boolean {
+  const trimmed = (name || '').trim()
+  if (!trimmed) return false
+  if (trimmed === LAST_FORMAL_TRAINING_OTHER) return true
+  return !(LAST_FORMAL_TRAINING_NAMES as readonly string[]).includes(trimmed)
+}
+
+/**
+ * For edit forms: select value is Other when the stored name is custom or Other.
+ * Returns curated name, Other, or empty.
+ */
+export function lastFormalTrainingSelectValue (name: string | null | undefined): string {
+  const trimmed = (name || '').trim()
+  if (!trimmed) return ''
+  if ((LAST_FORMAL_TRAINING_NAMES as readonly string[]).includes(trimmed) && trimmed !== LAST_FORMAL_TRAINING_OTHER) {
+    return trimmed
+  }
+  return LAST_FORMAL_TRAINING_OTHER
 }
 
 export interface AdminDivemasterListItem {

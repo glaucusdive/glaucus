@@ -58,6 +58,121 @@
           </FormField>
         </div>
 
+        <div class="space-y-3">
+          <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Profile highlights</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FormField label="Last formal training" label-style="auth">
+              <SearchMultiSelect
+                :model-value="lastTrainingSelect ? [lastTrainingSelect] : []"
+                :options="trainingNameOptions"
+                searchable
+                wrap-chips
+                single-select
+                singular-label="training"
+                @update:model-value="onLastTrainingSelect"
+              />
+            </FormField>
+            <FormField label="Training date" label-style="auth">
+              <FormInput v-model="form.last_formal_training_date" type="date" size="sm" />
+            </FormField>
+            <FormField
+              v-if="lastTrainingSelect === LAST_FORMAL_TRAINING_OTHER"
+              label="Training name (other)"
+              label-style="auth"
+              class="sm:col-span-2"
+            >
+              <FormInput
+                v-model="form.last_formal_training_other"
+                type="text"
+                size="sm"
+                placeholder="Describe the training"
+              />
+            </FormField>
+          </div>
+
+          <FormField label="Favorite local dive spot" label-style="auth">
+            <SearchMultiSelect
+              :model-value="favoriteLocalId ? [favoriteLocalId] : []"
+              :options="favoriteDiveSiteOptions"
+              searchable
+              wrap-chips
+              single-select
+              singular-label="dive site"
+              @update:model-value="(ids) => onFavoriteSelect('local', ids)"
+            />
+            <div
+              v-if="favoriteLocalId === DIVE_SITE_ADD_NEW_ID"
+              class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 border border-zinc-200 dark:border-zinc-700 rounded-md p-3"
+            >
+              <FormField label="New site name" label-style="auth">
+                <FormInput v-model="newLocalSite.name" type="text" size="sm" />
+              </FormField>
+              <FormField label="Country" label-style="auth">
+                <SearchMultiSelect
+                  :model-value="newLocalSite.country_id ? [newLocalSite.country_id] : []"
+                  :options="countryOptions"
+                  searchable
+                  wrap-chips
+                  single-select
+                  singular-label="country"
+                  @update:model-value="(ids) => { newLocalSite.country_id = ids[0] ? String(ids[0]) : '' }"
+                />
+              </FormField>
+              <div class="sm:col-span-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  :disabled="creatingLocalSite || !newLocalSite.name.trim() || !newLocalSite.country_id"
+                  @click="createFavoriteSite('local')"
+                >
+                  {{ creatingLocalSite ? 'Adding…' : 'Add dive site' }}
+                </Button>
+              </div>
+            </div>
+          </FormField>
+
+          <FormField label="Favorite destination dive spot" label-style="auth">
+            <SearchMultiSelect
+              :model-value="favoriteDestinationId ? [favoriteDestinationId] : []"
+              :options="favoriteDiveSiteOptions"
+              searchable
+              wrap-chips
+              single-select
+              singular-label="dive site"
+              @update:model-value="(ids) => onFavoriteSelect('destination', ids)"
+            />
+            <div
+              v-if="favoriteDestinationId === DIVE_SITE_ADD_NEW_ID"
+              class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 border border-zinc-200 dark:border-zinc-700 rounded-md p-3"
+            >
+              <FormField label="New site name" label-style="auth">
+                <FormInput v-model="newDestinationSite.name" type="text" size="sm" />
+              </FormField>
+              <FormField label="Country" label-style="auth">
+                <SearchMultiSelect
+                  :model-value="newDestinationSite.country_id ? [newDestinationSite.country_id] : []"
+                  :options="countryOptions"
+                  searchable
+                  wrap-chips
+                  single-select
+                  singular-label="country"
+                  @update:model-value="(ids) => { newDestinationSite.country_id = ids[0] ? String(ids[0]) : '' }"
+                />
+              </FormField>
+              <div class="sm:col-span-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  :disabled="creatingDestinationSite || !newDestinationSite.name.trim() || !newDestinationSite.country_id"
+                  @click="createFavoriteSite('destination')"
+                >
+                  {{ creatingDestinationSite ? 'Adding…' : 'Add dive site' }}
+                </Button>
+              </div>
+            </div>
+          </FormField>
+        </div>
+
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Certifications</h3>
@@ -160,7 +275,7 @@
 
         <div class="space-y-2">
           <div class="flex items-center justify-between">
-            <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Past dive sites</h3>
+            <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Sites Dived</h3>
             <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addDiveSiteRow">
               + Add
             </button>
@@ -222,7 +337,16 @@
 </template>
 
 <script setup lang="ts">
-import { parseStudentsCertified, type DivemasterCertification, type DivemasterJob, type DivemasterProfileStatus } from '~~/shared/divemasterProfile'
+import {
+  DIVE_SITE_ADD_NEW_ID,
+  LAST_FORMAL_TRAINING_NAMES,
+  LAST_FORMAL_TRAINING_OTHER,
+  lastFormalTrainingSelectValue,
+  parseStudentsCertified,
+  type DivemasterCertification,
+  type DivemasterJob,
+  type DivemasterProfileStatus
+} from '~~/shared/divemasterProfile'
 
 definePageMeta({ layout: 'default', middleware: 'admin' })
 useSeoMeta({ title: 'Admin · Edit divemaster', robots: 'noindex, nofollow' })
@@ -246,14 +370,30 @@ const form = reactive({
   bio: '',
   location: '',
   avatar_url: '',
-  admin_notes: ''
+  admin_notes: '',
+  last_formal_training_date: '',
+  last_formal_training_other: ''
 })
+const lastTrainingSelect = ref('')
+const favoriteLocalId = ref('')
+const favoriteDestinationId = ref('')
+const countryOptions = ref<Array<{ id: string; label: string }>>([])
+const newLocalSite = reactive({ name: '', country_id: '' })
+const newDestinationSite = reactive({ name: '', country_id: '' })
+const creatingLocalSite = ref(false)
+const creatingDestinationSite = ref(false)
 const courseCertOptions = ref<Array<{ id: string; label: string }>>([])
 const agencyOptions = ref<Array<{ id: string; label: string }>>([])
 const certifications = ref<Array<DivemasterCertification & { agency: string; cert_number: string; issued_at: string; students_certified: number }>>([])
 const jobs = ref<Array<DivemasterJob & { location: string; start_date: string; end_date: string; description: string; is_current: boolean }>>([])
 const diveSiteIds = ref<string[]>([])
 const diveSiteOptions = ref<Array<{ id: string; label: string }>>([])
+
+const trainingNameOptions = LAST_FORMAL_TRAINING_NAMES.map(name => ({ id: name, label: name }))
+const favoriteDiveSiteOptions = computed(() => [
+  ...diveSiteOptions.value,
+  { id: DIVE_SITE_ADD_NEW_ID, label: 'Add new dive site' }
+])
 
 const headerTitle = computed(() => `Admin · ${form.display_name || form.username || 'Divemaster'}`)
 
@@ -307,6 +447,78 @@ function diveSiteOptionsForRow (idx: number) {
   return optionsWithLegacy(base, current)
 }
 
+function onLastTrainingSelect (ids: string[]) {
+  const next = ids[0] ? String(ids[0]) : ''
+  lastTrainingSelect.value = next
+  if (next !== LAST_FORMAL_TRAINING_OTHER) {
+    form.last_formal_training_other = ''
+  }
+}
+
+function onFavoriteSelect (kind: 'local' | 'destination', ids: string[]) {
+  const next = ids[0] ? String(ids[0]) : ''
+  if (kind === 'local') {
+    favoriteLocalId.value = next
+    if (next !== DIVE_SITE_ADD_NEW_ID) {
+      newLocalSite.name = ''
+      newLocalSite.country_id = ''
+    }
+  } else {
+    favoriteDestinationId.value = next
+    if (next !== DIVE_SITE_ADD_NEW_ID) {
+      newDestinationSite.name = ''
+      newDestinationSite.country_id = ''
+    }
+  }
+}
+
+function resolvedLastTrainingName (): string | null {
+  if (!lastTrainingSelect.value) return null
+  if (lastTrainingSelect.value === LAST_FORMAL_TRAINING_OTHER) {
+    return form.last_formal_training_other.trim() || LAST_FORMAL_TRAINING_OTHER
+  }
+  return lastTrainingSelect.value
+}
+
+function favoriteIdForSave (id: string): string | null {
+  const trimmed = id.trim()
+  if (!trimmed || trimmed === DIVE_SITE_ADD_NEW_ID) return null
+  return trimmed
+}
+
+async function createFavoriteSite (kind: 'local' | 'destination') {
+  const draft = kind === 'local' ? newLocalSite : newDestinationSite
+  const creating = kind === 'local' ? creatingLocalSite : creatingDestinationSite
+  if (!draft.name.trim() || !draft.country_id) return
+  creating.value = true
+  try {
+    const headers = await authHeaders()
+    const created = await $fetch<{ id: string; label: string }>('/api/settings/divemaster/dive-site', {
+      method: 'POST',
+      headers,
+      body: { name: draft.name.trim(), country_id: draft.country_id }
+    })
+    if (!diveSiteOptions.value.some(o => o.id === created.id)) {
+      diveSiteOptions.value = [...diveSiteOptions.value, { id: created.id, label: created.label }]
+        .sort((a, b) => a.label.localeCompare(b.label))
+    }
+    if (kind === 'local') {
+      favoriteLocalId.value = created.id
+      newLocalSite.name = ''
+      newLocalSite.country_id = ''
+    } else {
+      favoriteDestinationId.value = created.id
+      newDestinationSite.name = ''
+      newDestinationSite.country_id = ''
+    }
+  } catch (e) {
+    ok.value = false
+    msg.value = e instanceof Error ? e.message : 'Failed to add dive site'
+  } finally {
+    creating.value = false
+  }
+}
+
 async function authHeaders () {
   await init()
   return {
@@ -324,6 +536,13 @@ async function loadDiveSites () {
       label: `${row.name}${country?.name ? ` (${country.name})` : ''}`
     }
   })
+}
+
+async function loadCountryOptions () {
+  const { data } = await client.from('countries').select('id, name').order('name')
+  countryOptions.value = (data ?? [])
+    .map(row => ({ id: String(row.id), label: String(row.name || '').trim() }))
+    .filter(o => o.label)
 }
 
 async function loadCourseCertOptions () {
@@ -368,6 +587,15 @@ async function load () {
     form.location = json.divemaster?.location || ''
     form.avatar_url = json.divemaster?.avatar_url || ''
     form.admin_notes = json.divemaster?.admin_notes || ''
+    form.last_formal_training_date = json.divemaster?.last_formal_training_date || ''
+    const storedTraining = json.divemaster?.last_formal_training_name || ''
+    lastTrainingSelect.value = lastFormalTrainingSelectValue(storedTraining)
+    form.last_formal_training_other =
+      lastTrainingSelect.value === LAST_FORMAL_TRAINING_OTHER && storedTraining !== LAST_FORMAL_TRAINING_OTHER
+        ? storedTraining
+        : ''
+    favoriteLocalId.value = json.divemaster?.favorite_local_dive_site_id || ''
+    favoriteDestinationId.value = json.divemaster?.favorite_destination_dive_site_id || ''
     certifications.value = (json.certifications ?? []).map((c: Record<string, unknown>) => ({
       name: String(c.name || ''),
       agency: String(c.agency || ''),
@@ -385,7 +613,7 @@ async function load () {
       description: String(j.description || '')
     }))
     diveSiteIds.value = (json.dive_site_ids ?? []).map(String)
-    await Promise.all([loadDiveSites(), loadCourseCertOptions(), loadAgencyOptions()])
+    await Promise.all([loadDiveSites(), loadCourseCertOptions(), loadAgencyOptions(), loadCountryOptions()])
   } catch (e) {
     loadError.value = e instanceof Error ? e.message : 'Failed to load'
   } finally {
@@ -425,6 +653,10 @@ async function save () {
     location: form.location,
     avatar_url: form.avatar_url,
     admin_notes: form.admin_notes,
+    last_formal_training_name: resolvedLastTrainingName(),
+    last_formal_training_date: form.last_formal_training_date || null,
+    favorite_local_dive_site_id: favoriteIdForSave(favoriteLocalId.value),
+    favorite_destination_dive_site_id: favoriteIdForSave(favoriteDestinationId.value),
     certifications: certifications.value.map(c => ({
       ...c,
       students_certified: parseStudentsCertified(c.students_certified)

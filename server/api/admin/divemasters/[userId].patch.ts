@@ -25,6 +25,10 @@ export default defineEventHandler(async (event) => {
     location?: string
     avatar_url?: string
     admin_notes?: string
+    last_formal_training_name?: string | null
+    last_formal_training_date?: string | null
+    favorite_local_dive_site_id?: string | null
+    favorite_destination_dive_site_id?: string | null
     certifications?: DivemasterCertification[]
     jobs?: DivemasterJob[]
     dive_site_ids?: string[]
@@ -105,6 +109,18 @@ export default defineEventHandler(async (event) => {
   if (body.location !== undefined) patch.location = body.location || null
   if (body.avatar_url !== undefined) patch.avatar_url = body.avatar_url || null
   if (body.admin_notes !== undefined) patch.admin_notes = body.admin_notes || null
+  if (body.last_formal_training_name !== undefined) {
+    patch.last_formal_training_name = body.last_formal_training_name?.trim() || null
+  }
+  if (body.last_formal_training_date !== undefined) {
+    patch.last_formal_training_date = body.last_formal_training_date || null
+  }
+  if (body.favorite_local_dive_site_id !== undefined) {
+    patch.favorite_local_dive_site_id = body.favorite_local_dive_site_id || null
+  }
+  if (body.favorite_destination_dive_site_id !== undefined) {
+    patch.favorite_destination_dive_site_id = body.favorite_destination_dive_site_id || null
+  }
   if (body.status === 'draft' || body.status === 'pending_review' || body.status === 'published') {
     patch.status = body.status
     if (body.status === 'published') {
