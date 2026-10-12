@@ -310,9 +310,9 @@
                   </li>
                 </ul>
               </div>
-              <div v-if="socialLinks.length" class="flex flex-col gap-3 rounded-md border border-zinc-300 p-4 dark:border-zinc-800 lg:order-3">
+              <div v-if="socialLinks.length || showDemoSocialPlaceholder" class="flex flex-col gap-3 rounded-md border border-zinc-300 p-4 dark:border-zinc-800 lg:order-3">
                 <h2 class="text-sm font-semibold text-zinc-900 dark:text-white">Find us online</h2>
-                <div class="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                <div v-if="socialLinks.length" class="grid grid-cols-1 gap-1 sm:grid-cols-2">
                   <a
                     v-for="(link, index) in socialLinks"
                     :key="`${link.label}-${index}`"
@@ -325,6 +325,9 @@
                     <span class="truncate">{{ link.label }}</span>
                   </a>
                 </div>
+                <p v-else class="text-sm text-zinc-500 dark:text-zinc-400">
+                  Add your social links (Facebook, Instagram, Google Reviews)
+                </p>
               </div>
             </div>
           </div>
@@ -579,6 +582,7 @@ const contactInfo = computed(() => ({
   website: shopData.value?.website_url
 }))
 const socialLinks = computed(() => normalizeShopSocialLinks(shopData.value?.social_links))
+const showDemoSocialPlaceholder = computed(() => showDemoData.value && socialLinks.value.length === 0)
 
 // Handle close/back action
 const handleClose = () => {
