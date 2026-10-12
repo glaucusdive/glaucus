@@ -39,8 +39,20 @@ export function collectDistinctDiveSiteTypeNames (
   return out
 }
 
+/** Review counts returned by the embedded shop_reviews(count) relationship aggregate. */
+export function collectShopReviewCounts (
+  rows: { id: string; shop_reviews?: { count?: number | null }[] | null }[]
+): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const row of rows) {
+    const count = Number(row.shop_reviews?.[0]?.count ?? 0)
+    counts.set(row.id, Number.isFinite(count) ? count : 0)
+  }
+  return counts
+}
+
 /**
- * Attach cardCourseNames and cardDiveSiteTypeNames to each shop object (mutates rows).
+ * Attach card metadata and review counts to each shop object (mutates rows).
  * Uses batched Supabase reads for the current result page.
  */
 export async function enrichShopsForSearchCards (
@@ -54,7 +66,7 @@ export async function enrichShopsForSearchCards (
 
   const client = createClient(supabaseUrl, supabaseKey)
 
-  const [coursesRes, sitesRes] = await Promise.all([
+  const [coursesRes, sitesRes, reviewCountsRes] = await Promise.all([
     client
       .from('diveshop_courses')
       .select('diveshop_id, courses(certification_name, course_level:course_levels(ranking, name))')
@@ -62,7 +74,11 @@ export async function enrichShopsForSearchCards (
     client
       .from('diveshop_dive_sites')
       .select('diveshop_id, dive_sites(dive_site_type:dive_site_types(name))')
-      .in('diveshop_id', ids)
+      .in('diveshop_id', ids),
+    client
+      .from('diveshops')
+      .select('id, shop_reviews(count)')
+      .in('id', ids)
   ])
 
   if (coursesRes.error) {
@@ -71,6 +87,14 @@ export async function enrichShopsForSearchCards (
   if (sitesRes.error) {
     console.warn('[enrichShopsForSearchCards] sites query:', sitesRes.error.message)
   }
+  if (reviewCountsRes.error) {
+    console.warn('[enrichShopsForSearchCards] review counts query:', reviewCountsRes.error.message)
+  }
+
+  const reviewCountsByShop = collectShopReviewCounts((reviewCountsRes.data || []) as {
+    id: string
+    shop_reviews?: { count?: number | null }[] | null
+  }[])
 
   const coursesByShop = new Map<string, string[]>()
   for (const row of (coursesRes.data || []) as {
@@ -116,6 +140,7 @@ export async function enrichShopsForSearchCards (
   for (const shop of rows) {
     const id = shop.id
     if (!id || typeof id !== 'string') continue
+    shop.reviewCount = reviewCountsByShop.get(id) ?? 0
     shop.cardCourseNames = (coursesByShop.get(id) || []).slice(0, MAX_COURSES)
     const tset = typeSets.get(id)
     shop.cardDiveSiteTypeNames = tset

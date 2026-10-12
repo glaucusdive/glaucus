@@ -15,9 +15,14 @@
           <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">
             {{ shop.business_name }}
           </h3>
-          <div v-if="shop.google_rating" class="mt-1 flex items-center gap-1">
-            <Star class="w-4 h-4 text-yellow-500 fill-yellow-500" />
-            <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ shop.google_rating }}</span>
+          <div v-if="shop.google_rating || typeof shop.reviewCount === 'number'" class="mt-1 flex items-center gap-2">
+            <span v-if="shop.google_rating" class="flex items-center gap-1">
+              <Star class="w-4 h-4 text-yellow-500 fill-yellow-500" />
+              <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ shop.google_rating }}</span>
+            </span>
+            <span v-if="typeof shop.reviewCount === 'number'" class="text-xs text-zinc-500 dark:text-zinc-400">
+              {{ shop.reviewCount }} {{ shop.reviewCount === 1 ? 'review' : 'reviews' }}
+            </span>
           </div>
         </div>
         <button

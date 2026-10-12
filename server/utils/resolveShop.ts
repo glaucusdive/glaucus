@@ -4,13 +4,14 @@ import { fuzzyNameScore, normalizeSearchText } from './searchText'
 export interface ResolvedShop {
   id: string
   business_name: string
+  slug?: string | null
   email: string | null
   city?: string | null
   state?: string | null
   [key: string]: unknown
 }
 
-const SHOP_LIST_SELECT = 'id, business_name, email, city, state'
+const SHOP_LIST_SELECT = 'id, business_name, slug, email, city, state'
 const FUZZY_SCAN_CHUNK = 500
 const FUZZY_SCAN_MAX_ROWS = 5000
 
