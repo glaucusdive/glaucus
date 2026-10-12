@@ -3,6 +3,7 @@ import {
   parseDiveBusinessTypesFromStored,
   serializeDiveBusinessTypes
 } from '../../shared/diveBusinessTypes'
+import { normalizeShopSocialLinks, type ShopSocialLink } from '../../shared/shopSocialLinks'
 
 export interface ShopWritePayload {
   business_name?: string
@@ -12,6 +13,7 @@ export interface ShopWritePayload {
   state?: string | null
   phone?: string | null
   email?: string | null
+  social_links?: ShopSocialLink[]
   type?: string | null
   country_id?: string | null
   region_id?: string | null
@@ -30,6 +32,7 @@ const SHOP_COLUMNS = [
   'state',
   'phone',
   'email',
+  'social_links',
   'type',
   'country_id',
   'region_id',
@@ -49,6 +52,8 @@ export function pickShopCoreFields (payload: ShopWritePayload): Record<string, u
       const v = payload[col]
       if (col === 'type') {
         out[col] = normalizeShopTypeField(v)
+      } else if (col === 'social_links') {
+        out[col] = normalizeShopSocialLinks(v)
       } else {
         out[col] = v === '' ? null : v
       }

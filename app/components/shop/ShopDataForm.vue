@@ -8,6 +8,7 @@ import {
   type PendingLookups,
   type ShopFormSnapshot
 } from '~~/shared/shopPortalPayload'
+import { Plus, Trash2 } from 'lucide-vue-next'
 
 export type ShopLookups = import('~~/shared/shopPortalPayload').ShopLookups
 
@@ -45,6 +46,24 @@ const form = computed({
 
 function patch (partial: Partial<ShopFormSnapshot>) {
   emit('update:modelValue', { ...props.modelValue, ...partial })
+}
+
+const socialLinks = computed(() => props.modelValue.social_links ?? [])
+
+function updateSocialLink (index: number, field: 'label' | 'url', value: unknown) {
+  const links = [...socialLinks.value]
+  const current = links[index]
+  if (!current) return
+  links[index] = { ...current, [field]: String(value ?? '') }
+  patch({ social_links: links })
+}
+
+function addSocialLink () {
+  patch({ social_links: [...socialLinks.value, { label: '', url: '' }] })
+}
+
+function removeSocialLink (index: number) {
+  patch({ social_links: socialLinks.value.filter((_, i) => i !== index) })
 }
 
 function fieldClass (field: string) {
@@ -381,6 +400,58 @@ async function createDiveSite (name: string) {
           />
         </div>
       </FormField>
+    </div>
+
+    <h3 class="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
+      Social and review links
+    </h3>
+    <div class="flex min-w-0 flex-col gap-3">
+      <p class="text-sm text-zinc-500 dark:text-zinc-400">
+        Add public links such as Facebook, Instagram, X, YouTube, TripAdvisor, or Google Reviews.
+      </p>
+      <div
+        v-for="(link, index) in socialLinks"
+        :key="`shop-social-link-${index}`"
+        class="grid min-w-0 grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto]"
+      >
+        <FormField :label="`Link label ${index + 1}`" :field-id="`shop-social-label-${index}`">
+          <FormInput
+            :id="`shop-social-label-${index}`"
+            :model-value="link.label"
+            type="text"
+            maxlength="60"
+            placeholder="Instagram"
+            :disabled="disabled"
+            @update:model-value="updateSocialLink(index, 'label', $event)"
+          />
+        </FormField>
+        <FormField :label="`URL ${index + 1}`" :field-id="`shop-social-url-${index}`">
+          <FormInput
+            :id="`shop-social-url-${index}`"
+            :model-value="link.url"
+            type="url"
+            maxlength="2048"
+            placeholder="https://…"
+            :disabled="disabled"
+            @update:model-value="updateSocialLink(index, 'url', $event)"
+          />
+        </FormField>
+        <button
+          type="button"
+          class="mb-1 inline-flex size-10 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          :aria-label="`Remove link ${index + 1}`"
+          :disabled="disabled"
+          @click="removeSocialLink(index)"
+        >
+          <Trash2 class="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+      <div>
+        <Button type="button" variant="secondary" :disabled="disabled || socialLinks.length >= 12" @click="addSocialLink">
+          <Plus class="mr-2 h-4 w-4" aria-hidden="true" />
+          Add link
+        </Button>
+      </div>
     </div>
   </section>
 </template>

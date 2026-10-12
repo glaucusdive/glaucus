@@ -1,4 +1,7 @@
+import { normalizeShopSocialLinks, type ShopSocialLink } from './shopSocialLinks'
+
 /** Form state shape for admin new business (solo + bulk import). */
+
 export interface AdminNewBusinessFormState {
   business_name: string
   street_address: string
@@ -7,6 +10,7 @@ export interface AdminNewBusinessFormState {
   state: string
   phone: string
   email: string
+  social_links?: ShopSocialLink[]
   business_type_ids: string[]
   country_id: string | null
   region_id: string | null
@@ -25,6 +29,7 @@ export function emptyAdminNewBusinessForm (): AdminNewBusinessFormState {
     state: '',
     phone: '',
     email: '',
+    social_links: [],
     business_type_ids: [],
     country_id: null,
     region_id: null,
@@ -50,6 +55,7 @@ export function adminShopRowToNewBusinessForm (
     state: String(row.state ?? ''),
     phone: String(row.phone ?? ''),
     email: String(row.email ?? ''),
+    social_links: normalizeShopSocialLinks(row.social_links),
     business_type_ids: [...(row.business_type_ids || [])],
     country_id: row.country_id ?? null,
     region_id: row.region_id ?? null,
@@ -68,6 +74,7 @@ export interface AdminShopWriteBody {
   state: string | null
   phone: string | null
   email: string | null
+  social_links?: ShopSocialLink[]
   type: string | null
   country_id: string | null
   region_id: string | null
@@ -95,6 +102,7 @@ export function buildAdminShopWriteBody (
     state: emptyToNull(form.state),
     phone: emptyToNull(form.phone),
     email: emptyToNull(form.email),
+    social_links: normalizeShopSocialLinks(form.social_links),
     type: typeSerialized,
     country_id: form.country_id || null,
     region_id: form.region_id || null,

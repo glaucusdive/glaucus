@@ -38,7 +38,7 @@ export default defineNuxtConfig({
   },
   sitemap: {
     excludeAppSources: true,
-    sources: ['/api/__sitemap__/blog'],
+    sources: ['/api/__sitemap__/blog', '/api/__sitemap__/shops'],
     urls: [
       { loc: '/' },
       { loc: '/for-businesses' },

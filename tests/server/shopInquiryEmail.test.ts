@@ -24,6 +24,10 @@ describe('shopInquiryEmail', () => {
     const payload: PortalSubmissionPayload = {
       business_name: 'Blue Corner Dive',
       type: 'Dive Shop',
+      social_links: [
+        { label: 'Instagram', url: 'https://instagram.com/bluecorner' },
+        { label: 'Google Reviews', url: 'https://maps.google.com/?cid=123' }
+      ],
       city: 'Amed',
       country_id: 'c1',
       region_id: 'r1',
@@ -41,6 +45,8 @@ describe('shopInquiryEmail', () => {
     expect(body).toContain('jane@example.com')
     expect(body).toContain('We run daily trips.')
     expect(body).toContain('Blue Corner Dive')
+    expect(body).toContain('Instagram: https://instagram.com/bluecorner')
+    expect(body).toContain('Google Reviews: https://maps.google.com/?cid=123')
     expect(body).toContain('Indonesia')
     expect(body).toContain('Open Water (PADI)')
   })
