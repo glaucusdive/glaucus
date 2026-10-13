@@ -1,0 +1,12 @@
+-- Applied on remote as 20260930233229 (blog_posts_author_name).
+-- Kept locally so migration history matches production.
+
+ALTER TABLE blog_posts
+  ADD COLUMN IF NOT EXISTS author_name TEXT NOT NULL DEFAULT 'Shashwat Rajvaidya';
+
+UPDATE blog_posts
+SET author_name = 'Shashwat Rajvaidya'
+WHERE author_name IS DISTINCT FROM 'Shashwat Rajvaidya';
+
+COMMENT ON COLUMN blog_posts.author_name IS
+  'Display name for post byline and BlogPosting JSON-LD Person author.';

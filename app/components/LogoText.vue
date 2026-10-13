@@ -1,5 +1,13 @@
 <template>
-  <svg width="100%" height="100%" viewBox="0 0 534 126" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg
+    width="80"
+    height="19"
+    viewBox="0 0 534 126"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    style="width: 100%; height: auto; max-width: 80px; display: block"
+    aria-hidden="true"
+  >
     <path
       d="M168.702 98.5854L171.905 85.2634H204.96V98.5854H168.702ZM188.731 2.25732L159.349 122.667H143.975L173.357 2.25732H188.731ZM189.073 2.25732L218.455 122.667H203.252L173.698 2.25732H189.073Z"
       fill="currentColor" />
