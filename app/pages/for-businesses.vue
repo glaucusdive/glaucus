@@ -8,5 +8,5 @@ import ShopDirectory from '~/components/shop/ShopDirectory.vue'
 
 const route = useRoute()
 
-definePageMeta({ layout: 'default' })
+definePageMeta({ layout: false })
 </script>
