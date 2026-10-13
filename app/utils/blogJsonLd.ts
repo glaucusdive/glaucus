@@ -97,7 +97,7 @@ export function blogBreadcrumbJsonLd (post: BlogPost, canonicalUrl: string, site
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl },
-      { '@type': 'ListItem', position: 2, name: 'Logs', item: `${siteUrl}/blog` },
+      { '@type': 'ListItem', position: 2, name: 'Scuba diving guides', item: `${siteUrl}/blog` },
       { '@type': 'ListItem', position: 3, name: post.title, item: canonicalUrl }
     ]
   }
@@ -108,7 +108,7 @@ export function blogIndexJsonLd (posts: BlogPostCard[], siteUrl: string) {
     {
       '@context': 'https://schema.org',
       '@type': 'CollectionPage',
-      name: 'Glaucus Logs',
+      name: 'Scuba diving guides',
       description: 'Evergreen scuba diving guides from Glaucus.',
       url: `${siteUrl}/blog`
     },

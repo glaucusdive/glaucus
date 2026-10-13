@@ -265,7 +265,7 @@ const INTRO_BG_FADE_SCROLL_MULTIPLIER = 1
 const WHATIS_INTRO_PARAGRAPHS = [
   'Ada is an AI dive buddy from Glaucus, created by divers for divers.',
   'Ada makes finding and booking dive shops, resorts, or liveaboards quick and easy—no more jumping between websites. Booking requests take less than five minutes.',
-  'All dive businesses are listed, regardless of certification organization, ensuring you have the most options possible.'
+  'Listed operators appear regardless of certification organization, so you can compare options in one place through chat.'
 ]
 
 const heroQuery = ref('')
