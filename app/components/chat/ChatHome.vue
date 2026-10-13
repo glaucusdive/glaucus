@@ -2710,8 +2710,8 @@ const closeShopDetail = () => {
 
 useHead(computed(() => ({
   title: isInBookingMode.value && selectedShopName.value
-    ? `${selectedShopName.value} | Glaucus`
-    : 'Dive Shop Search | Glaucus'
+    ? selectedShopName.value
+    : 'Dive Shop Search'
 })))
 </script>
 

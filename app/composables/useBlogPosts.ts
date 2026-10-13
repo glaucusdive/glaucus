@@ -59,7 +59,13 @@ export function useBlogPosts (options: OptionsInput = {}) {
         }
         const { data: row, error: err } = await q.maybeSingle()
         if (err) throw err
-        if (!row) return { post: null as BlogPost | null, posts: [] as BlogPostCard[] }
+        if (!row) {
+          throw createError({
+            statusCode: 404,
+            statusMessage: 'Post not found',
+            fatal: true
+          })
+        }
         return { post: mapPost(row as Record<string, unknown>), posts: [] as BlogPostCard[] }
       }
 
