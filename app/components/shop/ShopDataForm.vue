@@ -223,14 +223,14 @@ async function createDiveSite (name: string) {
         </div>
       </FormField>
       <FormField label="Website" field-id="shop-website">
-        <FormInput
-          id="shop-website"
-          :model-value="form.website_url ?? ''"
-          type="url"
-          :disabled="disabled"
-          :class="fieldClass('website_url')"
-          @update:model-value="patch({ website_url: String($event ?? '') || null })"
-        />
+          <FormInput id="shop-website"
+            :model-value="form.website_url ?? ''"
+            type="url"
+            placeholder="https://www.example.com"
+            :disabled="disabled"
+            :class="fieldClass('website_url')"
+            @update:model-value="patch({ website_url: String($event ?? '') || null })"
+          />
       </FormField>
       <FormField :label="emailLabel" field-id="shop-email">
         <FormInput
