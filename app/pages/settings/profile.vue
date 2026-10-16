@@ -1,24 +1,47 @@
 <template>
-  <div class="max-h-screen bg-zinc-900 h-full p-0 overflow-y-auto divide-y divide-zinc-800">
-    
-    <div class="flex flex-row divide-x divide-zinc-800 h-20 bg-zinc-900 sticky top-0 z-50">
-      <NuxtLink to="/settings"
-        class="flex justify-center items-center gap-1 text-sm text-zinc-400 hover:text-white cursor-pointer aspect-square size-20">
-        <ChevronLeft class="size-4" />
-      </NuxtLink>
-      <div class="p-4 flex flex-col justify-center">
-        <h1 class="text-base font-bold text-white">Profile Settings</h1>
-        <p class="hidden lg:flex text-sm text-zinc-400">
-          Username and divemaster profile. Public pages go live after admin approval.
+  <SettingsPage
+    title="Profile Settings"
+    description="Username and divemaster profile. Public pages go live after admin approval."
+    back-to="/settings"
+  >
+    <template #actions>
+      <div v-if="!loading" class="flex items-center gap-4">
+        <p
+          v-if="saveMessage"
+          class="max-w-40 truncate text-sm sm:max-w-xs"
+          :class="saveOk ? 'text-green-400' : 'text-red-400'"
+          :title="saveMessage"
+        >
+          {{ saveMessage }}
         </p>
+        <Button
+          type="button"
+          variant="primary"
+          :disabled="saving || cancelling"
+          @click="saveProfile"
+        >
+          {{ saving ? 'Saving…' : 'Save' }}
+        </Button>
       </div>
-    </div>
+    </template>
     
     <div v-if="loading" class="p-4 lg:py-12 lg:px-24 text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
 
     <div v-else class="divide-y divide-zinc-800">
-      <section class="p-4 lg:py-12 lg:px-24">
+      <section class="p-4 lg:py-12 lg:px-24 flex flex-col gap-4">
         <h2 class="text-base font-bold text-white">Account</h2>
+        <div class="flex flex-col gap-2">
+          <FormField label="Full name" label-style="auth" field-id="dm-full-name" required>
+            <FormInput
+              id="dm-full-name"
+              v-model="fullNameInput"
+              type="text"
+              autocomplete="name"
+              required
+              :disabled="saving"
+            />
+          </FormField>
+        </div>
         <FormField label="Username" label-style="auth" field-id="dm-username">
           <!-- Locked: show current username in a disabled input -->
           <template v-if="usernameLocked && username">
@@ -26,7 +49,6 @@
               id="dm-username"
               :model-value="`@${username}`"
               type="text"
-              size="lg"
               disabled
             />
             <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
@@ -44,7 +66,6 @@
               id="dm-username"
               v-model="usernameInput"
               type="text"
-              size="md"
               placeholder="your-name"
               :disabled="savingUsername"
             />
@@ -69,11 +90,11 @@
       </section>
 
       <section class="p-4 lg:py-12 lg:px-24 flex flex-col gap-8">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <h2 class="text-base font-bold text-white">Divemaster</h2>
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 class="text-base font-bold text-white">Divemaster Profile</h2>
           <span
             v-if="dmStatus"
-            class="text-xs font-medium px-2 py-1 rounded bg-zinc-100 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200"
+            class="text-xs font-medium text-zinc-400"
           >
             {{ statusLabel }}
           </span>
@@ -95,7 +116,7 @@
         </template>
 
         <template v-else>
-          <form class="flex flex-col gap-8" @submit.prevent="saveDraft">
+          <form id="settings-divemaster-form" class="flex flex-col gap-8" @submit.prevent="saveDraft">
             
             <FormField label="Avatar" label-style="auth">
               <DivemasterAvatarUpload v-if="user?.id" v-model="form.avatar_url" :user-id="user.id" />
@@ -148,7 +169,9 @@
               <FormField label="Favorite local dive spot" label-style="auth">
                 <SearchMultiSelect
                   :model-value="favoritePickerValue(favoriteLocalId)"
-                  :options="favoriteDiveSiteOptions"
+                  :options="diveSiteAddNewOptions"
+                  :known-options="labelsForIds(favoritePickerValue(favoriteLocalId))"
+                  :load-page="loadDiveSitePage"
                   searchable
                   wrap-chips
                   single-select
@@ -189,7 +212,9 @@
               <FormField label="Favorite destination dive spot" label-style="auth">
                 <SearchMultiSelect
                   :model-value="favoritePickerValue(favoriteDestinationId)"
-                  :options="favoriteDiveSiteOptions"
+                  :options="diveSiteAddNewOptions"
+                  :known-options="labelsForIds(favoritePickerValue(favoriteDestinationId))"
+                  :load-page="loadDiveSitePage"
                   searchable
                   wrap-chips
                   single-select
@@ -231,9 +256,9 @@
             <div class="space-y-2">
               <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Certifications</h3>
-                <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addCert">
-                  + Add
-                </button>
+                <Button type="button" variant="secondary" @click="addCert">
+                  Add
+                </Button>
               </div>
               <div
                 v-for="(c, idx) in certifications"
@@ -280,9 +305,9 @@
             <div class="space-y-2">
               <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Past jobs</h3>
-                <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addJob">
-                  + Add
-                </button>
+                <Button type="button" variant="secondary" @click="addJob">
+                  Add
+                </Button>
               </div>
               <div
                 v-for="(j, idx) in jobs"
@@ -331,9 +356,9 @@
             <div class="space-y-2">
               <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Sites Dived</h3>
-                <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addDiveSiteRow">
-                  + Add
-                </button>
+                <Button type="button" variant="secondary" @click="addDiveSiteRow">
+                  Add
+                </Button>
               </div>
               <div
                 v-for="(siteId, idx) in selectedDiveSiteIds"
@@ -343,7 +368,9 @@
                 <div class="min-w-0 flex-1">
                   <SearchMultiSelect
                     :model-value="siteId ? [siteId] : []"
-                    :options="diveSiteOptionsForRow(idx)"
+                    :known-options="labelsForIds(siteId ? [siteId] : [])"
+                    :exclude-ids="takenDiveSiteIds(idx)"
+                    :load-page="loadDiveSitePage"
                     searchable
                     wrap-chips
                     single-select
@@ -361,18 +388,7 @@
               </div>
             </div>
 
-            <div v-if="saveMessage" class="text-sm" :class="saveOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
-              {{ saveMessage }}
-            </div>
-
-            <div class="flex flex-wrap items-center gap-3">
-              <Button
-                type="submit"
-                variant="primary"
-                :disabled="saving || cancelling"
-              >
-                {{ saving ? 'Saving…' : (dmStatus === 'published' ? 'Save changes' : 'Save draft') }}
-              </Button>
+            <div v-if="dmStatus !== 'published'" class="flex flex-wrap items-center gap-3">
               <Button
                 v-if="dmStatus === 'draft'"
                 type="button"
@@ -396,11 +412,10 @@
         </template>
       </section>
     </div>
-  </div>
+  </SettingsPage>
 </template>
 
 <script setup lang="ts">
-import { ChevronLeft } from 'lucide-vue-next'
 import {
   DIVE_SITE_ADD_NEW_ID,
   formatUsernameCooldownMessage,
@@ -415,6 +430,7 @@ import {
   type DivemasterJob,
   type DivemasterProfileStatus
 } from '~~/shared/divemasterProfile'
+import { DIVE_SITE_ADD_NEW_OPTION } from '~~/shared/diveSitePicker'
 
 definePageMeta({ layout: 'default', middleware: 'auth' })
 usePrivatePageSeo()
@@ -422,14 +438,28 @@ useSeoMeta({ title: 'Profile Settings' })
 
 const { user, accessToken } = useAuth()
 const { client } = useSupabase()
+const { labelsForIds, ensureDiveSiteLabels, loadDiveSitePage, rememberDiveSites } = useDiveSitePicker()
+const diveSiteAddNewOptions = [DIVE_SITE_ADD_NEW_OPTION]
 
 const loading = ref(true)
+const fullNameInput = ref('')
 const username = ref('')
 const usernameInput = ref('')
 const usernameChangedAt = ref<string | null>(null)
 const savingUsername = ref(false)
 const usernameMessage = ref('')
 const usernameOk = ref(false)
+
+function fullNameFromAuthMetadata (): string {
+  const meta = user.value?.user_metadata
+  if (!meta || typeof meta !== 'object') return ''
+  const record = meta as Record<string, unknown>
+  for (const key of ['display_name', 'full_name', 'name']) {
+    const value = record[key]
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
+  return ''
+}
 
 const usernameCooldownUntil = computed(() => usernameChangeAvailableAt(usernameChangedAt.value))
 /** Locked when a username is set and still inside the 90-day window (or legacy with no stamp). */
@@ -470,14 +500,8 @@ const agencyOptions = ref<Array<{ id: string; label: string }>>([])
 const certifications = ref<Array<DivemasterCertification & { agency: string; cert_number: string; issued_at: string; students_certified: number }>>([])
 const jobs = ref<Array<DivemasterJob & { location: string; start_date: string; end_date: string; description: string; is_current: boolean }>>([])
 const selectedDiveSiteIds = ref<string[]>([])
-const diveSiteOptions = ref<Array<{ id: string; label: string }>>([])
 
 const trainingNameOptions = LAST_FORMAL_TRAINING_NAMES.map(name => ({ id: name, label: name }))
-
-const favoriteDiveSiteOptions = computed(() => [
-  ...diveSiteOptions.value,
-  { id: DIVE_SITE_ADD_NEW_ID, label: 'Add new dive site' }
-])
 
 const statusLabel = computed(() => {
   if (dmStatus.value === 'draft') return 'Draft'
@@ -543,16 +567,11 @@ function optionsWithLegacy (
   return [{ id: trimmed, label: trimmed }, ...options]
 }
 
-function diveSiteOptionsForRow (idx: number) {
-  const current = (selectedDiveSiteIds.value[idx] || '').trim()
-  const taken = new Set(
-    selectedDiveSiteIds.value
-      .filter((_, i) => i !== idx)
-      .map(id => id.trim())
-      .filter(Boolean)
-  )
-  const base = diveSiteOptions.value.filter(o => !taken.has(o.id))
-  return optionsWithLegacy(base, current)
+function takenDiveSiteIds (idx: number) {
+  return selectedDiveSiteIds.value
+    .filter((_, i) => i !== idx)
+    .map(id => id.trim())
+    .filter(Boolean)
 }
 
 function favoritePickerValue (id: string) {
@@ -615,10 +634,7 @@ async function createFavoriteSite (kind: 'local' | 'destination') {
       headers: { Authorization: `Bearer ${token}` },
       body: { name: draft.name.trim(), country_id: draft.country_id }
     })
-    if (!diveSiteOptions.value.some(o => o.id === created.id)) {
-      diveSiteOptions.value = [...diveSiteOptions.value, { id: created.id, label: created.label }]
-        .sort((a, b) => a.label.localeCompare(b.label))
-    }
+    rememberDiveSites([{ id: created.id, label: created.label }])
     if (kind === 'local') {
       favoriteLocalId.value = created.id
       newLocalSite.name = ''
@@ -663,20 +679,6 @@ async function loadAgencyOptions () {
     .map(name => ({ id: name, label: name }))
 }
 
-async function loadDiveSiteOptions () {
-  const { data } = await client
-    .from('dive_sites')
-    .select('id, name, countries(name)')
-    .order('name')
-    .limit(500)
-  diveSiteOptions.value = (data ?? []).map((row: Record<string, unknown>) => {
-    const country = row.countries as { name?: string } | null
-    const name = String(row.name ?? '')
-    const countryName = country?.name ? ` (${country.name})` : ''
-    return { id: String(row.id), label: `${name}${countryName}` }
-  })
-}
-
 async function loadCountryOptions () {
   const { data } = await client
     .from('countries')
@@ -698,9 +700,12 @@ async function loadAll () {
 
     const { data: profile } = await client
       .from('profiles')
-      .select('username, username_changed_at')
+      .select('username, username_changed_at, display_name')
       .eq('id', id)
       .maybeSingle()
+
+    const storedFullName = typeof profile?.display_name === 'string' ? profile.display_name.trim() : ''
+    fullNameInput.value = storedFullName || fullNameFromAuthMetadata()
 
     username.value = (profile?.username as string) || ''
     usernameInput.value = username.value
@@ -765,13 +770,56 @@ async function loadAll () {
 
     selectedDiveSiteIds.value = (siteLinks ?? []).map(s => String(s.dive_site_id))
     await Promise.all([
-      loadDiveSiteOptions(),
+      ensureDiveSiteLabels([
+        favoriteLocalId.value,
+        favoriteDestinationId.value,
+        ...selectedDiveSiteIds.value
+      ]),
       loadCourseCertOptions(),
       loadAgencyOptions(),
       loadCountryOptions()
     ])
   } finally {
     loading.value = false
+  }
+}
+
+async function persistFullName (): Promise<boolean> {
+  if (!user.value?.id) return false
+  const next = fullNameInput.value.trim()
+  if (!next) {
+    saveOk.value = false
+    saveMessage.value = 'Full name is required.'
+    return false
+  }
+  const { error } = await client
+    .from('profiles')
+    .update({ display_name: next })
+    .eq('id', user.value.id)
+  if (error) {
+    saveOk.value = false
+    saveMessage.value = error.message
+    return false
+  }
+  fullNameInput.value = next
+  return true
+}
+
+async function saveProfile () {
+  if (!user.value?.id) return
+  if (dmStatus.value) {
+    await saveDraft()
+    return
+  }
+  saving.value = true
+  saveMessage.value = ''
+  try {
+    if (await persistFullName()) {
+      saveOk.value = true
+      saveMessage.value = 'Saved.'
+    }
+  } finally {
+    saving.value = false
   }
 }
 
@@ -844,6 +892,7 @@ async function saveDraft () {
   saving.value = true
   saveMessage.value = ''
   try {
+    if (!(await persistFullName())) return
     const id = user.value.id
     const { error: dmErr } = await client.from('divemaster_profiles').update({
       headline: form.headline || null,

@@ -71,6 +71,15 @@
             />
           </FormField>
 
+          <FormField label="Author" field-id="blog-author">
+            <FormInput
+              id="blog-author"
+              v-model="form.author_name"
+              type="text"
+              placeholder="Shashwat Rajvaidya"
+            />
+          </FormField>
+
           <FormField label="Status" field-id="blog-status">
             <FormSelect id="blog-status" v-model="form.status">
               <option value="draft">Draft</option>
@@ -115,6 +124,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import type { BlogPost, BlogPostStatus } from '~~/shared/blogPost'
+import { DEFAULT_BLOG_AUTHOR_NAME } from '~~/shared/blogPost'
 import { extractBlogToc } from '~~/shared/blogToc'
 import BlogImageUpload from '~/components/blog/BlogImageUpload.vue'
 
@@ -135,6 +145,7 @@ const form = reactive({
   title: '',
   slug: '',
   excerpt: '',
+  author_name: DEFAULT_BLOG_AUTHOR_NAME,
   hero_image_url: '',
   hero_image_alt: '',
   body_markdown: '',
@@ -148,6 +159,7 @@ watch(
     form.title = v.title ?? ''
     form.slug = v.slug ?? ''
     form.excerpt = v.excerpt ?? ''
+    form.author_name = v.author_name?.trim() || DEFAULT_BLOG_AUTHOR_NAME
     form.hero_image_url = v.hero_image_url ?? ''
     form.hero_image_alt = v.hero_image_alt ?? ''
     form.body_markdown = v.body_markdown ?? ''
@@ -186,6 +198,7 @@ async function onSubmit () {
       title: form.title.trim(),
       slug: form.slug.trim() || undefined,
       excerpt: form.excerpt,
+      author_name: form.author_name.trim() || DEFAULT_BLOG_AUTHOR_NAME,
       hero_image_url: form.hero_image_url,
       hero_image_alt: form.hero_image_alt,
       body_markdown: form.body_markdown,

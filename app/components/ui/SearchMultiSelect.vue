@@ -123,7 +123,24 @@
             @keydown.stop
           >
         </div>
-        <ul class="min-h-0 flex-1 divide-y divide-zinc-200 overflow-y-auto dark:divide-zinc-700" role="listbox">
+        <ul
+          ref="listRef"
+          class="min-h-0 flex-1 divide-y divide-zinc-200 overflow-y-auto dark:divide-zinc-700"
+          role="listbox"
+          @scroll="onListScroll"
+        >
+          <li
+            v-if="remoteLoading && remoteOptions.length === 0"
+            class="px-3 py-2 text-sm text-zinc-500 dark:text-zinc-400"
+          >
+            Loading…
+          </li>
+          <li
+            v-else-if="loadPage && !remoteLoading && !remoteError && filteredOptions.length === 0"
+            class="px-3 py-2 text-sm text-zinc-500 dark:text-zinc-400"
+          >
+            No matches
+          </li>
           <li
             v-for="opt in filteredOptions"
             :key="String(opt.id)"
@@ -146,6 +163,18 @@
               <Check v-if="isSelected(opt.id)" class="h-3 w-3" stroke-width="3" />
             </span>
             <span class="min-w-0 flex-1 text-zinc-900 dark:text-zinc-100">{{ opt.label }}</span>
+          </li>
+          <li
+            v-if="remoteLoading && remoteOptions.length > 0"
+            class="px-3 py-2 text-sm text-zinc-500 dark:text-zinc-400"
+          >
+            Loading…
+          </li>
+          <li
+            v-if="remoteError"
+            class="px-3 py-2 text-sm text-red-600 dark:text-red-400"
+          >
+            {{ remoteError }}
           </li>
         </ul>
         <div
@@ -227,14 +256,27 @@ const props = defineProps({
   /** Unmatched CSV names shown as dashed chips with add/discard actions (wrapChips mode). */
   pendingNames: { type: Array, default: () => [] },
   /** When false, pending chips only offer discard (e.g. courses). */
-  pendingAddable: { type: Boolean, default: true }
+  pendingAddable: { type: Boolean, default: true },
+  /**
+   * When set, the list is loaded in pages instead of filtering `options`.
+   * `(query, offset) => Promise<{ options, hasMore }>`.
+   * `options` stay as extra rows (for example "Add new"). `knownOptions` supply chip labels.
+   */
+  loadPage: { type: Function, default: null },
+  knownOptions: { type: Array, default: () => [] },
+  /** Ids hidden from a remote page (already chosen on another row). */
+  excludeIds: { type: Array, default: () => [] }
 })
 
 const emit = defineEmits(['update:modelValue', 'created', 'discard-pending'])
 
+const REMOTE_SEARCH_DEBOUNCE_MS = 200
+const REMOTE_SCROLL_THRESHOLD_PX = 48
+
 const open = ref(false)
 const rootRef = ref(null)
 const panelRef = ref(null)
+const listRef = ref(null)
 const panelStyle = ref({})
 const creating = ref(false)
 const newName = ref('')
@@ -243,14 +285,72 @@ const pendingSavingName = ref('')
 const addError = ref('')
 const newInputRef = ref(null)
 const searchQuery = ref('')
+const remoteOptions = ref([])
+const remoteLoading = ref(false)
+const remoteHasMore = ref(false)
+const remoteError = ref('')
+const labelCache = ref(new Map())
+let remoteOffset = 0
+let remoteSeq = 0
+let remoteTimer = null
+
+function optionLabel (o) {
+  if (!o) return ''
+  const rawId = String(o.id ?? '').trim()
+  const label = o.label != null && o.label !== '' ? String(o.label) : (o.name != null ? String(o.name) : '')
+  return label || rawId
+}
+
+function cacheOptionLabels (list) {
+  if (!Array.isArray(list) || !list.length) return
+  const next = new Map(labelCache.value)
+  let changed = false
+  for (const o of list) {
+    const rawId = String(o?.id ?? '').trim()
+    if (!rawId) continue
+    const label = optionLabel(o)
+    const k = normalizeLookupId(rawId)
+    if (next.get(k) !== label) {
+      next.set(k, label)
+      changed = true
+    }
+  }
+  if (changed) labelCache.value = next
+}
+
+const excludeSet = computed(() => new Set(
+  (props.excludeIds || []).map(id => normalizeLookupId(id)).filter(Boolean)
+))
+
+function matchesQuery (label) {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!props.searchable || !q) return true
+  return String(label || '').toLowerCase().includes(q)
+}
 
 const filteredOptions = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  if (!props.searchable || !q) return props.options
-  return props.options.filter((o) => {
-    const label = o.label != null && o.label !== '' ? String(o.label) : (o.name != null ? String(o.name) : '')
-    return label.toLowerCase().includes(q)
-  })
+  if (typeof props.loadPage !== 'function') {
+    return props.options.filter((o) => matchesQuery(optionLabel(o)))
+  }
+  const seen = new Set()
+  const remote = []
+  for (const o of remoteOptions.value) {
+    const id = String(o.id ?? '').trim()
+    const key = normalizeLookupId(id)
+    if (!id || excludeSet.value.has(key) || seen.has(key)) continue
+    seen.add(key)
+    remote.push(o)
+  }
+  const extras = []
+  for (const o of props.options) {
+    const id = String(o.id ?? '').trim()
+    const key = normalizeLookupId(id)
+    if (!id || seen.has(key) || excludeSet.value.has(key)) continue
+    if (!matchesQuery(optionLabel(o))) continue
+    seen.add(key)
+    extras.push(o)
+  }
+  return [...remote, ...extras]
 })
 
 const optionMap = computed(() => {
@@ -258,15 +358,66 @@ const optionMap = computed(() => {
   for (const o of props.options) {
     const rawId = String(o.id ?? '').trim()
     const k = normalizeLookupId(rawId)
-    const label = o.label != null && o.label !== '' ? String(o.label) : (o.name != null ? String(o.name) : '')
-    map.set(k, label || rawId)
+    map.set(k, optionLabel(o) || rawId)
   }
   return map
 })
 
 function labelFor (id) {
   const k = normalizeLookupId(id)
-  return optionMap.value.get(k) ?? String(id ?? '')
+  return labelCache.value.get(k) ?? optionMap.value.get(k) ?? String(id ?? '')
+}
+
+async function fetchRemotePage (replace) {
+  if (typeof props.loadPage !== 'function') return
+  const seq = replace ? ++remoteSeq : remoteSeq
+  if (replace) {
+    remoteOptions.value = []
+    remoteOffset = 0
+    remoteHasMore.value = false
+    remoteError.value = ''
+  }
+  const query = searchQuery.value.trim()
+  const offset = remoteOffset
+  remoteLoading.value = true
+  try {
+    const page = await props.loadPage(query, offset)
+    if (seq !== remoteSeq) return
+    const incoming = Array.isArray(page?.options) ? page.options : []
+    cacheOptionLabels(incoming)
+    remoteOptions.value = replace ? incoming : [...remoteOptions.value, ...incoming]
+    remoteOffset += incoming.length
+    remoteHasMore.value = !!page?.hasMore
+  } catch (e) {
+    if (seq !== remoteSeq) return
+    remoteError.value = e instanceof Error ? e.message : 'Could not load options'
+    remoteHasMore.value = false
+  } finally {
+    if (seq === remoteSeq) remoteLoading.value = false
+  }
+}
+
+function scheduleRemoteSearch () {
+  if (typeof props.loadPage !== 'function' || !open.value) return
+  if (remoteTimer) clearTimeout(remoteTimer)
+  remoteSeq += 1
+  remoteOptions.value = []
+  remoteHasMore.value = false
+  remoteError.value = ''
+  remoteLoading.value = true
+  remoteTimer = setTimeout(() => {
+    remoteTimer = null
+    void fetchRemotePage(true)
+  }, REMOTE_SEARCH_DEBOUNCE_MS)
+}
+
+function onListScroll () {
+  if (typeof props.loadPage !== 'function') return
+  if (remoteLoading.value || !remoteHasMore.value || remoteError.value) return
+  const el = listRef.value
+  if (!el) return
+  if (el.scrollTop + el.clientHeight < el.scrollHeight - REMOTE_SCROLL_THRESHOLD_PX) return
+  void fetchRemotePage(false)
 }
 
 function isSelected (id) {
@@ -348,11 +499,18 @@ function toggleOpen () {
   open.value = !open.value
   if (open.value) {
     schedulePositionPanel()
+    if (typeof props.loadPage === 'function') void fetchRemotePage(true)
   }
 }
 
 function close () {
   open.value = false
+  remoteSeq += 1
+  if (remoteTimer) {
+    clearTimeout(remoteTimer)
+    remoteTimer = null
+  }
+  remoteLoading.value = false
   creating.value = false
   newName.value = ''
   searchQuery.value = ''
@@ -388,12 +546,26 @@ watch(creating, () => {
   if (open.value) schedulePositionPanel()
 })
 
+watch(searchQuery, () => {
+  scheduleRemoteSearch()
+})
+
+watch(
+  () => [props.knownOptions, props.options],
+  () => {
+    cacheOptionLabels(props.knownOptions)
+    cacheOptionLabels(props.options)
+  },
+  { immediate: true, deep: true }
+)
+
 onMounted(() => {
   document.addEventListener('pointerdown', onDocPointerDown, true)
   document.addEventListener('keydown', onKeydown, true)
 })
 
 onUnmounted(() => {
+  if (remoteTimer) clearTimeout(remoteTimer)
   document.removeEventListener('pointerdown', onDocPointerDown, true)
   document.removeEventListener('keydown', onKeydown, true)
   window.removeEventListener('resize', positionPanel)

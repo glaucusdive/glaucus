@@ -1,119 +1,158 @@
 <template>
-    <div class="max-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4 overflow-y-auto">
-      <NuxtLink to="/settings" class="inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white mb-4 cursor-pointer">
-        ← Settings
-      </NuxtLink>
-      <h1 class="text-xl font-bold text-zinc-900 dark:text-white mb-2">Booking defaults</h1>
-      <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">This info is used to prefill bookings. You can set it here or it’ll be saved from your first completed booking.</p>
-      <p v-if="defaultsImportHint" class="text-sm text-blue-600 dark:text-blue-400 mb-4">{{ defaultsImportHint }}</p>
+  <SettingsPage
+    title="Booking defaults"
+    description="This info is used to prefill bookings. You can set it here or it’ll be saved from your first completed booking."
+    back-to="/settings"
+  >
+    <template #actions>
+      <div v-if="!defaultsLoading" class="flex items-center gap-4">
+        <p
+          v-if="defaultsSaveMessage"
+          class="max-w-40 truncate text-sm sm:max-w-xs"
+          :class="defaultsSaveSuccess ? 'text-green-400' : 'text-red-400'"
+          :title="defaultsSaveMessage"
+        >
+          {{ defaultsSaveMessage }}
+        </p>
+        <Button
+          type="submit"
+          form="settings-defaults-form"
+          variant="primary"
+          :disabled="defaultsSaving"
+        >
+          {{ defaultsSaving ? 'Saving…' : 'Save' }}
+        </Button>
+      </div>
+    </template>
 
-      <div v-if="defaultsLoading" class="text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
-      <form v-else @submit.prevent="saveDefaults" class="space-y-4 max-w-xl">
-        <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4 space-y-3">
-          <h2 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Contact</h2>
-          <FormField label="Name" label-style="auth" field-id="profile-name">
-            <FormInput
-              id="profile-name"
-              v-model="defaultsForm.name"
-              type="text"
-             
-              size="md"
-              placeholder="Your name"
-            />
-          </FormField>
-          <FormField label="Email" label-style="auth" field-id="profile-email">
-            <FormInput
-              id="profile-email"
-              v-model="defaultsForm.email"
-              type="email"
-             
-              size="md"
-              placeholder="you@example.com"
-            />
-          </FormField>
+    <p v-if="defaultsImportHint" class="p-4 text-sm text-blue-400 lg:px-24">{{ defaultsImportHint }}</p>
+
+    <div v-if="defaultsLoading" class="p-4 text-sm text-zinc-400 lg:py-12 lg:px-24">Loading…</div>
+    <form
+      v-else
+      id="settings-defaults-form"
+      class="divide-y divide-zinc-800"
+      @submit.prevent="saveDefaults"
+    >
+      <section class="flex flex-col gap-4 p-4 lg:px-24 lg:py-12">
+        <h2 class="text-base font-bold text-white">Contact</h2>
+        <FormField label="Name" label-style="auth" field-id="profile-name">
+          <FormInput
+            id="profile-name"
+            v-model="defaultsForm.name"
+            type="text"
+            size="md"
+            placeholder="Your name"
+          />
+        </FormField>
+        <FormField label="Email" label-style="auth" field-id="profile-email">
+          <FormInput
+            id="profile-email"
+            v-model="defaultsForm.email"
+            type="email"
+            size="md"
+            placeholder="you@example.com"
+          />
+        </FormField>
+      </section>
+      <section class="flex flex-col gap-4 p-4 lg:px-24 lg:py-12">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-bold text-white">Default divers</h2>
+          <Button type="button" variant="secondary" @click="addDefaultDiver">
+            Add diver
+          </Button>
         </div>
-        <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4 space-y-4">
+        <div
+          v-for="(diver, idx) in defaultsForm.divers"
+          :key="idx"
+          class="flex flex-col gap-2 rounded-md bg-zinc-800/20 p-4"
+        >
           <div class="flex items-center justify-between">
-            <h2 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Default divers</h2>
-            <button type="button" @click="addDefaultDiver"
-              class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer">+ Add diver</button>
+            <span class="text-xs font-medium text-zinc-400">Diver {{ idx + 1 }}</span>
+            <button
+              v-if="defaultsForm.divers.length > 1"
+              type="button"
+              class="cursor-pointer text-xs text-red-400 hover:underline"
+              @click="removeDefaultDiver(idx)"
+            >
+              Remove
+            </button>
           </div>
-          <div v-for="(diver, idx) in defaultsForm.divers" :key="idx" class="border border-zinc-200 dark:border-zinc-600 rounded-md p-3 space-y-2">
-            <div class="flex justify-between items-center">
-              <span class="text-xs font-medium text-zinc-500 dark:text-zinc-400">Diver {{ idx + 1 }}</span>
-              <button v-if="defaultsForm.divers.length > 1" type="button" @click="removeDefaultDiver(idx)"
-                class="text-xs text-red-600 dark:text-red-400 hover:underline cursor-pointer">Remove</button>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <FormField label="Name" label-style="auth">
-                <FormInput v-model="diver.name" type="text" size="sm" />
+          <div class="grid min-w-0 grid-cols-1 gap-4">
+            <FormField label="Name" label-style="auth">
+              <FormInput v-model="diver.name" type="text" size="sm" />
+            </FormField>
+            <div class="grid min-w-0 grid-cols-1 items-end gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <FormField label="Date of Birth" label-style="auth" class="min-w-0">
+                <FormInput v-model="diver.dateOfBirth" class="min-w-0" type="date" :max="today" size="sm" />
               </FormField>
-              <div class="flex flex-row gap-2 items-end sm:col-span-2">
-                <FormField label="Date of Birth" label-style="auth" class="flex-1 min-w-0">
-                  <FormInput v-model="diver.dateOfBirth" type="date" :max="today" size="sm" />
-                </FormField>
-                <p class="shrink-0 pb-2 text-xs text-zinc-500 dark:text-zinc-400 tabular-nums">
-                  {{ diver.dateOfBirth ? `Age ${ageFromDateOfBirth(diver.dateOfBirth)}` : 'Age —' }}
-                </p>
-              </div>
-              <FormField label="Certification #" label-style="auth">
+              <p class="pb-2 text-xs whitespace-nowrap tabular-nums text-zinc-400">
+                {{ diver.dateOfBirth ? `Age ${ageFromDateOfBirth(diver.dateOfBirth)}` : 'Age —' }}
+              </p>
+            </div>
+            <div class="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField label="Certification #" label-style="auth" class="min-w-0">
                 <FormInput v-model="diver.certificationNumber" type="text" size="sm" />
               </FormField>
-              <FormField label="Number of dives" label-style="auth">
+              <FormField label="Number of dives" label-style="auth" class="min-w-0">
                 <FormInput v-model="diver.numberOfDives" type="text" size="sm" placeholder="e.g. 21" />
               </FormField>
-              <div class="flex gap-2 items-end sm:col-span-2">
-                <FormField label="Height" label-style="auth" class="flex-1 min-w-0">
-                  <FormInput v-model="diver.height" type="text" size="sm" />
-                </FormField>
-                <FormField label="Unit" label-style="auth" class="w-24 shrink-0">
-                  <FormSelect v-model="diver.heightUnit" size="sm">
-                    <option value="ft-in">ft & in</option>
-                    <option value="cm">cm</option>
-                  </FormSelect>
-                </FormField>
-              </div>
-              <div class="flex gap-2 items-end sm:col-span-2">
-                <FormField label="Weight" label-style="auth" class="flex-1 min-w-0">
-                  <FormInput v-model="diver.weight" type="text" size="sm" />
-                </FormField>
-                <FormField label="Unit" label-style="auth" class="w-24 shrink-0">
-                  <FormSelect v-model="diver.weightUnit" size="sm">
-                    <option value="lbs">lbs</option>
-                    <option value="kg">kg</option>
-                  </FormSelect>
-                </FormField>
-              </div>
             </div>
-            <div>
-              <label class="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Past rental gear</label>
-              <div class="flex flex-wrap items-center gap-2">
-                <span v-for="(g, gi) in diver.gear" :key="gi" class="inline-flex h-8 items-center gap-1 rounded bg-zinc-200 dark:bg-zinc-700 px-2 text-xs text-zinc-800 dark:text-zinc-200">
-                  {{ g.gearType || 'Gear' }}
-                  <button type="button" @click="removeDiverGear(idx, gi)" class="hover:text-red-600 dark:hover:text-red-400 cursor-pointer" aria-label="Remove">×</button>
-                </span>
-                <FormSelect
-                  v-model="diver.gearToAdd"
-                 
-                  size="xs"
-                  @change="addDiverGearFromSelect(idx)"
-                >
-                  <option value="">Add gear…</option>
-                  <option v-for="t in gearTypes" :key="t" :value="t">{{ t }}</option>
+            <div class="grid min-w-0 grid-cols-1 items-end gap-4 sm:grid-cols-[minmax(0,1fr)_8rem]">
+              <FormField label="Height" label-style="auth" class="min-w-0">
+                <FormInput v-model="diver.height" type="text" size="sm" />
+              </FormField>
+              <FormField label="Unit" label-style="auth">
+                <FormSelect v-model="diver.heightUnit" size="sm">
+                  <option value="ft-in">ft & in</option>
+                  <option value="cm">cm</option>
                 </FormSelect>
-              </div>
+              </FormField>
+            </div>
+            <div class="grid min-w-0 grid-cols-1 items-end gap-4 sm:grid-cols-[minmax(0,1fr)_8rem]">
+              <FormField label="Weight" label-style="auth" class="min-w-0">
+                <FormInput v-model="diver.weight" type="text" size="sm" />
+              </FormField>
+              <FormField label="Unit" label-style="auth">
+                <FormSelect v-model="diver.weightUnit" size="sm">
+                  <option value="lbs">lbs</option>
+                  <option value="kg">kg</option>
+                </FormSelect>
+              </FormField>
+            </div>
+          </div>
+          <div>
+            <label class="mb-1 block text-xs text-zinc-400">Past rental gear</label>
+            <div class="flex flex-wrap items-center gap-2">
+              <span
+                v-for="(g, gi) in diver.gear"
+                :key="gi"
+                class="inline-flex h-8 items-center gap-1 rounded bg-zinc-700 px-2 text-xs text-zinc-200"
+              >
+                {{ g.gearType || 'Gear' }}
+                <button
+                  type="button"
+                  class="cursor-pointer hover:text-red-400"
+                  aria-label="Remove"
+                  @click="removeDiverGear(idx, gi)"
+                >
+                  ×
+                </button>
+              </span>
+              <FormSelect
+                v-model="diver.gearToAdd"
+                size="xs"
+                @change="addDiverGearFromSelect(idx)"
+              >
+                <option value="">Add gear…</option>
+                <option v-for="t in gearTypes" :key="t" :value="t">{{ t }}</option>
+              </FormSelect>
             </div>
           </div>
         </div>
-        <div v-if="defaultsSaveMessage" class="text-sm" :class="defaultsSaveSuccess ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
-          {{ defaultsSaveMessage }}
-        </div>
-        <button type="submit" :disabled="defaultsSaving"
-          class="px-4 py-2 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 cursor-pointer ">
-          {{ defaultsSaving ? 'Saving…' : 'Save defaults' }}
-        </button>
-      </form>
-    </div>
+      </section>
+    </form>
+  </SettingsPage>
 </template>
 
 <script setup lang="ts">
