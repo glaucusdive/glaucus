@@ -32,8 +32,8 @@
 
       <form class="space-y-4" @submit.prevent="save">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <FormField label="Display name" label-style="auth">
-            <FormInput v-model="form.display_name" type="text" size="sm" />
+          <FormField label="Full name" label-style="auth" required>
+            <FormInput v-model="form.display_name" type="text" size="sm" required />
           </FormField>
           <FormField label="Username" label-style="auth">
             <FormInput v-model="form.username" type="text" size="sm" />
@@ -93,7 +93,9 @@
           <FormField label="Favorite local dive spot" label-style="auth">
             <SearchMultiSelect
               :model-value="favoriteLocalId ? [favoriteLocalId] : []"
-              :options="favoriteDiveSiteOptions"
+              :options="diveSiteAddNewOptions"
+              :known-options="labelsForIds(favoriteLocalId ? [favoriteLocalId] : [])"
+              :load-page="loadDiveSitePage"
               searchable
               wrap-chips
               single-select
@@ -134,7 +136,9 @@
           <FormField label="Favorite destination dive spot" label-style="auth">
             <SearchMultiSelect
               :model-value="favoriteDestinationId ? [favoriteDestinationId] : []"
-              :options="favoriteDiveSiteOptions"
+              :options="diveSiteAddNewOptions"
+              :known-options="labelsForIds(favoriteDestinationId ? [favoriteDestinationId] : [])"
+              :load-page="loadDiveSitePage"
               searchable
               wrap-chips
               single-select
@@ -176,9 +180,9 @@
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Certifications</h3>
-            <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addCert">
-              + Add
-            </button>
+            <Button type="button" variant="secondary" @click="addCert">
+              Add
+            </Button>
           </div>
           <div
             v-for="(c, idx) in certifications"
@@ -225,9 +229,9 @@
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Past jobs</h3>
-            <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addJob">
-              + Add
-            </button>
+            <Button type="button" variant="secondary" @click="addJob">
+              Add
+            </Button>
           </div>
           <div
             v-for="(j, idx) in jobs"
@@ -276,9 +280,9 @@
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Sites Dived</h3>
-            <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addDiveSiteRow">
-              + Add
-            </button>
+            <Button type="button" variant="secondary" @click="addDiveSiteRow">
+              Add
+            </Button>
           </div>
           <div
             v-for="(siteId, idx) in diveSiteIds"
@@ -288,7 +292,9 @@
             <div class="min-w-0 flex-1">
               <SearchMultiSelect
                 :model-value="siteId ? [siteId] : []"
-                :options="diveSiteOptionsForRow(idx)"
+                :known-options="labelsForIds(siteId ? [siteId] : [])"
+                :exclude-ids="takenDiveSiteIds(idx)"
+                :load-page="loadDiveSitePage"
                 searchable
                 wrap-chips
                 single-select
@@ -347,6 +353,7 @@ import {
   type DivemasterJob,
   type DivemasterProfileStatus
 } from '~~/shared/divemasterProfile'
+import { DIVE_SITE_ADD_NEW_OPTION } from '~~/shared/diveSitePicker'
 
 definePageMeta({ layout: 'default', middleware: 'admin' })
 useSeoMeta({ title: 'Admin · Edit divemaster', robots: 'noindex, nofollow' })
@@ -355,6 +362,8 @@ const route = useRoute()
 const userId = computed(() => String(route.params.userId || ''))
 const { accessToken, init } = useAuth()
 const { client } = useSupabase()
+const { labelsForIds, ensureDiveSiteLabels, loadDiveSitePage, rememberDiveSites } = useDiveSitePicker()
+const diveSiteAddNewOptions = [DIVE_SITE_ADD_NEW_OPTION]
 
 const loading = ref(true)
 const loadError = ref('')
@@ -387,13 +396,8 @@ const agencyOptions = ref<Array<{ id: string; label: string }>>([])
 const certifications = ref<Array<DivemasterCertification & { agency: string; cert_number: string; issued_at: string; students_certified: number }>>([])
 const jobs = ref<Array<DivemasterJob & { location: string; start_date: string; end_date: string; description: string; is_current: boolean }>>([])
 const diveSiteIds = ref<string[]>([])
-const diveSiteOptions = ref<Array<{ id: string; label: string }>>([])
 
 const trainingNameOptions = LAST_FORMAL_TRAINING_NAMES.map(name => ({ id: name, label: name }))
-const favoriteDiveSiteOptions = computed(() => [
-  ...diveSiteOptions.value,
-  { id: DIVE_SITE_ADD_NEW_ID, label: 'Add new dive site' }
-])
 
 const headerTitle = computed(() => `Admin · ${form.display_name || form.username || 'Divemaster'}`)
 
@@ -435,16 +439,11 @@ function optionsWithLegacy (
   return [{ id: trimmed, label: trimmed }, ...options]
 }
 
-function diveSiteOptionsForRow (idx: number) {
-  const current = (diveSiteIds.value[idx] || '').trim()
-  const taken = new Set(
-    diveSiteIds.value
-      .filter((_, i) => i !== idx)
-      .map(id => id.trim())
-      .filter(Boolean)
-  )
-  const base = diveSiteOptions.value.filter(o => !taken.has(o.id))
-  return optionsWithLegacy(base, current)
+function takenDiveSiteIds (idx: number) {
+  return diveSiteIds.value
+    .filter((_, i) => i !== idx)
+    .map(id => id.trim())
+    .filter(Boolean)
 }
 
 function onLastTrainingSelect (ids: string[]) {
@@ -498,10 +497,7 @@ async function createFavoriteSite (kind: 'local' | 'destination') {
       headers,
       body: { name: draft.name.trim(), country_id: draft.country_id }
     })
-    if (!diveSiteOptions.value.some(o => o.id === created.id)) {
-      diveSiteOptions.value = [...diveSiteOptions.value, { id: created.id, label: created.label }]
-        .sort((a, b) => a.label.localeCompare(b.label))
-    }
+    rememberDiveSites([{ id: created.id, label: created.label }])
     if (kind === 'local') {
       favoriteLocalId.value = created.id
       newLocalSite.name = ''
@@ -525,17 +521,6 @@ async function authHeaders () {
     Authorization: `Bearer ${accessToken.value}`,
     'Content-Type': 'application/json'
   }
-}
-
-async function loadDiveSites () {
-  const { data } = await client.from('dive_sites').select('id, name, countries(name)').order('name').limit(500)
-  diveSiteOptions.value = (data ?? []).map((row: Record<string, unknown>) => {
-    const country = row.countries as { name?: string } | null
-    return {
-      id: String(row.id),
-      label: `${row.name}${country?.name ? ` (${country.name})` : ''}`
-    }
-  })
 }
 
 async function loadCountryOptions () {
@@ -613,7 +598,16 @@ async function load () {
       description: String(j.description || '')
     }))
     diveSiteIds.value = (json.dive_site_ids ?? []).map(String)
-    await Promise.all([loadDiveSites(), loadCourseCertOptions(), loadAgencyOptions(), loadCountryOptions()])
+    await Promise.all([
+      ensureDiveSiteLabels([
+        favoriteLocalId.value,
+        favoriteDestinationId.value,
+        ...diveSiteIds.value
+      ]),
+      loadCourseCertOptions(),
+      loadAgencyOptions(),
+      loadCountryOptions()
+    ])
   } catch (e) {
     loadError.value = e instanceof Error ? e.message : 'Failed to load'
   } finally {
@@ -643,11 +637,18 @@ async function patch (body: Record<string, unknown>) {
   }
 }
 
-async function save () {
+async function save (): Promise<boolean> {
+  const fullName = form.display_name.trim()
+  if (!fullName) {
+    ok.value = false
+    msg.value = 'Full name is required.'
+    return false
+  }
+  form.display_name = fullName
   await patch({
     action: 'save',
     username: form.username,
-    display_name: form.display_name,
+    display_name: fullName,
     headline: form.headline,
     bio: form.bio,
     location: form.location,
@@ -671,10 +672,12 @@ async function save () {
     }),
     dive_site_ids: diveSiteIds.value.map(id => id.trim()).filter(Boolean)
   })
+  return ok.value
 }
 
 async function approve () {
-  await save()
+  const saved = await save()
+  if (!saved) return
   await patch({ action: 'approve', admin_notes: form.admin_notes })
 }
 

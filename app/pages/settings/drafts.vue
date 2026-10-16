@@ -1,16 +1,15 @@
 <template>
-    <div class="max-h-screen bg-zinc-50 dark:bg-zinc-900 h-full p-4 overflow-y-auto">
-      <NuxtLink to="/settings" class="inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white mb-4 cursor-pointer">
-        ← Settings
-      </NuxtLink>
-      <h1 class="text-xl font-bold text-zinc-900 dark:text-white mb-2">My forms</h1>
-      <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Track incomplete drafts and sent requests.</p>
-
-      <div class="inline-flex rounded-md border border-zinc-300 dark:border-zinc-600 p-1 mb-6">
+  <SettingsPage
+    title="My forms"
+    description="Track incomplete drafts and sent requests."
+    back-to="/settings"
+  >
+    <section class="flex flex-col gap-6 p-4 lg:px-24 lg:py-12">
+      <div class="inline-flex rounded-md border border-zinc-600 p-1">
         <button
           type="button"
           class="px-3 py-1.5 text-sm font-medium rounded cursor-pointer "
-          :class="activeTab === 'incomplete' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'"
+          :class="activeTab === 'incomplete' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-300 hover:bg-zinc-800'"
           @click="activeTab = 'incomplete'"
         >
           Incomplete
@@ -18,7 +17,7 @@
         <button
           type="button"
           class="px-3 py-1.5 text-sm font-medium rounded cursor-pointer "
-          :class="activeTab === 'sent' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'"
+          :class="activeTab === 'sent' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-300 hover:bg-zinc-800'"
           @click="activeTab = 'sent'"
         >
           Sent
@@ -32,7 +31,7 @@
           <li
             v-for="d in incompleteDrafts"
             :key="d.id"
-            class="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800"
+            class="flex flex-wrap items-center justify-between gap-2 rounded-md bg-zinc-800/20 p-4"
           >
             <div class="min-w-0 flex-1">
               <span class="font-medium text-zinc-900 dark:text-white">{{ d.shopName || 'Dive shop' }}</span>
@@ -42,7 +41,7 @@
             </div>
             <div class="flex gap-2 shrink-0">
               <button type="button" @click="resumeDraft(d)" :disabled="resumeLoading === d.id"
-                class="px-3 py-1.5 text-sm font-medium rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 cursor-pointer ">
+                class="cursor-pointer rounded-md bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-900 hover:bg-zinc-200 disabled:opacity-50">
                 {{ resumeLoading === d.id ? 'Opening…' : 'Resume' }}
               </button>
               <button type="button" @click="deleteDraft(d.id)" :disabled="deleteLoading === d.id"
@@ -61,7 +60,7 @@
           <li
             v-for="s in sentSubmissions"
             :key="s.id"
-            class="p-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800"
+            class="rounded-md bg-zinc-800/20 p-4"
           >
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div class="min-w-0 flex-1">
@@ -86,7 +85,8 @@
           </li>
         </ul>
       </template>
-    </div>
+    </section>
+  </SettingsPage>
 </template>
 
 <script setup lang="ts">

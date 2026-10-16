@@ -115,9 +115,10 @@
             class="flex flex-col gap-1"
           >
             <FormField
-              label="Display name (optional)"
+              label="Full name"
               label-style="auth"
               field-id="displayName"
+              required
             >
               <FormInput
                 id="displayName"
@@ -125,6 +126,7 @@
                 type="text"
                 size="md"
                 focus-ring
+                required
                 autocomplete="name"
               />
             </FormField>
@@ -360,7 +362,12 @@ async function handleEmail () {
       await signInWithMagicLink(email.value)
       setMessage('Check your email for the sign-in link.', 'success')
     } else if (isSignUp.value) {
-      const signupData = await signUpWithEmail(email.value, password.value, displayName.value || undefined)
+      const fullName = displayName.value.trim()
+      if (!fullName) {
+        setMessage('Full name is required.', 'error')
+        return
+      }
+      const signupData = await signUpWithEmail(email.value, password.value, fullName)
       if (signupData.obfuscatedDuplicate) {
         setMessage(
           'This email may already be registered (for example with Google). Use “Continue with Google”, or sign in with Google then add a password under Settings → Account security.',
