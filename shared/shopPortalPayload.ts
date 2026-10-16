@@ -4,6 +4,7 @@ import {
   serializeDiveBusinessTypes,
   type DiveBusinessTypeOption
 } from './diveBusinessTypes'
+import { normalizeShopSocialLinks, type ShopSocialLink } from './shopSocialLinks'
 
 export interface ShopLookups {
   countries: { id: string; name: string }[]
@@ -25,6 +26,7 @@ export interface ShopWriteFields {
   state?: string | null
   phone?: string | null
   email?: string | null
+  social_links?: ShopSocialLink[]
   type?: string | null
   country_id?: string | null
   region_id?: string | null
@@ -61,6 +63,7 @@ export interface ShopFormSnapshot {
   state: string | null
   phone: string | null
   email: string | null
+  social_links?: ShopSocialLink[]
   type: string | null
   country_id: string | null
   region_id: string | null
@@ -108,6 +111,7 @@ export function shopRowToFormSnapshot (
     state: row.state ?? null,
     phone: row.phone ?? null,
     email: row.email ?? null,
+    social_links: normalizeShopSocialLinks((row as { social_links?: unknown }).social_links),
     type: row.type ?? null,
     country_id: row.country_id ?? null,
     region_id: row.region_id ?? null,
@@ -128,6 +132,7 @@ export function portalPayloadToShopWrite (
   const { business_type_ids: _drop, pendingLookups: _pl, ...rest } = payload
   return {
     ...rest,
+    social_links: normalizeShopSocialLinks(rest.social_links),
     type: serializeDiveBusinessTypes(typeNames)
   }
 }

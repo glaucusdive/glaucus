@@ -1,5 +1,6 @@
 import type { PortalSubmissionPayload, ShopLookups } from '../../shared/shopPortalPayload'
 import { isTempLookupId } from '../../shared/shopPortalPayload'
+import { normalizeShopSocialLinks } from '../../shared/shopSocialLinks'
 
 export const SHOP_INQUIRY_EMAIL_SUBJECT = 'New Dive Shop Inquiry'
 
@@ -66,6 +67,7 @@ export function buildShopInquiryEmailBody (
   const rentalOptions = lookups.rentalEquipment.map((r) => ({ id: r.id, label: r.name }))
   const gasOptions = lookups.gases.map((g) => ({ id: g.id, label: g.name }))
   const diveSiteOptions = lookups.diveSites.map((s) => ({ id: s.id, label: s.name }))
+  const socialLinks = normalizeShopSocialLinks(payload.social_links)
 
   const lines = [
     'A dive shop submitted their business details for listing evaluation on Glaucus.',
@@ -87,6 +89,9 @@ export function buildShopInquiryEmailBody (
     `Website: ${dash(payload.website_url)}`,
     `Email: ${dash(payload.email)}`,
     `Phone: ${dash(payload.phone)}`,
+    ...(socialLinks.length
+      ? ['', '— Social and review links —', ...socialLinks.map(link => `${link.label}: ${link.url}`)]
+      : []),
     '',
     '— Location —',
     `Street address: ${dash(payload.street_address)}`,

@@ -140,7 +140,7 @@ import { ArrowUp, Menu, Search, Xmark } from '@iconoir/vue'
 const defaultNavItems = [
   { id: 'whatisglaucus', label: 'What is Glaucus?' },
   { id: 'feature1', label: 'For Divers' },
-  { id: 'for-businesses', label: 'For Businesses', to: '/for-businesses', target: '_blank' },
+  { id: 'for-businesses', label: 'For Businesses', to: '/for-businesses' },
   { id: 'aboutus', label: 'About us' },
   { id: 'logs', label: 'Logs' }
 ]
@@ -213,9 +213,7 @@ const activeNavLinkId = computed(() => {
   if (searchOpen.value) {
     return null
   }
-  const routeItem = resolvedNavItems.value.find(
-    (item) => item.to && route.path === item.to
-  )
+  const routeItem = resolvedNavItems.value.find(item => item.to && route.path === item.to)
   if (routeItem) {
     return routeItem.id
   }

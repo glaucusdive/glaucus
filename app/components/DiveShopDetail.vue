@@ -14,6 +14,18 @@
             {{ isDemoMode ? 'Demo' : 'Live' }}
           </button>
         </div>
+        <div v-if="shopData" class="p-2 sm:p-4 flex items-center">
+          <button
+            type="button"
+            class="inline-flex min-h-9 items-center justify-center gap-2 rounded-md border border-zinc-300 px-2.5 text-sm text-zinc-800 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
+            title="Share shop profile"
+            aria-label="Share shop profile"
+            @click="shareProfileOpen = true"
+          >
+            <QrCode class="h-4 w-4" aria-hidden="true" />
+            <span class="hidden sm:inline">Share</span>
+          </button>
+        </div>
         <div class="p-2 sm:p-4 flex items-center">
           <div
             class="hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-sm min-w-8 w-full h-full flex items-center justify-center cursor-pointer px-1"
@@ -298,19 +310,47 @@
                   </li>
                 </ul>
               </div>
+              <div v-if="socialLinks.length || showDemoSocialPlaceholder" class="flex flex-col gap-3 rounded-md border border-zinc-300 p-4 dark:border-zinc-800 lg:order-3">
+                <h2 class="text-sm font-semibold text-zinc-900 dark:text-white">Find us online</h2>
+                <div v-if="socialLinks.length" class="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                  <a
+                    v-for="(link, index) in socialLinks"
+                    :key="`${link.label}-${index}`"
+                    :href="link.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex min-w-0 items-center gap-2 rounded-sm px-2 py-2 text-sm text-zinc-700 hover:bg-zinc-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:hover:text-blue-300"
+                  >
+                    <ExternalLink class="h-4 w-4 shrink-0 text-zinc-500" aria-hidden="true" />
+                    <span class="truncate">{{ link.label }}</span>
+                  </a>
+                </div>
+                <p v-else class="text-sm text-zinc-500 dark:text-zinc-400">
+                  Add your social links (Facebook, Instagram, Google Reviews)
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
   </div>
+  <ClientOnly>
+    <ShopProfileShareDialog
+      v-model:open="shareProfileOpen"
+      :shop-name="shopData?.business_name || 'Dive shop'"
+      :url="shopProfileUrl"
+      :file-name="shopData?.slug || shopRowId || 'dive-shop'"
+    />
+  </ClientOnly>
 </template>
 
 <script setup>
-import { MapPin, Phone, Mail, Globe, ChevronLeft, X } from 'lucide-vue-next'
+import { MapPin, Phone, Mail, Globe, ChevronLeft, ExternalLink, QrCode, X } from 'lucide-vue-next'
 import CardInfo from '~/components/CardInfo.vue'
 import CardReview from '~/components/CardReview.vue'
 import ShopReviewForm from '~/components/ShopReviewForm.vue'
+import ShopProfileShareDialog from '~/components/shop/ShopProfileShareDialog.vue'
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useDrawer } from '~/composables/useDrawer'
 import { useAuth } from '~/composables/useAuth'
@@ -319,6 +359,8 @@ import { useDemoMode } from '~/composables/useDemoMode'
 import { deleteShopReview } from '~/composables/useShopReviews'
 import { formatOperatingHours, demoHours, demoLanguages, demoDescription } from '~/utils/formatHours'
 import { formatShopCityState } from '~~/shared/bookShopPick'
+import { buildShopProfileUrl } from '~~/shared/shopProfileUrl'
+import { normalizeShopSocialLinks } from '~~/shared/shopSocialLinks'
 
 // Props
 const props = defineProps({
@@ -440,6 +482,13 @@ watch(
 )
 
 const shopRowId = computed(() => shopData.value?.id ?? '')
+const shareProfileOpen = ref(false)
+const shopProfileUrl = computed(() => {
+  const lookup = shopData.value?.slug || shopRowId.value
+  if (!lookup) return ''
+  const origin = import.meta.client ? window.location.origin : 'https://glaucusdive.com'
+  return buildShopProfileUrl(origin, lookup)
+})
 
 const { user, isAppAdmin, isSignedIn } = useAuth()
 const { client } = useSupabase()
@@ -532,6 +581,8 @@ const contactInfo = computed(() => ({
   email: shopData.value?.email,
   website: shopData.value?.website_url
 }))
+const socialLinks = computed(() => normalizeShopSocialLinks(shopData.value?.social_links))
+const showDemoSocialPlaceholder = computed(() => showDemoData.value && socialLinks.value.length === 0)
 
 // Handle close/back action
 const handleClose = () => {
