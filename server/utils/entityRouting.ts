@@ -16,6 +16,7 @@ import { inferSearchFiltersFromDestination, isKnownGeographicDestination } from 
 import { attachSearchMatchGroups } from './searchMatchGroups'
 import type { SearchMatchFacets } from '../../shared/searchResultGroups'
 import { capSparseWidenShopList, buildSearchMatchContext } from '../../shared/searchResultGroups'
+import { enrichShopsForSearchCards } from './enrichShopsForSearchCards'
 
 /** Avoid ilike metacharacters from user input. */
 function sanitizeIlike (s: string): string {
@@ -186,6 +187,9 @@ export async function formatEntitySearchResponse (
 ) {
   const ctx = buildSearchMatchContext(filters)
   const list = capSparseWidenShopList(shops || [], ctx)
+  if (list.length && supabaseUrl && supabaseKey) {
+    await enrichShopsForSearchCards(supabaseUrl, supabaseKey, list)
+  }
   const enriched = list.length
     ? await attachSearchMatchGroups(supabaseUrl, supabaseKey, list, filters, facets, filters.activityExactShopIds)
     : []

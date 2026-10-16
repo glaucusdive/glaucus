@@ -34,13 +34,17 @@
     </div>
 
     <div class="flex flex-col gap-2">
+      <div v-if="verifiedBooking" class="flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+        <ShieldCheck class="w-4 h-4" aria-hidden="true" />
+        <span title="A booking request was sent through Glaucus">Verified Booking</span>
+      </div>
       <p class="text-sm leading-relaxed text-zinc-900 dark:text-white whitespace-pre-wrap">{{ reviewText }}</p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { Star, Trash2 } from 'lucide-vue-next'
+import { ShieldCheck, Star, Trash2 } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 const emit = defineEmits(['delete'])
@@ -70,6 +74,10 @@ const props = defineProps({
   reviewText: {
     type: String,
     required: true
+  },
+  verifiedBooking: {
+    type: Boolean,
+    default: false
   }
 })
 

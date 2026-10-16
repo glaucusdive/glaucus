@@ -166,6 +166,18 @@
                     </p>
                   </div>
 
+                  <div v-if="msg.reviewActions?.length" class="flex flex-wrap gap-2">
+                    <NuxtLink
+                      v-for="action in msg.reviewActions"
+                      :key="action.shopId"
+                      :to="action.href"
+                      class="inline-flex items-center gap-2 rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-2 text-sm font-medium text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                    >
+                      <span>Review {{ action.businessName }}</span>
+                      <ExternalLink class="w-4 h-4" aria-hidden="true" />
+                    </NuxtLink>
+                  </div>
+
                   <!-- Selectable options: filter chips first; primary book CTA on its own row below (flex gap) so it is not confused with filters -->
                   <div
                     v-if="(msg.selectableOptions && msg.selectableOptions.length > 0) || (msg.shops?.length && selectedShopId && selectedShopName)"
@@ -378,7 +390,7 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted, watch, onUnmounted } from 'vue'
-import { ChevronLeft, ChevronRight, ChevronUp, Undo2 } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Undo2 } from 'lucide-vue-next'
 import ChatComposer from '~/components/chat/ChatComposer.vue'
 import BottomSheetDrawer from '~/components/ui/BottomSheetDrawer.vue'
 import CardSearchResult from '~/components/CardSearchResult.vue'
@@ -448,6 +460,7 @@ import {
   mapOrchestratorActivityToStatusLine
 } from '~/utils/chatLoadingStatus'
 import { shouldRouteMessageToGuidedFlow } from '~/utils/chatGuidedFlowRouting'
+import { parseShopReviewRequest } from '~~/shared/shopReviewIntent'
 import { trackOrchestratorResponseAnalytics } from '~/utils/orchestratorAnalytics'
 
 // Get route to check for initial query
@@ -1151,7 +1164,7 @@ function messagesMatchCached (cachedMessages) {
   }
 }
 
-/** Restored sessions (and some server paths) may omit `cardCourseNames`; hydrate for result pills. */
+/** Restored sessions (and some server paths) may omit search-card fields; hydrate them. */
 async function backfillSearchShopCardFieldsInMessages () {
   if (import.meta.server) return
   const msgs = messages.value
@@ -1162,7 +1175,7 @@ async function backfillSearchShopCardFieldsInMessages () {
     for (const s of m.shops) {
       const id = s?.id
       if (typeof id !== 'string' || !id || seen.has(id)) continue
-      if (Array.isArray(s.cardCourseNames)) continue
+      if (Array.isArray(s.cardCourseNames) && typeof s.reviewCount === 'number') continue
       seen.add(id)
       minimal.push({ ...s })
       if (minimal.length >= 40) break
@@ -1185,6 +1198,7 @@ async function backfillSearchShopCardFieldsInMessages () {
         hit = true
         return {
           ...s,
+          reviewCount: e.reviewCount,
           cardCourseNames: e.cardCourseNames,
           cardDiveSiteTypeNames: e.cardDiveSiteTypeNames
         }
@@ -1476,17 +1490,24 @@ onMounted(async () => {
     ? activeRecord
     : null
   const initialQuery = typeof route.query.q === 'string' ? route.query.q : null
+  const initialReviewRequest = initialQuery ? parseShopReviewRequest(initialQuery) : null
+  const cachedReviewRequestHandled = cachedState?.messages.some(m =>
+    m.role === 'assistant' && (m.reviewIntentPending === true || Array.isArray(m.reviewActions))
+  ) ?? false
   const flatCache = getCache()
 
   if (cachedState && cachedState.messages.length > 0) {
-    messages.value = cachedState.messages
-    userInput.value = cachedState.userInput || ''
-    pendingOrchestratorTurn.value = cachedState.pendingOrchestratorTurn ?? null
-    if (cachedState.selectedShopId) selectedShopId.value = cachedState.selectedShopId
-    const restoredDetail = cachedState.detailDrawerShopId ?? cachedState.mobileDetailShopId
-    if (restoredDetail) detailDrawerShopId.value = restoredDetail
+    const shouldRestoreCachedState =
+      !initialQuery ||
+      (initialQuery === cachedState.lastQuery && (!initialReviewRequest || cachedReviewRequestHandled))
+    if (shouldRestoreCachedState) {
+      messages.value = cachedState.messages
+      userInput.value = cachedState.userInput || ''
+      pendingOrchestratorTurn.value = cachedState.pendingOrchestratorTurn ?? null
+      if (cachedState.selectedShopId) selectedShopId.value = cachedState.selectedShopId
+      const restoredDetail = cachedState.detailDrawerShopId ?? cachedState.mobileDetailShopId
+      if (restoredDetail) detailDrawerShopId.value = restoredDetail
 
-    if (!initialQuery || initialQuery === cachedState.lastQuery) {
       isRestoringCache.value = false
       notifyChatSidebarUpdated()
       await nextTick()
@@ -2008,6 +2029,8 @@ const sendMessage = async (messageText, displayText, options = {}) => {
     })) ?? undefined
 
     const lastAssistantMessage = [...messages.value].reverse().find(m => m.role === 'assistant')
+    const pendingShopReview = lastAssistantMessage?.reviewIntentPending === true
+    const shopReviewRequest = parseShopReviewRequest(message, pendingShopReview)
     const inBookingFlow = lastAssistantMessage?.intent === 'booking' && lastAssistantMessage?.shopId
     const lastIntent = inBookingFlow ? 'booking' : undefined
     const lastBookingShopId = inBookingFlow ? lastAssistantMessage.shopId : undefined
@@ -2070,6 +2093,7 @@ const sendMessage = async (messageText, displayText, options = {}) => {
       ...(pendingBookingPayload.value ? { pendingBookingPayload: pendingBookingPayload.value } : {}),
       ...(profilePrefillSnapshot.value ? { profilePrefill: profilePrefillSnapshot.value } : {}),
       ...(pendingEntityClarifyPhrase ? { pendingEntityClarifyPhrase } : {}),
+      ...(pendingShopReview ? { pendingShopReview: true } : {}),
       tripRequirements: tripRequirements.value
     }
 
@@ -2082,7 +2106,7 @@ const sendMessage = async (messageText, displayText, options = {}) => {
     const startsGuidedToken = trimmedMsg.toLowerCase().startsWith(GUIDED_PREFIX)
     const midGuidedWizard = isMidGuidedSearchWizard(messages.value)
 
-    const useGuidedTurn = shouldRouteMessageToGuidedFlow({
+    const useGuidedTurn = !shopReviewRequest && shouldRouteMessageToGuidedFlow({
       useGuidedSearch: useGuidedSearch.value,
       useAiSearchFirst: useAiSearchFirst.value,
       preferGuidedThisSession: preferGuidedThisSession.value,
@@ -2503,6 +2527,8 @@ const sendMessage = async (messageText, displayText, options = {}) => {
         diveSiteOptions: response.diveSiteOptions || undefined,
         ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {}),
         ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {}),
+        ...(Array.isArray(response.reviewActions) ? { reviewActions: response.reviewActions } : {}),
+        ...(response.reviewIntentPending === true ? { reviewIntentPending: true } : {}),
         ...(searchMatchBadges.length ? { searchMatchBadges } : {}),
         ...(tripReqSnapForMsg ? { tripRequirementsSnapshot: tripReqSnapForMsg } : {})
       })

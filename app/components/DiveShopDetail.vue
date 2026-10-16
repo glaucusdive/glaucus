@@ -177,6 +177,7 @@
                     embedded
                     :shop-id="shopRowId"
                     :shop-name="shopReviewDisplayName"
+                    :shop-slug="shopData?.slug || shopRowId"
                     :initial-rating="5"
                     initial-body=""
                     :is-editing="false"
@@ -193,6 +194,7 @@
                     :review-date="formatReviewDate(myReview.created_at)"
                     :rating="myReview.rating"
                     :review-text="myReview.body"
+                    :verified-booking="!!myReview.booking_submission_id"
                     :show-delete="canDeleteReview(myReview)"
                     @delete="handleDeleteReview(myReview)"
                   />
@@ -206,6 +208,7 @@
                     embedded
                     :shop-id="shopRowId"
                     :shop-name="shopReviewDisplayName"
+                    :shop-slug="shopData?.slug || shopRowId"
                     :initial-rating="myReview.rating"
                     :initial-body="myReview.body"
                     :is-editing="true"
@@ -224,6 +227,7 @@
                     :review-date="formatReviewDate(r.created_at)"
                     :rating="r.rating"
                     :review-text="r.body"
+                    :verified-booking="!!r.booking_submission_id"
                     :show-delete="canDeleteReview(r)"
                     @delete="handleDeleteReview(r)"
                   />
@@ -490,7 +494,7 @@ const shopProfileUrl = computed(() => {
   return buildShopProfileUrl(origin, lookup)
 })
 
-const { user, isAppAdmin, isSignedIn } = useAuth()
+const { user, isSignedIn } = useAuth()
 const { client } = useSupabase()
 const { reviews, pending: reviewsPending, refresh: refreshReviews } = useShopReviews(shopRowId)
 
@@ -526,7 +530,6 @@ async function handleInlineReviewDeleted () {
 }
 
 function canDeleteReview (r) {
-  if (isAppAdmin.value) return true
   const uid = user.value?.id
   if (!uid) return false
   return r.user_id === uid

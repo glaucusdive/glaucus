@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   collectDistinctDiveSiteTypeNames,
+  collectShopReviewCounts,
   formatCourseCardPill
 } from '../../server/utils/enrichShopsForSearchCards'
 
@@ -14,6 +15,21 @@ describe('collectDistinctDiveSiteTypeNames', () => {
       { dive_sites: null }
     ] as { dive_sites: { dive_site_type: { name: string | null } | null } | null }[]
     expect(collectDistinctDiveSiteTypeNames(rows)).toEqual(['Reef', 'Wreck'])
+  })
+})
+
+describe('collectShopReviewCounts', () => {
+  it('maps aggregate counts and defaults shops without reviews to zero', () => {
+    const rows = [
+      { id: 'shop-a', shop_reviews: [{ count: 3 }] },
+      { id: 'shop-b', shop_reviews: [{ count: 0 }] },
+      { id: 'shop-c', shop_reviews: [] }
+    ]
+    expect(collectShopReviewCounts(rows)).toEqual(new Map([
+      ['shop-a', 3],
+      ['shop-b', 0],
+      ['shop-c', 0]
+    ]))
   })
 })
 
