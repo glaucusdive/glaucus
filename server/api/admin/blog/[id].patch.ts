@@ -47,6 +47,7 @@ export default defineEventHandler(async (event) => {
   if (body.hero_image_url !== undefined) patch.hero_image_url = body.hero_image_url
   if (body.hero_image_alt !== undefined) patch.hero_image_alt = body.hero_image_alt
   if (body.body_markdown !== undefined) patch.body_markdown = body.body_markdown
+  if (body.author_name !== undefined) patch.author_name = body.author_name.trim()
   if (body.sort_order !== undefined) patch.sort_order = body.sort_order
   if (body.status !== undefined) {
     patch.status = body.status

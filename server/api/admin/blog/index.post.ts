@@ -1,6 +1,6 @@
 import { requireAdminUser } from '../../../utils/requireAdminUser'
 import { blogPostWriteSchema, validateBlogPublish } from '../../../utils/blogPostWrite'
-import { BLOG_POST_LIST_COLUMNS } from '~~/shared/blogPost'
+import { BLOG_POST_LIST_COLUMNS, DEFAULT_BLOG_AUTHOR_NAME } from '~~/shared/blogPost'
 
 export default defineEventHandler(async (event) => {
   const { client } = await requireAdminUser(event)
@@ -19,12 +19,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: publishErr })
   }
 
+  const authorName = body.author_name?.trim() || DEFAULT_BLOG_AUTHOR_NAME
+
   const row: Record<string, unknown> = {
     title: body.title,
     excerpt: body.excerpt ?? '',
     hero_image_url: body.hero_image_url ?? '',
     hero_image_alt: body.hero_image_alt ?? '',
     body_markdown: body.body_markdown ?? '',
+    author_name: authorName,
     status: body.status ?? 'draft',
     sort_order: body.sort_order ?? 0
   }

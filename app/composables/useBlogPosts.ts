@@ -26,6 +26,7 @@ function mapPost (row: Record<string, unknown>): BlogPost {
   return {
     ...mapCard(row),
     body_markdown: String(row.body_markdown ?? ''),
+    author_name: String(row.author_name ?? ''),
     status: row.status === 'published' ? 'published' : 'draft',
     created_at: String(row.created_at),
     updated_at: String(row.updated_at)
