@@ -180,9 +180,9 @@
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Certifications</h3>
-            <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addCert">
-              + Add
-            </button>
+            <Button type="button" variant="secondary" @click="addCert">
+              Add
+            </Button>
           </div>
           <div
             v-for="(c, idx) in certifications"
@@ -229,9 +229,9 @@
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Past jobs</h3>
-            <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addJob">
-              + Add
-            </button>
+            <Button type="button" variant="secondary" @click="addJob">
+              Add
+            </Button>
           </div>
           <div
             v-for="(j, idx) in jobs"
@@ -280,9 +280,9 @@
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Sites Dived</h3>
-            <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addDiveSiteRow">
-              + Add
-            </button>
+            <Button type="button" variant="secondary" @click="addDiveSiteRow">
+              Add
+            </Button>
           </div>
           <div
             v-for="(siteId, idx) in diveSiteIds"

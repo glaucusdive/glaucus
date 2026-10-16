@@ -20,7 +20,7 @@
           variant="primary"
           :disabled="defaultsSaving"
         >
-          {{ defaultsSaving ? 'Saving…' : 'Save defaults' }}
+          {{ defaultsSaving ? 'Saving…' : 'Save' }}
         </Button>
       </div>
     </template>
@@ -58,13 +58,9 @@
       <section class="flex flex-col gap-4 p-4 lg:px-24 lg:py-12">
         <div class="flex items-center justify-between">
           <h2 class="text-base font-bold text-white">Default divers</h2>
-          <button
-            type="button"
-            class="cursor-pointer text-xs font-medium text-zinc-400 hover:text-white"
-            @click="addDefaultDiver"
-          >
-            + Add diver
-          </button>
+          <Button type="button" variant="secondary" @click="addDefaultDiver">
+            Add diver
+          </Button>
         </div>
         <div
           v-for="(diver, idx) in defaultsForm.divers"

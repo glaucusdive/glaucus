@@ -5,7 +5,7 @@
     back-to="/settings"
   >
     <template #actions>
-      <div v-if="dmStatus" class="flex items-center gap-4">
+      <div v-if="!loading" class="flex items-center gap-4">
         <p
           v-if="saveMessage"
           class="max-w-40 truncate text-sm sm:max-w-xs"
@@ -15,12 +15,12 @@
           {{ saveMessage }}
         </p>
         <Button
-          type="submit"
-          form="settings-divemaster-form"
+          type="button"
           variant="primary"
           :disabled="saving || cancelling"
+          @click="saveProfile"
         >
-          {{ saving ? 'Saving…' : (dmStatus === 'published' ? 'Save changes' : 'Save draft') }}
+          {{ saving ? 'Saving…' : 'Save' }}
         </Button>
       </div>
     </template>
@@ -38,24 +38,9 @@
               type="text"
               autocomplete="name"
               required
-              :disabled="savingFullName"
+              :disabled="saving"
             />
           </FormField>
-          <div
-            v-if="fullNameMessage"
-            class="text-sm"
-            :class="fullNameOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
-          >
-            {{ fullNameMessage }}
-          </div>
-          <Button
-            type="button"
-            variant="primary"
-            :disabled="savingFullName"
-            @click="saveFullName"
-          >
-            {{ savingFullName ? 'Saving…' : 'Save name' }}
-          </Button>
         </div>
         <FormField label="Username" label-style="auth" field-id="dm-username">
           <!-- Locked: show current username in a disabled input -->
@@ -105,11 +90,11 @@
       </section>
 
       <section class="p-4 lg:py-12 lg:px-24 flex flex-col gap-8">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <h2 class="text-base font-bold text-white">Divemaster</h2>
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 class="text-base font-bold text-white">Divemaster Profile</h2>
           <span
             v-if="dmStatus"
-            class="text-xs font-medium px-2 py-1 rounded bg-zinc-100 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200"
+            class="text-xs font-medium text-zinc-400"
           >
             {{ statusLabel }}
           </span>
@@ -271,9 +256,9 @@
             <div class="space-y-2">
               <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Certifications</h3>
-                <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addCert">
-                  + Add
-                </button>
+                <Button type="button" variant="secondary" @click="addCert">
+                  Add
+                </Button>
               </div>
               <div
                 v-for="(c, idx) in certifications"
@@ -320,9 +305,9 @@
             <div class="space-y-2">
               <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Past jobs</h3>
-                <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addJob">
-                  + Add
-                </button>
+                <Button type="button" variant="secondary" @click="addJob">
+                  Add
+                </Button>
               </div>
               <div
                 v-for="(j, idx) in jobs"
@@ -371,9 +356,9 @@
             <div class="space-y-2">
               <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Sites Dived</h3>
-                <button type="button" class="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer" @click="addDiveSiteRow">
-                  + Add
-                </button>
+                <Button type="button" variant="secondary" @click="addDiveSiteRow">
+                  Add
+                </Button>
               </div>
               <div
                 v-for="(siteId, idx) in selectedDiveSiteIds"
@@ -458,9 +443,6 @@ const diveSiteAddNewOptions = [DIVE_SITE_ADD_NEW_OPTION]
 
 const loading = ref(true)
 const fullNameInput = ref('')
-const savingFullName = ref(false)
-const fullNameMessage = ref('')
-const fullNameOk = ref(false)
 const username = ref('')
 const usernameInput = ref('')
 const usernameChangedAt = ref<string | null>(null)
@@ -802,31 +784,42 @@ async function loadAll () {
   }
 }
 
-async function saveFullName () {
+async function persistFullName (): Promise<boolean> {
+  if (!user.value?.id) return false
+  const next = fullNameInput.value.trim()
+  if (!next) {
+    saveOk.value = false
+    saveMessage.value = 'Full name is required.'
+    return false
+  }
+  const { error } = await client
+    .from('profiles')
+    .update({ display_name: next })
+    .eq('id', user.value.id)
+  if (error) {
+    saveOk.value = false
+    saveMessage.value = error.message
+    return false
+  }
+  fullNameInput.value = next
+  return true
+}
+
+async function saveProfile () {
   if (!user.value?.id) return
-  savingFullName.value = true
-  fullNameMessage.value = ''
+  if (dmStatus.value) {
+    await saveDraft()
+    return
+  }
+  saving.value = true
+  saveMessage.value = ''
   try {
-    const next = fullNameInput.value.trim()
-    if (!next) {
-      fullNameOk.value = false
-      fullNameMessage.value = 'Full name is required.'
-      return
+    if (await persistFullName()) {
+      saveOk.value = true
+      saveMessage.value = 'Saved.'
     }
-    const { error } = await client
-      .from('profiles')
-      .update({ display_name: next })
-      .eq('id', user.value.id)
-    if (error) {
-      fullNameOk.value = false
-      fullNameMessage.value = error.message
-      return
-    }
-    fullNameInput.value = next
-    fullNameOk.value = true
-    fullNameMessage.value = 'Full name saved.'
   } finally {
-    savingFullName.value = false
+    saving.value = false
   }
 }
 
@@ -899,6 +892,7 @@ async function saveDraft () {
   saving.value = true
   saveMessage.value = ''
   try {
+    if (!(await persistFullName())) return
     const id = user.value.id
     const { error: dmErr } = await client.from('divemaster_profiles').update({
       headline: form.headline || null,

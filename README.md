@@ -133,6 +133,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.89.2** — Outline Add buttons, rename Divemaster Profile status, and use one Save action (2026-10-16).
 - **0.89.1** — Fix booking-defaults diver field columns so name, height, and weight keep their widths (2026-10-16).
 - **0.89.0** — Settings pages share the profile header; save sits at the far right (2026-10-16).
 - **0.88.0** — Required full name on signup, Profile Settings, and the admin divemaster editor; username field back to the default size (2026-10-16).
