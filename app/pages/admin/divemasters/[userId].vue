@@ -32,8 +32,8 @@
 
       <form class="space-y-4" @submit.prevent="save">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <FormField label="Display name" label-style="auth">
-            <FormInput v-model="form.display_name" type="text" size="sm" />
+          <FormField label="Full name" label-style="auth" required>
+            <FormInput v-model="form.display_name" type="text" size="sm" required />
           </FormField>
           <FormField label="Username" label-style="auth">
             <FormInput v-model="form.username" type="text" size="sm" />
@@ -637,11 +637,18 @@ async function patch (body: Record<string, unknown>) {
   }
 }
 
-async function save () {
+async function save (): Promise<boolean> {
+  const fullName = form.display_name.trim()
+  if (!fullName) {
+    ok.value = false
+    msg.value = 'Full name is required.'
+    return false
+  }
+  form.display_name = fullName
   await patch({
     action: 'save',
     username: form.username,
-    display_name: form.display_name,
+    display_name: fullName,
     headline: form.headline,
     bio: form.bio,
     location: form.location,
@@ -665,10 +672,12 @@ async function save () {
     }),
     dive_site_ids: diveSiteIds.value.map(id => id.trim()).filter(Boolean)
   })
+  return ok.value
 }
 
 async function approve () {
-  await save()
+  const saved = await save()
+  if (!saved) return
   await patch({ action: 'approve', admin_notes: form.admin_notes })
 }
 

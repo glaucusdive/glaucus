@@ -1,24 +1,62 @@
 <template>
-  <div class="max-h-screen bg-zinc-900 h-full p-0 overflow-y-auto divide-y divide-zinc-800">
-    
-    <div class="flex flex-row divide-x divide-zinc-800 h-20 bg-zinc-900 sticky top-0 z-50">
-      <NuxtLink to="/settings"
-        class="flex justify-center items-center gap-1 text-sm text-zinc-400 hover:text-white cursor-pointer aspect-square size-20">
-        <ChevronLeft class="size-4" />
-      </NuxtLink>
-      <div class="p-4 flex flex-col justify-center">
-        <h1 class="text-base font-bold text-white">Profile Settings</h1>
-        <p class="hidden lg:flex text-sm text-zinc-400">
-          Username and divemaster profile. Public pages go live after admin approval.
+  <SettingsPage
+    title="Profile Settings"
+    description="Username and divemaster profile. Public pages go live after admin approval."
+    back-to="/settings"
+  >
+    <template #actions>
+      <div v-if="dmStatus" class="flex items-center gap-4">
+        <p
+          v-if="saveMessage"
+          class="max-w-40 truncate text-sm sm:max-w-xs"
+          :class="saveOk ? 'text-green-400' : 'text-red-400'"
+          :title="saveMessage"
+        >
+          {{ saveMessage }}
         </p>
+        <Button
+          type="submit"
+          form="settings-divemaster-form"
+          variant="primary"
+          :disabled="saving || cancelling"
+        >
+          {{ saving ? 'Saving…' : (dmStatus === 'published' ? 'Save changes' : 'Save draft') }}
+        </Button>
       </div>
-    </div>
+    </template>
     
     <div v-if="loading" class="p-4 lg:py-12 lg:px-24 text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
 
     <div v-else class="divide-y divide-zinc-800">
-      <section class="p-4 lg:py-12 lg:px-24">
+      <section class="p-4 lg:py-12 lg:px-24 flex flex-col gap-4">
         <h2 class="text-base font-bold text-white">Account</h2>
+        <div class="flex flex-col gap-2">
+          <FormField label="Full name" label-style="auth" field-id="dm-full-name" required>
+            <FormInput
+              id="dm-full-name"
+              v-model="fullNameInput"
+              type="text"
+              autocomplete="name"
+              required
+              :disabled="savingFullName"
+            />
+          </FormField>
+          <div
+            v-if="fullNameMessage"
+            class="text-sm"
+            :class="fullNameOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
+          >
+            {{ fullNameMessage }}
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            :disabled="savingFullName"
+            @click="saveFullName"
+          >
+            {{ savingFullName ? 'Saving…' : 'Save name' }}
+          </Button>
+        </div>
         <FormField label="Username" label-style="auth" field-id="dm-username">
           <!-- Locked: show current username in a disabled input -->
           <template v-if="usernameLocked && username">
@@ -26,7 +64,6 @@
               id="dm-username"
               :model-value="`@${username}`"
               type="text"
-              size="lg"
               disabled
             />
             <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
@@ -44,7 +81,6 @@
               id="dm-username"
               v-model="usernameInput"
               type="text"
-              size="md"
               placeholder="your-name"
               :disabled="savingUsername"
             />
@@ -95,7 +131,7 @@
         </template>
 
         <template v-else>
-          <form class="flex flex-col gap-8" @submit.prevent="saveDraft">
+          <form id="settings-divemaster-form" class="flex flex-col gap-8" @submit.prevent="saveDraft">
             
             <FormField label="Avatar" label-style="auth">
               <DivemasterAvatarUpload v-if="user?.id" v-model="form.avatar_url" :user-id="user.id" />
@@ -367,18 +403,7 @@
               </div>
             </div>
 
-            <div v-if="saveMessage" class="text-sm" :class="saveOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
-              {{ saveMessage }}
-            </div>
-
-            <div class="flex flex-wrap items-center gap-3">
-              <Button
-                type="submit"
-                variant="primary"
-                :disabled="saving || cancelling"
-              >
-                {{ saving ? 'Saving…' : (dmStatus === 'published' ? 'Save changes' : 'Save draft') }}
-              </Button>
+            <div v-if="dmStatus !== 'published'" class="flex flex-wrap items-center gap-3">
               <Button
                 v-if="dmStatus === 'draft'"
                 type="button"
@@ -402,11 +427,10 @@
         </template>
       </section>
     </div>
-  </div>
+  </SettingsPage>
 </template>
 
 <script setup lang="ts">
-import { ChevronLeft } from 'lucide-vue-next'
 import {
   DIVE_SITE_ADD_NEW_ID,
   formatUsernameCooldownMessage,
@@ -433,12 +457,27 @@ const { labelsForIds, ensureDiveSiteLabels, loadDiveSitePage, rememberDiveSites 
 const diveSiteAddNewOptions = [DIVE_SITE_ADD_NEW_OPTION]
 
 const loading = ref(true)
+const fullNameInput = ref('')
+const savingFullName = ref(false)
+const fullNameMessage = ref('')
+const fullNameOk = ref(false)
 const username = ref('')
 const usernameInput = ref('')
 const usernameChangedAt = ref<string | null>(null)
 const savingUsername = ref(false)
 const usernameMessage = ref('')
 const usernameOk = ref(false)
+
+function fullNameFromAuthMetadata (): string {
+  const meta = user.value?.user_metadata
+  if (!meta || typeof meta !== 'object') return ''
+  const record = meta as Record<string, unknown>
+  for (const key of ['display_name', 'full_name', 'name']) {
+    const value = record[key]
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
+  return ''
+}
 
 const usernameCooldownUntil = computed(() => usernameChangeAvailableAt(usernameChangedAt.value))
 /** Locked when a username is set and still inside the 90-day window (or legacy with no stamp). */
@@ -679,9 +718,12 @@ async function loadAll () {
 
     const { data: profile } = await client
       .from('profiles')
-      .select('username, username_changed_at')
+      .select('username, username_changed_at, display_name')
       .eq('id', id)
       .maybeSingle()
+
+    const storedFullName = typeof profile?.display_name === 'string' ? profile.display_name.trim() : ''
+    fullNameInput.value = storedFullName || fullNameFromAuthMetadata()
 
     username.value = (profile?.username as string) || ''
     usernameInput.value = username.value
@@ -757,6 +799,34 @@ async function loadAll () {
     ])
   } finally {
     loading.value = false
+  }
+}
+
+async function saveFullName () {
+  if (!user.value?.id) return
+  savingFullName.value = true
+  fullNameMessage.value = ''
+  try {
+    const next = fullNameInput.value.trim()
+    if (!next) {
+      fullNameOk.value = false
+      fullNameMessage.value = 'Full name is required.'
+      return
+    }
+    const { error } = await client
+      .from('profiles')
+      .update({ display_name: next })
+      .eq('id', user.value.id)
+    if (error) {
+      fullNameOk.value = false
+      fullNameMessage.value = error.message
+      return
+    }
+    fullNameInput.value = next
+    fullNameOk.value = true
+    fullNameMessage.value = 'Full name saved.'
+  } finally {
+    savingFullName.value = false
   }
 }
 
