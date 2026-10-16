@@ -148,7 +148,9 @@
               <FormField label="Favorite local dive spot" label-style="auth">
                 <SearchMultiSelect
                   :model-value="favoritePickerValue(favoriteLocalId)"
-                  :options="favoriteDiveSiteOptions"
+                  :options="diveSiteAddNewOptions"
+                  :known-options="labelsForIds(favoritePickerValue(favoriteLocalId))"
+                  :load-page="loadDiveSitePage"
                   searchable
                   wrap-chips
                   single-select
@@ -189,7 +191,9 @@
               <FormField label="Favorite destination dive spot" label-style="auth">
                 <SearchMultiSelect
                   :model-value="favoritePickerValue(favoriteDestinationId)"
-                  :options="favoriteDiveSiteOptions"
+                  :options="diveSiteAddNewOptions"
+                  :known-options="labelsForIds(favoritePickerValue(favoriteDestinationId))"
+                  :load-page="loadDiveSitePage"
                   searchable
                   wrap-chips
                   single-select
@@ -343,7 +347,9 @@
                 <div class="min-w-0 flex-1">
                   <SearchMultiSelect
                     :model-value="siteId ? [siteId] : []"
-                    :options="diveSiteOptionsForRow(idx)"
+                    :known-options="labelsForIds(siteId ? [siteId] : [])"
+                    :exclude-ids="takenDiveSiteIds(idx)"
+                    :load-page="loadDiveSitePage"
                     searchable
                     wrap-chips
                     single-select
@@ -415,6 +421,7 @@ import {
   type DivemasterJob,
   type DivemasterProfileStatus
 } from '~~/shared/divemasterProfile'
+import { DIVE_SITE_ADD_NEW_OPTION } from '~~/shared/diveSitePicker'
 
 definePageMeta({ layout: 'default', middleware: 'auth' })
 usePrivatePageSeo()
@@ -422,6 +429,8 @@ useSeoMeta({ title: 'Profile Settings' })
 
 const { user, accessToken } = useAuth()
 const { client } = useSupabase()
+const { labelsForIds, ensureDiveSiteLabels, loadDiveSitePage, rememberDiveSites } = useDiveSitePicker()
+const diveSiteAddNewOptions = [DIVE_SITE_ADD_NEW_OPTION]
 
 const loading = ref(true)
 const username = ref('')
@@ -470,14 +479,8 @@ const agencyOptions = ref<Array<{ id: string; label: string }>>([])
 const certifications = ref<Array<DivemasterCertification & { agency: string; cert_number: string; issued_at: string; students_certified: number }>>([])
 const jobs = ref<Array<DivemasterJob & { location: string; start_date: string; end_date: string; description: string; is_current: boolean }>>([])
 const selectedDiveSiteIds = ref<string[]>([])
-const diveSiteOptions = ref<Array<{ id: string; label: string }>>([])
 
 const trainingNameOptions = LAST_FORMAL_TRAINING_NAMES.map(name => ({ id: name, label: name }))
-
-const favoriteDiveSiteOptions = computed(() => [
-  ...diveSiteOptions.value,
-  { id: DIVE_SITE_ADD_NEW_ID, label: 'Add new dive site' }
-])
 
 const statusLabel = computed(() => {
   if (dmStatus.value === 'draft') return 'Draft'
@@ -543,16 +546,11 @@ function optionsWithLegacy (
   return [{ id: trimmed, label: trimmed }, ...options]
 }
 
-function diveSiteOptionsForRow (idx: number) {
-  const current = (selectedDiveSiteIds.value[idx] || '').trim()
-  const taken = new Set(
-    selectedDiveSiteIds.value
-      .filter((_, i) => i !== idx)
-      .map(id => id.trim())
-      .filter(Boolean)
-  )
-  const base = diveSiteOptions.value.filter(o => !taken.has(o.id))
-  return optionsWithLegacy(base, current)
+function takenDiveSiteIds (idx: number) {
+  return selectedDiveSiteIds.value
+    .filter((_, i) => i !== idx)
+    .map(id => id.trim())
+    .filter(Boolean)
 }
 
 function favoritePickerValue (id: string) {
@@ -615,10 +613,7 @@ async function createFavoriteSite (kind: 'local' | 'destination') {
       headers: { Authorization: `Bearer ${token}` },
       body: { name: draft.name.trim(), country_id: draft.country_id }
     })
-    if (!diveSiteOptions.value.some(o => o.id === created.id)) {
-      diveSiteOptions.value = [...diveSiteOptions.value, { id: created.id, label: created.label }]
-        .sort((a, b) => a.label.localeCompare(b.label))
-    }
+    rememberDiveSites([{ id: created.id, label: created.label }])
     if (kind === 'local') {
       favoriteLocalId.value = created.id
       newLocalSite.name = ''
@@ -661,20 +656,6 @@ async function loadAgencyOptions () {
     .map(row => String(row.name || '').trim())
     .filter(Boolean)
     .map(name => ({ id: name, label: name }))
-}
-
-async function loadDiveSiteOptions () {
-  const { data } = await client
-    .from('dive_sites')
-    .select('id, name, countries(name)')
-    .order('name')
-    .limit(500)
-  diveSiteOptions.value = (data ?? []).map((row: Record<string, unknown>) => {
-    const country = row.countries as { name?: string } | null
-    const name = String(row.name ?? '')
-    const countryName = country?.name ? ` (${country.name})` : ''
-    return { id: String(row.id), label: `${name}${countryName}` }
-  })
 }
 
 async function loadCountryOptions () {
@@ -765,7 +746,11 @@ async function loadAll () {
 
     selectedDiveSiteIds.value = (siteLinks ?? []).map(s => String(s.dive_site_id))
     await Promise.all([
-      loadDiveSiteOptions(),
+      ensureDiveSiteLabels([
+        favoriteLocalId.value,
+        favoriteDestinationId.value,
+        ...selectedDiveSiteIds.value
+      ]),
       loadCourseCertOptions(),
       loadAgencyOptions(),
       loadCountryOptions()
