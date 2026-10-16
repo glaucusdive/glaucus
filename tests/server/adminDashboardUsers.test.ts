@@ -16,6 +16,10 @@ describe('adminDashboardUsers', () => {
       expect(userTypeFromRole(null)).toBe('normal')
       expect(userTypeFromRole(undefined)).toBe('normal')
     })
+
+    it('maps divemaster role', () => {
+      expect(userTypeFromRole('divemaster')).toBe('divemaster')
+    })
   })
 
   describe('isSignupInRange', () => {

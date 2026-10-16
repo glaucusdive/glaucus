@@ -1,16 +1,56 @@
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import type { User, Session } from '@supabase/supabase-js'
 import { normalizeAuthRedirect, DEFAULT_AUTH_REDIRECT } from '~/utils/authRedirect'
 
 const user = ref<User | null>(null)
 const session = ref<Session | null>(null)
 const loading = ref(true)
-const userRole = ref<'standard' | 'admin'>('standard')
+const userRole = ref<'standard' | 'divemaster' | 'admin'>('standard')
+/** After setPassword, identities may lag; keep true until sign-out. */
+const passwordAttachedThisSession = ref(false)
+
+const MIN_PASSWORD_LENGTH = 8
+
+function authOrigin (): string {
+  return typeof window !== 'undefined' ? window.location.origin : ''
+}
+
+function providerLabelsFromUser (u: User | null | undefined): string[] {
+  const identities = u?.identities ?? []
+  const labels = new Set<string>()
+  for (const identity of identities) {
+    const p = identity.provider
+    if (p === 'email') labels.add('Email')
+    else if (p === 'google') labels.add('Google')
+    else if (p) labels.add(p.charAt(0).toUpperCase() + p.slice(1))
+  }
+  const providers = u?.app_metadata?.providers
+  if (Array.isArray(providers)) {
+    for (const p of providers) {
+      if (p === 'email') labels.add('Email')
+      else if (p === 'google') labels.add('Google')
+    }
+  }
+  if (passwordAttachedThisSession.value) labels.add('Email')
+  return [...labels]
+}
 
 export const useAuth = () => {
   const { client } = useSupabase()
 
   const isSignedIn = computed(() => !!session.value)
+
+  /** True when the user can sign in with email + password (email identity or providers list). */
+  const hasEmailPasswordAuth = computed(() => {
+    if (passwordAttachedThisSession.value) return true
+    const u = user.value
+    if (!u) return false
+    if ((u.identities ?? []).some(i => i.provider === 'email')) return true
+    const providers = u.app_metadata?.providers
+    return Array.isArray(providers) && providers.includes('email')
+  })
+
+  const linkedProviderLabels = computed(() => providerLabelsFromUser(user.value))
 
   async function loadUserRole () {
     const id = user.value?.id
@@ -24,14 +64,24 @@ export const useAuth = () => {
         .select('role')
         .eq('id', id)
         .maybeSingle()
-      userRole.value = data?.role === 'admin' ? 'admin' : 'standard'
+      const role = data?.role
+      userRole.value = role === 'admin' || role === 'divemaster' ? role : 'standard'
     } catch {
       userRole.value = 'standard'
     }
   }
 
+  async function refreshUser () {
+    const { data, error } = await client.auth.getUser()
+    if (error) throw error
+    user.value = data.user
+    const { data: { session: s } } = await client.auth.getSession()
+    session.value = s
+    await loadUserRole()
+    return data.user
+  }
+
   async function init () {
-    loading.value = true
     try {
       const { data: { session: s } } = await client.auth.getSession()
       session.value = s
@@ -53,7 +103,7 @@ export const useAuth = () => {
   }
 
   async function signInWithGoogle (redirectPath?: string) {
-    const base = typeof window !== 'undefined' ? window.location.origin : ''
+    const base = authOrigin()
     const path = normalizeAuthRedirect(redirectPath)
     const redirectTo = `${base}${path}`
     const { error } = await client.auth.signInWithOAuth({
@@ -64,7 +114,7 @@ export const useAuth = () => {
   }
 
   async function signUpWithEmail (email: string, password: string, displayName?: string) {
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const origin = authOrigin()
     const { data, error } = await client.auth.signUp({
       email,
       password,
@@ -93,7 +143,33 @@ export const useAuth = () => {
   async function signInWithMagicLink (email: string) {
     const { data, error } = await client.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}${DEFAULT_AUTH_REDIRECT}` }
+      options: { emailRedirectTo: `${authOrigin()}${DEFAULT_AUTH_REDIRECT}` }
+    })
+    if (error) throw error
+    return data
+  }
+
+  /**
+   * Attach or change password on the current user (works for Google-only accounts).
+   * Same auth.users row; admin role on profiles is unchanged.
+   */
+  async function setPassword (password: string) {
+    const trimmed = password.trim()
+    if (trimmed.length < MIN_PASSWORD_LENGTH) {
+      throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`)
+    }
+    const { data, error } = await client.auth.updateUser({ password: trimmed })
+    if (error) throw error
+    passwordAttachedThisSession.value = true
+    user.value = data.user
+    await refreshUser()
+    return data.user
+  }
+
+  async function requestPasswordReset (email: string) {
+    const origin = authOrigin()
+    const { data, error } = await client.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: origin ? `${origin}/auth?reset=1` : undefined
     })
     if (error) throw error
     return data
@@ -112,6 +188,7 @@ export const useAuth = () => {
     user.value = null
     session.value = null
     userRole.value = 'standard'
+    passwordAttachedThisSession.value = false
   }
 
   /** Access token for API calls (Authorization: Bearer <token>) */
@@ -119,6 +196,7 @@ export const useAuth = () => {
 
   /** Matches RLS public.is_app_admin(): set profiles.role = 'admin' in the Supabase Table Editor */
   const isAppAdmin = computed(() => userRole.value === 'admin')
+  const isDivemaster = computed(() => userRole.value === 'divemaster')
 
   return {
     user,
@@ -126,14 +204,21 @@ export const useAuth = () => {
     loading,
     isSignedIn,
     isAppAdmin,
+    isDivemaster,
     accessToken,
+    hasEmailPasswordAuth,
+    linkedProviderLabels,
+    minPasswordLength: MIN_PASSWORD_LENGTH,
     init,
     onAuthStateChange,
     refreshUserRole: loadUserRole,
+    refreshUser,
     signInWithGoogle,
     signUpWithEmail,
     signInWithEmail,
     signInWithMagicLink,
+    setPassword,
+    requestPasswordReset,
     signOut
   }
 }

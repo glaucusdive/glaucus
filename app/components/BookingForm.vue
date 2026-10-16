@@ -160,10 +160,9 @@
           <div class="flex flex-col gap-2 my-4">
             <div class="flex items-center justify-between">
               <span class="text-xs px-2 text-zinc-600 dark:text-zinc-400">Rental Gear</span>
-              <button type="button" @click="addDiverGear(index)"
-                class="text-xs bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 px-3 py-1 rounded-sm font-medium cursor-pointer text-zinc-900 dark:text-white">
-                + Add Gear
-              </button>
+              <Button type="button" variant="secondary" @click="addDiverGear(index)">
+                Add gear
+              </Button>
             </div>
 
             <div

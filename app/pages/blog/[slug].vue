@@ -2,15 +2,7 @@
   <div v-if="pending" class="min-h-dvh flex items-center justify-center bg-black text-zinc-400">
     Loading…
   </div>
-  <div v-else-if="!post" class="min-h-dvh flex flex-col items-center justify-center gap-4 bg-black text-white">
-    <h1 class="text-2xl font-semibold">
-      Post not found
-    </h1>
-    <NuxtLink to="/blog" class="text-blue-400 hover:underline">
-      Back to Logs
-    </NuxtLink>
-  </div>
-  <article v-else class="relative z-10 bg-black text-white">
+  <article v-else-if="post" class="relative z-10 bg-black text-white">
     <div
       class="relative w-full"
       :class="post.hero_image_url ? '-mt-24' : ''"

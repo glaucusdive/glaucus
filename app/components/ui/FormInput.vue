@@ -16,6 +16,7 @@ import type { FormControlSize } from '~/components/ui/form-types'
 import {
   formFocusRingClass,
   formInputClass,
+  formInputLgClass,
   formInputMdClass,
   formInputMutedClass,
   formInputSmClass
@@ -58,6 +59,8 @@ const inputClass = computed(() => {
     classes.push(formInputSmClass)
   } else if (props.size === 'md') {
     classes.push(formInputMdClass)
+  } else if (props.size === 'lg') {
+    classes.push(formInputLgClass)
   } else {
     classes.push(formInputClass)
   }
