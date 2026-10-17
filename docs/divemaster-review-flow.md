@@ -7,7 +7,7 @@
 1. The user asks chat to review a named divemaster, or asks generally to review a shop or divemaster.
 2. Chat asks for the entity type and profile name when either is missing. Only published divemaster profiles are eligible for matching.
 3. Chat returns a structured link to `/divemaster/{username}`. It does not collect, draft, or submit review content.
-4. The profile displays public reviews and a 1–5 rating/comment form. A user can maintain one review per divemaster.
+4. The profile displays public reviews, an average/count summary link to the Reviews section, and a 1–5 rating/comment form. A user can maintain one review per divemaster.
 
 ## Trust And Access
 
@@ -24,6 +24,8 @@
 - `POST /api/divemaster/{username}/reviews` creates or updates the caller's review.
 - `DELETE /api/divemaster/{username}/reviews` deletes only the caller's review.
 
+The chat recognizes simple greetings with a local fast path; other search requests keep the normal orchestrator flow. Shop result cards link to the shop profile using a labeled **View profile** action, distinct from **Book this**.
+
 All profile-scoped reads and writes require the divemaster profile to be published, except author deletion, which remains available if the profile is later unpublished.
 
 ## Deployment And Verification
@@ -32,3 +34,5 @@ All profile-scoped reads and writes require the divemaster profile to be publish
 2. Configure the existing server-only `SUPABASE_SERVICE_ROLE_KEY`; review endpoints use it to enforce the public-field boundary and author-scoped writes.
 3. Run the focused review-intent, divemaster resolver, and review-input tests, then the full test suite and application build.
 4. In a configured environment, test profile visibility, generic and named chat requests, confirmed-email submission, edit/delete, and non-published profile behavior.
+
+See [implementation-log.md](implementation-log.md) for the dated change record.

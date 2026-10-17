@@ -48,6 +48,7 @@ The booking pre-send “review” is separate. `parseShopReviewRequest` delibera
 - `app/composables/useShopReviews.ts` and `app/components/ShopReviewForm.vue` — public review read and API-backed save; legacy-column fallback keeps public reviews readable before migration.
 - `app/components/DiveShopDetail.vue` and `app/components/CardReview.vue` — verified-booking label and author-only delete control.
 - `app/components/CardSearchResult.vue` and `server/utils/enrichShopsForSearchCards.ts` — Glaucus review average/count in search tiles; averages are aggregated in Postgres by `get_shop_review_summaries`.
+- `supabase/migrations/20261016130000_shop_review_summaries.sql` — invoker-security aggregate RPC for result-card average ratings and counts.
 - `supabase/migrations/20261011120000_shop_review_booking_verification.sql` — nullable booking link, backfill, index, and policy changes.
 
 ## Verification Record
@@ -66,3 +67,5 @@ The booking pre-send “review” is separate. `parseShopReviewRequest` delibera
 4. The write endpoint requires `SUPABASE_SERVICE_ROLE_KEY`, already used by server-side guest booking logging. Keep it server-only.
 5. Booking submissions record successful email sends, not acceptance, cancellation, or trip completion. A request later canceled outside Glaucus can still qualify as a verified booking.
 6. Admin deletion and post-publication moderation are intentionally absent under the requested policy. There is no recovery workflow for abusive or unlawful review content.
+
+For the chronological implementation record, see [implementation-log.md](implementation-log.md).
