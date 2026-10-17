@@ -145,7 +145,6 @@
                               :match-badges="msg.searchMatchBadges"
                               :search-filters="msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : undefined"
                               @start-booking="handleStartBookingFromCard"
-                              @view-details="handleViewDetails"
                             />
                           </div>
                         </div>
@@ -2656,16 +2655,6 @@ function handleStartBookingFromCard (shop) {
   if (!shop?.id) return
   armShopDetailCloseGuard()
   void handleStartBookingFromPanel(shop.id, shop.business_name ?? '', 'card')
-}
-
-// Handle detail affordance on card (opens bottom sheet)
-const handleViewDetails = (shop) => {
-  armShopDetailCloseGuard()
-  nextTick(() => {
-    selectedShopId.value = shop.id
-    detailDrawerShopId.value = shop.id
-    void scrollToBottom()
-  })
 }
 
 function openSelectedShopDetail () {

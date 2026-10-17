@@ -46,7 +46,7 @@
       <a
         v-if="!reviewsPending"
         href="#divemaster-reviews"
-        class="flex w-full min-w-0 items-center gap-3 border border-zinc-300 bg-white px-3 py-2.5 text-left transition-colors hover:border-blue-400 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-blue-500 dark:hover:bg-zinc-800"
+        class="flex w-full min-w-0 items-center gap-3 border-y border-zinc-300 bg-white px-3 py-2.5 text-left transition-colors hover:border-blue-400 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-blue-500 dark:hover:bg-zinc-800"
         :aria-label="reviews.length ? `View ${averageRating.toFixed(1)} out of 5 from ${reviews.length} reviews` : 'View reviews'"
         @click.prevent="scrollToReviews"
       >
