@@ -31,7 +31,7 @@
           >
         </div>
         <div class="min-w-0 flex-1 flex flex-col gap-2">
-          <div class="flex flex-col gap-0">
+          <div class="flex flex-col gap-1">
             <h1 class="text-3xl font-semibold text-zinc-900 dark:text-white">{{ displayName }}</h1>
             <div class="flex flex-row items-baseline gap-2">
               <p class="text-sm text-zinc-400">@{{ profile.username }}</p>
@@ -42,6 +42,32 @@
           <p v-if="profile.bio" class="text-sm text-zinc-300 max-w-2xl whitespace-pre-wrap">{{ profile.bio }}</p>
         </div>
       </header>
+
+      <a
+        v-if="!reviewsPending"
+        href="#divemaster-reviews"
+        class="flex w-full min-w-0 items-center gap-3 border border-zinc-300 bg-white px-3 py-2.5 text-left transition-colors hover:border-blue-400 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-blue-500 dark:hover:bg-zinc-800"
+        :aria-label="reviews.length ? `View ${averageRating.toFixed(1)} out of 5 from ${reviews.length} reviews` : 'View reviews'"
+        @click.prevent="scrollToReviews"
+      >
+        <span class="grid size-9 shrink-0 place-items-center rounded-md bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+          <Star class="size-5 fill-current" aria-hidden="true" />
+        </span>
+        <span v-if="reviews.length" class="shrink-0 text-sm font-semibold tabular-nums text-zinc-900 dark:text-white">
+          {{ averageRating.toFixed(1) }}
+        </span>
+        <span v-else class="shrink-0 text-sm text-zinc-500 dark:text-zinc-400">No rating</span>
+        <span class="flex shrink-0 items-center gap-0.5" aria-hidden="true">
+          <Star v-for="star in fullRatingStarCount" :key="`full-${star}`" class="size-4 fill-current text-yellow-500" />
+          <StarHalf v-if="showHalfRatingStar" class="size-4 fill-current text-yellow-500" />
+          <Star v-for="star in emptyRatingStarCount" :key="`empty-${star}`" class="size-4 fill-none stroke-current text-yellow-500" />
+        </span>
+        <span class="text-zinc-400" aria-hidden="true">·</span>
+        <span class="min-w-0 truncate text-sm text-zinc-700 dark:text-zinc-300">
+          {{ reviews.length ? `${formatReviewCount(reviews.length)} ${reviews.length === 1 ? 'Review' : 'Reviews'}` : reviewsError ? 'Reviews unavailable' : 'Be the first to review' }}
+        </span>
+        <ChevronRight class="ml-auto size-4 shrink-0 text-zinc-500" aria-hidden="true" />
+      </a>
 
       <!-- Dive Pro highlights -->
       <section v-if="hasHighlights" class="space-y-3">
@@ -184,13 +210,63 @@
           </div>
         </div>
       </section>
+
+      <section id="divemaster-reviews" ref="reviewsSection" tabindex="-1" class="scroll-mt-4 space-y-4 outline-none">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 class="text-xl font-semibold text-zinc-900 dark:text-white">Reviews</h2>
+          <p v-if="reviews.length" class="text-sm text-zinc-600 dark:text-zinc-400">
+            {{ averageRating.toFixed(1) }} / 5 · {{ reviews.length }} {{ reviews.length === 1 ? 'review' : 'reviews' }}
+          </p>
+        </div>
+        <p v-if="reviewsPending" class="text-sm text-zinc-500 dark:text-zinc-400">Loading reviews…</p>
+        <p v-else-if="reviewsError" class="text-sm text-red-600 dark:text-red-400">{{ reviewsError }}</p>
+        <p v-else-if="!reviews.length" class="text-sm text-zinc-600 dark:text-zinc-400">No reviews yet.</p>
+        <p v-if="reviewActionError" class="text-sm text-red-600 dark:text-red-400">{{ reviewActionError }}</p>
+        <div v-else class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <article v-for="review in reviews" :key="review.id" class="flex flex-col gap-2">
+            <CardReview
+              :reviewer-name="review.author_display_name || 'Diver'"
+              :review-date="formatReviewDate(review.created_at)"
+              :rating="review.rating"
+              :review-text="review.body"
+              :show-delete="review.id === myReview?.id"
+              @delete="handleDeleteReview"
+            />
+            <button
+              v-if="review.id === myReview?.id && !editingReview"
+              type="button"
+              class="self-start text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+              @click="editingReview = true"
+            >
+              Edit your review
+            </button>
+          </article>
+        </div>
+        <p v-if="!isSignedIn && !reviewsPending" class="text-sm text-zinc-600 dark:text-zinc-400">
+          Sign in to leave a review.
+          <NuxtLink :to="authReviewLink" class="font-medium text-blue-600 hover:underline dark:text-blue-400">Sign in</NuxtLink>
+        </p>
+        <DivemasterReviewForm
+          v-else-if="isSignedIn && (!myReview || editingReview)"
+          :key="myReview?.id || 'new-review'"
+          :username="profile.username"
+          :display-name="displayName"
+          :initial-rating="myReview?.rating"
+          :initial-body="myReview?.body"
+          :is-editing="!!myReview"
+          @submitted="handleReviewSubmitted"
+          @cancel="editingReview = false"
+        />
+      </section>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ChevronRight, Star, StarHalf } from 'lucide-vue-next'
 import type { PublicDivemasterProfile } from '~~/shared/divemasterProfile'
+import { deleteDivemasterReview, useDivemasterReviews } from '~/composables/useDivemasterReviews'
 
 definePageMeta({ layout: 'default' })
 
@@ -232,6 +308,58 @@ const profile = computed(() => {
 })
 
 const displayName = computed(() => profile.value?.display_name || profile.value?.username || 'Divemaster')
+const reviewUsername = computed(() => profile.value?.username || '')
+const { isSignedIn, accessToken } = useAuth()
+const { reviews, myReview, pending: reviewsPending, error: reviewsError, refresh: refreshReviews } = useDivemasterReviews(reviewUsername)
+const editingReview = ref(false)
+const reviewActionError = ref('')
+const reviewsSection = ref<HTMLElement | null>(null)
+const averageRating = computed(() => {
+  if (!reviews.value.length) return 0
+  return reviews.value.reduce((total, review) => total + review.rating, 0) / reviews.value.length
+})
+const fullRatingStarCount = computed(() => Math.floor(averageRating.value))
+const showHalfRatingStar = computed(() => averageRating.value - fullRatingStarCount.value >= 0.25)
+const emptyRatingStarCount = computed(() => 5 - fullRatingStarCount.value - (showHalfRatingStar.value ? 1 : 0))
+const authReviewLink = computed(() => `/auth?redirect=${encodeURIComponent(`/divemaster/${reviewUsername.value}`)}`)
+
+function formatReviewDate (iso: string) {
+  const date = new Date(iso)
+  return Number.isNaN(date.getTime())
+    ? iso
+    : date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+function formatReviewCount (count: number) {
+  return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(count)
+}
+
+function scrollToReviews () {
+  reviewsSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  reviewsSection.value?.focus({ preventScroll: true })
+}
+
+async function handleReviewSubmitted () {
+  editingReview.value = false
+  await refreshReviews()
+}
+
+async function handleDeleteReview () {
+  const token = accessToken.value
+  if (!token) {
+    reviewActionError.value = 'Sign in again to delete your review.'
+    return
+  }
+  if (!confirm('Delete your review permanently?')) return
+  reviewActionError.value = ''
+  try {
+    await deleteDivemasterReview(reviewUsername.value, token)
+    editingReview.value = false
+    await refreshReviews()
+  } catch (cause) {
+    reviewActionError.value = cause instanceof Error ? cause.message : 'Could not delete review.'
+  }
+}
 
 const hasHighlights = computed(() => {
   const p = profile.value
