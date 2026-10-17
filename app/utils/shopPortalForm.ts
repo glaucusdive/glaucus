@@ -4,6 +4,7 @@ import {
 } from '~~/shared/diveBusinessTypes'
 import type { PendingLookups, PortalSubmissionPayload, ShopFormSnapshot } from '~~/shared/shopPortalPayload'
 import type { ShopLookups } from '~~/shared/shopPortalPayload'
+import { normalizeShopSocialLinks } from '~~/shared/shopSocialLinks'
 
 function emptyToNull (v: unknown) {
   if (v == null) return null
@@ -29,6 +30,7 @@ export function buildPortalSubmissionPayload (
     state: emptyToNull(snapshot.state),
     phone: emptyToNull(snapshot.phone),
     email: emptyToNull(snapshot.email),
+    social_links: normalizeShopSocialLinks(snapshot.social_links),
     type: serializeDiveBusinessTypes(typeNames),
     country_id: snapshot.country_id || null,
     region_id: snapshot.region_id || null,
@@ -50,6 +52,7 @@ export function snapshotFromPortalPayload (payload: PortalSubmissionPayload): Sh
     state: payload.state ?? null,
     phone: payload.phone ?? null,
     email: payload.email ?? null,
+    social_links: normalizeShopSocialLinks(payload.social_links),
     type: payload.type ?? null,
     country_id: payload.country_id ?? null,
     region_id: payload.region_id ?? null,
@@ -74,6 +77,9 @@ export function diffHighlightFields (
     if (String(baseline[key] ?? '') !== String(current[key] ?? '')) {
       fields.push(key)
     }
+  }
+  if (JSON.stringify(normalizeShopSocialLinks(baseline.social_links)) !== JSON.stringify(normalizeShopSocialLinks(current.social_links))) {
+    fields.push('social_links')
   }
   const arrayKeys = [
     'business_type_ids', 'course_ids', 'rental_equipment_ids', 'gas_ids', 'dive_site_ids'

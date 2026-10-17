@@ -28,3 +28,4 @@ logs
 
 # Local-only setup notes (may contain example hosts/keys; excluded from Netlify secrets scan)
 ENV_SETUP.md
+my/

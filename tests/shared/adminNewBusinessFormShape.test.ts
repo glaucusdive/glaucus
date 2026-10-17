@@ -11,6 +11,7 @@ describe('adminShopRowToNewBusinessForm', () => {
       state: 'Bay Islands',
       phone: '555-0100',
       email: 'info@example.com',
+      social_links: [{ label: 'Instagram', url: 'https://instagram.com/pearldivers' }],
       business_type_ids: ['t1'],
       country_id: 'c1',
       region_id: 'r1',
@@ -24,6 +25,7 @@ describe('adminShopRowToNewBusinessForm', () => {
     expect(form.course_ids).toEqual(['co1', 'co2'])
     expect(form.course_ids).not.toBe(row.course_ids)
     expect(form.country_id).toBe('c1')
+    expect(form.social_links).toEqual([{ label: 'Instagram', url: 'https://instagram.com/pearldivers' }])
   })
 
   it('appends name suffix for duplicate', () => {

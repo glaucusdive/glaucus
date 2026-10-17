@@ -31,6 +31,31 @@ describe('diffHighlightFields', () => {
     expect(diff).toContain('course_ids')
     expect(diff).not.toContain('phone')
   })
+
+  it('flags changes to social and review links for admin review', () => {
+    const baseline: ShopFormSnapshot = {
+      business_name: 'Shop',
+      street_address: null,
+      website_url: null,
+      city: null,
+      state: null,
+      phone: null,
+      email: null,
+      type: null,
+      country_id: null,
+      region_id: null,
+      social_links: [],
+      business_type_ids: [],
+      course_ids: [],
+      rental_equipment_ids: [],
+      gas_ids: [],
+      dive_site_ids: []
+    }
+    expect(diffHighlightFields(baseline, {
+      ...baseline,
+      social_links: [{ label: 'Google Reviews', url: 'https://maps.google.com/?cid=123' }]
+    })).toContain('social_links')
+  })
 })
 
 describe('snapshotFromPortalPayload', () => {

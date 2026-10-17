@@ -39,8 +39,28 @@ export function collectDistinctDiveSiteTypeNames (
   return out
 }
 
+export interface ShopReviewStats {
+  averageRating: number | null
+  reviewCount: number
+}
+
+export function collectShopReviewStats (
+  rows: { diveshop_id: string; average_rating?: number | string | null; review_count?: number | string | null }[]
+): Map<string, ShopReviewStats> {
+  const stats = new Map<string, ShopReviewStats>()
+  for (const row of rows) {
+    const reviewCount = Number(row.review_count ?? 0)
+    const averageRating = row.average_rating == null ? null : Number(row.average_rating)
+    stats.set(row.diveshop_id, {
+      averageRating: Number.isFinite(averageRating) ? averageRating : null,
+      reviewCount: Number.isFinite(reviewCount) ? reviewCount : 0
+    })
+  }
+  return stats
+}
+
 /**
- * Attach cardCourseNames and cardDiveSiteTypeNames to each shop object (mutates rows).
+ * Attach card metadata and review counts to each shop object (mutates rows).
  * Uses batched Supabase reads for the current result page.
  */
 export async function enrichShopsForSearchCards (
@@ -54,7 +74,7 @@ export async function enrichShopsForSearchCards (
 
   const client = createClient(supabaseUrl, supabaseKey)
 
-  const [coursesRes, sitesRes] = await Promise.all([
+  const [coursesRes, sitesRes, reviewStatsRes] = await Promise.all([
     client
       .from('diveshop_courses')
       .select('diveshop_id, courses(certification_name, course_level:course_levels(ranking, name))')
@@ -62,7 +82,8 @@ export async function enrichShopsForSearchCards (
     client
       .from('diveshop_dive_sites')
       .select('diveshop_id, dive_sites(dive_site_type:dive_site_types(name))')
-      .in('diveshop_id', ids)
+      .in('diveshop_id', ids),
+    client.rpc('get_shop_review_summaries', { p_shop_ids: ids })
   ])
 
   if (coursesRes.error) {
@@ -71,6 +92,15 @@ export async function enrichShopsForSearchCards (
   if (sitesRes.error) {
     console.warn('[enrichShopsForSearchCards] sites query:', sitesRes.error.message)
   }
+  if (reviewStatsRes.error) {
+    console.warn('[enrichShopsForSearchCards] review summary query:', reviewStatsRes.error.message)
+  }
+
+  const reviewStatsByShop = collectShopReviewStats((reviewStatsRes.data || []) as {
+    diveshop_id: string
+    average_rating?: number | string | null
+    review_count?: number | string | null
+  }[])
 
   const coursesByShop = new Map<string, string[]>()
   for (const row of (coursesRes.data || []) as {
@@ -116,6 +146,9 @@ export async function enrichShopsForSearchCards (
   for (const shop of rows) {
     const id = shop.id
     if (!id || typeof id !== 'string') continue
+    const reviewStats = reviewStatsByShop.get(id)
+    shop.reviewCount = reviewStats?.reviewCount ?? 0
+    shop.reviewRating = reviewStats?.averageRating ?? null
     shop.cardCourseNames = (coursesByShop.get(id) || []).slice(0, MAX_COURSES)
     const tset = typeSets.get(id)
     shop.cardDiveSiteTypeNames = tset

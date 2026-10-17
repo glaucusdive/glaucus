@@ -74,6 +74,7 @@ import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from '../utils/openAiC
 import { resolveOpenAiApiKey } from '../utils/openAiApiKey'
 import { tryApplySearchFilterRelax } from '../utils/searchFilterRelaxFromFollowUp'
 import { resolveBookingTargetFromPhrase } from '../utils/resolveBookingTarget'
+import { listPublishedDivemasterReviewTargets } from '../utils/resolveDivemasterReview'
 import { extractMidBookingShopSwitchPhrase, extractMidBookingLocationBrowsePhrase, userMessageWantsResumeSearchDuringBooking } from '../utils/bookingFlowEscape'
 import {
   formatActivityStyleFilterLine,
@@ -107,6 +108,8 @@ import {
   type BookingReadinessResult
 } from '../utils/bookingReadiness'
 import { logChatIntentSignal } from '../utils/logChatIntentSignal'
+import { parseReviewRequest } from '../../shared/reviewIntent'
+import { isSimpleGreeting } from '../../shared/chatGreeting'
 import {
   buildDiverFieldEditPrompt,
   clearDiverFieldOnCopy,
@@ -412,6 +415,10 @@ export interface RequestBody {
   }
   /** Phrase from last assistant entityClarifyPending (user is answering with a clarification chip). */
   pendingEntityClarifyPhrase?: string
+  /** Pending target type/name for a shop or divemaster review request. */
+  pendingReviewIntent?: unknown
+  /** Legacy pending shop-only state for requests from older clients. */
+  pendingShopReview?: boolean
   /** Echo of last search filters (client) so pagination can skip LLM filter extraction. */
   lastSearchFilters?: SearchFilters
   /** Echo of last search totalResults (client); with lastSearchFilters enables a single DB range page. */
@@ -647,7 +654,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
   try {
     const onActivityLine = options?.onActivityLine
     const body = options?.body ?? await readBody<RequestBody>(event)
-    const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill, pendingEntityClarifyPhrase, lastSearchFilters: bodyLastSearchFilters, lastSearchTotalResults: bodyLastSearchTotalResults, tripRequirements: bodyTripRequirements } = body
+    const { message, history, selectedShopId, lastShops, shopsAlreadyShownCount, bookingPayload: bodyBookingPayload, pendingBookingPayload: bodyPendingPayload, lastIntent, lastBookingShopId, lastBookingShopName, profilePrefill, pendingEntityClarifyPhrase, pendingReviewIntent, pendingShopReview, lastSearchFilters: bodyLastSearchFilters, lastSearchTotalResults: bodyLastSearchTotalResults, tripRequirements: bodyTripRequirements } = body
 
     if (!message || typeof message !== 'string') {
       throw new Error('Message is required')
@@ -682,6 +689,145 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
     const supabaseKey = config.public.supabaseKey
     const chatAiOff =
       String(config.public.disableChatAi ?? 'false').toLowerCase() !== 'false'
+
+    const reviewRequest = parseReviewRequest(message, pendingReviewIntent ?? (pendingShopReview === true))
+    if (reviewRequest) {
+      const baseResponse = {
+        success: true,
+        intent: 'search' as const,
+        shops: [],
+        totalResults: 0,
+        hasMoreResults: false,
+        filters: {} as SearchFilters
+      }
+      if (reviewRequest.cancelled) {
+        return { ...baseResponse, message: 'Okay, I will not open a review.' }
+      }
+      if (reviewRequest.pending) {
+        const prompt = reviewRequest.pending.stage === 'target-type'
+          ? 'Would you like to review a dive shop or a divemaster?'
+          : reviewRequest.pending.targetKind === 'shop'
+            ? 'Which dive shop would you like to review? Please tell me its business name.'
+            : 'Which divemaster would you like to review? Please tell me their name or username.'
+        return { ...baseResponse, message: prompt, reviewIntentPending: reviewRequest.pending }
+      }
+      if (!supabaseUrl || !supabaseKey) {
+        return { ...baseResponse, message: 'I cannot look up profiles right now. Please try again later.' }
+      }
+
+      const query = reviewRequest.targetQuery
+      if (reviewRequest.targetKind === 'divemaster') {
+        if (!query) {
+          const pending = { stage: 'target-name' as const, targetKind: 'divemaster' as const }
+          return {
+            ...baseResponse,
+            message: 'Which divemaster would you like to review? Please tell me their name or username.',
+            reviewIntentPending: pending
+          }
+        }
+
+        let targets
+        try {
+          targets = await listPublishedDivemasterReviewTargets(supabaseUrl, supabaseKey, query)
+        } catch (cause) {
+          console.error('[divemaster-review-lookup] failed', cause)
+          return { ...baseResponse, message: 'I cannot look up divemaster profiles right now. Please try again later.' }
+        }
+        if (!targets.length) {
+          return {
+            ...baseResponse,
+            message: `I could not find a published divemaster profile matching "${query}". Check the name or username and try again, or say “cancel”.`,
+            reviewIntentPending: { stage: 'target-name', targetKind: 'divemaster' as const }
+          }
+        }
+
+        const reviewActions = targets.map(target => ({
+          entityType: 'divemaster' as const,
+          entityId: target.username,
+          businessName: target.display_name || target.username,
+          href: `/divemaster/${encodeURIComponent(target.username)}`
+        }))
+        return {
+          ...baseResponse,
+          message: reviewActions.length === 1
+            ? `You can write your review for ${reviewActions[0]!.businessName} on their profile.`
+            : 'I found a few matching divemaster profiles. Choose the one you want to review.',
+          reviewActions
+        }
+      }
+
+      const isCurrentShopReference = !query || /^(?:this|the)\s+(?:dive\s+)?(?:shop|business)$/i.test(query)
+      if (isCurrentShopReference && selectedShopId) {
+        const shop = await getShopById(supabaseUrl, supabaseKey, selectedShopId)
+        if (shop) {
+          return {
+            ...baseResponse,
+            message: `You can write your review for ${shop.business_name} on its profile.`,
+            reviewActions: [{
+              shopId: shop.id,
+              businessName: shop.business_name,
+              href: `/shops/${encodeURIComponent(shop.slug || shop.id)}`
+            }]
+          }
+        }
+      }
+      if (!query || isCurrentShopReference) {
+        return {
+          ...baseResponse,
+          message: 'Which dive shop would you like to review? Please tell me its business name.',
+          reviewIntentPending: { stage: 'target-name', targetKind: 'shop' }
+        }
+      }
+
+      const target = await resolveBookingTargetFromPhrase(query, lastShops, supabaseUrl, supabaseKey)
+      if (target.kind === 'none') {
+        return {
+          ...baseResponse,
+          message: `I could not find a shop matching "${query}". Check the business name and try again, or say “cancel”.`,
+          reviewIntentPending: { stage: 'target-name', targetKind: 'shop' }
+        }
+      }
+
+      const candidates = target.kind === 'single' ? [target.shop] : target.shops
+      const reviewActions = (await Promise.all(candidates.map(async (candidate) => {
+        const shop = await getShopById(supabaseUrl, supabaseKey, candidate.id)
+        if (!shop) return null
+        return {
+          shopId: shop.id,
+          businessName: shop.business_name,
+          href: `/shops/${encodeURIComponent(shop.slug || shop.id)}`
+        }
+      }))).filter((action): action is { shopId: string; businessName: string; href: string } => !!action)
+
+      if (!reviewActions.length) {
+        return { ...baseResponse, message: 'I could not open that shop profile. Please try again later.' }
+      }
+      return {
+        ...baseResponse,
+        message: reviewActions.length === 1
+          ? `You can write your review for ${reviewActions[0]!.businessName} on its profile.`
+          : 'I found a few matching businesses. Choose the shop profile you want to review.',
+        reviewActions
+      }
+    }
+
+    if (
+      !continuingBooking &&
+      !pendingEntityClarifyPhrase &&
+      !pendingReviewIntent &&
+      !pendingShopReview &&
+      isSimpleGreeting(message)
+    ) {
+      return {
+        success: true,
+        intent: 'search' as const,
+        shops: [],
+        totalResults: 0,
+        hasMoreResults: false,
+        filters: {} as SearchFilters,
+        message: 'Hi! Where would you like to dive?'
+      }
+    }
 
     if (!continuingBooking && supabaseUrl && supabaseKey) {
       const shopInfoTurn = await tryShopInfoResponse(message, selectedShopId, lastShops, supabaseUrl, supabaseKey)
