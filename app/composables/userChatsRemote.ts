@@ -19,8 +19,6 @@ import {
   runWithSignOutChatReset
 } from '~/composables/signOutChatReset'
 
-export { isSignOutChatResetActive, SIGN_OUT_CHAT_RESET_EVENT } from '~/composables/signOutChatReset'
-
 export const chatRemoteHydrateTick = ref(0)
 
 export function requestChatRemoteHydrate () {
