@@ -6,6 +6,11 @@ import { createSupabaseClientForUser, getAuthUser, getBearerToken } from '../uti
 import { getSupabaseServiceRoleClient } from '../utils/supabaseServiceRole'
 import { runWithRetries } from '../utils/retryWithBackoff'
 import { ageFromDateOfBirth } from '../../shared/diverAge'
+import {
+  isGlaucusBookingTestEmail,
+  isValidBookingEmail,
+  parseBookingEmailList
+} from '../../shared/bookingEmailRouting'
 
 interface DiverPayload {
   name?: string
@@ -226,9 +231,10 @@ export default defineEventHandler(async (event) => {
   if (!email) {
     throw createError({ statusCode: 400, statusMessage: 'email is required' })
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (!isValidBookingEmail(email)) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid email' })
   }
+  const redirectShopNotification = isGlaucusBookingTestEmail(email)
   if (!startDate) {
     throw createError({ statusCode: 400, statusMessage: 'startDate is required' })
   }
@@ -242,6 +248,14 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   const supabaseUrl = config.public.supabaseUrl
   const supabaseKey = config.public.supabaseKey
+  const bccEmails = parseBookingEmailList(config.bookingBccEmails)
+  if (!bccEmails) {
+    throw createError({ statusCode: 500, statusMessage: 'Booking BCC email configuration is invalid' })
+  }
+  const fallbackEmails = parseBookingEmailList(config.bookingFallbackEmailsList)
+  if (redirectShopNotification && (!fallbackEmails || fallbackEmails.length === 0)) {
+    throw createError({ statusCode: 500, statusMessage: 'Booking fallback email list is not configured correctly' })
+  }
   const resendApiKey =
     (typeof config.resendApiKey === 'string' && config.resendApiKey.trim()) ||
     (typeof process.env.RESEND_API_KEY === 'string' && process.env.RESEND_API_KEY.trim()) ||
@@ -268,7 +282,7 @@ export default defineEventHandler(async (event) => {
   const shopEmail = String(shop.email).trim()
 
   const testMode = isTestModeEnabled(config.public.testMode)
-  if (testMode && !isBookingEmailAllowedInTestMode(shop.business_name)) {
+  if (!redirectShopNotification && testMode && !isBookingEmailAllowedInTestMode(shop.business_name)) {
     throw createError({
       statusCode: 403,
       statusMessage:
@@ -296,6 +310,10 @@ export default defineEventHandler(async (event) => {
 
   const diveshopSubject = `Dive trip booking request from ${name} via Glaucus`
   const diveshopText = buildDiveshopEmailBody(payload, shopName)
+  const recipientEmails = redirectShopNotification ? fallbackEmails! : [shopEmail]
+  const bccRecipients = bccEmails.filter(
+    address => !recipientEmails.some(recipient => recipient.toLowerCase() === address.toLowerCase())
+  )
 
   let toShop: { id?: string } | null
   try {
@@ -303,7 +321,8 @@ export default defineEventHandler(async (event) => {
       async () => {
         const { data, error: errShop } = await resend.emails.send({
           from: fromEmail,
-          to: [shopEmail],
+          to: recipientEmails,
+          ...(bccRecipients.length > 0 ? { bcc: bccRecipients } : {}),
           replyTo: email,
           subject: diveshopSubject,
           text: diveshopText
@@ -333,7 +352,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const submissionId = await logBookingSubmission(event, payload, {
-    shopEmailTo: shopEmail,
+    shopEmailTo: recipientEmails.join(', '),
     resendShopEmailId: typeof toShop?.id === 'string' ? toShop.id : null,
     resendUserEmailId: null
   })

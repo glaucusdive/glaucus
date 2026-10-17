@@ -15,9 +15,20 @@
           <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">
             {{ shop.business_name }}
           </h3>
-          <div v-if="shop.google_rating" class="mt-1 flex items-center gap-1">
-            <Star class="w-4 h-4 text-yellow-500 fill-yellow-500" />
-            <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ shop.google_rating }}</span>
+          <div v-if="typeof shop.reviewCount === 'number'" class="mt-1 flex items-center gap-2">
+            <span class="flex items-center gap-1" aria-label="Glaucus review rating">
+              <template v-for="(state, index) in reviewStarStates" :key="index">
+                <Star v-if="state === 'full'" class="w-4 h-4 text-yellow-500 fill-yellow-500" aria-hidden="true" />
+                <StarHalf v-else-if="state === 'half'" class="w-4 h-4 text-yellow-500 fill-yellow-500" aria-hidden="true" />
+                <Star v-else class="w-4 h-4 text-yellow-500 fill-none stroke-current" aria-hidden="true" />
+              </template>
+              <span v-if="typeof shop.reviewRating === 'number'" class="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                {{ shop.reviewRating.toFixed(1) }}
+              </span>
+            </span>
+            <span class="text-xs text-zinc-500 dark:text-zinc-400">
+              {{ shop.reviewCount > 0 ? `(${formatReviewCount(shop.reviewCount)})` : '0 reviews' }}
+            </span>
           </div>
         </div>
         <button
@@ -68,12 +79,15 @@
             {{ b }}
           </span>
         </div>
-        <!-- Slide-up detail drawer cue: small control, bottom-right -->
-        <button type="button"
-          class="self-end flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-transparent text-zinc-800 border-zinc-200  hover:border-zinc-300 dark:border-zinc-600/80 dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:border-zinc-500 dark:hover:bg-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
-          @click.stop="$emit('view-details', shop)" aria-label="View shop details">
-          <ChevronUp class="w-4 h-4" aria-hidden="true" />
-        </button>
+        <NuxtLink
+          :to="`/shops/${encodeURIComponent(shop.slug || shop.id)}`"
+          class="self-end inline-flex h-8 shrink-0 items-center gap-1.5 px-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+          :aria-label="`View ${shop.business_name} profile`"
+          @click.stop
+        >
+          <span>View profile</span>
+          <ArrowRight class="h-4 w-4" aria-hidden="true" />
+        </NuxtLink>
       </div>
     </div>
 
@@ -83,7 +97,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Star, MapPin, Globe, Phone, Mail, ChevronUp } from 'lucide-vue-next'
+import { Star, StarHalf, MapPin, Globe, Phone, Mail, ArrowRight } from 'lucide-vue-next'
 import { computeCardSearchPills } from '~~/shared/cardSearchPills'
 import { matchBadgesForShopCard } from '~~/shared/searchMatchBadges'
 import { formatShopCityState } from '~~/shared/bookShopPick'
@@ -109,13 +123,17 @@ const props = defineProps({
   }
 })
 
-defineEmits(['start-booking', 'view-details'])
+defineEmits(['start-booking'])
 
 const locationLine = computed(() => {
   const cityState = formatShopCityState(props.shop || {})
   const country = props.shop?.country?.name ?? props.shop?.country
   return [cityState, country].filter(Boolean).join(', ')
 })
+
+function formatReviewCount (count) {
+  return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(count)
+}
 
 const cardMatchBadges = computed(() =>
   matchBadgesForShopCard(
@@ -126,6 +144,22 @@ const cardMatchBadges = computed(() =>
     props.shop?.searchMatchGroup
   )
 )
+
+const reviewStarStates = computed(() => {
+  const rating = props.shop?.reviewRating
+  if (typeof rating !== 'number' || !Number.isFinite(rating) || rating <= 0) {
+    return Array.from({ length: 5 }, () => 'empty')
+  }
+
+  const roundedRating = Math.round(Math.min(5, rating) * 2) / 2
+  const fullCount = Math.floor(roundedRating)
+  const halfCount = roundedRating - fullCount >= 0.5 ? 1 : 0
+  return [
+    ...Array.from({ length: fullCount }, () => 'full'),
+    ...(halfCount ? ['half'] : []),
+    ...Array.from({ length: 5 - fullCount - halfCount }, () => 'empty')
+  ]
+})
 
 const cardPills = computed(() =>
   computeCardSearchPills({

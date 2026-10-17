@@ -68,7 +68,8 @@ Concrete instance: `server/utils/runAiSearchPostHandler.ts` (POST `/api/guided-o
 | `tryShopInfoResponse` / `shop_info:*` chips | message + `selectedShopId` / `lastShops` | read diveshop + related sites, courses, rental gear, gases, contact | Orchestrator when not in booking continuation; no LLM |
 | `tryFastPath`, `tryFastPathUnitOnly`, booking LLM | message + payload | none (until user confirms send) | Orchestrator |
 | GPT-5.5 chat (OpenAI) | conversation | external API | Orchestrator after filters / follow-ups |
-| Booking email (`/api/booking`) | final payload | sends email | User-confirmed step only (existing rules) |
+| Booking email (`/api/booking`) | final booking payload | emails business or internal fallback, records sent request, then emails user confirmation | Only after structured pre-send confirmation; see [docs/booking-email-flow.md](docs/booking-email-flow.md) |
+| Shop review save (`POST /api/shop-reviews`) | shop id, rating, user-written comment | upserts review and trusted latest booking association | Profile form after explicit user submit; server requires confirmed-email auth |
 
 ### Clarification (terminal state + structured replies)
 
@@ -109,6 +110,22 @@ Use **multiple independent checks** so no single path (LLM, fast path, profile p
 ### Retries
 
 Unchanged from global rules: idempotent reads may be retried by the client; booking send has no blind retry.
+
+### Booking email flow
+
+`POST /api/booking` is the only booking-email send path. Call it only after the booking payload is ready and the user explicitly chooses the structured `booking_presend:confirm_send` action. Do not send based on conversational wording alone, and do not blindly replay the booking submission after an ambiguous response.
+
+The endpoint validates the payload and shop, then sends the business notification first. In test mode, regular bookings may email only Dive Porter or Dive Shash. A valid user email on the exact `@glaucusdive.com` domain routes the business notification to `BOOKING_FALLBACK_EMAILS_LIST` instead; subdomains do not match. After the notification succeeds, the endpoint logs the submission and sends the user confirmation. Resend attempts are bounded to four per email; a user-confirmation failure does not undo a booking request already sent. BCC and fallback recipient configuration are server-only. See [docs/booking-email-flow.md](docs/booking-email-flow.md) for validation, recipient, failure, and ordering details.
+
+### Shop reviews from chat
+
+An explicit request to leave/write/post a shop review is routed by the orchestrator using `parseShopReviewRequest` and deterministic directory matching; it is distinct from booking pre-send review. The agent never drafts or submits review text. It returns structured `reviewActions` linking to the resolved `/shops/{slug}` profile, whose Reviews tab is the default. If no shop is specified, the client echoes `pendingShopReview` for one follow-up turn; ambiguous matches produce profile links for the candidates.
+
+`POST /api/shop-reviews` is the only create/update path. It requires an authenticated user with a confirmed email, accepts only shop ID, rating, and user-authored body, and derives booking association server-side. It links the latest successfully sent request for the same shop when either `user_id` matches or a guest request's email exactly matches the confirmed account email. A match displays **Verified Booking**; this means a request was sent, not that the trip was completed. No match remains a valid unverified review. The unique `(user_id, diveshop_id)` upsert is idempotent; the server does not trust client-supplied booking IDs or verification flags.
+
+Reviews publish immediately. The author may edit or delete their own review; admins cannot delete another user's review. Booking cancellation/completion state and post-publication moderation are not currently supported.
+
+See [docs/shop-review-flow.md](docs/shop-review-flow.md) for the implementation record, migration order, validation results, and current limitations.
 
 ### Flow (entity routing)
 

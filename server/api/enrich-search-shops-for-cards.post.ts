@@ -2,7 +2,7 @@ import { defineEventHandler, readBody } from 'h3'
 import { enrichShopsForSearchCards } from '../utils/enrichShopsForSearchCards'
 
 /**
- * Hydrates `cardCourseNames` / `cardDiveSiteTypeNames` for shop rows (e.g. restored chat cache without enrichment).
+ * Hydrates shop search-card metadata and Glaucus review summaries for restored chat cache rows.
  */
 export default defineEventHandler(async (event) => {
   const body = await readBody(event).catch(() => null) as { shops?: unknown[] } | null

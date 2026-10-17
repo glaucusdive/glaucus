@@ -20,12 +20,28 @@
           Sign in to leave a review for this dive shop.
         </p>
         <NuxtLink
-          to="/auth"
+          :to="authLink"
           class="inline-flex justify-center rounded-md border border-zinc-900 dark:border-zinc-100 py-2 px-4 text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800"
           @click="onAuthLinkClick"
         >
           Sign in
         </NuxtLink>
+      </div>
+
+      <div v-else-if="!hasVerifiedEmail" class="flex flex-col gap-3 p-2">
+        <p class="text-sm text-zinc-600 dark:text-zinc-400">
+          Confirm your email address before leaving a review. Check your inbox for the confirmation link, then refresh this page.
+        </p>
+        <Button
+          type="button"
+          variant="secondary"
+          :disabled="sendingConfirmation"
+          @click="resendConfirmationEmail"
+        >
+          {{ sendingConfirmation ? 'Sending…' : 'Resend confirmation email' }}
+        </Button>
+        <p v-if="confirmationMessage" class="text-sm text-emerald-700 dark:text-emerald-300 px-1">{{ confirmationMessage }}</p>
+        <p v-if="confirmationError" class="text-sm text-red-600 dark:text-red-400 px-1">{{ confirmationError }}</p>
       </div>
 
       <form v-else class="flex flex-col gap-2" @submit.prevent="handleSubmit">
@@ -99,6 +115,10 @@ const props = defineProps({
     type: String,
     default: 'Dive shop'
   },
+  shopSlug: {
+    type: String,
+    default: ''
+  },
   initialRating: {
     type: Number,
     default: null
@@ -133,7 +153,14 @@ const props = defineProps({
 })
 
 const { closeDrawer } = useDrawer()
-const { isSignedIn, user } = useAuth()
+const { isSignedIn, user, accessToken } = useAuth()
+const authLink = computed(() => {
+  const lookup = props.shopSlug || props.shopId
+  return `/auth?redirect=${encodeURIComponent(`/shops/${lookup}`)}`
+})
+const hasVerifiedEmail = computed(() =>
+  !!user.value?.email?.trim() && !!(user.value?.email_confirmed_at || user.value?.confirmed_at)
+)
 
 function onAuthLinkClick () {
   if (!props.embedded) {
@@ -149,6 +176,9 @@ const body = ref(props.initialBody ?? '')
 const submitting = ref(false)
 const deleting = ref(false)
 const submitError = ref('')
+const sendingConfirmation = ref(false)
+const confirmationMessage = ref('')
+const confirmationError = ref('')
 
 watch(() => props.initialRating, (v) => {
   if (typeof v === 'number' && v >= 1 && v <= 5) rating.value = v
@@ -159,9 +189,9 @@ watch(() => props.initialBody, (v) => {
 
 async function handleSubmit () {
   submitError.value = ''
-  const uid = user.value?.id
-  if (!uid) {
-    submitError.value = 'You must be signed in to submit a review.'
+  const token = accessToken.value
+  if (!token || !hasVerifiedEmail.value) {
+    submitError.value = 'Sign in with a confirmed email address to submit a review.'
     return
   }
   const trimmed = body.value.trim()
@@ -171,7 +201,7 @@ async function handleSubmit () {
   }
   submitting.value = true
   try {
-    await saveShopReview(client, props.shopId, uid, {
+    await saveShopReview(props.shopId, token, {
       rating: rating.value,
       body: trimmed
     })
@@ -185,6 +215,23 @@ async function handleSubmit () {
     submitError.value = e instanceof Error ? e.message : 'Could not save review.'
   } finally {
     submitting.value = false
+  }
+}
+
+async function resendConfirmationEmail () {
+  const email = user.value?.email?.trim()
+  if (!email) return
+  sendingConfirmation.value = true
+  confirmationMessage.value = ''
+  confirmationError.value = ''
+  try {
+    const { error } = await client.auth.resend({ type: 'signup', email })
+    if (error) throw error
+    confirmationMessage.value = 'Confirmation email sent. Follow its link, then refresh this page.'
+  } catch (e) {
+    confirmationError.value = e instanceof Error ? e.message : 'Could not resend confirmation email.'
+  } finally {
+    sendingConfirmation.value = false
   }
 }
 

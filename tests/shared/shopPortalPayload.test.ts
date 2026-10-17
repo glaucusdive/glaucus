@@ -37,6 +37,17 @@ describe('portalPayloadToShopWrite', () => {
     expect(out.business_name).toBe('Shop')
     expect('business_type_ids' in out).toBe(false)
   })
+
+  it('preserves normalized social and review links in partner writes', () => {
+    const out = portalPayloadToShopWrite({
+      business_name: 'Shop',
+      social_links: [
+        { label: ' Instagram ', url: 'https://instagram.com/shop' },
+        { label: 'Unsafe', url: 'javascript:alert(1)' }
+      ]
+    }, [])
+    expect(out.social_links).toEqual([{ label: 'Instagram', url: 'https://instagram.com/shop' }])
+  })
 })
 
 describe('isTempLookupId', () => {

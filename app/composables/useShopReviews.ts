@@ -12,28 +12,21 @@ export interface ShopReviewRow {
   rating: number
   body: string
   author_display_name: string | null
+  booking_submission_id: string | null
   created_at: string
   updated_at: string
 }
 
 export async function saveShopReview (
-  client: SupabaseClient,
   shopId: string,
-  userId: string,
+  accessToken: string,
   payload: { rating: number; body: string }
 ) {
-  const { error } = await client
-    .from('shop_reviews')
-    .upsert(
-      {
-        diveshop_id: shopId,
-        user_id: userId,
-        rating: payload.rating,
-        body: payload.body
-      },
-      { onConflict: 'user_id,diveshop_id' }
-    )
-  if (error) throw error
+  return await $fetch('/api/shop-reviews', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: { shopId, ...payload }
+  })
 }
 
 export async function deleteShopReview (client: SupabaseClient, reviewId: string) {
@@ -55,14 +48,25 @@ export function useShopReviews (shopId: MaybeRefOrGetter<string>) {
     async () => {
       const id = resolvedId.value
       if (!id) return [] as ShopReviewRow[]
-      const { data: rows, error: supabaseError } = await client
+      const fullResult = await client
         .from('shop_reviews')
-        .select('*')
+        .select('id, diveshop_id, user_id, rating, body, author_display_name, booking_submission_id, created_at, updated_at')
         .eq('diveshop_id', id)
         .order('created_at', { ascending: false })
 
-      if (supabaseError) throw supabaseError
-      return (rows ?? []) as ShopReviewRow[]
+      if (!fullResult.error) return (fullResult.data ?? []) as ShopReviewRow[]
+
+      const legacyResult = await client
+        .from('shop_reviews')
+        .select('id, diveshop_id, user_id, rating, body, author_display_name, created_at, updated_at')
+        .eq('diveshop_id', id)
+        .order('created_at', { ascending: false })
+
+      if (legacyResult.error) throw legacyResult.error
+      return (legacyResult.data ?? []).map(row => ({
+        ...row,
+        booking_submission_id: null
+      })) as ShopReviewRow[]
     },
     {
       server: false,

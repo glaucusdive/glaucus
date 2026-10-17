@@ -1,0 +1,1 @@
+../.cursor/rules/ai-agent-structure.mdc

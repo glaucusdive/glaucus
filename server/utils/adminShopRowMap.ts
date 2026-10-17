@@ -1,3 +1,5 @@
+import { normalizeShopSocialLinks, type ShopSocialLink } from '../../shared/shopSocialLinks'
+
 /** Flattened admin shop row (matches GET list / GET by id). */
 export type AdminShopListRow = {
   id: string
@@ -9,6 +11,7 @@ export type AdminShopListRow = {
   state: string | null
   phone: string | null
   email: string | null
+  social_links: ShopSocialLink[]
   type: string | null
   country_id: string | null
   region_id: string | null
@@ -33,6 +36,7 @@ export type ShopRowDb = {
   state: string | null
   phone: string | null
   email: string | null
+  social_links?: unknown
   type: string | null
   country_id: string | null
   region_id: string | null
@@ -58,6 +62,7 @@ export function mapDiveshopToAdminListRow (s: ShopRowDb): AdminShopListRow {
     state: s.state,
     phone: s.phone,
     email: s.email,
+    social_links: normalizeShopSocialLinks(s.social_links),
     type: s.type,
     country_id: s.country_id,
     region_id: s.region_id,
@@ -74,7 +79,7 @@ export function mapDiveshopToAdminListRow (s: ShopRowDb): AdminShopListRow {
 }
 
 export const ADMIN_SHOP_LIST_SELECT = `
-  id, slug, business_name, street_address, website_url, city, state, phone, email, type,
+  id, slug, business_name, street_address, website_url, city, state, phone, email, social_links, type,
   country_id, region_id, google_rating, created_at, updated_at,
   country:countries(name),
   region:regions(name),
