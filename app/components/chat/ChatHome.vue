@@ -169,7 +169,7 @@
                   <div v-if="msg.reviewActions?.length" class="flex flex-wrap gap-2">
                     <NuxtLink
                       v-for="action in msg.reviewActions"
-                      :key="action.shopId"
+                      :key="action.entityId || action.shopId || action.href"
                       :to="action.href"
                       class="inline-flex items-center gap-2 rounded-md border border-zinc-300 dark:border-zinc-600 px-3 py-2 text-sm font-medium text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700"
                     >
@@ -460,7 +460,7 @@ import {
   mapOrchestratorActivityToStatusLine
 } from '~/utils/chatLoadingStatus'
 import { shouldRouteMessageToGuidedFlow } from '~/utils/chatGuidedFlowRouting'
-import { parseShopReviewRequest } from '~~/shared/shopReviewIntent'
+import { parseReviewRequest } from '~~/shared/reviewIntent'
 import { trackOrchestratorResponseAnalytics } from '~/utils/orchestratorAnalytics'
 
 // Get route to check for initial query
@@ -1175,7 +1175,11 @@ async function backfillSearchShopCardFieldsInMessages () {
     for (const s of m.shops) {
       const id = s?.id
       if (typeof id !== 'string' || !id || seen.has(id)) continue
-      if (Array.isArray(s.cardCourseNames) && typeof s.reviewCount === 'number') continue
+      if (
+        Array.isArray(s.cardCourseNames) &&
+        typeof s.reviewCount === 'number' &&
+        (typeof s.reviewRating === 'number' || s.reviewRating === null)
+      ) continue
       seen.add(id)
       minimal.push({ ...s })
       if (minimal.length >= 40) break
@@ -1199,6 +1203,7 @@ async function backfillSearchShopCardFieldsInMessages () {
         return {
           ...s,
           reviewCount: e.reviewCount,
+          reviewRating: e.reviewRating,
           cardCourseNames: e.cardCourseNames,
           cardDiveSiteTypeNames: e.cardDiveSiteTypeNames
         }
@@ -1490,9 +1495,9 @@ onMounted(async () => {
     ? activeRecord
     : null
   const initialQuery = typeof route.query.q === 'string' ? route.query.q : null
-  const initialReviewRequest = initialQuery ? parseShopReviewRequest(initialQuery) : null
+  const initialReviewRequest = initialQuery ? parseReviewRequest(initialQuery) : null
   const cachedReviewRequestHandled = cachedState?.messages.some(m =>
-    m.role === 'assistant' && (m.reviewIntentPending === true || Array.isArray(m.reviewActions))
+    m.role === 'assistant' && (!!m.reviewIntentPending || Array.isArray(m.reviewActions))
   ) ?? false
   const flatCache = getCache()
 
@@ -2029,8 +2034,8 @@ const sendMessage = async (messageText, displayText, options = {}) => {
     })) ?? undefined
 
     const lastAssistantMessage = [...messages.value].reverse().find(m => m.role === 'assistant')
-    const pendingShopReview = lastAssistantMessage?.reviewIntentPending === true
-    const shopReviewRequest = parseShopReviewRequest(message, pendingShopReview)
+    const pendingReviewIntent = lastAssistantMessage?.reviewIntentPending
+    const reviewRequest = parseReviewRequest(message, pendingReviewIntent)
     const inBookingFlow = lastAssistantMessage?.intent === 'booking' && lastAssistantMessage?.shopId
     const lastIntent = inBookingFlow ? 'booking' : undefined
     const lastBookingShopId = inBookingFlow ? lastAssistantMessage.shopId : undefined
@@ -2093,7 +2098,7 @@ const sendMessage = async (messageText, displayText, options = {}) => {
       ...(pendingBookingPayload.value ? { pendingBookingPayload: pendingBookingPayload.value } : {}),
       ...(profilePrefillSnapshot.value ? { profilePrefill: profilePrefillSnapshot.value } : {}),
       ...(pendingEntityClarifyPhrase ? { pendingEntityClarifyPhrase } : {}),
-      ...(pendingShopReview ? { pendingShopReview: true } : {}),
+      ...(pendingReviewIntent ? { pendingReviewIntent } : {}),
       tripRequirements: tripRequirements.value
     }
 
@@ -2106,7 +2111,7 @@ const sendMessage = async (messageText, displayText, options = {}) => {
     const startsGuidedToken = trimmedMsg.toLowerCase().startsWith(GUIDED_PREFIX)
     const midGuidedWizard = isMidGuidedSearchWizard(messages.value)
 
-    const useGuidedTurn = !shopReviewRequest && shouldRouteMessageToGuidedFlow({
+    const useGuidedTurn = !reviewRequest && shouldRouteMessageToGuidedFlow({
       useGuidedSearch: useGuidedSearch.value,
       useAiSearchFirst: useAiSearchFirst.value,
       preferGuidedThisSession: preferGuidedThisSession.value,
@@ -2528,7 +2533,7 @@ const sendMessage = async (messageText, displayText, options = {}) => {
         ...(response.filters && typeof response.filters === 'object' ? { filters: response.filters } : {}),
         ...(response.entityClarifyPending ? { entityClarifyPending: response.entityClarifyPending } : {}),
         ...(Array.isArray(response.reviewActions) ? { reviewActions: response.reviewActions } : {}),
-        ...(response.reviewIntentPending === true ? { reviewIntentPending: true } : {}),
+        ...(response.reviewIntentPending ? { reviewIntentPending: response.reviewIntentPending } : {}),
         ...(searchMatchBadges.length ? { searchMatchBadges } : {}),
         ...(tripReqSnapForMsg ? { tripRequirementsSnapshot: tripReqSnapForMsg } : {})
       })

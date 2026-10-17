@@ -4,7 +4,7 @@
 
 ## Why This Changed
 
-Shop reviews already existed on public dive shop profiles. The previous experience required sign-in but did not require a confirmed email, did not associate reviews with Glaucus booking requests, and allowed admins to delete another user's review. Chat had no deterministic path for a user asking to leave a shop review. Search tiles show review counts, but those counts are not the review content.
+Shop reviews already existed on public dive shop profiles. The previous experience required sign-in but did not require a confirmed email, did not associate reviews with Glaucus booking requests, and allowed admins to delete another user's review. Chat had no deterministic path for a user asking to leave a shop review. Search tiles show the average rating and count of Glaucus-authored shop reviews; they do not mix those values with Google ratings.
 
 ## Product Decisions
 
@@ -47,7 +47,7 @@ The booking pre-send “review” is separate. `parseShopReviewRequest` delibera
 - `server/utils/shopReviewVerification.ts` — email normalization, confirmed-email predicate, safe exact-match filter escaping, and newest-booking selection.
 - `app/composables/useShopReviews.ts` and `app/components/ShopReviewForm.vue` — public review read and API-backed save; legacy-column fallback keeps public reviews readable before migration.
 - `app/components/DiveShopDetail.vue` and `app/components/CardReview.vue` — verified-booking label and author-only delete control.
-- `app/components/CardSearchResult.vue` and `server/utils/enrichShopsForSearchCards.ts` — separate review count in search tiles.
+- `app/components/CardSearchResult.vue` and `server/utils/enrichShopsForSearchCards.ts` — Glaucus review average/count in search tiles; averages are aggregated in Postgres by `get_shop_review_summaries`.
 - `supabase/migrations/20261011120000_shop_review_booking_verification.sql` — nullable booking link, backfill, index, and policy changes.
 
 ## Verification Record
@@ -61,7 +61,8 @@ The booking pre-send “review” is separate. `parseShopReviewRequest` delibera
 ## Deployment And Limitations
 
 1. Apply `supabase/migrations/20261011120000_shop_review_booking_verification.sql` before deploying the updated app. The migration has not been applied to production as part of this implementation.
-2. The profile read has a fallback for environments missing `booking_submission_id`, so existing public reviews remain readable before migration. Verified labels require the migration.
-3. The write endpoint requires `SUPABASE_SERVICE_ROLE_KEY`, already used by server-side guest booking logging. Keep it server-only.
-4. Booking submissions record successful email sends, not acceptance, cancellation, or trip completion. A request later canceled outside Glaucus can still qualify as a verified booking.
-5. Admin deletion and post-publication moderation are intentionally absent under the requested policy. There is no recovery workflow for abusive or unlawful review content.
+2. Apply `supabase/migrations/20261016130000_shop_review_summaries.sql` before deploying search-card average ratings. It exposes an invoker-security aggregate over the public `shop_reviews` read policy.
+3. The profile read has a fallback for environments missing `booking_submission_id`, so existing public reviews remain readable before migration. Verified labels require the migration.
+4. The write endpoint requires `SUPABASE_SERVICE_ROLE_KEY`, already used by server-side guest booking logging. Keep it server-only.
+5. Booking submissions record successful email sends, not acceptance, cancellation, or trip completion. A request later canceled outside Glaucus can still qualify as a verified booking.
+6. Admin deletion and post-publication moderation are intentionally absent under the requested policy. There is no recovery workflow for abusive or unlawful review content.
