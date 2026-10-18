@@ -147,6 +147,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.91.0** — Admin reviews page listing all business and divemaster reviews (2026-10-18).
 - **0.90.0** — Blog CMS author field (`author_name`), site byline/JSON-LD uses Shashwat Rajvaidya · Founder of Glaucus (2026-10-16).
 - **0.89.2** — Outline Add buttons, rename Divemaster Profile status, and use one Save action (2026-10-16).
 - **0.89.1** — Fix booking-defaults diver field columns so name, height, and weight keep their widths (2026-10-16).
