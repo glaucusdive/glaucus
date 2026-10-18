@@ -85,6 +85,20 @@ bun run preview
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
 
+## Pull requests and releases
+
+**Recommended flow** (confirm the branch rules and deploy contexts in GitHub and Netlify before treating this as enforced policy):
+
+1. Create a feature or fix branch from the latest `staging` branch.
+2. Open a pull request targeting `staging`. Run `npm test` and `npm run build`; include relevant UI checks and migration details in the PR.
+3. After review and CI pass, merge to `staging` and verify the staging deployment.
+4. When the staged changes are ready for production, open a release pull request from `staging` to `master`. Merge after review and production checks pass.
+5. For a production hotfix, branch from `master`, open a PR to `master`, then bring the fix back into `staging`.
+
+Apply database migrations to the intended Supabase environment before deploying code that depends on them. Keep staging and production project links distinct, and verify migration status in each environment.
+
+**Configuration caveat:** this workflow assumes `staging` deploys to the staging site and `master` deploys to production, but `netlify.toml` does not define branch deploy contexts. Confirm the branch mappings in Netlify and configure GitHub branch protection/required checks to match. If the team uses a different promotion path, update this section.
+
 ## Environment variables
 
 Copy a root `.env` for local dev (never commit it). Set the same names in **Netlify → Environment variables** for production.

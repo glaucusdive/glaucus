@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   collectDistinctDiveSiteTypeNames,
-  collectShopReviewCounts,
+  collectShopReviewStats,
   formatCourseCardPill
 } from '../../server/utils/enrichShopsForSearchCards'
 
@@ -18,17 +18,22 @@ describe('collectDistinctDiveSiteTypeNames', () => {
   })
 })
 
-describe('collectShopReviewCounts', () => {
-  it('maps aggregate counts and defaults shops without reviews to zero', () => {
-    const rows = [
-      { id: 'shop-a', shop_reviews: [{ count: 3 }] },
-      { id: 'shop-b', shop_reviews: [{ count: 0 }] },
-      { id: 'shop-c', shop_reviews: [] }
-    ]
-    expect(collectShopReviewCounts(rows)).toEqual(new Map([
-      ['shop-a', 3],
-      ['shop-b', 0],
-      ['shop-c', 0]
+describe('collectShopReviewStats', () => {
+  it('maps aggregate average ratings and counts without rounding the stored average', () => {
+    expect(collectShopReviewStats([
+      { diveshop_id: 'shop-a', average_rating: '4.375', review_count: '8' },
+      { diveshop_id: 'shop-b', average_rating: null, review_count: 0 }
+    ])).toEqual(new Map([
+      ['shop-a', { averageRating: 4.375, reviewCount: 8 }],
+      ['shop-b', { averageRating: null, reviewCount: 0 }]
+    ]))
+  })
+
+  it('handles invalid aggregate values', () => {
+    expect(collectShopReviewStats([
+      { diveshop_id: 'shop-a', average_rating: 'NaN', review_count: 'unknown' }
+    ])).toEqual(new Map([
+      ['shop-a', { averageRating: null, reviewCount: 0 }]
     ]))
   })
 })
