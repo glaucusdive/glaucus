@@ -16,7 +16,7 @@
 - Authors can edit or delete their own review. Reviews are immediately visible on published profiles.
 - The public endpoint omits reviewer account IDs. Direct table access is denied by RLS; reads and writes go through server endpoints.
 - Divemaster reviews do not have a booking-verification badge or booking association. This differs from shop reviews, documented in [shop-review-flow.md](shop-review-flow.md).
-- No post-publication moderation or takedown workflow is provided.
+- Admins can hide or delete any divemaster review from `/admin/reviews`. Hidden reviews are omitted from public profiles. Hide needs the `review_hidden` migration in that Supabase environment.
 
 ## API
 
