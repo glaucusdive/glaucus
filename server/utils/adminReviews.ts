@@ -1,9 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
+  ADMIN_REVIEW_HIDDEN_MIGRATION_MESSAGE,
   divemasterReviewSubjectHref,
   filterAndPaginateAdminReviews,
+  reviewTableForSubjectType,
   shopReviewSubjectHref,
   type AdminReviewRow,
+  type AdminReviewSubjectType,
   type AdminReviewsListQuery,
   type AdminReviewsListResponse
 } from '../../shared/adminReviews'
@@ -17,6 +20,7 @@ export type ShopReviewSource = {
   author_display_name: string | null
   created_at: string
   booking_submission_id?: string | null
+  hidden?: boolean | null
 }
 
 export type ShopDirectoryRow = {
@@ -32,6 +36,7 @@ export type DivemasterReviewSource = {
   body: string
   author_display_name: string | null
   created_at: string
+  hidden?: boolean | null
 }
 
 export type DivemasterDirectoryRow = {
@@ -52,19 +57,43 @@ function displayName (value: string | null | undefined, fallback: string): strin
   return trimmed || fallback
 }
 
+function errorMessage (error: unknown): string {
+  const record = asRecord(error)
+  return (
+    (typeof record?.message === 'string' ? record.message : '')
+    || (error instanceof Error ? error.message : '')
+  )
+}
+
 export function isMissingRelationError (error: unknown): boolean {
   const record = asRecord(error)
   const code = typeof record?.code === 'string' ? record.code : ''
-  const message = (
-    (typeof record?.message === 'string' ? record.message : '')
-    || (error instanceof Error ? error.message : '')
-  ).toLowerCase()
+  const message = errorMessage(error).toLowerCase()
   return (
     code === '42P01'
     || code === 'PGRST205'
     || message.includes('does not exist')
     || message.includes('could not find the table')
   )
+}
+
+export function isMissingColumnError (error: unknown, column: string): boolean {
+  const record = asRecord(error)
+  const code = typeof record?.code === 'string' ? record.code : ''
+  const message = errorMessage(error).toLowerCase()
+  const needle = column.toLowerCase()
+  if (!message.includes(needle)) return false
+  return (
+    code === '42703'
+    || code === 'PGRST204'
+    || message.includes('schema cache')
+    || message.includes('column')
+    || message.includes('does not exist')
+  )
+}
+
+function isRetryableReviewColumnError (error: unknown): boolean {
+  return isMissingColumnError(error, 'hidden') || isMissingColumnError(error, 'booking_submission_id')
 }
 
 export function mapShopReviewToAdminRow (
@@ -82,7 +111,8 @@ export function mapShopReviewToAdminRow (
     rating: Number(review.rating) || 0,
     body: review.body ?? '',
     createdAt: review.created_at,
-    verifiedBooking: Boolean(review.booking_submission_id)
+    verifiedBooking: Boolean(review.booking_submission_id),
+    hidden: Boolean(review.hidden)
   }
 }
 
@@ -104,7 +134,8 @@ export function mapDivemasterReviewToAdminRow (
     rating: Number(review.rating) || 0,
     body: review.body ?? '',
     createdAt: review.created_at,
-    verifiedBooking: false
+    verifiedBooking: false,
+    hidden: Boolean(review.hidden)
   }
 }
 
@@ -127,46 +158,97 @@ async function fetchRowsByIds<T> (
   return rows
 }
 
-async function fetchShopReviewSources (client: SupabaseClient): Promise<ShopReviewSource[]> {
-  const withVerification = 'id, diveshop_id, rating, body, author_display_name, created_at, booking_submission_id'
-  const legacy = 'id, diveshop_id, rating, body, author_display_name, created_at'
-  try {
-    return await fetchAllRows(async (from, to) => {
-      const { data, error } = await client
-        .from('shop_reviews')
-        .select(withVerification)
-        .order('created_at', { ascending: false })
-        .range(from, to)
-      return { data: data as ShopReviewSource[] | null, error }
-    })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : ''
-    if (!/booking_submission_id/i.test(message)) throw error
-    return await fetchAllRows(async (from, to) => {
-      const { data, error: legacyError } = await client
-        .from('shop_reviews')
-        .select(legacy)
-        .order('created_at', { ascending: false })
-        .range(from, to)
-      return { data: data as ShopReviewSource[] | null, error: legacyError }
-    })
+async function fetchReviewSources<T> (
+  client: SupabaseClient,
+  table: string,
+  columnSets: string[]
+): Promise<T[]> {
+  let lastError: unknown
+  for (const columns of columnSets) {
+    try {
+      return await fetchAllRows(async (from, to) => {
+        const { data, error } = await client
+          .from(table)
+          .select(columns)
+          .order('created_at', { ascending: false })
+          .range(from, to)
+        return { data: data as T[] | null, error }
+      })
+    } catch (error) {
+      lastError = error
+      if (!isRetryableReviewColumnError(error)) throw error
+    }
   }
+  throw lastError instanceof Error ? lastError : new Error(`Failed to load ${table}`)
+}
+
+async function fetchShopReviewSources (client: SupabaseClient): Promise<ShopReviewSource[]> {
+  return await fetchReviewSources<ShopReviewSource>(client, 'shop_reviews', [
+    'id, diveshop_id, rating, body, author_display_name, created_at, booking_submission_id, hidden',
+    'id, diveshop_id, rating, body, author_display_name, created_at, booking_submission_id',
+    'id, diveshop_id, rating, body, author_display_name, created_at, hidden',
+    'id, diveshop_id, rating, body, author_display_name, created_at'
+  ])
 }
 
 async function fetchDivemasterReviewSources (client: SupabaseClient): Promise<DivemasterReviewSource[]> {
   try {
-    return await fetchAllRows(async (from, to) => {
-      const { data, error } = await client
-        .from('divemaster_reviews')
-        .select('id, divemaster_user_id, rating, body, author_display_name, created_at')
-        .order('created_at', { ascending: false })
-        .range(from, to)
-      return { data: data as DivemasterReviewSource[] | null, error }
-    })
+    return await fetchReviewSources<DivemasterReviewSource>(client, 'divemaster_reviews', [
+      'id, divemaster_user_id, rating, body, author_display_name, created_at, hidden',
+      'id, divemaster_user_id, rating, body, author_display_name, created_at'
+    ])
   } catch (error) {
     if (isMissingRelationError(error)) return []
     throw error
   }
+}
+
+export async function setAdminReviewHidden (
+  client: SupabaseClient,
+  id: string,
+  subjectType: AdminReviewSubjectType,
+  hidden: boolean
+): Promise<{ id: string; hidden: boolean; subjectType: AdminReviewSubjectType }> {
+  const table = reviewTableForSubjectType(subjectType)
+  const { data, error } = await client
+    .from(table)
+    .update({ hidden })
+    .eq('id', id)
+    .select('id, hidden')
+    .maybeSingle()
+  if (error) {
+    if (isMissingColumnError(error, 'hidden')) {
+      throw new Error(ADMIN_REVIEW_HIDDEN_MIGRATION_MESSAGE)
+    }
+    throw new Error(error.message)
+  }
+  if (!data?.id) {
+    throw new Error('Review not found.')
+  }
+  return {
+    id: data.id as string,
+    hidden: Boolean((data as { hidden?: boolean }).hidden),
+    subjectType
+  }
+}
+
+export async function deleteAdminReview (
+  client: SupabaseClient,
+  id: string,
+  subjectType: AdminReviewSubjectType
+): Promise<{ id: string; deleted: true; subjectType: AdminReviewSubjectType }> {
+  const table = reviewTableForSubjectType(subjectType)
+  const { data, error } = await client
+    .from(table)
+    .delete()
+    .eq('id', id)
+    .select('id')
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!data?.id) {
+    throw new Error('Review not found.')
+  }
+  return { id: data.id as string, deleted: true, subjectType }
 }
 
 export async function listAdminReviews (

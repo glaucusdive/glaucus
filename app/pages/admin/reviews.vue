@@ -85,17 +85,47 @@
                 {{ item.reviewerName }} · {{ formatDate(item.createdAt) }}
               </p>
             </div>
-            <div class="flex shrink-0 items-center gap-0.5" :aria-label="`${item.rating} out of 5 stars`">
-              <Star
-                v-for="star in filledStars(item.rating)"
-                :key="`f-${item.id}-${star}`"
-                class="h-4 w-4 fill-current text-yellow-500"
-              />
-              <Star
-                v-for="star in emptyStars(item.rating)"
-                :key="`e-${item.id}-${star}`"
-                class="h-4 w-4 fill-none stroke-current text-zinc-300 dark:text-zinc-600"
-              />
+            <div class="ml-auto flex shrink-0 flex-col items-end gap-2">
+              <div class="flex items-center gap-0.5" :aria-label="`${item.rating} out of 5 stars`">
+                <Star
+                  v-for="star in filledStars(item.rating)"
+                  :key="`f-${item.id}-${star}`"
+                  class="h-4 w-4 fill-current text-yellow-500"
+                />
+                <Star
+                  v-for="star in emptyStars(item.rating)"
+                  :key="`e-${item.id}-${star}`"
+                  class="h-4 w-4 fill-none stroke-current text-zinc-300 dark:text-zinc-600"
+                />
+              </div>
+              <span
+                v-if="item.hidden"
+                class="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+              >
+                Hidden
+              </span>
+              <div class="flex flex-wrap justify-end gap-2">
+                <Button
+                  variant="secondary"
+                  :disabled="isActing(item)"
+                  @click="toggleHidden(item)"
+                >
+                  {{ item.hidden ? 'Unhide' : 'Hide' }}
+                </Button>
+                <Button
+                  variant="danger"
+                  :disabled="isActing(item)"
+                  @click="deleteItem(item)"
+                >
+                  Delete
+                </Button>
+              </div>
+              <p
+                v-if="actionErrorFor(item)"
+                class="max-w-52 text-right text-xs text-red-600 dark:text-red-400"
+              >
+                {{ actionErrorFor(item) }}
+              </p>
             </div>
           </div>
           <div v-if="item.verifiedBooking" class="mt-2 flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
@@ -151,6 +181,8 @@ const searchQ = ref('')
 const page = ref(1)
 const pageSize = 50
 const total = ref(0)
+const actingKey = ref('')
+const actionErrors = ref<Record<string, string>>({})
 
 const emptyMessage = computed(() => {
   if (searchQ.value.trim() || typeFilter.value !== 'all') {
@@ -182,6 +214,73 @@ function formatDate (iso: string) {
 function authHeaders (): Record<string, string> {
   if (!accessToken.value) return {}
   return { Authorization: `Bearer ${accessToken.value}` }
+}
+
+function isActing (item: AdminReviewRow): boolean {
+  return actingKey.value === adminReviewRowKey(item)
+}
+
+function actionErrorFor (item: AdminReviewRow): string {
+  return actionErrors.value[adminReviewRowKey(item)] || ''
+}
+
+function setActionError (item: AdminReviewRow, message: string) {
+  actionErrors.value = { ...actionErrors.value, [adminReviewRowKey(item)]: message }
+}
+
+function clearActionError (item: AdminReviewRow) {
+  const key = adminReviewRowKey(item)
+  if (!actionErrors.value[key]) return
+  const next = { ...actionErrors.value }
+  delete next[key]
+  actionErrors.value = next
+}
+
+function extractActionError (e: unknown): string {
+  const err = e as { data?: { statusMessage?: string }; statusMessage?: string; message?: string }
+  return err?.data?.statusMessage || err?.statusMessage || err?.message || 'Action failed'
+}
+
+async function toggleHidden (item: AdminReviewRow) {
+  if (isActing(item)) return
+  actingKey.value = adminReviewRowKey(item)
+  clearActionError(item)
+  try {
+    const res = await $fetch<{ hidden: boolean }>(`/api/admin/reviews/${encodeURIComponent(item.id)}`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: { subjectType: item.subjectType, hidden: !item.hidden }
+    })
+    item.hidden = Boolean(res.hidden)
+  } catch (e: unknown) {
+    setActionError(item, extractActionError(e))
+  } finally {
+    actingKey.value = ''
+  }
+}
+
+async function deleteItem (item: AdminReviewRow) {
+  if (isActing(item)) return
+  if (!confirm('Delete this review permanently? This cannot be undone.')) return
+  actingKey.value = adminReviewRowKey(item)
+  clearActionError(item)
+  try {
+    await $fetch(`/api/admin/reviews/${encodeURIComponent(item.id)}?type=${encodeURIComponent(item.subjectType)}`, {
+      method: 'DELETE',
+      headers: authHeaders()
+    })
+    const key = adminReviewRowKey(item)
+    items.value = items.value.filter(row => adminReviewRowKey(row) !== key)
+    total.value = Math.max(0, total.value - 1)
+    if (!items.value.length && page.value > 1 && total.value > 0) {
+      page.value -= 1
+      await loadItems()
+    }
+  } catch (e: unknown) {
+    setActionError(item, extractActionError(e))
+  } finally {
+    actingKey.value = ''
+  }
 }
 
 async function loadItems () {

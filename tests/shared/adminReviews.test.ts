@@ -4,8 +4,10 @@ import {
   divemasterReviewSubjectHref,
   filterAndPaginateAdminReviews,
   matchesAdminReviewSearch,
+  parseAdminReviewSubjectType,
   parseAdminReviewTypeFilter,
   parseAdminReviewsListQuery,
+  reviewTableForSubjectType,
   shopReviewSubjectHref,
   sortAdminReviewsNewestFirst,
   type AdminReviewRow
@@ -23,9 +25,26 @@ function row (overrides: Partial<AdminReviewRow> = {}): AdminReviewRow {
     body: 'Great shop',
     createdAt: '2026-10-17T12:00:00.000Z',
     verifiedBooking: false,
+    hidden: false,
     ...overrides
   }
 }
+
+describe('parseAdminReviewSubjectType', () => {
+  it('accepts business and divemaster and rejects other values', () => {
+    expect(parseAdminReviewSubjectType('business')).toBe('business')
+    expect(parseAdminReviewSubjectType('divemaster')).toBe('divemaster')
+    expect(parseAdminReviewSubjectType('businesses')).toBeNull()
+    expect(parseAdminReviewSubjectType(undefined)).toBeNull()
+  })
+})
+
+describe('reviewTableForSubjectType', () => {
+  it('maps subject types to review tables', () => {
+    expect(reviewTableForSubjectType('business')).toBe('shop_reviews')
+    expect(reviewTableForSubjectType('divemaster')).toBe('divemaster_reviews')
+  })
+})
 
 describe('parseAdminReviewTypeFilter', () => {
   it('accepts known filters and defaults unknown values to all', () => {

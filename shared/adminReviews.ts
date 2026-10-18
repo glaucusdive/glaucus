@@ -13,6 +13,7 @@ export type AdminReviewRow = {
   body: string
   createdAt: string
   verifiedBooking: boolean
+  hidden: boolean
 }
 
 export type AdminReviewsListQuery = {
@@ -32,6 +33,20 @@ export type AdminReviewsListResponse = {
 export function parseAdminReviewTypeFilter (value: unknown): AdminReviewTypeFilter {
   if (value === 'businesses' || value === 'divemasters' || value === 'all') return value
   return 'all'
+}
+
+export const ADMIN_REVIEW_HIDDEN_MIGRATION_MESSAGE =
+  'Hide is unavailable until supabase/migrations/20261018120000_review_hidden.sql is applied.'
+
+export function parseAdminReviewSubjectType (value: unknown): AdminReviewSubjectType | null {
+  if (value === 'business' || value === 'divemaster') return value
+  return null
+}
+
+export function reviewTableForSubjectType (
+  type: AdminReviewSubjectType
+): 'shop_reviews' | 'divemaster_reviews' {
+  return type === 'divemaster' ? 'divemaster_reviews' : 'shop_reviews'
 }
 
 export function parseAdminReviewsListQuery (query: {
