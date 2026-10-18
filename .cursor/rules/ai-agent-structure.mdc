@@ -123,7 +123,7 @@ An explicit request to leave/write/post a shop review is routed by the orchestra
 
 `POST /api/shop-reviews` is the only create/update path. It requires an authenticated user with a confirmed email, accepts only shop ID, rating, and user-authored body, and derives booking association server-side. It links the latest successfully sent request for the same shop when either `user_id` matches or a guest request's email exactly matches the confirmed account email. A match displays **Verified Booking**; this means a request was sent, not that the trip was completed. No match remains a valid unverified review. The unique `(user_id, diveshop_id)` upsert is idempotent; the server does not trust client-supplied booking IDs or verification flags.
 
-Reviews publish immediately. The author may edit or delete their own review; admins cannot delete another user's review. Booking cancellation/completion state and post-publication moderation are not currently supported.
+Reviews publish immediately. The author may edit or delete their own review. Admins hide or delete reviews from `/admin/reviews` (`PATCH`/`DELETE /api/admin/reviews/:id`, service role). Hide requires `shop_reviews.hidden` / `divemaster_reviews.hidden`. Booking cancellation/completion state is not used for verification.
 
 See [docs/shop-review-flow.md](docs/shop-review-flow.md) for the implementation record, migration order, validation results, and current limitations.
 
