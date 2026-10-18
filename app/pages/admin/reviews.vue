@@ -85,26 +85,33 @@
                 {{ item.reviewerName }} · {{ formatDate(item.createdAt) }}
               </p>
             </div>
-            <div class="ml-auto flex shrink-0 flex-col items-end gap-2">
-              <div class="flex items-center gap-0.5" :aria-label="`${item.rating} out of 5 stars`">
-                <Star
-                  v-for="star in filledStars(item.rating)"
-                  :key="`f-${item.id}-${star}`"
-                  class="h-4 w-4 fill-current text-yellow-500"
-                />
-                <Star
-                  v-for="star in emptyStars(item.rating)"
-                  :key="`e-${item.id}-${star}`"
-                  class="h-4 w-4 fill-none stroke-current text-zinc-300 dark:text-zinc-600"
-                />
-              </div>
+            <div class="flex shrink-0 items-center gap-0.5" :aria-label="`${item.rating} out of 5 stars`">
+              <Star
+                v-for="star in filledStars(item.rating)"
+                :key="`f-${item.id}-${star}`"
+                class="h-4 w-4 fill-current text-yellow-500"
+              />
+              <Star
+                v-for="star in emptyStars(item.rating)"
+                :key="`e-${item.id}-${star}`"
+                class="h-4 w-4 fill-none stroke-current text-zinc-300 dark:text-zinc-600"
+              />
+            </div>
+          </div>
+          <div v-if="item.verifiedBooking" class="mt-2 flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+            <ShieldCheck class="h-4 w-4" aria-hidden="true" />
+            <span title="A booking request was sent through Glaucus">Verified Booking</span>
+          </div>
+          <div class="mt-3 flex items-start justify-between gap-3">
+            <p class="min-w-0 flex-1 whitespace-pre-wrap text-sm leading-relaxed text-zinc-900 dark:text-white">{{ item.body }}</p>
+            <div class="flex shrink-0 flex-col items-end gap-2">
               <span
                 v-if="item.hidden"
                 class="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
               >
                 Hidden
               </span>
-              <div class="flex flex-wrap justify-end gap-2">
+              <div class="flex justify-end gap-2">
                 <Button
                   variant="secondary"
                   :disabled="isActing(item)"
@@ -128,11 +135,6 @@
               </p>
             </div>
           </div>
-          <div v-if="item.verifiedBooking" class="mt-2 flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-            <ShieldCheck class="h-4 w-4" aria-hidden="true" />
-            <span title="A booking request was sent through Glaucus">Verified Booking</span>
-          </div>
-          <p class="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-900 dark:text-white">{{ item.body }}</p>
         </li>
       </ul>
 
