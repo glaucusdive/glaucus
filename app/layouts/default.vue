@@ -195,12 +195,13 @@
         :class="isAuthRoute ? 'p-0 lg:p-2 lg:pl-0' : 'p-2 lg:pl-0'"
       >
         <div
-          class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+          class="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
           :class="isAuthRoute
             ? 'rounded-none border-0 bg-white dark:bg-black lg:rounded-xl lg:border lg:border-zinc-300 lg:bg-white dark:lg:border-zinc-700 dark:lg:bg-zinc-900'
             : 'rounded-sm border border-zinc-300 bg-white lg:rounded-xl dark:border-zinc-700 dark:bg-zinc-900'">
 
-          <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+          <!-- Auth centering is owned here. See shellPageSlotClass.ts. -->
+          <div :class="shellPageSlotClass(isAuthRoute)">
             <slot />
           </div>
 
@@ -262,6 +263,7 @@ import BookingForm from '~/components/BookingForm.vue'
 import ShopReviewForm from '~/components/ShopReviewForm.vue'
 import FeedbackFlyout from '~/components/FeedbackFlyout.vue'
 import Logo from '~/components/Logo.vue'
+import { shellPageSlotClass } from '~/utils/shellPageSlotClass'
 
 const testMode = useTestMode()
 
