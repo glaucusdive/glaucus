@@ -17,6 +17,7 @@ import { attachSearchMatchGroups } from './searchMatchGroups'
 import type { SearchMatchFacets } from '../../shared/searchResultGroups'
 import { capSparseWidenShopList, buildSearchMatchContext } from '../../shared/searchResultGroups'
 import { enrichShopsForSearchCards } from './enrichShopsForSearchCards'
+import { createDiveshopReadClient, PUBLIC_SHOP_LIST_SELECT } from './diveshopRead'
 
 /** Avoid ilike metacharacters from user input. */
 function sanitizeIlike (s: string): string {
@@ -64,7 +65,7 @@ export async function probeReferentPhrase (
       .select('id, name')
       .ilike('name', `%${phrase}%`)
       .limit(5),
-    client
+    createDiveshopReadClient(supabaseUrl)
       .from('diveshops')
       .select('id')
       .or(diveshopCityStateOrConditions(phrase))
@@ -167,9 +168,9 @@ async function fetchShopsByDiveSiteIds (
     .in('dive_site_id', siteIds)
   if (jErr || !junction?.length) return { data: [], error: jErr }
   const shopIds = [...new Set(junction.map((j: { diveshop_id: string }) => j.diveshop_id))]
-  const res = await client
+  const res = await createDiveshopReadClient(supabaseUrl)
     .from('diveshops')
-    .select('*, country:countries(name), region:regions(name)')
+    .select(PUBLIC_SHOP_LIST_SELECT)
     .in('id', shopIds)
     .order('google_rating', { ascending: false, nullsFirst: false })
     .order('business_name', { ascending: true })
@@ -439,10 +440,9 @@ export async function handleForcedEntityClarify (
   }
 
   if (kind === 'city') {
-    const client = createClient(supabaseUrl, supabaseKey)
-    const { data: rows, error: qErr } = await client
+    const { data: rows, error: qErr } = await createDiveshopReadClient(supabaseUrl)
       .from('diveshops')
-      .select('*, country:countries(name), region:regions(name)')
+      .select(PUBLIC_SHOP_LIST_SELECT)
       .or(diveshopCityStateOrConditions(phrase))
       .order('google_rating', { ascending: false, nullsFirst: false })
       .order('business_name', { ascending: true })

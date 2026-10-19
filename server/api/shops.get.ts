@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createDiveshopReadClient } from '../utils/diveshopRead'
 import {
   normalizeShopDirectorySearch,
   parseShopDirectoryPage,
@@ -19,10 +19,10 @@ export default defineEventHandler(async (event) => {
   const page = parseShopDirectoryPage(queryParams.page)
   const search = normalizeShopDirectorySearch(queryParams.q)
   const [start, end] = shopDirectoryRange(page)
-  const client = createClient(supabaseUrl, supabaseKey)
+  const client = createDiveshopReadClient(supabaseUrl)
   let query = client
     .from('diveshops')
-    .select('id, slug, business_name, type, city, state, street_address, google_rating, country:countries(name)', { count: 'exact' })
+    .select('id, slug, business_name, type, city, state, google_rating, country:countries(name)', { count: 'exact' })
 
   const filter = shopDirectorySearchFilter(search)
   if (filter) query = query.or(filter)
