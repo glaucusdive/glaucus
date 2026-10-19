@@ -454,7 +454,7 @@ export async function handleForcedEntityClarify (
         supabaseUrl,
         supabaseKey,
         { place: phrase },
-        rows as ShopRow[] | null,
+        rows as unknown as ShopRow[] | null,
         `Here are dive shops in or near ${phrase}.`
       )
     }

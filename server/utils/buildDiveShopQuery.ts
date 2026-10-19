@@ -89,7 +89,7 @@ export async function buildDiveShopQuery (
   const defaultLimit = options?.defaultLimit != null && options.defaultLimit > 0 ? options.defaultLimit : 50
   const effectiveFilters = await promotePlaceToCountryFilters(client, filters)
 
-  const applyWindow = (q: ReturnType<typeof client.from>) => {
+  const applyWindow = <T extends { range: (from: number, to: number) => T, limit: (count: number) => T }>(q: T): T => {
     if (range && range.limit > 0 && range.offset >= 0) {
       const end = range.offset + range.limit - 1
       return q.range(range.offset, end)
