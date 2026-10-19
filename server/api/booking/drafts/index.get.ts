@@ -1,5 +1,6 @@
 import { getAuthUser, createSupabaseClientForUser, getBearerToken } from '../../../utils/getAuthUser'
 import { getNextBookingStep } from '../../../utils/bookingFastPath'
+import { createDiveshopReadClient } from '../../../utils/diveshopRead'
 
 export default defineEventHandler(async (event) => {
   const user = await getAuthUser(event)
@@ -28,7 +29,7 @@ export default defineEventHandler(async (event) => {
   const shopIds = [...new Set(list.map((r: { shop_id: string }) => r.shop_id).filter(Boolean))]
   let shopNames = new Map<string, string>()
   if (shopIds.length > 0) {
-    const { data: shops } = await client
+    const { data: shops } = await createDiveshopReadClient(config.public.supabaseUrl)
       .from('diveshops')
       .select('id, business_name')
       .in('id', shopIds)
