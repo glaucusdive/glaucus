@@ -15,7 +15,7 @@ Shop reviews already existed on public dive shop profiles. The previous experien
 - Authenticated submissions match by `user_id` and `shop_id`. Guest submissions may match by exact, normalized email against the confirmed email on the signed-in account, and the same `shop_id`.
 - An unmatched review remains allowed and has no verification label.
 - **Verified Booking** means a request was sent through Glaucus. It does not mean the shop accepted the request or that the trip occurred.
-- Each user continues to have one review per shop. Authors may edit or delete their own review. Admins cannot delete another user's review; no post-publication moderation or takedown workflow is provided.
+- Each user continues to have one review per shop. Authors may edit or delete their own review. Admins can hide or delete any review from `/admin/reviews`. Hidden reviews are omitted from public profiles and search-card counts.
 - Shop review comments remain visible to signed-out visitors. Sign-in and confirmed email are required only to post.
 
 ## User Flow
@@ -35,7 +35,7 @@ The booking pre-send “review” is separate. `parseShopReviewRequest` delibera
 - The client sends only shop ID, rating, and user-authored comment. It cannot supply a booking ID or verification flag.
 - The server selects the most recent matching request. The association is recomputed on review create/update.
 - The migration backfills existing reviews when an eligible matching submission exists. Reviews with no match remain unverified.
-- Public `SELECT` access for reviews remains enabled. Direct client `INSERT` and `UPDATE` policies are removed so verification cannot be spoofed. The admin-delete policy is removed; author-owned deletion remains.
+- Public `SELECT` access for reviews remains enabled and, after the hidden-column migration, only rows with `hidden = false`. Direct client `INSERT` and `UPDATE` policies stay removed. Author-owned deletion remains; admin hide/delete uses the service-role admin APIs, not a client RLS policy.
 
 ## Implementation Map
 
@@ -66,6 +66,7 @@ The booking pre-send “review” is separate. `parseShopReviewRequest` delibera
 3. The profile read has a fallback for environments missing `booking_submission_id`, so existing public reviews remain readable before migration. Verified labels require the migration.
 4. The write endpoint requires `SUPABASE_SERVICE_ROLE_KEY`, already used by server-side guest booking logging. Keep it server-only.
 5. Booking submissions record successful email sends, not acceptance, cancellation, or trip completion. A request later canceled outside Glaucus can still qualify as a verified booking.
-6. Admin deletion and post-publication moderation are intentionally absent under the requested policy. There is no recovery workflow for abusive or unlawful review content.
+6. Admins hide or delete reviews from `/admin/reviews` (service-role APIs). Hide needs `supabase/migrations/20261018120000_review_hidden.sql` in that Supabase environment; the migration is not applied from this repo. Deleted reviews are gone; hidden reviews stay in the admin list with a Hidden badge.
+7. There is no restore UI beyond Unhide. Booking cancellation/completion state is still not used for verification.
 
 For the chronological implementation record, see [implementation-log.md](implementation-log.md).

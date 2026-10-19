@@ -1,5 +1,42 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
+
+function isMissingColumn (error: PostgrestError, column: string): boolean {
+  const message = (error.message || '').toLowerCase()
+  const needle = column.toLowerCase()
+  if (!message.includes(needle)) return false
+  return (
+    error.code === '42703'
+    || error.code === 'PGRST204'
+    || message.includes('schema cache')
+    || message.includes('column')
+    || message.includes('does not exist')
+  )
+}
+
+function isMissingBookingSubmissionColumn (error: PostgrestError): boolean {
+  return isMissingColumn(error, 'booking_submission_id') || /booking_submission_id/i.test(error.message || '')
+}
+
+async function fetchPublicShopReviews (
+  client: SupabaseClient,
+  shopId: string,
+  columns: string
+) {
+  const visible = await client
+    .from('shop_reviews')
+    .select(columns)
+    .eq('diveshop_id', shopId)
+    .eq('hidden', false)
+    .order('created_at', { ascending: false })
+  if (!visible.error) return visible
+  if (!isMissingColumn(visible.error, 'hidden')) return visible
+  return await client
+    .from('shop_reviews')
+    .select(columns)
+    .eq('diveshop_id', shopId)
+    .order('created_at', { ascending: false })
+}
 
 /**
  * Fetches shop reviews for a dive shop; supports top-3 (by rating, then date) and full list (newest first).
@@ -48,20 +85,15 @@ export function useShopReviews (shopId: MaybeRefOrGetter<string>) {
     async () => {
       const id = resolvedId.value
       if (!id) return [] as ShopReviewRow[]
-      const fullResult = await client
-        .from('shop_reviews')
-        .select('id, diveshop_id, user_id, rating, body, author_display_name, booking_submission_id, created_at, updated_at')
-        .eq('diveshop_id', id)
-        .order('created_at', { ascending: false })
+      const withVerification = 'id, diveshop_id, user_id, rating, body, author_display_name, booking_submission_id, created_at, updated_at'
+      const legacy = 'id, diveshop_id, user_id, rating, body, author_display_name, created_at, updated_at'
 
+      const fullResult = await fetchPublicShopReviews(client, id, withVerification)
       if (!fullResult.error) return (fullResult.data ?? []) as ShopReviewRow[]
 
-      const legacyResult = await client
-        .from('shop_reviews')
-        .select('id, diveshop_id, user_id, rating, body, author_display_name, created_at, updated_at')
-        .eq('diveshop_id', id)
-        .order('created_at', { ascending: false })
+      if (!isMissingBookingSubmissionColumn(fullResult.error)) throw fullResult.error
 
+      const legacyResult = await fetchPublicShopReviews(client, id, legacy)
       if (legacyResult.error) throw legacyResult.error
       return (legacyResult.data ?? []).map(row => ({
         ...row,

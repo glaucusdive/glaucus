@@ -1,4 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
+import { createDiveshopReadClient } from '../utils/diveshopRead'
+import { TEST_SHOP_IDS } from '~~/shared/testShops'
 import {
   normalizeShopDirectorySearch,
   parseShopDirectoryPage,
@@ -19,10 +20,11 @@ export default defineEventHandler(async (event) => {
   const page = parseShopDirectoryPage(queryParams.page)
   const search = normalizeShopDirectorySearch(queryParams.q)
   const [start, end] = shopDirectoryRange(page)
-  const client = createClient(supabaseUrl, supabaseKey)
+  const client = createDiveshopReadClient(supabaseUrl)
   let query = client
     .from('diveshops')
-    .select('id, slug, business_name, type, city, state, street_address, google_rating, country:countries(name)', { count: 'exact' })
+    .select('id, slug, business_name, type, city, state, google_rating, country:countries(name)', { count: 'exact' })
+    .not('id', 'in', `(${TEST_SHOP_IDS.join(',')})`)
 
   const filter = shopDirectorySearchFilter(search)
   if (filter) query = query.or(filter)
@@ -37,10 +39,21 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: 'Could not load dive shops.' })
   }
 
+  const total = count ?? 0
+  const lastPage = Math.max(1, Math.ceil(total / SHOP_DIRECTORY_PAGE_SIZE))
+  if (page > lastPage) {
+    return {
+      shops: [],
+      page,
+      pageSize: SHOP_DIRECTORY_PAGE_SIZE,
+      total
+    }
+  }
+
   return {
     shops: data ?? [],
     page,
     pageSize: SHOP_DIRECTORY_PAGE_SIZE,
-    total: count ?? 0
+    total
   }
 })

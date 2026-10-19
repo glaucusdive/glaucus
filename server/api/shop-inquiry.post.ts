@@ -34,7 +34,7 @@ function resolveNotifyEmail (): string {
     (typeof config.shopInquiryNotifyEmail === 'string' && config.shopInquiryNotifyEmail.trim()) ||
     (typeof process.env.NUXT_SHOP_INQUIRY_NOTIFY_EMAIL === 'string' &&
       process.env.NUXT_SHOP_INQUIRY_NOTIFY_EMAIL.trim()) ||
-    'shash@glaucusdive.com'
+    ''
   return raw
 }
 
@@ -76,6 +76,10 @@ export default defineEventHandler(async (event) => {
   if (!fromEmail) {
     throw createError({ statusCode: 500, statusMessage: 'Email is not configured (booking from address missing)' })
   }
+  const notifyEmail = resolveNotifyEmail()
+  if (!notifyEmail) {
+    throw createError({ statusCode: 503, statusMessage: 'Inquiry notifications are not configured' })
+  }
 
   const client = getSupabaseServiceRoleClient()
   const lookups = await fetchPortalLookups(client)
@@ -90,7 +94,7 @@ export default defineEventHandler(async (event) => {
   const resend = new Resend(resendApiKey)
   const { error } = await resend.emails.send({
     from: fromEmail,
-    to: [resolveNotifyEmail()],
+    to: [notifyEmail],
     subject: SHOP_INQUIRY_EMAIL_SUBJECT,
     text
   })
