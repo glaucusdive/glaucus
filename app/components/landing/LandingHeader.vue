@@ -4,17 +4,17 @@
     class="sticky top-0 p-5 lg:px-20 lg:py-5"
     :class="[
       mobileMenuOpen ? 'z-50 bg-[#101214]' : 'z-40',
-      onLanding && !mobileMenuOpen ? 'bg-gradient-to-b from-black to-black/0' : 'bg-[#101214]'
+      onLanding && !mobileMenuOpen ? 'bg-gradient-to-b from-black to-black/0' : ''
     ]"
   >
 
     <div class="grid grid-cols-12 gap-4 items-center">
-      <div class="col-span-6 lg:col-span-2">
+      <div class="col-span-6 lg:col-span-3">
         <NuxtLink to="/" aria-label="Glaucus home" @click="goHome">
           <Logo />
         </NuxtLink>
       </div>
-      <div class="hidden lg:col-span-7 lg:flex lg:justify-center">
+      <div class="hidden min-w-0 lg:col-span-6 lg:flex lg:w-full lg:justify-center">
         <div class="flex items-center justify-center">
           <div
             class="inline-flex items-center gap-1 rounded-full bg-zinc-800 p-1 text-zinc-100"
