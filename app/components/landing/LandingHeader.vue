@@ -11,7 +11,7 @@
           <Logo />
         </NuxtLink>
       </div>
-      <div class="hidden lg:col-span-8 lg:flex lg:justify-center">
+      <div class="hidden lg:col-span-7 lg:flex lg:justify-center">
         <div class="flex items-center justify-center">
           <div
             class="inline-flex items-center gap-1 rounded-full bg-zinc-800 p-1 text-zinc-100"
@@ -30,7 +30,7 @@
               >
                 <Search :width="12" :height="12" :stroke-width="1.5" aria-hidden="true" />
               </button>
-              <nav class="flex w-fit items-center gap-1 pr-2" aria-label="Landing sections">
+              <nav class="flex w-fit items-center gap-0 pr-1 xl:gap-1 xl:pr-2" aria-label="Landing sections">
                 <template v-for="item in resolvedNavItems" :key="item.id">
                   <NuxtLink
                     v-if="item.to"
@@ -103,15 +103,24 @@
           </div>
         </div>
       </div>
-      <div class="col-span-6 lg:col-span-2">
-        <div class="flex gap-2 items-center justify-end">
+      <div class="col-span-6 lg:col-span-3">
+        <div class="flex gap-1 sm:gap-2 items-center justify-end">
           <button
             type="button"
-            class="rounded-md h-10 px-4 py-2 text-sm font-medium uppercase bg-white text-zinc-900 hover:bg-zinc-200 whitespace-nowrap"
+            class="rounded-md h-10 px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium uppercase bg-white text-zinc-900 hover:bg-zinc-200 whitespace-nowrap"
+            aria-label="Open Chat"
             @click="goToApp"
           >
-            Open Chat
+            <span class="sm:hidden">Chat</span>
+            <span class="hidden sm:inline">Open Chat</span>
           </button>
+          <NuxtLink
+            v-if="showSignIn"
+            to="/auth"
+            class="inline-flex items-center rounded-md h-10 px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium uppercase bg-blue-500 text-white hover:bg-blue-400 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer"
+          >
+            Sign in
+          </NuxtLink>
           <button type="button"
             class="flex lg:hidden size-10 items-center justify-center rounded-md text-zinc-100  hover:bg-zinc-800 focus-visible:outline-none"
             :aria-expanded="mobileMenuOpen" aria-controls="landing-mobile-nav"
@@ -171,7 +180,7 @@ const navSearchIconWrap =
   'inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full p-2 bg-white/10'
 
 const navLinkBase = [
-  'inline-flex shrink-0 items-center rounded-full px-2.5 py-1.5',
+  'inline-flex shrink-0 items-center rounded-full px-2.5 py-1.5 lg:px-1 xl:px-2.5',
   'text-xs font-medium uppercase leading-none tracking-wide',
   '',
   navFocus
@@ -181,6 +190,8 @@ const navSearchInput =
   'h-6 min-h-0 min-w-md flex-1 border-0 bg-transparent py-0 text-xs leading-6 text-white shadow-none placeholder:text-zinc-500 focus:outline-none focus:ring-0'
 
 const route = useRoute()
+const { isSignedIn, loading: authLoading } = useAuth()
+const showSignIn = computed(() => !authLoading.value && !isSignedIn.value)
 
 const headerRootRef = ref(null)
 const mobileDrawerTopPx = ref(0)
