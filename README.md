@@ -158,6 +158,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.93.0** — Sign in button on the marketing header, to the right of Open Chat, with a shorter Chat label on small screens (2026-10-19).
 - **0.92.1** — Put admin review comments on the same row as hide and delete (2026-10-18).
 - **0.92.0** — Admin hide and delete actions on each review, under the rating (2026-10-18).
 - **0.91.1** — Center the auth form in the default layout slot so wrappers cannot top-align it (2026-10-18).
