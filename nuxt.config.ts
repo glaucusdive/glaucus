@@ -72,18 +72,18 @@ export default defineNuxtConfig({
      */
     openaiApiKey: '',
     resendApiKey: '',
-    /** From address for booking emails (e.g. "Glaucus <bookings@yourdomain.com>"). Defaults to Resend onboarding domain if unset. */
-    bookingFromEmail: process.env.BOOKING_FROM_EMAIL || 'Glaucus <onboarding@resend.dev>',
+    /** From address for booking emails (e.g. "Glaucus <bookings@yourdomain.com>"). */
+    bookingFromEmail: process.env.BOOKING_FROM_EMAIL || '',
     /** Comma-separated BCC recipients for all booking notification emails. */
-    bookingBccEmails: process.env.BOOKING_BCC_EMAILS || 'chris@glaucusdive.com,shash@glaucusdive.com,ashok@glaucusdive.com',
+    bookingBccEmails: process.env.BOOKING_BCC_EMAILS || '',
     /** Comma-separated recipients for booking notifications submitted with an @glaucusdive.com address. */
-    bookingFallbackEmailsList: process.env.BOOKING_FALLBACK_EMAILS_LIST || 'chris@glaucusdive.com,shash@glaucusdive.com,ashok@glaucusdive.com',
+    bookingFallbackEmailsList: process.env.BOOKING_FALLBACK_EMAILS_LIST || '',
     /** Comma-separated internal recipients for profile-default saves. */
-    profileUpdateNotifyEmails: process.env.PROFILE_UPDATE_NOTIFY_EMAILS || 'rshashwat@gmail.com,general@madebyporter.com',
+    profileUpdateNotifyEmails: process.env.PROFILE_UPDATE_NOTIFY_EMAILS || '',
     /** Comma-separated internal recipients when a shop owner submits portal listing changes. */
-    shopSubmissionNotifyEmails: process.env.SHOP_SUBMISSION_NOTIFY_EMAILS || 'chris@glaucusdive.com,shash@glaucusdive.com',
+    shopSubmissionNotifyEmails: process.env.SHOP_SUBMISSION_NOTIFY_EMAILS || '',
     /** Recipient for new dive shop listing inquiries from /for-businesses. */
-    shopInquiryNotifyEmail: process.env.NUXT_SHOP_INQUIRY_NOTIFY_EMAIL || 'shash@glaucusdive.com',
+    shopInquiryNotifyEmail: process.env.NUXT_SHOP_INQUIRY_NOTIFY_EMAIL || '',
     /** Required for geocode-shop API to update diveshops (bypasses RLS). Get from Supabase Dashboard > Project Settings > API. */
     supabaseServiceRoleKey: '',
     /** Linear personal API key (Settings → API). Used by /api/feedback to create issues. */
