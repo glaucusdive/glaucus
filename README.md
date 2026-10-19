@@ -158,6 +158,11 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.94.3** — Put the marketing header on the dive shop directory so section links return to the homepage (2026-10-19).
+- **0.94.2** — Restore the public dive shop directory and allow that page to be indexed (2026-10-19).
+- **0.94.1** — Remove the public dive shop directory so a full list of shop names is not on one page (2026-10-19).
+- **0.94.0** — Index individual shop and divemaster pages, and keep the shop directory and test shops out of Google (2026-10-19).
+- **0.93.3** — Show phone, email, and street address on search cards again (2026-10-19).
 - **0.93.2** — Keep the shop search query typed after the public column list replaced select star (2026-10-19).
 - **0.93.1** — Lock down dive shop reads and writes so the public database key cannot dump or edit the shop table (2026-10-19).
 - **0.93.0** — Sign in button on the marketing header, to the right of Open Chat, with a shorter Chat label on small screens (2026-10-19).

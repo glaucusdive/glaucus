@@ -141,7 +141,6 @@ interface DirectoryShop {
   type: string | null
   city: string | null
   state: string | null
-  street_address: string | null
   google_rating: number | null
   country: { name: string } | null
 }
@@ -153,16 +152,29 @@ interface ShopDirectoryResponse {
   total: number
 }
 
-useSeoMeta({
-  title: 'Browse Dive Shops | Glaucus',
-  description: 'Browse dive shops, resorts, and liveaboards in the Glaucus directory.',
-  ogTitle: 'Browse Dive Shops | Glaucus',
-  ogDescription: 'Browse dive shops, resorts, and liveaboards in the Glaucus directory.'
-})
-
 const route = useRoute()
+const siteConfig = useSiteConfig()
 const searchTerm = computed(() => normalizeShopDirectorySearch(route.query.q))
 const currentPage = computed(() => parseShopDirectoryPage(route.query.page))
+const canonicalUrl = computed(() => {
+  const origin = String(siteConfig.url || 'https://glaucusdive.com').replace(/\/$/, '')
+  if (searchTerm.value || currentPage.value <= 1) return `${origin}/for-businesses`
+  return `${origin}/for-businesses?page=${currentPage.value}`
+})
+
+useSeoMeta({
+  title: 'Browse Dive Shops',
+  description: 'Browse dive shops, resorts, and liveaboards in the Glaucus directory.',
+  ogTitle: 'Browse Dive Shops',
+  ogDescription: 'Browse dive shops, resorts, and liveaboards in the Glaucus directory.',
+  ogUrl: canonicalUrl,
+  robots: computed(() => searchTerm.value ? 'noindex, follow' : 'index, follow')
+})
+
+useHead(() => ({
+  link: [{ rel: 'canonical', href: canonicalUrl.value }]
+}))
+
 const searchInput = ref(searchTerm.value)
 
 watch(searchTerm, (value) => {

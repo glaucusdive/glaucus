@@ -1,8 +1,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-/** Columns safe to return for a list of shops. Omits notes, email, phone, and street address. */
+/** Columns returned with a search result. Includes contact fields the cards show. Omits internal notes. */
 export const PUBLIC_SHOP_LIST_SELECT =
-  'id, slug, business_name, website_url, city, state, type, google_rating, operating_hours, timezone, languages, latitude, longitude, social_links, country_id, region_id, updated_at, country:countries(name), region:regions(name)' as const
+  'id, slug, business_name, street_address, website_url, city, state, phone, email, type, google_rating, operating_hours, timezone, languages, latitude, longitude, social_links, country_id, region_id, updated_at, country:countries(name), region:regions(name)' as const
 
 /**
  * Service-role client for diveshops reads. Callers may still pass the anon key into
