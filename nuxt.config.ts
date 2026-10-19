@@ -32,7 +32,6 @@ export default defineNuxtConfig({
     '/profile/**': { robots: false },
     '/settings/**': { robots: false },
     '/community': { robots: false },
-    '/for-businesses': { robots: 'noindex, follow' },
     '/for-businesses/list-your-shop': { robots: 'noindex, follow' }
   },
   robots: {
@@ -48,6 +47,7 @@ export default defineNuxtConfig({
     urls: [
       { loc: '/' },
       { loc: '/blog' },
+      { loc: '/for-businesses' },
       { loc: '/privacy' },
       { loc: '/legal' }
     ]

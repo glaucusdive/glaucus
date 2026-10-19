@@ -149,7 +149,7 @@ import { ArrowUp, Menu, Search, Xmark } from '@iconoir/vue'
 const defaultNavItems = [
   { id: 'whatisglaucus', label: 'What is Glaucus?' },
   { id: 'feature1', label: 'For Divers' },
-  { id: 'for-businesses', label: 'For Businesses', to: '/for-businesses/list-your-shop' },
+  { id: 'for-businesses', label: 'For Businesses', to: '/for-businesses' },
   { id: 'aboutus', label: 'About us' },
   { id: 'logs', label: 'Logs' }
 ]

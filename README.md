@@ -158,6 +158,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.94.2** — Restore the public dive shop directory and allow that page to be indexed (2026-10-19).
 - **0.94.1** — Remove the public dive shop directory so a full list of shop names is not on one page (2026-10-19).
 - **0.94.0** — Index individual shop and divemaster pages, and keep the shop directory and test shops out of Google (2026-10-19).
 - **0.93.3** — Show phone, email, and street address on search cards again (2026-10-19).

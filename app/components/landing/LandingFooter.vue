@@ -9,7 +9,7 @@
           <nav class="flex flex-col gap-x-4 gap-y-2 md:flex-row md:flex-wrap">
             <NuxtLink to="/#whatisglaucus">What is Glaucus?</NuxtLink>
             <NuxtLink to="/#feature1">For Divers</NuxtLink>
-            <NuxtLink to="/for-businesses/list-your-shop" target="_blank" rel="noopener noreferrer">For Businesses</NuxtLink>
+            <NuxtLink to="/for-businesses" target="_blank" rel="noopener noreferrer">For Businesses</NuxtLink>
             <NuxtLink to="/#aboutus">About Us</NuxtLink>
             <NuxtLink to="/#logs">Logs</NuxtLink>
             <NuxtLink to="/privacy">Privacy Policy</NuxtLink>

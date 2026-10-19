@@ -42,7 +42,8 @@ As of 2026-10-19:
 
 - Public shop pages are `/shops/[slug]`. Titles and descriptions come from `app/utils/shopSeo.ts`. The canonical URL is the absolute slug URL. A legacy `/shops/{uuid}` URL 301s to the slug.
 - Shop profile pages are indexable (`index, follow`). Seeded test shops Dive Porter and Dive Shash (`shared/testShops.ts`) are `noindex, nofollow` and are left out of the sitemap.
-- There is no public page that lists shops. `/for-businesses` redirects to the list-your-shop inquiry form. `/shops` redirects home. Both inquiry URLs are `noindex, follow` and are not in the sitemap. Shop names and contact details stay on each shop’s own page, in chat, and on search cards.
+- `/for-businesses` is the public dive shop directory and is indexable. It is in the sitemap. Search URLs with `?q=` are `noindex, follow`. `/for-businesses/list-your-shop` stays `noindex, follow` and out of the sitemap. Bare `/shops` redirects to the directory.
+- The directory lists name, location, and rating. Phone, email, street address, and notes stay on each shop’s own page, in chat, and on search cards.
 - `robots.txt` does not disallow `/shops/` or `/divemaster/`. It still disallows `/api/`.
 - The sitemap lists fixed routes plus blog posts, shop slugs, and published divemaster usernames. Sitemap source routes require the `x-sitemap-key` header.
 - Each shop page renders a short server-side list of nearby shop links.
