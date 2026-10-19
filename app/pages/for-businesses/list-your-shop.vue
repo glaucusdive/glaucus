@@ -20,14 +20,13 @@
       <div v-else-if="submitted" class="py-16 text-center">
         <h1 class="text-xl font-medium text-white">Thanks — we received your inquiry</h1>
         <p class="mt-2 text-sm text-zinc-400">Our team will review your business details and follow up if needed.</p>
-        <NuxtLink to="/for-businesses" class="mt-6 inline-flex text-sm text-white underline underline-offset-4 hover:text-zinc-300">
-          Browse dive shops
+        <NuxtLink to="/" class="mt-6 inline-flex text-sm text-white underline underline-offset-4 hover:text-zinc-300">
+          Back to Glaucus
         </NuxtLink>
       </div>
       <div v-else>
         <div class="mb-8">
-          <NuxtLink to="/for-businesses" class="text-sm text-zinc-400 hover:text-white">← Browse dive shops</NuxtLink>
-          <h1 class="mt-5 text-xl font-medium">List your dive shop on Glaucus</h1>
+          <h1 class="text-xl font-medium">List your dive shop on Glaucus</h1>
           <p class="mt-1 text-sm text-zinc-400">
             Submit your business details below. Our team will evaluate your listing for Glaucus.
           </p>
