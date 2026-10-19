@@ -1,3 +1,6 @@
+-- this migration is not applied 
+-- supabase migration repair 20261019013249 --status applied --linked
+
 drop extension if exists "pg_net";
 
 drop trigger if exists "trg_divemaster_reviews_set_author" on "public"."divemaster_reviews";
