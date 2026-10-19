@@ -1,6 +1,6 @@
 <template>
-  <!-- Centering is on the default layout slot (shellPageSlotClass). Do not add flex-1 / place-items-center here. -->
-  <section class="flex w-full max-w-md flex-col gap-6 p-4">
+  <div class="grid min-h-0 flex-1 place-items-center overflow-y-auto p-4">
+    <section class="flex w-full max-w-md flex-col gap-6">
       <h1 class="text-2xl font-bold text-zinc-900 dark:text-white text-center">
         {{ pageTitle }}
       </h1>
@@ -223,7 +223,8 @@
           </NuxtLink>
         </p>
       </template>
-  </section>
+    </section>
+  </div>
 </template>
 
 <script setup lang="ts">

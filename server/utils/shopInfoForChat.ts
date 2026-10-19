@@ -1,4 +1,4 @@
-import { createDiveshopReadClient } from './diveshopRead'
+import { createClient } from '@supabase/supabase-js'
 
 /** Stable chip values; client sends these as the user message. */
 export const SHOP_INFO_PREFIX = 'shop_info:'
@@ -121,8 +121,7 @@ export async function fetchShopInfoBundle (
   supabaseKey: string,
   shopId: string
 ): Promise<ShopInfoBundle | null> {
-  const client = createDiveshopReadClient(supabaseUrl)
-  void supabaseKey
+  const client = createClient(supabaseUrl, supabaseKey)
   const { data, error } = await client
     .from('diveshops')
     .select(`

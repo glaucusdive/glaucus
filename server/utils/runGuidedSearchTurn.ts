@@ -1,4 +1,4 @@
-import { createDiveshopReadClient, PUBLIC_SHOP_LIST_SELECT } from './diveshopRead'
+import { createClient } from '@supabase/supabase-js'
 import type { GuidedSearchState } from '../../shared/guidedFlow'
 import {
   GuidedCommands,
@@ -281,11 +281,10 @@ async function runCourseBranchQuery (
 ): Promise<{ shops: unknown[]; total: number }> {
   const shopIds = await shopIdsForCourseSearch(supabaseUrl, supabaseKey, courseSearch)
   if (!shopIds.length) return { shops: [], total: 0 }
-  const client = createDiveshopReadClient(supabaseUrl)
-  void supabaseKey
+  const client = createClient(supabaseUrl, supabaseKey)
   const { data, error } = await client
     .from('diveshops')
-    .select(PUBLIC_SHOP_LIST_SELECT)
+    .select('*, country:countries(name), region:regions(name)')
     .in('id', shopIds.slice(0, 80))
     .order('google_rating', { ascending: false, nullsFirst: false })
     .order('business_name', { ascending: true })
@@ -320,15 +319,14 @@ async function fetchShopsFullRowsByIds (
   ids: string[]
 ): Promise<unknown[]> {
   if (!ids.length) return []
-  const client = createDiveshopReadClient(supabaseUrl)
-  void supabaseKey
+  const client = createClient(supabaseUrl, supabaseKey)
   const chunk = 80
   const rows: unknown[] = []
   for (let i = 0; i < ids.length; i += chunk) {
     const slice = ids.slice(i, i + chunk)
     const { data, error } = await client
       .from('diveshops')
-      .select(PUBLIC_SHOP_LIST_SELECT)
+      .select('*, country:countries(name), region:regions(name)')
       .in('id', slice)
     if (!error && data?.length) rows.push(...(data as unknown[]))
   }

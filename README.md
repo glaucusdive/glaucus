@@ -20,14 +20,6 @@ yarn install
 bun install
 ```
 
-Create your local environment file from the committed template before starting Nuxt:
-
-```bash
-cp .env.example .env
-```
-
-Set `NUXT_PUBLIC_SUPABASE_URL` and `NUXT_PUBLIC_SUPABASE_ANON_KEY` in `.env` to a local or development Supabase project. The example disables chat AI and leaves email, analytics, and feedback integrations unconfigured so local development does not call paid services or send notifications by default. Add credentials only for the features you are testing.
-
 ## Development Server
 
 Start the development server on `http://localhost:3000`:
@@ -109,29 +101,26 @@ Apply database migrations to the intended Supabase environment before deploying 
 
 ## Environment variables
 
-The root [.env.example](.env.example) lists the app's supported local settings. Copy it to `.env` as shown above; `.env` is gitignored and must never be committed. Configure production values in **Netlify → Environment variables**, not in source files.
+Copy a root `.env` for local dev (never commit it). Set the same names in **Netlify → Environment variables** for production.
 
 | Variable | Purpose |
 |----------|---------|
-| `NUXT_PUBLIC_SUPABASE_URL` | Supabase project URL; use the local API URL from `supabase start` or a development project |
-| `NUXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/publishable key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-only key for privileged database routes; never expose it to client code |
-| `NUXT_OPENAI_API_KEY` or `OPENAI_API_KEY` | Optional GPT-5.5 chat/NLU; keep chat AI disabled until configured |
-| `NUXT_PUBLIC_DISABLE_CHAT_AI` | Set `true` to disable model calls locally; defaults to `true` in `.env.example` |
-| `NUXT_PUBLIC_AI_SEARCH_FIRST` | Set `true` to use AI-first search; requires chat AI and an OpenAI key |
-| `NUXT_PUBLIC_USE_GUIDED_SEARCH` | Use deterministic guided search when `true` |
-| `NUXT_PUBLIC_BOOKING_SIGNUP_TIMING` | `before_send`, `after_send`, or `off` |
-| `NUXT_PUBLIC_TEST_MODE` | `true` for the local test-mode shell and booking restrictions; set `false` for production |
-| `RESEND_API_KEY`, `BOOKING_FROM_EMAIL` | Optional transactional email provider and verified sender |
-| `BOOKING_BCC_EMAILS`, `BOOKING_FALLBACK_EMAILS_LIST` | Optional booking notification recipients; set only to addresses appropriate for the environment |
-| `PROFILE_UPDATE_NOTIFY_EMAILS`, `SHOP_SUBMISSION_NOTIFY_EMAILS` | Optional internal notification recipients; blank disables these notifications |
-| `NUXT_SHOP_INQUIRY_NOTIFY_EMAIL` | Recipient for business inquiry notifications; required to test that email flow |
-| `NUXT_LINEAR_API_KEY`, `NUXT_LINEAR_TEAM_ID`, `NUXT_LINEAR_FEEDBACK_STATE_ID` | Optional Linear integration for feedback submissions |
-| `POSTHOG_PERSONAL_API_KEY`, `POSTHOG_PROJECT_ID`, `POSTHOG_HOST` | Optional server-side PostHog admin analytics |
-| `NUXT_PUBLIC_POSTHOG_ENABLED`, `NUXT_PUBLIC_POSTHOG_KEY`, `NUXT_PUBLIC_POSTHOG_HOST` | Optional client-side PostHog analytics; disabled by default |
-| `NUXT_PUBLIC_POSTHOG_MARK_TEST_TRAFFIC` | Optional `true` to tag events `test_mode` |
-| `NUXT_PUBLIC_GA4_ENABLED`, `NUXT_PUBLIC_GA4_ID` | Optional Google Analytics 4; disabled by default |
-| `NUXT_SITE_URL` | Canonical site URL; use `http://localhost:3000` for local development |
+| `NUXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NUXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `NUXT_OPENAI_API_KEY` or `OPENAI_API_KEY` | GPT-5.5 chat / NLU |
+| `RESEND_API_KEY` | Booking emails |
+| `BOOKING_FROM_EMAIL` | Optional verified sender |
+| `NUXT_PUBLIC_POSTHOG_ENABLED` | `true` on prod only |
+| `NUXT_PUBLIC_POSTHOG_KEY` | PostHog project token (`phc_…`) |
+| `NUXT_PUBLIC_POSTHOG_HOST` | Ingest host from PostHog project settings |
+| `NUXT_PUBLIC_POSTHOG_MARK_TEST_TRAFFIC` | Optional `true` to tag events `test_mode` (only if dashboards exclude test traffic) |
+| `POSTHOG_PERSONAL_API_KEY` | Server-only PostHog personal API key for admin dashboard HogQL queries |
+| `POSTHOG_PROJECT_ID` | PostHog project id (numeric) for Query API |
+| `POSTHOG_HOST` | PostHog app host for Query API (default `https://us.posthog.com`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Required for admin dashboard counts and guest booking logs |
+| `NUXT_PUBLIC_GA4_ENABLED` | `true` on prod only — Google Analytics 4 pageviews (for Search Console linking) |
+| `NUXT_PUBLIC_GA4_ID` | GA4 measurement ID (`G-…` from Google Admin → Data streams) |
+| `NUXT_PUBLIC_TEST_MODE` | `false` on prod to turn off app test mode (amber shell, booking whitelist) |
 
 PostHog dashboards: [docs/posthog-dashboard-prompts.md](docs/posthog-dashboard-prompts.md). GA4 runs alongside PostHog; link the GA4 property to Search Console in Google Admin after deploy. Supabase CLI: `supabase login`, `supabase link`, `supabase db push` (use the glaucus account; omit `--profile glaucus`).
 
@@ -158,18 +147,6 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
-- **0.94.3** — Put the marketing header on the dive shop directory so section links return to the homepage (2026-10-19).
-- **0.94.2** — Restore the public dive shop directory and allow that page to be indexed (2026-10-19).
-- **0.94.1** — Remove the public dive shop directory so a full list of shop names is not on one page (2026-10-19).
-- **0.94.0** — Index individual shop and divemaster pages, and keep the shop directory and test shops out of Google (2026-10-19).
-- **0.93.3** — Show phone, email, and street address on search cards again (2026-10-19).
-- **0.93.2** — Keep the shop search query typed after the public column list replaced select star (2026-10-19).
-- **0.93.1** — Lock down dive shop reads and writes so the public database key cannot dump or edit the shop table (2026-10-19).
-- **0.93.0** — Sign in button on the marketing header, to the right of Open Chat, with a shorter Chat label on small screens (2026-10-19).
-- **0.92.1** — Put admin review comments on the same row as hide and delete (2026-10-18).
-- **0.92.0** — Admin hide and delete actions on each review, under the rating (2026-10-18).
-- **0.91.1** — Center the auth form in the default layout slot so wrappers cannot top-align it (2026-10-18).
-- **0.91.0** — Admin reviews page listing all business and divemaster reviews (2026-10-18).
 - **0.90.0** — Blog CMS author field (`author_name`), site byline/JSON-LD uses Shashwat Rajvaidya · Founder of Glaucus (2026-10-16).
 - **0.89.2** — Outline Add buttons, rename Divemaster Profile status, and use one Save action (2026-10-16).
 - **0.89.1** — Fix booking-defaults diver field columns so name, height, and weight keep their widths (2026-10-16).

@@ -32,22 +32,18 @@ export default defineNuxtConfig({
     '/profile/**': { robots: false },
     '/settings/**': { robots: false },
     '/community': { robots: false },
-    '/for-businesses/list-your-shop': { robots: 'noindex, follow' }
+    '/shops/**': { robots: false }
   },
   robots: {
-    disallow: ['/admin/', '/partner/', '/auth/', '/profile/', '/settings/', '/community', '/api/']
+    disallow: ['/admin/', '/partner/', '/auth/', '/profile/', '/settings/', '/community', '/shops/', '/api/']
   },
   sitemap: {
     excludeAppSources: true,
-    sources: [
-      ['/api/__sitemap__/blog', { headers: { 'x-sitemap-key': process.env.NUXT_SITEMAP_SOURCE_KEY || '' } }],
-      ['/api/__sitemap__/shops', { headers: { 'x-sitemap-key': process.env.NUXT_SITEMAP_SOURCE_KEY || '' } }],
-      ['/api/__sitemap__/divemasters', { headers: { 'x-sitemap-key': process.env.NUXT_SITEMAP_SOURCE_KEY || '' } }]
-    ],
+    sources: ['/api/__sitemap__/blog', '/api/__sitemap__/shops'],
     urls: [
       { loc: '/' },
-      { loc: '/blog' },
       { loc: '/for-businesses' },
+      { loc: '/blog' },
       { loc: '/privacy' },
       { loc: '/legal' }
     ]
@@ -76,22 +72,20 @@ export default defineNuxtConfig({
      */
     openaiApiKey: '',
     resendApiKey: '',
-    /** From address for booking emails (e.g. "Glaucus <bookings@yourdomain.com>"). */
-    bookingFromEmail: process.env.BOOKING_FROM_EMAIL || '',
+    /** From address for booking emails (e.g. "Glaucus <bookings@yourdomain.com>"). Defaults to Resend onboarding domain if unset. */
+    bookingFromEmail: process.env.BOOKING_FROM_EMAIL || 'Glaucus <onboarding@resend.dev>',
     /** Comma-separated BCC recipients for all booking notification emails. */
-    bookingBccEmails: process.env.BOOKING_BCC_EMAILS || '',
+    bookingBccEmails: process.env.BOOKING_BCC_EMAILS || 'chris@glaucusdive.com,shash@glaucusdive.com,ashok@glaucusdive.com',
     /** Comma-separated recipients for booking notifications submitted with an @glaucusdive.com address. */
-    bookingFallbackEmailsList: process.env.BOOKING_FALLBACK_EMAILS_LIST || '',
+    bookingFallbackEmailsList: process.env.BOOKING_FALLBACK_EMAILS_LIST || 'chris@glaucusdive.com,shash@glaucusdive.com,ashok@glaucusdive.com',
     /** Comma-separated internal recipients for profile-default saves. */
-    profileUpdateNotifyEmails: process.env.PROFILE_UPDATE_NOTIFY_EMAILS || '',
+    profileUpdateNotifyEmails: process.env.PROFILE_UPDATE_NOTIFY_EMAILS || 'rshashwat@gmail.com,general@madebyporter.com',
     /** Comma-separated internal recipients when a shop owner submits portal listing changes. */
-    shopSubmissionNotifyEmails: process.env.SHOP_SUBMISSION_NOTIFY_EMAILS || '',
+    shopSubmissionNotifyEmails: process.env.SHOP_SUBMISSION_NOTIFY_EMAILS || 'chris@glaucusdive.com,shash@glaucusdive.com',
     /** Recipient for new dive shop listing inquiries from /for-businesses. */
-    shopInquiryNotifyEmail: process.env.NUXT_SHOP_INQUIRY_NOTIFY_EMAIL || '',
+    shopInquiryNotifyEmail: process.env.NUXT_SHOP_INQUIRY_NOTIFY_EMAIL || 'shash@glaucusdive.com',
     /** Required for geocode-shop API to update diveshops (bypasses RLS). Get from Supabase Dashboard > Project Settings > API. */
     supabaseServiceRoleKey: '',
-    /** Secret for /api/__sitemap__/* . Set NUXT_SITEMAP_SOURCE_KEY at build and runtime so /sitemap.xml can call the sources. */
-    sitemapSourceKey: '',
     /** Linear personal API key (Settings → API). Used by /api/feedback to create issues. */
     linearApiKey: '',
     /** Linear team UUID (e.g. Glaucus team). */

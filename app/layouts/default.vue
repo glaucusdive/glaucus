@@ -114,10 +114,6 @@
                   <CircleUser class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
                   Divemasters
                 </NavLink>
-                <NavLink to="/admin/reviews" @click="handleCloseMobileMenu">
-                  <Star class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
-                  Reviews
-                </NavLink>
                 <NavLink
                   to="/admin/dive-sites"
                   @click="handleCloseMobileMenu"
@@ -195,13 +191,12 @@
         :class="isAuthRoute ? 'p-0 lg:p-2 lg:pl-0' : 'p-2 lg:pl-0'"
       >
         <div
-          class="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+          class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
           :class="isAuthRoute
             ? 'rounded-none border-0 bg-white dark:bg-black lg:rounded-xl lg:border lg:border-zinc-300 lg:bg-white dark:lg:border-zinc-700 dark:lg:bg-zinc-900'
             : 'rounded-sm border border-zinc-300 bg-white lg:rounded-xl dark:border-zinc-700 dark:bg-zinc-900'">
 
-          <!-- Auth centering is owned here. See shellPageSlotClass.ts. -->
-          <div :class="shellPageSlotClass(isAuthRoute)">
+          <div class="flex min-h-0 min-w-0 flex-1 flex-col">
             <slot />
           </div>
 
@@ -250,8 +245,7 @@ import {
   BarChart3,
   LineChart,
   Search,
-  MapPin,
-  Star
+  MapPin
 } from 'lucide-vue-next'
 import { useDrawer } from '~/composables/useDrawer'
 import { useAuth } from '~/composables/useAuth'
@@ -263,7 +257,6 @@ import BookingForm from '~/components/BookingForm.vue'
 import ShopReviewForm from '~/components/ShopReviewForm.vue'
 import FeedbackFlyout from '~/components/FeedbackFlyout.vue'
 import Logo from '~/components/Logo.vue'
-import { shellPageSlotClass } from '~/utils/shellPageSlotClass'
 
 const testMode = useTestMode()
 

@@ -1,5 +1,5 @@
+import { createClient } from '@supabase/supabase-js'
 import { collectShopIdsForActivityTokens } from './collectShopIdsForActivityTokens'
-import { createDiveshopReadClient, PUBLIC_SHOP_LIST_SELECT } from './diveshopRead'
 import { coalesceSynonymActivityTokens } from './interpretUserTurn'
 import { promotePlaceToCountryFilters } from './resolveSearchCountryIds'
 import { collectWidePlaceShopIds } from './widePlaceShopSearch'
@@ -84,12 +84,11 @@ export async function buildDiveShopQuery (
   range?: DiveShopQueryRange | null,
   options?: BuildDiveShopQueryOptions | null
 ) {
-  const client = createDiveshopReadClient(supabaseUrl)
-  void supabaseKey
+  const client = createClient(supabaseUrl, supabaseKey)
   const defaultLimit = options?.defaultLimit != null && options.defaultLimit > 0 ? options.defaultLimit : 50
   const effectiveFilters = await promotePlaceToCountryFilters(client, filters)
 
-  const applyWindow = <T extends { range: (from: number, to: number) => T, limit: (count: number) => T }>(q: T): T => {
+  const applyWindow = (q: ReturnType<typeof client.from>) => {
     if (range && range.limit > 0 && range.offset >= 0) {
       const end = range.offset + range.limit - 1
       return q.range(range.offset, end)
@@ -104,7 +103,7 @@ export async function buildDiveShopQuery (
     if (!countryPat) {
       const emptyBase = client
         .from('diveshops')
-        .select(PUBLIC_SHOP_LIST_SELECT)
+        .select('*, country:countries(name), region:regions(name)')
         .in('country_id', ['00000000-0000-0000-0000-000000000000'])
       return await applyWindow(emptyBase)
     }
@@ -115,7 +114,7 @@ export async function buildDiveShopQuery (
       .ilike('name', countryIlike)
     resolvedCountryIds = (countries || []).map(c => c.id).filter(Boolean)
     if (resolvedCountryIds.length === 0) {
-      const emptyBase = client.from('diveshops').select(PUBLIC_SHOP_LIST_SELECT).in('country_id', ['00000000-0000-0000-0000-000000000000'])
+      const emptyBase = client.from('diveshops').select('*, country:countries(name), region:regions(name)').in('country_id', ['00000000-0000-0000-0000-000000000000'])
       return await applyWindow(emptyBase)
     }
   }
@@ -127,14 +126,14 @@ export async function buildDiveShopQuery (
       diveSiteCountryIds: resolvedCountryIds ?? undefined
     })
     if (activityIdFilter.length === 0) {
-      const emptyBase = client.from('diveshops').select(PUBLIC_SHOP_LIST_SELECT).in('country_id', ['00000000-0000-0000-0000-000000000000'])
+      const emptyBase = client.from('diveshops').select('*, country:countries(name), region:regions(name)').in('country_id', ['00000000-0000-0000-0000-000000000000'])
       return await applyWindow(emptyBase)
     }
   }
 
   let query = client
     .from('diveshops')
-    .select(PUBLIC_SHOP_LIST_SELECT)
+    .select('*, country:countries(name), region:regions(name)')
 
   if (activityIdFilter) {
     query = query.in('id', activityIdFilter)
@@ -150,7 +149,7 @@ export async function buildDiveShopQuery (
     if (!regionPat) {
       const emptyBase = client
         .from('diveshops')
-        .select(PUBLIC_SHOP_LIST_SELECT)
+        .select('*, country:countries(name), region:regions(name)')
         .in('country_id', ['00000000-0000-0000-0000-000000000000'])
       return await applyWindow(emptyBase)
     }
@@ -171,7 +170,7 @@ export async function buildDiveShopQuery (
       if (!wideIds.length) {
         const emptyBase = client
           .from('diveshops')
-          .select(PUBLIC_SHOP_LIST_SELECT)
+          .select('*, country:countries(name), region:regions(name)')
           .in('country_id', ['00000000-0000-0000-0000-000000000000'])
         return await applyWindow(emptyBase)
       }
@@ -181,7 +180,7 @@ export async function buildDiveShopQuery (
       if (!locSafe) {
         const emptyBase = client
           .from('diveshops')
-          .select(PUBLIC_SHOP_LIST_SELECT)
+          .select('*, country:countries(name), region:regions(name)')
           .in('country_id', ['00000000-0000-0000-0000-000000000000'])
         return await applyWindow(emptyBase)
       }

@@ -1,5 +1,4 @@
 import { getAuthUser, createSupabaseClientForUser, getBearerToken } from '../../../utils/getAuthUser'
-import { createDiveshopReadClient } from '../../../utils/diveshopRead'
 
 export default defineEventHandler(async (event) => {
   const user = await getAuthUser(event)
@@ -34,7 +33,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const shopId = row.shop_id as string
-  const { data: shopRow } = await createDiveshopReadClient(config.public.supabaseUrl)
+  const { data: shopRow } = await client
     .from('diveshops')
     .select('business_name')
     .eq('id', shopId)

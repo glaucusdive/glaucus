@@ -258,19 +258,6 @@
                 </div>
               </section>
             </div>
-            <section v-if="nearbyShopLinks.length" class="flex flex-col gap-2 p-2 sm:p-4" aria-label="Nearby dive shops">
-              <h2 class="text-sm font-semibold text-zinc-900 dark:text-white">Nearby dive shops</h2>
-              <ul class="flex flex-col gap-2">
-                <li v-for="shop in nearbyShopLinks" :key="shop.id">
-                  <NuxtLink
-                    :to="`/shops/${shop.slug}`"
-                    class="text-sm font-medium text-blue-700 hover:underline dark:text-blue-300"
-                  >
-                    {{ shop.business_name }}
-                  </NuxtLink>
-                </li>
-              </ul>
-            </section>
           </div>
         </div>
         <!-- Sidebar -->
@@ -376,7 +363,6 @@ import { useDemoMode } from '~/composables/useDemoMode'
 import { deleteShopReview } from '~/composables/useShopReviews'
 import { formatOperatingHours, demoHours, demoLanguages, demoDescription } from '~/utils/formatHours'
 import { formatShopCityState } from '~~/shared/bookShopPick'
-import { isTestShopId } from '~~/shared/testShops'
 import { buildShopProfileUrl } from '~~/shared/shopProfileUrl'
 import { normalizeShopSocialLinks } from '~~/shared/shopSocialLinks'
 
@@ -470,11 +456,6 @@ const visibleTabs = computed(() => tabs.filter(tab => showNearbyTab || tab.id !=
 
 // Fetch dive shop (by public slug or legacy UUID)
 const { shopData, nearbyShops, pending, error } = useShopDetail(props.shopLookup)
-const nearbyShopLinks = computed(() =>
-  (nearbyShops.value || [])
-    .filter(shop => shop.slug && !isTestShopId(shop.id))
-    .slice(0, 8)
-)
 
 const bookingCtaAnchor = ref(null)
 

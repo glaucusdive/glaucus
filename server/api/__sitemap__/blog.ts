@@ -1,9 +1,7 @@
 import { getSupabaseServiceRoleClient } from '../../utils/supabaseServiceRole'
-import { assertSitemapSourceKey } from '../../utils/sitemapSources'
 
 /** Dynamic sitemap entries for published blog posts. */
-export default defineEventHandler(async (event) => {
-  assertSitemapSourceKey(event)
+export default defineEventHandler(async () => {
   try {
     const client = getSupabaseServiceRoleClient()
     const { data, error } = await client
@@ -18,10 +16,7 @@ export default defineEventHandler(async (event) => {
       loc: `/blog/${row.slug}`,
       lastmod: row.updated_at
     }))
-  } catch (error) {
-    if (typeof error === 'object' && error !== null && 'statusCode' in error && (error as { statusCode?: number }).statusCode === 404) {
-      throw error
-    }
+  } catch {
     return []
   }
 })

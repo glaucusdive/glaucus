@@ -38,17 +38,14 @@ Review structured data must follow Google's current rules. Only mark up genuine 
 
 ## Glaucus Shop Profile Snapshot
 
-As of 2026-10-19:
+As of 2026-10-11:
 
-- Public shop pages are `/shops/[slug]`. Titles and descriptions come from `app/utils/shopSeo.ts`. The canonical URL is the absolute slug URL. A legacy `/shops/{uuid}` URL 301s to the slug.
-- Shop profile pages are indexable (`index, follow`). Seeded test shops Dive Porter and Dive Shash (`shared/testShops.ts`) are `noindex, nofollow` and are left out of the sitemap.
-- `/for-businesses` is the public dive shop directory and is indexable. It is in the sitemap. Search URLs with `?q=` are `noindex, follow`. `/for-businesses/list-your-shop` stays `noindex, follow` and out of the sitemap. Bare `/shops` redirects to the directory.
-- The directory lists name, location, and rating. Phone, email, street address, and notes stay on each shop’s own page, in chat, and on search cards.
-- `robots.txt` does not disallow `/shops/` or `/divemaster/`. It still disallows `/api/`.
-- The sitemap lists fixed routes plus blog posts, shop slugs, and published divemaster usernames. Sitemap source routes require the `x-sitemap-key` header.
-- Each shop page renders a short server-side list of nearby shop links.
+- Public shop pages use `/shops/[slug]`, with per-shop titles and descriptions from `app/utils/shopSeo.ts`.
+- Shop routes are allowed by the robots configuration in `nuxt.config.ts`.
+- The sitemap contains fixed routes and the blog sitemap source, but does not yet enumerate shop pages.
+- Search cards open details through a button; search results are not yet a complete crawlable shop directory.
 - Shop reviews are loaded client-side by `app/composables/useShopReviews.ts`.
-- Published divemaster pages (`/divemaster/[username]`) are indexable and included in the sitemap. Draft and pending profiles are not.
+- The `Dive Porter` and `Dive Shash` test businesses are seeded as ordinary shop rows. A future sitemap/indexing implementation needs an explicit policy for excluding test or unpublished records; do not rely on matching business names as the general rule.
 
 Related shop-specific QR plan: [Shop Profile QR Codes](shop-profile-qr-codes.md).
 

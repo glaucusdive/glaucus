@@ -45,11 +45,8 @@ const guestChat = computed(
   () => authResolved.value && !isSignedIn.value && route.query.chat === '1'
 )
 
-const landingSectionIds = new Set(['hero', 'whatisglaucus', 'feature1', 'aboutus', 'logs'])
-const onLandingSection = computed(() => landingSectionIds.has((route.hash || '').replace(/^#/, '')))
-
 const signedInChat = computed(
-  () => authResolved.value && isSignedIn.value && !onLandingSection.value && (route.query.chat === '1' || route.path === '/')
+  () => authResolved.value && isSignedIn.value && (route.query.chat === '1' || route.path === '/')
 )
 
 const showChatShell = computed(() => guestChat.value || signedInChat.value)
@@ -62,22 +59,6 @@ const layoutName = computed(() => {
 onMounted(async () => {
   await init()
   authResolved.value = true
-  scrollToLandingHash()
-})
-
-function scrollToLandingHash () {
-  if (!import.meta.client || !onLandingSection.value) return
-  const id = (route.hash || '').replace(/^#/, '')
-  const el = document.getElementById(id)
-  if (!el) return
-  const top = el.getBoundingClientRect().top + window.scrollY - 80
-  window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
-}
-
-watch([() => route.hash, showChatShell, authResolved], async () => {
-  if (!authResolved.value || showChatShell.value) return
-  await nextTick()
-  scrollToLandingHash()
 })
 
 watch(
@@ -96,7 +77,6 @@ watch(
 /** Signed-in users open chat; sign-out keeps guest chat shell (see handleSignOut). */
 watch(isSignedIn, (signedIn) => {
   if (!authResolved.value) return
-  if (onLandingSection.value) return
   if (signedIn && route.path === '/' && route.query.chat !== '1') {
     void router.replace({ path: '/', query: { ...route.query, chat: '1' } })
     return
