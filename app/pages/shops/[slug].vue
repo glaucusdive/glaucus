@@ -27,26 +27,47 @@
 <script setup>
 import DiveShopDetail from '~/components/DiveShopDetail.vue'
 import { shopSeoDescription, shopSeoTitle } from '~/utils/shopSeo'
+import { isDiveshopUuid } from '~/utils/shopLookup'
+import { isTestShopId } from '~~/shared/testShops'
 
 definePageMeta({ layout: 'default' })
-
-usePrivatePageSeo()
 
 const route = useRoute()
 const router = useRouter()
 const shopLookup = Array.isArray(route.params.slug) ? route.params.slug[0] : route.params.slug
+const siteConfig = useSiteConfig()
 
-const { shopData, pending, error } = useShopDetail(shopLookup)
+const detail = await useShopDetail(String(shopLookup || ''))
+const { shopData, pending, error } = detail
+
+const canonicalSlug = shopData.value?.slug
+if (shopLookup && isDiveshopUuid(String(shopLookup)) && canonicalSlug && canonicalSlug !== shopLookup) {
+  await navigateTo(`/shops/${encodeURIComponent(canonicalSlug)}`, { redirectCode: 301 })
+}
 
 const shopTitle = computed(() => shopSeoTitle(shopData.value))
 const shopDescription = computed(() => shopSeoDescription(shopData.value))
+const canonicalUrl = computed(() => {
+  const slug = shopData.value?.slug
+  if (!slug) return undefined
+  const origin = String(siteConfig.url || 'https://glaucusdive.com').replace(/\/$/, '')
+  return `${origin}/shops/${encodeURIComponent(slug)}`
+})
 
 useSeoMeta({
   title: shopTitle,
   description: shopDescription,
   ogTitle: shopTitle,
-  ogDescription: shopDescription
+  ogDescription: shopDescription,
+  ogUrl: canonicalUrl,
+  robots: computed(() => isTestShopId(shopData.value?.id) ? 'noindex, nofollow' : 'index, follow')
 })
+
+useHead(() => ({
+  link: canonicalUrl.value
+    ? [{ rel: 'canonical', href: canonicalUrl.value }]
+    : []
+}))
 
 const { saveScrollPosition } = useScrollPosition()
 

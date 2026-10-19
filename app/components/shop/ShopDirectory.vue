@@ -141,7 +141,6 @@ interface DirectoryShop {
   type: string | null
   city: string | null
   state: string | null
-  street_address: string | null
   google_rating: number | null
   country: { name: string } | null
 }
@@ -154,9 +153,9 @@ interface ShopDirectoryResponse {
 }
 
 useSeoMeta({
-  title: 'Browse Dive Shops | Glaucus',
+  title: 'Browse Dive Shops',
   description: 'Browse dive shops, resorts, and liveaboards in the Glaucus directory.',
-  ogTitle: 'Browse Dive Shops | Glaucus',
+  ogTitle: 'Browse Dive Shops',
   ogDescription: 'Browse dive shops, resorts, and liveaboards in the Glaucus directory.'
 })
 

@@ -32,17 +32,21 @@ export default defineNuxtConfig({
     '/profile/**': { robots: false },
     '/settings/**': { robots: false },
     '/community': { robots: false },
-    '/shops/**': { robots: false }
+    '/for-businesses': { robots: 'noindex, follow' },
+    '/for-businesses/list-your-shop': { robots: 'noindex, follow' }
   },
   robots: {
-    disallow: ['/admin/', '/partner/', '/auth/', '/profile/', '/settings/', '/community', '/shops/', '/api/']
+    disallow: ['/admin/', '/partner/', '/auth/', '/profile/', '/settings/', '/community', '/api/']
   },
   sitemap: {
     excludeAppSources: true,
-    sources: ['/api/__sitemap__/blog', '/api/__sitemap__/shops'],
+    sources: [
+      ['/api/__sitemap__/blog', { headers: { 'x-sitemap-key': process.env.NUXT_SITEMAP_SOURCE_KEY || '' } }],
+      ['/api/__sitemap__/shops', { headers: { 'x-sitemap-key': process.env.NUXT_SITEMAP_SOURCE_KEY || '' } }],
+      ['/api/__sitemap__/divemasters', { headers: { 'x-sitemap-key': process.env.NUXT_SITEMAP_SOURCE_KEY || '' } }]
+    ],
     urls: [
       { loc: '/' },
-      { loc: '/for-businesses' },
       { loc: '/blog' },
       { loc: '/privacy' },
       { loc: '/legal' }
@@ -86,6 +90,8 @@ export default defineNuxtConfig({
     shopInquiryNotifyEmail: process.env.NUXT_SHOP_INQUIRY_NOTIFY_EMAIL || '',
     /** Required for geocode-shop API to update diveshops (bypasses RLS). Get from Supabase Dashboard > Project Settings > API. */
     supabaseServiceRoleKey: '',
+    /** Secret for /api/__sitemap__/* . Set NUXT_SITEMAP_SOURCE_KEY at build and runtime so /sitemap.xml can call the sources. */
+    sitemapSourceKey: '',
     /** Linear personal API key (Settings → API). Used by /api/feedback to create issues. */
     linearApiKey: '',
     /** Linear team UUID (e.g. Glaucus team). */

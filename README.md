@@ -158,6 +158,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.94.0** — Index individual shop and divemaster pages, and keep the shop directory and test shops out of Google (2026-10-19).
 - **0.93.2** — Keep the shop search query typed after the public column list replaced select star (2026-10-19).
 - **0.93.1** — Lock down dive shop reads and writes so the public database key cannot dump or edit the shop table (2026-10-19).
 - **0.93.0** — Sign in button on the marketing header, to the right of Open Chat, with a shorter Chat label on small screens (2026-10-19).
