@@ -10,8 +10,20 @@ export type NearbyShopRow = {
   distance_miles?: number
 }
 
+type ShopDetail = {
+  id?: string
+  slug?: string | null
+  business_name?: string | null
+  description?: string | null
+  type?: string | null
+  city?: string | null
+  state?: string | null
+  country?: { name?: string } | null
+  [key: string]: unknown
+}
+
 type ShopDetailResponse = {
-  shop: Record<string, unknown> | null
+  shop: ShopDetail | null
   nearbyShops: NearbyShopRow[]
 }
 
@@ -20,7 +32,7 @@ type ShopDetailResponse = {
  * `shopLookup` is a public URL slug or a legacy UUID.
  */
 export function useShopDetail (shopLookup: string) {
-  const { data, pending, error } = useAsyncData(
+  const asyncData = useAsyncData(
     `diveshop-${shopLookup}`,
     async (): Promise<ShopDetailResponse> => {
       if (!shopLookup) return { shop: null, nearbyShops: [] }
@@ -32,12 +44,9 @@ export function useShopDetail (shopLookup: string) {
     }
   )
 
-  return {
-    data,
-    pending,
-    error,
-    shopData: computed(() => data.value?.shop ?? null),
-    nearbyShops: computed(() => data.value?.nearbyShops ?? []),
+  return Object.assign(asyncData, {
+    shopData: computed(() => asyncData.data.value?.shop ?? null),
+    nearbyShops: computed(() => asyncData.data.value?.nearbyShops ?? []),
     formatShopCityState
-  }
+  })
 }

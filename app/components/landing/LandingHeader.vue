@@ -1,13 +1,16 @@
 <template>
   <header
     ref="headerRootRef"
-    class="sticky top-0 p-5 lg:px-20 lg:py-5 bg-gradient-to-b from-black to-black/0"
-    :class="mobileMenuOpen ? 'z-50 bg-[#101214]' : 'z-40'"
+    class="sticky top-0 p-5 lg:px-20 lg:py-5"
+    :class="[
+      mobileMenuOpen ? 'z-50 bg-[#101214]' : 'z-40',
+      onLanding && !mobileMenuOpen ? 'bg-gradient-to-b from-black to-black/0' : 'bg-[#101214]'
+    ]"
   >
 
     <div class="grid grid-cols-12 gap-4 items-center">
       <div class="col-span-6 lg:col-span-2">
-        <NuxtLink to="/" aria-label="Glaucus home">
+        <NuxtLink to="/" aria-label="Glaucus home" @click="goHome">
           <Logo />
         </NuxtLink>
       </div>
@@ -190,6 +193,7 @@ const navSearchInput =
   'h-6 min-h-0 min-w-md flex-1 border-0 bg-transparent py-0 text-xs leading-6 text-white shadow-none placeholder:text-zinc-500 focus:outline-none focus:ring-0'
 
 const route = useRoute()
+const onLanding = computed(() => route.path === '/')
 const { isSignedIn, loading: authLoading } = useAuth()
 const showSignIn = computed(() => !authLoading.value && !isSignedIn.value)
 
@@ -237,6 +241,15 @@ const activeNavLinkId = computed(() => {
   }
   return navSectionIds.value.has(h) ? h : null
 })
+
+function goHome (event) {
+  if (route.path !== '/') return
+  event.preventDefault()
+  if (route.hash) {
+    void navigateTo({ path: '/', hash: '' })
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
 function landingSectionTo (id) {
   return `/#${id}`

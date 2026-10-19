@@ -1,5 +1,8 @@
 <template>
-  <ShopDirectory v-if="route.path === '/for-businesses'" />
+  <div v-if="route.path === '/for-businesses'" class="min-h-dvh">
+    <LandingHeader />
+    <ShopDirectory />
+  </div>
   <NuxtPage v-else />
 </template>
 
