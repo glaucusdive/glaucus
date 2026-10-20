@@ -249,13 +249,12 @@
                 <FormInput v-model="j.location" type="text" size="sm" />
               </FormField>
               <FormField label="Start" label-style="auth">
-                <FormInput v-model="j.start_date" type="date" size="sm" />
+                <DivemasterJobMonthInput v-model="j.start_date" label="Start" />
               </FormField>
               <FormField label="End" label-style="auth">
-                <FormInput
+                <DivemasterJobMonthInput
                   v-model="j.end_date"
-                  type="date"
-                  size="sm"
+                  label="End"
                   :disabled="j.is_current"
                   @update:model-value="onJobEndDateChange(j)"
                 />
@@ -354,6 +353,8 @@ import {
   type DivemasterProfileStatus
 } from '~~/shared/divemasterProfile'
 import { DIVE_SITE_ADD_NEW_OPTION } from '~~/shared/diveSitePicker'
+import { jobDateToMonth, normalizeJobDates } from '~~/shared/divemasterJobDates'
+import DivemasterJobMonthInput from '~/components/DivemasterJobMonthInput.vue'
 
 definePageMeta({ layout: 'default', middleware: 'admin' })
 useSeoMeta({ title: 'Admin · Edit divemaster', robots: 'noindex, nofollow' })
@@ -592,8 +593,8 @@ async function load () {
       title: String(j.title || ''),
       organization: String(j.organization || ''),
       location: String(j.location || ''),
-      start_date: String(j.start_date || ''),
-      end_date: String(j.end_date || ''),
+      start_date: jobDateToMonth(String(j.start_date || '')),
+      end_date: jobDateToMonth(String(j.end_date || '')),
       is_current: !!j.is_current,
       description: String(j.description || '')
     }))
@@ -645,6 +646,14 @@ async function save (): Promise<boolean> {
     return false
   }
   form.display_name = fullName
+  let normalizedJobs: DivemasterJob[]
+  try {
+    normalizedJobs = jobs.value.filter(j => j.title.trim() && j.organization.trim()).map(normalizeJobDates)
+  } catch (error) {
+    ok.value = false
+    msg.value = error instanceof Error ? error.message : 'Invalid past job dates.'
+    return false
+  }
   await patch({
     action: 'save',
     username: form.username,
@@ -662,14 +671,7 @@ async function save (): Promise<boolean> {
       ...c,
       students_certified: parseStudentsCertified(c.students_certified)
     })),
-    jobs: jobs.value.map(j => {
-      const end = String(j.end_date || '').trim() || null
-      return {
-        ...j,
-        end_date: end,
-        is_current: end ? false : !!j.is_current
-      }
-    }),
+    jobs: normalizedJobs,
     dive_site_ids: diveSiteIds.value.map(id => id.trim()).filter(Boolean)
   })
   return ok.value

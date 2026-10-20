@@ -1,5 +1,6 @@
 import { requireAdminUser } from '../../../utils/requireAdminUser'
 import { getSupabaseServiceRoleClient } from '../../../utils/supabaseServiceRole'
+import { normalizeJobDates } from '~~/shared/divemasterJobDates'
 import {
   isValidUsername,
   normalizeUsername,
@@ -33,6 +34,15 @@ export default defineEventHandler(async (event) => {
     jobs?: DivemasterJob[]
     dive_site_ids?: string[]
     status?: DivemasterProfileStatus
+  }
+
+  let normalizedJobs: DivemasterJob[] | undefined
+  try {
+    normalizedJobs = Array.isArray(body.jobs)
+      ? body.jobs.filter(j => j.title?.trim() && j.organization?.trim()).map(normalizeJobDates)
+      : undefined
+  } catch {
+    throw createError({ statusCode: 400, statusMessage: 'Choose a valid month and year for past job dates.' })
   }
 
   const service = getSupabaseServiceRoleClient()
@@ -162,8 +172,7 @@ export default defineEventHandler(async (event) => {
 
   if (Array.isArray(body.jobs)) {
     await service.from('divemaster_jobs').delete().eq('user_id', userId)
-    const rows = body.jobs
-      .filter(j => j.title?.trim() && j.organization?.trim())
+    const rows = normalizedJobs!
       .map((j, i) => {
         const endDate = j.end_date?.trim() ? j.end_date.trim() : null
         const isCurrent = endDate ? false : !!j.is_current

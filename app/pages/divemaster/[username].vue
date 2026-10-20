@@ -5,7 +5,22 @@
     </ShellPageHeader>
 
     <div class="min-h-0 flex-1 overflow-y-auto">
-      <div v-if="pending" class="flex items-center justify-center py-24">
+      <div v-if="editing && verifiedOwnerId && verifiedOwnerId === user?.id">
+        <DivemasterProfileEditor
+          v-if="!saveCommitted"
+          embedded
+          :expected-username="profile?.username || ''"
+          @dirty="editorDirty = $event"
+          @saving="editorSaving = $event"
+          @cancel="cancelEditing"
+          @saved="handleProfileSaved"
+        />
+        <div v-else class="space-y-3 p-4" role="status">
+          <p class="text-sm text-zinc-700 dark:text-zinc-300">{{ refreshError || 'Profile saved. Refreshing…' }}</p>
+          <Button v-if="refreshError" type="button" variant="secondary" :disabled="refreshingProfile" @click="refreshSavedProfile">Refresh profile</Button>
+        </div>
+      </div>
+      <div v-else-if="pending" class="flex items-center justify-center py-24">
         <span class="text-sm text-zinc-500 dark:text-zinc-400">Loading profile…</span>
       </div>
       <div v-else-if="error" class="flex flex-col items-center justify-center py-24 px-4 text-center">
@@ -16,6 +31,7 @@
         </NuxtLink>
       </div>
       <div v-else-if="profile" class="mx-auto flex flex-col divide-y divide-zinc-700 *:p-4">
+      <p v-if="profileSaved" role="status" class="text-sm text-green-600 dark:text-green-400">Profile saved.</p>
       <!-- Basic info -->
       <header class="flex flex-col sm:flex-row gap-6 items-center">
         <div
@@ -41,6 +57,17 @@
           </div>
           <p v-if="profile.bio" class="text-sm text-zinc-300 max-w-2xl whitespace-pre-wrap">{{ profile.bio }}</p>
         </div>
+        <button
+          v-if="isOwner"
+          ref="pencilButton"
+          type="button"
+          class="grid size-10 shrink-0 place-items-center self-start rounded-md text-zinc-600 hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          title="Edit profile"
+          aria-label="Edit profile"
+          @click="startEditing"
+        >
+          <Pencil class="size-5" aria-hidden="true" />
+        </button>
       </header>
 
       <a
@@ -64,7 +91,7 @@
         </span>
         <span class="text-zinc-400" aria-hidden="true">·</span>
         <span class="min-w-0 truncate text-sm text-zinc-700 dark:text-zinc-300">
-          {{ reviews.length ? `${formatReviewCount(reviews.length)} ${reviews.length === 1 ? 'Review' : 'Reviews'}` : reviewsError ? 'Reviews unavailable' : 'Be the first to review' }}
+          {{ reviews.length ? `${formatReviewCount(reviews.length)} ${reviews.length === 1 ? 'Review' : 'Reviews'}` : reviewsError ? 'Reviews unavailable' : canInviteReview ? 'Be the first to review' : '0 Reviews' }}
         </span>
         <ChevronRight class="ml-auto size-4 shrink-0 text-zinc-500" aria-hidden="true" />
       </a>
@@ -229,11 +256,11 @@
               :review-date="formatReviewDate(review.created_at)"
               :rating="review.rating"
               :review-text="review.body"
-              :show-delete="review.id === myReview?.id"
+              :show-delete="canWriteReview && review.id === myReview?.id"
               @delete="handleDeleteReview"
             />
             <button
-              v-if="review.id === myReview?.id && !editingReview"
+              v-if="canWriteReview && review.id === myReview?.id && !editingReview"
               type="button"
               class="self-start text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
               @click="editingReview = true"
@@ -242,12 +269,12 @@
             </button>
           </article>
         </div>
-        <p v-if="!isSignedIn && !reviewsPending" class="text-sm text-zinc-600 dark:text-zinc-400">
+        <p v-if="canInviteReview && !isSignedIn && !reviewsPending" class="text-sm text-zinc-600 dark:text-zinc-400">
           Sign in to leave a review.
           <NuxtLink :to="authReviewLink" class="font-medium text-blue-600 hover:underline dark:text-blue-400">Sign in</NuxtLink>
         </p>
         <DivemasterReviewForm
-          v-else-if="isSignedIn && (!myReview || editingReview)"
+          v-else-if="canWriteReview && (!myReview || editingReview)"
           :key="myReview?.id || 'new-review'"
           :username="profile.username"
           :display-name="displayName"
@@ -260,12 +287,29 @@
       </section>
       </div>
     </div>
+    <dialog
+      ref="discardDialog"
+      aria-labelledby="discard-profile-title"
+      aria-describedby="discard-profile-description"
+      class="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-lg border border-zinc-200 bg-white p-5 text-zinc-900 shadow-xl backdrop:bg-black/60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white sm:p-6"
+      @cancel.prevent="finishDiscard(false)"
+      @close="onDiscardDialogClose"
+      @click="onDiscardBackdropClick"
+    >
+      <h2 id="discard-profile-title" class="text-lg font-semibold">Discard changes?</h2>
+      <p id="discard-profile-description" class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Your unsaved profile changes will be lost.</p>
+      <div class="mt-6 flex flex-wrap justify-end gap-2">
+        <Button type="button" variant="secondary" autofocus data-keep-editing @click="finishDiscard(false)">Keep Editing</Button>
+        <Button type="button" variant="danger" @click="finishDiscard(true)">Discard Changes</Button>
+      </div>
+    </dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ChevronRight, Star, StarHalf } from 'lucide-vue-next'
+import { ChevronRight, Pencil, Star, StarHalf } from 'lucide-vue-next'
 import type { PublicDivemasterProfile } from '~~/shared/divemasterProfile'
+import { formatJobMonth } from '~~/shared/divemasterJobDates'
 import { deleteDivemasterReview, useDivemasterReviews } from '~/composables/useDivemasterReviews'
 
 definePageMeta({ layout: 'default' })
@@ -282,7 +326,7 @@ function isRedirect (value: DivemasterFetch | null | undefined): value is { redi
   return !!value && typeof value === 'object' && 'redirectTo' in value
 }
 
-const { data: fetchResult, pending, error } = await useAsyncData(
+const { data: fetchResult, pending, error, refresh: refreshProfile } = await useAsyncData(
   () => `divemaster-${username.value}`,
   () => $fetch<DivemasterFetch>(`/api/divemaster/${encodeURIComponent(username.value || '')}`),
   { watch: [username] }
@@ -309,7 +353,141 @@ const profile = computed(() => {
 
 const displayName = computed(() => profile.value?.display_name || profile.value?.username || 'Divemaster')
 const reviewUsername = computed(() => profile.value?.username || '')
-const { isSignedIn, accessToken } = useAuth()
+const { isSignedIn, accessToken, user, init, loading: authLoading } = useAuth()
+const { client } = useSupabase()
+const ownerUsername = ref('')
+const verifiedOwnerId = ref('')
+const isOwner = computed(() => !!user.value?.id && verifiedOwnerId.value === user.value.id && !!profile.value && ownerUsername.value === profile.value.username)
+const canWriteReview = computed(() => !authLoading.value && isSignedIn.value && !!user.value?.id && verifiedOwnerId.value === user.value.id && !isOwner.value)
+const canInviteReview = computed(() => !authLoading.value && (!isSignedIn.value || canWriteReview.value))
+const editing = ref(false)
+const editorDirty = ref(false)
+const editorSaving = ref(false)
+const saveCommitted = ref(false)
+const refreshingProfile = ref(false)
+const refreshError = ref('')
+const profileSaved = ref(false)
+const pencilButton = ref<HTMLButtonElement | null>(null)
+const discardDialog = ref<HTMLDialogElement | null>(null)
+let pendingDiscard: Promise<boolean> | null = null
+let resolveDiscard: ((discard: boolean) => void) | null = null
+
+watch([() => user.value?.id, username], async ([id]) => {
+  finishDiscard(false)
+  ownerUsername.value = ''
+  verifiedOwnerId.value = ''
+  editing.value = false
+  editorDirty.value = false
+  profileSaved.value = false
+  if (!import.meta.client || !id) return
+  const currentUsername = username.value
+  try {
+    const { data, error: ownerError } = await client.from('profiles').select('username').eq('id', id).maybeSingle()
+    if (ownerError || user.value?.id !== id || username.value !== currentUsername) return
+    ownerUsername.value = data?.username || ''
+    verifiedOwnerId.value = id
+  } catch {
+    ownerUsername.value = ''
+  }
+}, { immediate: true })
+
+function startEditing () {
+  if (!isOwner.value) return
+  profileSaved.value = false
+  saveCommitted.value = false
+  refreshError.value = ''
+  editorDirty.value = false
+  editing.value = true
+}
+
+async function cancelEditing () {
+  if (editorSaving.value || (editorDirty.value && !(await confirmDiscard()))) return
+  editing.value = false
+  editorDirty.value = false
+  await nextTick()
+  pencilButton.value?.focus()
+}
+
+async function refreshSavedProfile () {
+  if (refreshingProfile.value) return
+  refreshingProfile.value = true
+  refreshError.value = ''
+  try {
+    await refreshProfile()
+    if (error.value || !profile.value) throw new Error('Profile refresh failed.')
+    editing.value = false
+    profileSaved.value = true
+    await nextTick()
+    pencilButton.value?.focus()
+  } catch {
+    refreshError.value = 'Your changes were saved, but the profile could not be refreshed.'
+  } finally {
+    refreshingProfile.value = false
+  }
+}
+
+async function handleProfileSaved () {
+  editorDirty.value = false
+  editorSaving.value = false
+  saveCommitted.value = true
+  await refreshSavedProfile()
+}
+
+function confirmDiscard (): Promise<boolean> {
+  if (pendingDiscard) return pendingDiscard
+  const dialog = discardDialog.value
+  if (!dialog) return Promise.resolve(false)
+  pendingDiscard = new Promise<boolean>(resolve => { resolveDiscard = resolve })
+  dialog.showModal()
+  dialog.querySelector<HTMLButtonElement>('[data-keep-editing]')?.focus()
+  return pendingDiscard
+}
+
+function finishDiscard (discard: boolean) {
+  const resolve = resolveDiscard
+  resolveDiscard = null
+  pendingDiscard = null
+  discardDialog.value?.close()
+  resolve?.(discard)
+}
+
+function onDiscardDialogClose () {
+  if (!discardDialog.value?.open) finishDiscard(false)
+}
+
+function onDiscardBackdropClick (event: MouseEvent) {
+  if (event.target !== discardDialog.value) return
+  const bounds = discardDialog.value.getBoundingClientRect()
+  if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) {
+    finishDiscard(false)
+  }
+}
+
+async function canLeaveEditor () {
+  if (editorSaving.value) return false
+  if (!editorDirty.value) return true
+  const discard = await confirmDiscard()
+  if (discard) editorDirty.value = false
+  return discard
+}
+
+onBeforeRouteLeave(canLeaveEditor)
+onBeforeRouteUpdate(canLeaveEditor)
+
+function warnBeforeUnload (event: BeforeUnloadEvent) {
+  if (!editorDirty.value && !editorSaving.value) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+
+onMounted(() => {
+  void init()
+  window.addEventListener('beforeunload', warnBeforeUnload)
+})
+onBeforeUnmount(() => {
+  finishDiscard(false)
+  window.removeEventListener('beforeunload', warnBeforeUnload)
+})
 const { reviews, myReview, pending: reviewsPending, error: reviewsError, refresh: refreshReviews } = useDivemasterReviews(reviewUsername)
 const editingReview = ref(false)
 const reviewActionError = ref('')
@@ -403,9 +581,9 @@ function formatJobDates (
   end: string | null | undefined,
   isCurrent?: boolean
 ) {
-  const s = formatMonthYear(start)
+  const s = formatJobMonth(start)
   if (isCurrent) return s ? `${s} – Present` : 'Present'
-  const e = formatMonthYear(end)
+  const e = formatJobMonth(end)
   if (s && e) return `${s} – ${e}`
   return s || e || ''
 }
