@@ -13,6 +13,7 @@
 - The signed-in owner sees a pencil beside their name. It opens the same shared editor used by Profile Settings, with a sticky Save/Cancel toolbar and no account or moderation controls.
 - Save refreshes the public profile before returning to read-only view. The pencil remains available for repeated editing. Cancel discards the draft; dirty navigation prompts before leaving.
 - Dirty Cancel and internal navigation use a styled, accessible discard dialog with existing secondary/danger buttons. Keep Editing receives default focus; Escape and backdrop clicks preserve the draft. Clean Cancel exits immediately. Tab-close/reload warnings remain browser-controlled.
+- Owners retain the rating, review count and review list, but see 0 Reviews rather than a self-review invitation when empty. The review form and review-author controls are hidden for owners and while signed-in ownership is unresolved; other visitors retain the existing review flow.
 - Failed saves retain the draft. If saving succeeds but refreshing fails, a refresh-only retry does not repeat writes. Existing authenticated RLS and publication restrictions remain unchanged.
 - The shared owner editor preserves certification metadata, linked job shops, and dive-site notes. Multi-table saves are still separate operations, not an atomic transaction; a late failure can partially persist changes.
 
@@ -22,6 +23,7 @@
 - Added 25 focused date conversion and admin-handler tests, including rejection before any writes.
 - Browser checks with synthetic in-memory data verified legacy-date display, no writes on view/open, owner-only pencil visibility, save/refresh/reopen, cancellation, save failure, refresh-only recovery, existing Settings, and admin month-date serialization.
 - Discard-dialog checks verified no browser confirm calls, preserved drafts on Keep Editing/Escape/backdrop, no writes on discard, restored pencil focus, deferred internal navigation, mobile fit, and keyboard focus containment.
+- Owner-review UI checks verified neutral zero-review wording, preserved rating/count/list with reviews, no self-review form or email prompt, no invitation during delayed ownership lookup, and unchanged signed-in visitor and guest review flows. The profile page compiles successfully.
 - Desktop (1280px) and mobile (390px) checks passed; mobile editor has no horizontal overflow and Save/Cancel remain visible. No live profile records were read or changed during these browser checks. Dropdown display, current-job disabling, incomplete-date validation, year ordering and first-of-month persistence were checked in Chromium.
 
 ## 2026-10-16 — Reviews, ratings, and result-card navigation
