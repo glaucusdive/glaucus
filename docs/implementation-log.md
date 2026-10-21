@@ -1,5 +1,11 @@
 # Implementation Log
 
+## 2026-10-20 - Account and access-model discussion record
+
+- Added [Accounts, Workspaces, And Access Model](accounts-workspaces-access-model.md) and linked it from the README documentation map.
+- Captured overlapping diver/professional/business capabilities, multi-business management, separate many-to-many professional affiliations, consent/invitations, Team versus Access UI, and internal moderator/support/admin/developer/tester boundaries.
+- The document is a proposal, not an implemented permission system. The current client role shape remains unchanged; no memberships, payroll system, schema, roles, access grants, or workspace UI were created.
+
 ## 2026-10-20 - Documentation map and docs-first workflow
 
 - Added the [README documentation map](../README.md#documentation) and an always-on [Cursor docs-first rule](../.cursor/rules/docs-first.mdc). The rule directs agents to relevant docs, then owning code/tests, before solutions; it is guidance rather than a hook and is not automatically shared with other editors.

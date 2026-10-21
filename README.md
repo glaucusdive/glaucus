@@ -8,6 +8,7 @@ Before proposing or implementing a feature or fix, read the relevant document be
 
 | Area | Context |
 | --- | --- |
+| Accounts, customer capabilities, business relationships and internal staff | [Proposed workspaces and access model](docs/accounts-workspaces-access-model.md) |
 | UI and shared controls | [Design conventions](docs/design.md) |
 | Booking notifications and send boundary | [Booking email flow](docs/booking-email-flow.md) |
 | Trip and booking state | [Trip requirements state map](docs/trip-requirements-state-map.md) |
