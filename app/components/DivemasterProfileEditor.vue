@@ -2,7 +2,7 @@
   <component
     :is="embedded ? 'div' : SettingsPage"
     title="Profile Settings"
-    description="Username and divemaster profile. Public pages go live after admin approval."
+    description="Username and dive professional profile. Public pages go live after admin approval."
     back-to="/settings"
   >
     <div v-if="embedded" class="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900">
@@ -104,7 +104,7 @@
 
       <section class="p-4 lg:py-12 lg:px-24 flex flex-col gap-8">
         <div class="flex flex-wrap items-center gap-2">
-          <h2 class="text-base font-bold text-white">Divemaster Profile</h2>
+          <h2 class="text-base font-bold text-white">Dive Professional Profile</h2>
           <span
             v-if="dmStatus"
             class="text-xs font-medium text-zinc-400"

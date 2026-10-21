@@ -550,7 +550,7 @@ const hasHighlights = computed(() => {
 })
 
 const breadcrumbItems = computed(() => [
-  { label: 'Divemaster' },
+  { label: 'Dive Professional' },
   { label: displayName.value }
 ])
 
