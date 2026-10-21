@@ -1,5 +1,11 @@
 # Implementation Log
 
+## 2026-10-20 - Certification issue month and year
+
+- Certification Issued fields now reuse the Month and Year dropdowns in owner settings, embedded public-profile editing, and admin editing. Training date controls are unchanged.
+- Existing full dates load as month/year. Dates remain optional, and explicit Save normalizes supplied issue dates to the first day of the selected month before writes. No database migration or bulk backfill is required.
+- Verification: both changed Vue templates compiled; 25 existing focused date-helper and admin job-date tests passed. Browser interaction and database saves were not exercised for this change.
+
 ## 2026-10-20 - Account and access-model discussion record
 
 - Added [Accounts, Workspaces, And Access Model](accounts-workspaces-access-model.md) and linked it from the README documentation map.

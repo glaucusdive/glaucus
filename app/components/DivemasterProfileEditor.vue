@@ -305,7 +305,7 @@
                     <FormInput v-model="c.cert_number" type="text" size="sm" />
                   </FormField>
                   <FormField label="Issued" label-style="auth">
-                    <FormInput v-model="c.issued_at" type="date" size="sm" />
+                    <DivemasterJobMonthInput v-model="c.issued_at" label="Issued" />
                   </FormField>
                   <FormField label="Students certified" label-style="auth">
                     <FormInput v-model="c.students_certified" type="number" size="sm" min="0" />
@@ -444,7 +444,7 @@ import {
   type DivemasterProfileStatus
 } from '~~/shared/divemasterProfile'
 import { DIVE_SITE_ADD_NEW_OPTION } from '~~/shared/diveSitePicker'
-import { jobDateToMonth, normalizeJobDates } from '~~/shared/divemasterJobDates'
+import { jobDateToMonth, jobMonthToDate, normalizeJobDates } from '~~/shared/divemasterJobDates'
 import DivemasterJobMonthInput from '~/components/DivemasterJobMonthInput.vue'
 import SettingsPage from '~/components/settings/SettingsPage.vue'
 
@@ -773,7 +773,7 @@ async function loadAll () {
       name: c.name || '',
       agency: c.agency || '',
       cert_number: c.cert_number || '',
-      issued_at: c.issued_at || '',
+      issued_at: jobDateToMonth(c.issued_at),
       expires_at: c.expires_at,
       image_url: c.image_url,
       students_certified: parseStudentsCertified(c.students_certified),
@@ -925,6 +925,9 @@ async function saveDraft () {
   try {
     if (user.value.id !== loadedUserId.value) throw new Error('Your session changed. Reopen the editor before saving.')
     const normalizedJobs = jobs.value.filter(j => j.title.trim() && j.organization.trim()).map(normalizeJobDates)
+    const normalizedCertifications = certifications.value
+      .filter(c => c.name.trim())
+      .map(c => ({ ...c, issued_at: jobMonthToDate(c.issued_at) }))
     if (!(await persistFullName())) return
     const id = user.value.id
     const { error: dmErr } = await client.from('divemaster_profiles').update({
@@ -943,14 +946,13 @@ async function saveDraft () {
     if (certDeleteError) throw certDeleteError
     if (certifications.value.length) {
       const { error } = await client.from('divemaster_certifications').insert(
-        certifications.value
-          .filter(c => c.name.trim())
+        normalizedCertifications
           .map((c, i) => ({
             user_id: id,
             name: c.name.trim(),
             agency: c.agency?.trim() || null,
             cert_number: c.cert_number?.trim() || null,
-            issued_at: c.issued_at || null,
+            issued_at: c.issued_at,
             expires_at: c.expires_at || null,
             image_url: c.image_url || null,
             students_certified: parseStudentsCertified(c.students_certified),

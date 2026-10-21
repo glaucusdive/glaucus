@@ -17,8 +17,9 @@ This document separates the existing divemaster implementation from the broader 
 
 ### Past Job Dates
 
-- Only Past jobs use explicit Month and Year dropdowns in the shared owner editor and admin editor. Year options descend from the current year to 1950, retaining saved years outside that range. The shared control is [DivemasterJobMonthInput.vue](../app/components/DivemasterJobMonthInput.vue).
-- Public employment dates show `MM/YY` ranges or Present. Training and certification dates retain their existing full-date inputs and display rules.
+- Past jobs and certification issue dates use explicit Month and Year dropdowns in the shared owner editor and admin editor. Year options descend from the current year to 1950, retaining saved years outside that range. The shared control is [DivemasterJobMonthInput.vue](../app/components/DivemasterJobMonthInput.vue).
+- Public employment dates show `MM/YY` ranges or Present. Certification issue dates retain their existing month/year display. Training dates retain their existing full-date inputs and display rules.
+- Certification issue dates remain optional. Existing full dates load as their month/year; explicit Save normalizes submitted issue dates to `YYYY-MM-01` before persistence. Date normalization runs before writes. No migration or bulk backfill is performed.
 - Existing `2020-06-19` loads as June 2020 and displays as `06/20`. Viewing or opening the editor does not write. Explicit Save normalizes all submitted job dates to `YYYY-MM-01`, even if only another profile field was edited. No bulk backfill is performed.
 - Dates remain optional; partial month/year pairs must be completed before Save. Current role clears/disables End. A supplied end date takes precedence over inconsistent Current state when serializing.
 - [Date helpers](../shared/divemasterJobDates.ts) validate legacy dates and picker values before persistence. The [admin update endpoint](../server/api/admin/divemasters/[userId].patch.ts) also normalizes/validates before writes. Existing DATE columns remain in use; these UI changes require no new migration.
