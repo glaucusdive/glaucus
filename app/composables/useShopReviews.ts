@@ -89,13 +89,14 @@ export function useShopReviews (shopId: MaybeRefOrGetter<string>) {
       const legacy = 'id, diveshop_id, user_id, rating, body, author_display_name, created_at, updated_at'
 
       const fullResult = await fetchPublicShopReviews(client, id, withVerification)
-      if (!fullResult.error) return (fullResult.data ?? []) as ShopReviewRow[]
+      if (!fullResult.error) return (fullResult.data ?? []) as unknown as ShopReviewRow[]
 
       if (!isMissingBookingSubmissionColumn(fullResult.error)) throw fullResult.error
 
       const legacyResult = await fetchPublicShopReviews(client, id, legacy)
       if (legacyResult.error) throw legacyResult.error
-      return (legacyResult.data ?? []).map(row => ({
+      const legacyRows = (legacyResult.data ?? []) as unknown as Array<Record<string, unknown>>
+      return legacyRows.map(row => ({
         ...row,
         booking_submission_id: null
       })) as ShopReviewRow[]

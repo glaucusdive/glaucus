@@ -124,6 +124,14 @@
           >
             Sign in
           </NuxtLink>
+          <button
+            v-else-if="showSignOut"
+            type="button"
+            class="inline-flex items-center rounded-md h-10 px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium uppercase bg-blue-500 text-white hover:bg-blue-400 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer"
+            @click="signOutFromMarketing"
+          >
+            Sign Out
+          </button>
           <button type="button"
             class="flex lg:hidden size-10 items-center justify-center rounded-md text-zinc-100  hover:bg-zinc-800 focus-visible:outline-none"
             :aria-expanded="mobileMenuOpen" aria-controls="landing-mobile-nav"
@@ -148,6 +156,7 @@
 
 <script setup>
 import { ArrowUp, Menu, Search, Xmark } from '@iconoir/vue'
+import { clearLocalChatsAfterSignOut } from '~/composables/userChatsRemote'
 
 const defaultNavItems = [
   { id: 'whatisglaucus', label: 'What is Glaucus?' },
@@ -193,9 +202,13 @@ const navSearchInput =
   'h-6 min-h-0 min-w-md flex-1 border-0 bg-transparent py-0 text-xs leading-6 text-white shadow-none placeholder:text-zinc-500 focus:outline-none focus:ring-0'
 
 const route = useRoute()
+const router = useRouter()
 const onLanding = computed(() => route.path === '/')
-const { isSignedIn, loading: authLoading } = useAuth()
+const { isSignedIn, loading: authLoading, signOut } = useAuth()
 const showSignIn = computed(() => !authLoading.value && !isSignedIn.value)
+const showSignOut = computed(() => !authLoading.value && isSignedIn.value)
+const openMarketingChat = inject('openMarketingChat', null)
+const stayOnMarketingAfterSignOut = useState('stayOnMarketingAfterSignOut', () => false)
 
 const headerRootRef = ref(null)
 const mobileDrawerTopPx = ref(0)
@@ -310,10 +323,34 @@ function closeSearch () {
 function onSearchSubmit () {
   const q = String(searchQuery.value ?? '').trim()
   if (!q) return
-  void navigateTo({ path: '/', query: { chat: '1', q } })
+  void openChat({ q })
 }
 
 function goToApp () {
-  void navigateTo({ path: '/', query: { chat: '1' } })
+  void openChat()
+}
+
+function openChat (extraQuery = {}) {
+  if (typeof openMarketingChat === 'function') {
+    void openMarketingChat(extraQuery)
+    return
+  }
+  const query = { chat: '1' }
+  if (extraQuery.q) query.q = extraQuery.q
+  void navigateTo({ path: '/', query, hash: '' })
+}
+
+async function signOutFromMarketing () {
+  stayOnMarketingAfterSignOut.value = true
+  clearLocalChatsAfterSignOut()
+  const current = router.currentRoute.value
+  const query = { ...current.query }
+  delete query.chat
+  try {
+    await navigateTo({ path: current.path || '/', hash: current.hash || '', query })
+    await signOut()
+  } catch {
+    stayOnMarketingAfterSignOut.value = false
+  }
 }
 </script>

@@ -236,6 +236,7 @@ import gsap from 'gsap'
 import { computed, defineAsyncComponent, nextTick, onBeforeMount, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 
 const ChatComposer = defineAsyncComponent(() => import('~/components/chat/ChatComposer.vue'))
+const openMarketingChat = inject('openMarketingChat', null)
 
 const { posts: blogPosts, pending: blogPending } = useBlogPosts(() => ({ limit: 5, clientOnly: true }))
 
@@ -388,10 +389,18 @@ onUnmounted(() => {
 })
 
 function onHeroComposerSubmit (q) {
-  void navigateTo({ path: '/', query: { chat: '1', q } })
+  if (typeof openMarketingChat === 'function') {
+    void openMarketingChat({ q })
+    return
+  }
+  void navigateTo({ path: '/', query: { chat: '1', q }, hash: '' })
 }
 
 function goToApp () {
-  void navigateTo({ path: '/', query: { chat: '1' } })
+  if (typeof openMarketingChat === 'function') {
+    void openMarketingChat()
+    return
+  }
+  void navigateTo({ path: '/', query: { chat: '1' }, hash: '' })
 }
 </script>
