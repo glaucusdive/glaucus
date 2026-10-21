@@ -2,6 +2,27 @@
 
 Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
 
+## Documentation
+
+Before proposing or implementing a feature or fix, read the relevant document below and its scope, status, and limitations. Check the owning code and nearby tests before treating a plan as current behavior. Read the affected sections, not the entire documentation tree.
+
+| Area | Context |
+| --- | --- |
+| Accounts, customer capabilities, business relationships and internal staff | [Proposed workspaces and access model](docs/accounts-workspaces-access-model.md) |
+| UI and shared controls | [Design conventions](docs/design.md) |
+| Booking notifications and send boundary | [Booking email flow](docs/booking-email-flow.md) |
+| Trip and booking state | [Trip requirements state map](docs/trip-requirements-state-map.md) |
+| Shop reviews and verification | [Shop review flow](docs/shop-review-flow.md) |
+| Divemaster profiles, owner editing, job dates | [Current implementation and broader proposal](docs/dive-master-plan.md) |
+| Divemaster reviews and owner/visitor UI | [Divemaster review flow](docs/divemaster-review-flow.md) |
+| Location autocomplete | [Proposed local-first design and Google constraints](docs/location-autocomplete-design.md) |
+| Shop locations | [Multi-location audit](docs/diveshop-multi-location-audit.md) and [fix plan](docs/diveshop-multi-location-fix-plan.md) |
+| Search visibility | [SEO and indexing](docs/seo-indexing-guidelines.md) |
+| Shop sharing | [Profile QR codes](docs/shop-profile-qr-codes.md) |
+| Dated changes and verification evidence | [Implementation log](docs/implementation-log.md) |
+
+**Implemented** describes application behavior, not proof of production rollout. **Proposed** describes future work, not an enabled integration. Verification entries are dated evidence, not a claim that checks were rerun for every later edit. Update affected feature docs when behavior, setup, or limitations change; record meaningful implementation and actual checks in the log.
+
 ## Setup
 
 Make sure to install dependencies:
