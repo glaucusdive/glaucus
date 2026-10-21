@@ -109,6 +109,7 @@ export default defineNuxtConfig({
     public: {
       supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,
       supabaseKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY,
+      tomtomApiKey: process.env.NEXT_PUBLIC_TOMTOM_API_KEY || process.env.NUXT_PUBLIC_TOMTOM_API_KEY || '',
       /** before_send | after_send | off — when to prompt account creation in chat booking flow */
       bookingSignupTiming: process.env.NUXT_PUBLIC_BOOKING_SIGNUP_TIMING || 'off',
       /**

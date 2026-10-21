@@ -1,6 +1,6 @@
 # Location Autocomplete Design
 
-**Status:** Proposed, not implemented. Updated 2026-10-20. No Google integration, location-directory migration, data import, or paid-service configuration is enabled by this document.
+**Status:** TomTom autocomplete is implemented separately in the shared owner editor. The database-first directory and Google fallback below remain proposed, not implemented. Updated 2026-10-20. No Google integration, location-directory migration, or data import is enabled by this document.
 
 ## Goal And Scope
 

@@ -27,7 +27,7 @@ This document separates the existing divemaster implementation from the broader 
 ### Reviews And Location
 
 - Owners retain average rating, count, and review list, but are not invited to review themselves. Empty profiles show **No rating / 0 Reviews**. Review forms and author controls are suppressed for owners and while signed-in ownership is unresolved; other visitors retain the normal review flow. Server-side self-review rejection remains required. See [divemaster-review-flow.md](divemaster-review-flow.md).
-- Profile Location is currently free text. Database-first location autocomplete with Google fallback is a [separate proposal](location-autocomplete-design.md), not an enabled integration.
+- Profile Location supports TomTom suggestions in the shared owner editor and remains manually editable when suggestions are unavailable. The separate database-first and Google fallback design remains a [proposal](location-autocomplete-design.md).
 
 ## Broader Directory Proposal
 
