@@ -140,7 +140,57 @@
                 <FormInput v-model="form.headline" type="text" size="md" placeholder="PADI Divemaster · Cozumel" />
               </FormField>
               <FormField label="Location" label-style="auth">
-                <FormInput v-model="form.location" type="text" size="md" placeholder="Bali, Indonesia" />
+                <div class="relative">
+                  <FormInput
+                    id="divemaster-profile-location"
+                    :model-value="form.location"
+                    type="text"
+                    size="md"
+                    placeholder="Bali, Indonesia"
+                    autocomplete="off"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-controls="divemaster-location-suggestions"
+                    :aria-expanded="locationSuggestionsOpen"
+                    :aria-activedescendant="activeLocationSuggestion >= 0 ? `divemaster-location-option-${activeLocationSuggestion}` : undefined"
+                    @update:model-value="onLocationInput"
+                    @keydown="onLocationKeydown"
+                  />
+                  <ul
+                    v-if="locationSuggestionsOpen"
+                    id="divemaster-location-suggestions"
+                    role="listbox"
+                    class="absolute inset-x-0 top-full z-20 mt-1 max-h-60 overflow-y-auto rounded-md border border-zinc-300 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+                  >
+                    <li
+                      v-for="(suggestion, index) in locationSuggestions"
+                      :id="`divemaster-location-option-${index}`"
+                      :key="`${suggestion.label}-${index}`"
+                      role="option"
+                      :aria-selected="activeLocationSuggestion === index"
+                    >
+                      <button
+                        type="button"
+                        tabindex="-1"
+                        class="w-full px-3 py-2 text-left text-sm text-zinc-900 hover:bg-zinc-100 focus:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800 dark:focus:bg-zinc-800"
+                        :class="activeLocationSuggestion === index ? 'bg-zinc-100 dark:bg-zinc-800' : ''"
+                        @mousedown.prevent="selectLocationSuggestion(index)"
+                        @mousemove="activeLocationSuggestion = index"
+                      >
+                        {{ suggestion.label }}
+                      </button>
+                    </li>
+                    <li class="border-t border-zinc-200 px-3 py-1.5 text-right text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+                      Powered by TomTom
+                    </li>
+                  </ul>
+                  <p v-if="locationLookupLoading" role="status" class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    Searching locations…
+                  </p>
+                  <p v-else-if="locationLookupError" role="status" class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    Location suggestions are unavailable. You can enter a location manually.
+                  </p>
+                </div>
               </FormField>
               <FormField label="Bio" label-style="auth">
                 <FormTextarea v-model="form.bio" :rows="4" placeholder="Short intro for divers booking with you." />
@@ -453,6 +503,7 @@ const emit = defineEmits<{ saved: []; cancel: []; dirty: [boolean]; saving: [boo
 
 const { user, accessToken } = useAuth()
 const { client } = useSupabase()
+const { public: publicConfig } = useRuntimeConfig()
 const { labelsForIds, ensureDiveSiteLabels, loadDiveSitePage, rememberDiveSites } = useDiveSitePicker()
 const diveSiteAddNewOptions = [DIVE_SITE_ADD_NEW_OPTION]
 
@@ -506,6 +557,109 @@ const form = reactive({
   last_formal_training_date: '',
   last_formal_training_other: ''
 })
+
+type LocationSuggestion = { label: string }
+const locationSuggestions = ref<LocationSuggestion[]>([])
+const locationLookupLoading = ref(false)
+const locationLookupError = ref(false)
+const activeLocationSuggestion = ref(-1)
+const locationSuggestionsOpen = computed(() => locationSuggestions.value.length > 0)
+let locationSearchTimer: ReturnType<typeof setTimeout> | undefined
+let locationSearchController: AbortController | undefined
+
+function onLocationInput (value: string | number) {
+  form.location = String(value)
+  locationSuggestions.value = []
+  activeLocationSuggestion.value = -1
+  locationLookupError.value = false
+  locationLookupLoading.value = false
+  if (locationSearchTimer) clearTimeout(locationSearchTimer)
+  locationSearchController?.abort()
+
+  const query = form.location.trim()
+  const apiKey = String(publicConfig.tomtomApiKey || '')
+  if (query.length < 2 || !apiKey) return
+
+  locationSearchTimer = setTimeout(() => {
+    void searchTomTomLocations(query, apiKey)
+  }, 300)
+}
+
+async function searchTomTomLocations (query: string, apiKey: string) {
+  const controller = new AbortController()
+  locationSearchController = controller
+  locationLookupLoading.value = true
+  const params = new URLSearchParams({ key: apiKey, limit: '5', language: 'en-US' })
+  const url = `https://api.tomtom.com/search/2/geocode/${encodeURIComponent(query)}.json?${params}`
+
+  try {
+    const response = await fetch(url, { signal: controller.signal })
+    if (!response.ok) throw new Error('TomTom location search failed')
+    const payload = await response.json() as {
+      results?: Array<{
+        address?: {
+          municipality?: string
+          municipalitySubdivision?: string
+          countrySubdivisionName?: string
+          country?: string
+          freeformAddress?: string
+        }
+      }>
+    }
+    if (controller.signal.aborted || form.location.trim() !== query) return
+
+    const labels = (payload.results || []).flatMap((result) => {
+      const address = result.address
+      if (!address) return []
+      const parts = [
+        address.municipality || address.municipalitySubdivision,
+        address.countrySubdivisionName,
+        address.country
+      ].map(part => String(part || '').trim()).filter(Boolean)
+      const uniqueParts = parts.filter((part, index) => parts.indexOf(part) === index)
+      const label = uniqueParts.join(', ') || String(address.freeformAddress || '').trim()
+      return label ? [{ label }] : []
+    })
+    locationSuggestions.value = labels.filter((item, index) => labels.findIndex(other => other.label === item.label) === index)
+  } catch {
+    if (!controller.signal.aborted) locationLookupError.value = true
+  } finally {
+    if (locationSearchController === controller) {
+      locationLookupLoading.value = false
+      locationSearchController = undefined
+    }
+  }
+}
+
+function selectLocationSuggestion (index: number) {
+  const suggestion = locationSuggestions.value[index]
+  if (!suggestion) return
+  form.location = suggestion.label
+  locationSuggestions.value = []
+  activeLocationSuggestion.value = -1
+  locationLookupError.value = false
+  locationSearchController?.abort()
+}
+
+function onLocationKeydown (event: KeyboardEvent) {
+  if (!locationSuggestionsOpen.value) return
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    activeLocationSuggestion.value = (activeLocationSuggestion.value + 1) % locationSuggestions.value.length
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    activeLocationSuggestion.value = activeLocationSuggestion.value <= 0
+      ? locationSuggestions.value.length - 1
+      : activeLocationSuggestion.value - 1
+  } else if (event.key === 'Enter' && activeLocationSuggestion.value >= 0) {
+    event.preventDefault()
+    selectLocationSuggestion(activeLocationSuggestion.value)
+  } else if (event.key === 'Escape') {
+    event.preventDefault()
+    locationSuggestions.value = []
+    activeLocationSuggestion.value = -1
+  }
+}
 
 const lastTrainingSelect = ref('')
 const favoriteLocalId = ref('')
