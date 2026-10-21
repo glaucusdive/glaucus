@@ -1,0 +1,19 @@
+---
+description: "Read relevant project documentation before proposing solutions, implementing features, or debugging fixes; verify current behavior and keep changes scoped."
+alwaysApply: true
+---
+
+# Documentation Before Solutions
+
+Apply this workflow to feature requests, fixes, reviews, and implementation plans:
+
+1. Identify the concrete task anchor: the affected field, file, symbol, failing behavior, command, or test.
+2. Read the [README documentation map](../../README.md#documentation), then the relevant sections of the owning feature document. Check scope, status, known limitations, and related dated entries in [the implementation log](../../docs/implementation-log.md). Follow adjacent links only when needed; do not read every document or plan indiscriminately.
+3. Verify documented behavior against the nearest owning code and test. Distinguish implemented behavior, historical verification, pending migrations, and proposed work. An old plan is not authority to expand the request. Surface material conflicts; ask when a policy or scope decision cannot be resolved locally.
+4. Before proposing a solution or editing, briefly state the current behavior, intended scope, and a falsifiable local hypothesis with one cheap discriminating check. Use the existing architecture and UI conventions. Stop exploration once there is enough evidence for the smallest testable change.
+5. Implement only the authorized change and run focused validation immediately after the first substantive edit. Broaden checks only for meaningful risks or required repository gates.
+6. Update the owning docs when behavior, setup, data contracts, or limitations change. Add a dated implementation-log entry for meaningful changes, stating what was actually verified, any migration/deployment requirements, and remaining limitations. Label proposals explicitly; never claim tests ran, migrations were applied, or integrations were enabled without evidence.
+
+Documentation lookup does not authorize reading `.env`, private records, CSV exports, or other sensitive data. Follow the existing security rules and use synthetic/redacted fixtures. Store no credentials or confidential records in documentation.
+
+This is always-on Cursor guidance, not a deterministic enforcement hook. Do not assume another editor or assistant automatically loads `.cursor` rules. Keep the existing AI-agent/security rule intact.

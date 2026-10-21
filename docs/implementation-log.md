@@ -1,5 +1,13 @@
 # Implementation Log
 
+## 2026-10-20 - Documentation map and docs-first workflow
+
+- Added the [README documentation map](../README.md#documentation) and an always-on [Cursor docs-first rule](../.cursor/rules/docs-first.mdc). The rule directs agents to relevant docs, then owning code/tests, before solutions; it is guidance rather than a hook and is not automatically shared with other editors.
+- Updated the [divemaster plan](dive-master-plan.md#current-implementation) to separate implemented editing/dates/reviews from the broader proposed directory and approval model. Updated [review documentation](divemaster-review-flow.md) for owner/visitor UI and server-side self-review protection.
+- Added the [location-autocomplete design](location-autocomplete-design.md) as a proposal only: independently sourced local directory first, Google fallback with explicit storage/attribution/session/billing requirements. Google-selected profile persistence remains a terms-review gate. No location integration, schema/import, credential configuration, or paid provisioning was implemented.
+- This entry records documentation and guidance changes, not a new application release or a rerun of the historical test/build results below. See the feature documents for implementation boundaries.
+- Documentation verification: local file links and Markdown heading anchors passed checks across all six touched files; Cursor rule YAML parsed with `alwaysApply: true` and a nonempty description. Rule loading inside Cursor was not observed. Application tests/build were not rerun for this documentation-only update.
+
 ## 2026-10-20 - Divemaster profile editing and month-only job dates
 
 ### Past jobs
