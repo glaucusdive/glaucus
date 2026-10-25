@@ -51,6 +51,7 @@ Add new brand colors here **before** scattering hex across components.
 ### Inputs
 
 - Align with Nuxt UI form controls when inside the app shell. For custom inputs (e.g. landing nav search), use **transparent or subtle fill**, **muted placeholder**, **full focus ring**, and **min-width 0** on flex children so truncation works.
+- **Mobile zoom:** The site viewport in [app/app.vue](../app/app.vue) is `width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no`. Text inputs, textareas, and selects are at least **16px** on viewports up to 1024px and on coarse pointers ([app/assets/css/main.css](../app/assets/css/main.css)). iOS zooms the page when a focused field is smaller than 16px, including when it ignores `user-scalable`.
 
 ### Cards and surfaces
 

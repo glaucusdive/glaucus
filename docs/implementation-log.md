@@ -1,5 +1,12 @@
 # Implementation Log
 
+## 2026-10-25 - Mobile page zoom locked off
+
+- Site viewport is now `width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no` in `app/app.vue`.
+- Text inputs, textareas, and selects are 16px up to 1024px and on coarse pointers, so iOS does not zoom the page when the chat keyboard opens. Checkboxes, radios, and file inputs are unchanged.
+- Desktop field sizes stay on the existing Tailwind scale. No database or config migration.
+- Verification: local dev server at `http://localhost:3000`. Rendered viewport meta is `width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no`. At a 390px mobile viewport, the chat field, email field, and password field compute to 16px; focusing the chat field and typing left `visualViewport.scale` at 1. At 1440px the chat field stays 14px. A physical iPhone was not used.
+
 ## 2026-10-20 - Certification issue month and year
 
 - Certification Issued fields now reuse the Month and Year dropdowns in owner settings, embedded public-profile editing, and admin editing. Training date controls are unchanged.
