@@ -1,5 +1,34 @@
 # Implementation Log
 
+## 2026-10-25 - Single-select picker dismissal
+
+- Choosing an option in a shared single-select picker now selects that value, blurs Search, closes the panel through its existing cleanup path, and restores trigger focus with `preventScroll`. Re-selecting the same option keeps it selected; clearing remains an explicit remove action.
+- Multi-select pickers remain open and preserve toggle-on/toggle-off selection. Profile persistence and the parked sizing work are unchanged.
+- Ten [focus/selection tests](../tests/profilePickerFocus.test.ts) and six positioning tests pass. Synthetic browser checks verified single-select closure/focus, an empty search on reopening, repeated selection, and preserved multi-select addition/removal. No profile data was saved. Physical iPhone keyboard dismissal remains a device check.
+- Integration verification: full suite 635 passed / 1 skipped; Nuxt production build passed.
+
+## 2026-10-25 - New dive-site visibility and picker search focus
+
+- Sites Dived Add now waits for the new draft row to render, scrolls it into view, and focuses its picker trigger. It does not open the dropdown or save profile changes. The behavior lives in the shared owner editor, covering Settings and inline public-profile editing.
+- Opening a shared searchable picker focuses its Search input after rendering with `preventScroll`, without waiting for options to load. The deferred handler checks that the picker is still open, searchable, and enabled. Nonsearchable controls and selection behavior are unchanged.
+- Six [focus regression tests](../tests/profilePickerFocus.test.ts) and six existing positioning tests pass. Signed-in browser checks at 375px and 1280px verified new-row visibility/focus, no automatic dropdown on Add, search focus on opening, and typing without a second click. Temporary empty rows were removed without saving; physical iPhone keyboard activation remains a device check.
+- The broader mobile sizing work remains parked. This change does not restore the rejected Settings Cancel/discard alignment.
+- Integration verification: full suite 631 passed / 1 skipped; Nuxt production build passed.
+
+## 2026-10-25 - Keyboard-aware searchable pickers
+
+- The shared [SearchMultiSelect](../app/components/ui/SearchMultiSelect.vue) now positions its panel using visible viewport dimensions and offsets, listens for `visualViewport` resize/scroll while open, and removes those listeners on close/unmount. This addresses certification and similar searches appearing under the iPhone keyboard.
+- [Positioning logic](../app/utils/searchPickerPosition.ts) constrains panel bounds, including when the trigger is outside the visible area. Search inputs use 16px text on mobile to avoid focus zoom. Selection, remote pagination, and saves are unchanged.
+- Six focused [positioning tests](../tests/searchPickerPosition.test.ts) pass. A synthetic browser picker verified visible bounds during simulated keyboard resize/pan, 16px search text, filtering, and selection without profile writes. This is not a physical iPhone/Safari keyboard test; device verification remains necessary.
+- Integration verification: full suite 625 passed / 1 skipped; Nuxt production build passed.
+
+## 2026-10-25 - Mobile Settings navigation
+
+- Fixed the mobile dead end at Settings by adding an **Open menu** icon button to the shared [SettingsPage header](../app/components/settings/SettingsPage.vue). The button uses the existing `useDrawer().openMobileMenu`, with an accessible label, tooltip, expanded state, and 44px width.
+- The button is visible below `lg` and hidden on desktop, where the sidebar remains visible. Existing subpage back links and Save actions are unchanged. The later Settings Cancel/discard experiment was reverted and is not part of this fix.
+- [Navigation regression tests](../tests/settingsNavigation.test.ts) render the actual header with synthetic content and exercise its menu handler, expanded state, optional back link, and actions slot. They do not require authentication, profile records, or external services. Run with `npm test -- tests/settingsNavigation.test.ts`.
+- Earlier browser checks verified menu visibility and no horizontal overflow at 320px and 375px, and a hidden menu button at 1280px. Component checks verified drawer state changes from root and subpage headers. The original authenticated end-to-end navigation check was limited by sign-in; these tests do not replace a viewport or signed-in browser check.
+
 ## 2026-10-20 - Certification issue month and year
 
 - Certification Issued fields now reuse the Month and Year dropdowns in owner settings, embedded public-profile editing, and admin editing. Training date controls are unchanged.
