@@ -1,6 +1,16 @@
 <template>
   <div class="max-h-screen bg-zinc-900 h-full p-0 overflow-y-auto divide-y divide-zinc-800">
     <div class="flex flex-row divide-x divide-zinc-800 h-20 bg-zinc-900 sticky top-0 z-50">
+      <button
+        type="button"
+        class="flex h-full w-11 shrink-0 cursor-pointer items-center justify-center text-zinc-400 hover:bg-zinc-800/50 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 lg:hidden"
+        aria-label="Open menu"
+        title="Open menu"
+        :aria-expanded="isMobileMenuOpen"
+        @click="openMobileMenu"
+      >
+        <Menu class="size-5" />
+      </button>
       <NuxtLink
         v-if="backTo"
         :to="backTo"
@@ -32,7 +42,10 @@
 </template>
 
 <script setup lang="ts">
-import { ChevronLeft } from 'lucide-vue-next'
+import { ChevronLeft, Menu } from 'lucide-vue-next'
+import { useDrawer } from '~/composables/useDrawer'
+
+const { openMobileMenu, isMobileMenuOpen } = useDrawer()
 
 defineProps<{
   title: string
