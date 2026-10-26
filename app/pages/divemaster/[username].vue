@@ -57,6 +57,17 @@
           </div>
           <p v-if="profile.bio" class="text-sm text-zinc-300 max-w-2xl whitespace-pre-wrap">{{ profile.bio }}</p>
         </div>
+        <div class="flex shrink-0 items-center gap-1 self-start">
+        <button
+          type="button"
+          class="inline-flex h-10 items-center justify-center gap-2 rounded-md px-3 text-zinc-600 hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          title="Share divemaster profile"
+          aria-label="Share divemaster profile"
+          @click="shareProfileOpen = true"
+        >
+          <Share2 class="size-5" aria-hidden="true" />
+          <span>Share</span>
+        </button>
         <button
           v-if="isOwner"
           ref="pencilButton"
@@ -68,6 +79,7 @@
         >
           <Pencil class="size-5" aria-hidden="true" />
         </button>
+        </div>
       </header>
 
       <a
@@ -305,6 +317,21 @@
       </section>
       </div>
     </div>
+    <ClientOnly>
+      <ProfileShareDialog
+        v-if="profile"
+        v-model:open="shareProfileOpen"
+        profile-type="divemaster"
+        :can-use-flyer="isOwner"
+        :profile-name="displayName"
+        :url="profileShareUrl"
+        :file-name="profile.username"
+        :details="{
+          subtitle: [profile.headline || 'Divemaster', profile.location].filter(Boolean).join(' · '),
+          description: profile.bio || ''
+        }"
+      />
+    </ClientOnly>
     <dialog
       ref="discardDialog"
       aria-labelledby="discard-profile-title"
@@ -325,7 +352,9 @@
 </template>
 
 <script setup lang="ts">
-import { ChevronRight, Pencil, Star, StarHalf } from 'lucide-vue-next'
+import { ChevronRight, Pencil, Share2, Star, StarHalf } from 'lucide-vue-next'
+import ProfileShareDialog from '~/components/ProfileShareDialog.vue'
+import { isTestDivemasterUsername } from '~~/shared/testDivemasters'
 import type { PublicDivemasterProfile } from '~~/shared/divemasterProfile'
 import { formatJobMonth } from '~~/shared/divemasterJobDates'
 import { deleteDivemasterReview, useDivemasterReviews } from '~/composables/useDivemasterReviews'
@@ -370,6 +399,12 @@ const profile = computed(() => {
 })
 
 const displayName = computed(() => profile.value?.display_name || profile.value?.username || 'Divemaster')
+const shareProfileOpen = ref(false)
+const profileShareUrl = computed(() => {
+  if (!profile.value?.username) return ''
+  const origin = import.meta.client ? window.location.origin : 'https://glaucusdive.com'
+  return new URL(`/divemaster/${encodeURIComponent(profile.value.username)}`, origin).toString()
+})
 const reviewUsername = computed(() => profile.value?.username || '')
 const { isSignedIn, accessToken, user, init, loading: authLoading } = useAuth()
 const { client } = useSupabase()
@@ -667,7 +702,8 @@ useSeoMeta({
   description: seoDescription,
   ogTitle: seoTitle,
   ogDescription: seoDescription,
-  ogImage: computed(() => profile.value?.avatar_url || undefined)
+  ogImage: computed(() => profile.value?.avatar_url || undefined),
+  robots: computed(() => isTestDivemasterUsername(profile.value?.username || username.value) ? 'noindex, nofollow' : 'index, follow')
 })
 
 function formatMonthYear (iso: string | null | undefined) {

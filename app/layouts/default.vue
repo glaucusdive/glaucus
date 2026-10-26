@@ -30,7 +30,7 @@
             <ClientOnly>
               <!-- Chat sidebar -->
               <template v-if="!isAdminRoute">
-                <NavLink to="/#hero" @click="handleCloseMobileMenu">
+                <NavLink to="/" @click="backToWebsite">
                   <House class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
                   Back to website
                 </NavLink>
@@ -283,6 +283,11 @@ import { shellPageSlotClass } from '~/utils/shellPageSlotClass'
 const testMode = useTestMode()
 
 const route = useRoute()
+const websiteMode = useState('websiteMode', () => false)
+function backToWebsite () {
+  websiteMode.value = true
+  handleCloseMobileMenu()
+}
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 const isAuthRoute = computed(() => route.path.startsWith('/auth'))
 /** Only highlight the active chat session while actually on the chat home. */
