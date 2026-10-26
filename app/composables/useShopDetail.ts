@@ -44,9 +44,12 @@ export function useShopDetail (shopLookup: string) {
     }
   )
 
-  return Object.assign(asyncData, {
+  const detail = {
+    ...asyncData,
     shopData: computed(() => asyncData.data.value?.shop ?? null),
     nearbyShops: computed(() => asyncData.data.value?.nearbyShops ?? []),
     formatShopCityState
-  })
+  }
+
+  return Object.assign(asyncData.then(() => detail), detail)
 }

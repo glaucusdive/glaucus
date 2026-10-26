@@ -118,9 +118,9 @@ Social and review links are stored in `diveshops.social_links`. Admins can set t
 
 The shared shop detail header now has a **Share** control on each public business profile. It opens an accessible dialog containing:
 
-- A high-error-correction SVG QR code for the current shop's canonical profile URL.
+- A branded A4 flyer preview containing a high-error-correction QR code for the current shop's canonical profile URL, its name, business type/location, and available public website/phone/email.
 - The shop name and readable absolute URL.
-- **Copy link**, **Share**, **Download**, and **Print** actions.
+- **Copy link**, **Share**, **Download PDF**, and **Print** actions. Preview, downloaded PDF and printout use the same browser-generated artwork. SVG download is no longer offered. PDF generation runs locally and is lazy-loaded; no remote document service receives profile information.
 
 The QR stays inside the dialog rather than permanently occupying profile space. It uses black on white with a quiet zone for reliable scanning. The same control appears on the full profile page and chat shop-detail panel because both use the shared detail component.
 
@@ -158,7 +158,7 @@ Do not promise review stars in Google results. Google restricts self-serving Loc
 2. **New-listing approval:** Persist new inquiries, add an admin review queue, and create the public shop plus junction rows only after approval. Keep pending/denied submissions out of public profile, directory, and sitemap queries. Keep partner edits in their existing approval flow.
 3. **Implemented:** Admin, new-listing, and partner forms can enter up to 12 labeled social/review URLs. Writes normalize to valid HTTP(S); partner changes remain pending until admin approval; public profiles render configured links below contact details. Apply the social-links migration before deploying. Re-enabling hours/languages/description, adding business media, payment methods, and nearby-shop navigation remain future decisions.
 4. **SEO foundations:** Add canonical metadata for shop profiles and validate direct and UUID routes.
-5. **Implemented:** Public profile Share dialog with QR preview, copy link, native share/copy fallback, SVG download, and print layout. Partner/admin distribution surfaces remain future work until their permissions and operational requirements are defined.
+5. **Implemented:** Public profile Share dialog with flyer preview, copy link, native share/copy fallback, PDF download, and matching print layout. Divemaster profiles reuse the same dialog with public professional details only. Partner/admin distribution surfaces remain future work until their permissions and operational requirements are defined.
 6. **Reviews and measurement:** Decide if review content should be server-rendered; keep Google and Glaucus rating sources distinct. Monitor Search Console without making indexing/rich snippets acceptance guarantees.
 
 ## Acceptance Checks

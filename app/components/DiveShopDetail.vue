@@ -353,11 +353,16 @@
     </div>
   </div>
   <ClientOnly>
-    <ShopProfileShareDialog
+    <ProfileShareDialog
       v-model:open="shareProfileOpen"
-      :shop-name="shopData?.business_name || 'Dive shop'"
+      profile-type="shop"
+      :profile-name="shopData?.business_name || 'Dive shop'"
       :url="shopProfileUrl"
       :file-name="shopData?.slug || shopRowId || 'dive-shop'"
+      :details="{
+        subtitle: [shopData?.type, shopData?.city, shopData?.state, shopData?.country?.name].filter(Boolean).join(' · '),
+        contacts: [shopData?.website_url, shopData?.phone, shopData?.email].filter(Boolean)
+      }"
     />
   </ClientOnly>
 </template>
@@ -367,7 +372,7 @@ import { MapPin, Phone, Mail, Globe, ChevronLeft, ExternalLink, QrCode, X } from
 import CardInfo from '~/components/CardInfo.vue'
 import CardReview from '~/components/CardReview.vue'
 import ShopReviewForm from '~/components/ShopReviewForm.vue'
-import ShopProfileShareDialog from '~/components/shop/ShopProfileShareDialog.vue'
+import ProfileShareDialog from '~/components/ProfileShareDialog.vue'
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useDrawer } from '~/composables/useDrawer'
 import { useAuth } from '~/composables/useAuth'

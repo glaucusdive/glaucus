@@ -1,5 +1,18 @@
 # Implementation Log
 
+## 2026-10-25 - Public profile PDF flyers
+
+- Shop and divemaster sharing now previews a branded one-page A4 flyer. Download PDF and Print use that identical high-resolution artwork, generated locally in the browser. The old SVG download action is removed; copy link and native share remain.
+- Divemaster flyers include only public name, headline/location and a shortened bio. Shop flyers include public name, business type/location, website, phone and email. Both include the public URL and a high-contrast QR with a quiet zone; private/pending details and photos are excluded.
+- PDF generation is lazy-loaded; preparation/download failures and blocked print windows show actionable errors. No migration is needed.
+- Flyer sections flow after their actual rendered text, rather than reserving blank rows for missing or short names/details. The QR follows the last detail with a compact gap in preview, PDF, and print.
+- Verification: 10 focused tests and the production build passed. Local browser checks generated valid single-page PDFs for shop and synthetic divemaster profiles, including a Unicode name; the print handler received the identical preview PNG. Browser barcode detection decoded both flyer QRs to their exact public profile URLs. Physical printing and a phone-camera scan remain manual checks.
+
+## 2026-10-25 - Direct shop page loading
+
+- Fixed `useShopDetail` so both synchronous component callers and awaited server-rendered page callers receive the shop and nearby-shop refs. Previously, awaiting the underlying Nuxt async-data promise discarded these added properties, causing direct shop URLs to return HTTP 500.
+- Verification: the Acquatica Scuba ASD page returned HTTP 200 locally and rendered its shop heading in the browser; synchronous/awaited composable and shop SEO tests passed, as did the production build. Production requires deployment of this fix.
+
 ## 2026-10-25 - Moderated new divemaster certifications
 
 - Existing certifications are backfilled as approved and remain approved when edited. New owner-added certifications are forced to pending by a database trigger; owners cannot change the review status themselves.
