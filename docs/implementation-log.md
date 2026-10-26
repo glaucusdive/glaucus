@@ -1,5 +1,14 @@
 # Implementation Log
 
+## 2026-10-25 - Moderated dive-site suggestions in profile pickers
+
+- Added the persistent **Site not listed? Add new dive site** action to favorite local/destination and Sites Dived pickers in owner and admin profile editing. The owner form prefills the search and requires a country; exact canonical/approved-alias matches reuse the existing ID, and country-scoped similar sites are shown before an explicit submission.
+- Ordinary users submit private suggestions rather than writing to `dive_sites`. Their pending/rejected submissions and saved profile associations are readable only by the submitter and admins. Pending links remain private in the profile editor and are stored separately from canonical favorite/site foreign keys; public profile queries remain canonical-only.
+- Added an admin queue with approve, merge into an existing same-country site, and reject-with-reason. Admins may explicitly approve the submitted name as an alias. Approval/merge rechecks exact canonical/alias duplicates and transactionally resolves only saved links, preserving favorite fields, visited-site notes, and ordering without reattaching removed links.
+- Admin profile editing can still add canonical sites directly. The previous owner direct-create endpoint now routes through the moderated submission procedure.
+- Migrations [20261025140000](../supabase/migrations/20261025140000_dive_site_suggestions.sql) and [20261025141000](../supabase/migrations/20261025141000_dive_site_suggestion_profiles.sql) have been exercised in isolated PGlite tests; they have not been applied to a hosted Supabase database.
+- Focused suggestion/picker tests passed, including SQL privacy, deduplication, canonical-write protection, alias approval, country-scoped similarity, profile-link resolution, and removal-before-approval. Full test suite: 728 passed / 1 skipped. Nuxt production build passed. Physical mobile-device and hosted migration rollout checks remain outstanding.
+
 ## 2026-10-25 - Booking next question is its own bubble
 
 - Shop-pick replies such as “Got it — Dive Academy Fiji. What’s the name for the booking?” now render as two bubbles: the acknowledgement, then the next question in semibold.

@@ -132,6 +132,10 @@
                   <MapPin class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
                   Dive sites
                 </NavLink>
+                <NavLink to="/admin/dive-site-submissions" @click="handleCloseMobileMenu">
+                  <MapPin class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                  Dive site suggestions
+                </NavLink>
                 <a
                   href="https://us.posthog.com"
                   target="_blank"

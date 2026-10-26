@@ -59,19 +59,19 @@ This document separates the existing divemaster implementation from the broader 
 
 ## Pending Dive-Site Work
 
-**Status:** Agreed requirements, not implemented. The training/certification suggestion feature does not provide this flow. The existing **Add dive site** button only appends a row for selecting an existing site; existing favorite-site creation paths do not yet provide the moderation boundary below.
+**Status:** Implemented in owner profile editing, admin profile editing, and the admin review queue. Apply migrations [20261025140000](../supabase/migrations/20261025140000_dive_site_suggestions.sql) and [20261025141000](../supabase/migrations/20261025141000_dive_site_suggestion_profiles.sql) before enabling it on a hosted database. The training/certification suggestion feature remains separate.
 
 ### Search And Entry
 
 - Scope: favorite local site, favorite destination site, and Sites Dived in owner Settings, inline profile editing, and admin editing. Chat, TomTom location fields, and directory searches remain outside this work.
-- Keep normal exact/partial matches first. When none match, offer typo-tolerant **Similar dive sites** with country context. Selection must use an existing site ID; never automatically correct, merge, or create a site.
+- Keep normal exact/partial matches first. The small entry dialog shows up to eight country-scoped similar sites using normalized bigram similarity. Selection uses the canonical site ID; it never automatically corrects, merges, or creates a site.
 - Add a persistent **Site not listed? Add new dive site** action outside filtered results, including when there are no matches. Keep it distinct from the bottom **Add dive site** row action.
 - Open a small form with the searched name prefilled and a required country from the existing country list. Check normalized name/country and approved aliases for exact duplicates, then show possible similar sites in that country before submission.
 - Reuse an exact existing site. If none of the suggestions is right, allow an explicit new-site submission; approximate similarity alone must not force a selection or merge. Repeated identical submissions should reuse the user's pending request rather than create duplicates. Failed lookup or empty search alone must never create anything.
 
 ### Pending And Public Visibility
 
-- New user submissions remain separate from the canonical shared `dive_sites` catalog until reviewed. Only the submitter and admins can read pending/rejected submissions; enforce this with database permissions/RLS as well as endpoint authorization.
+- New user submissions remain separate from the canonical shared `dive_sites` catalog until reviewed. Only the submitter and admins can read pending/rejected submissions and private profile associations; enforce this with database permissions/RLS as well as endpoint authorization.
 - Owners may select a pending site and see **Pending** privately. Save persists the pending profile association; the pending site stays hidden from public profiles and global suggestions. The rest of a profile remains usable and publishable.
 - Submission and profile Save are separate explicit actions. Cancelling the new-site form creates nothing. Cancelling a profile edit does not undo an already submitted suggestion, but must not persist its unsaved profile association. Approval must not reattach a site the user removed or never saved.
 - Keep submission references separate from existing canonical-site foreign keys. Reject unauthorized references and prevent ordinary users from bypassing review with direct canonical-site inserts/updates. Preserve trusted admin and approved shop-submission creation workflows.
@@ -83,11 +83,10 @@ This document separates the existing divemaster implementation from the broader 
 - Only explicitly admin-approved alternate names become searchable aliases pointing to a canonical site ID. Pending/rejected names must not enter global suggestions automatically. Preserve country context and genuine ambiguity.
 - Broader site suggestions may use canonical sites and approved aliases once available. A submitted or approved site does not prove that a shop visits it: operator discovery must use confirmed shop/site associations, not inferred relationships.
 
-### Delivery Gates
+### Verification And Rollout
 
-- Implement the schema, private pending associations, review transactions, and permissions before replacing the current direct creation path. Add indexed, bounded typo search rather than downloading the full catalog into each browser.
-- Verify exact/similar matching, country duplicates, no-result entry, duplicate/race handling, owner/private versus public visibility, approval/merge/rejection, and cancellation/removal before approval. Test actual SQL permissions and transactions with synthetic data, plus owner/admin pickers at mobile and desktop widths.
-- Document and apply reviewed migrations through the [Supabase CLI workflow](supabase-migrations.md). Until this work is implemented and verified, do not present the creation/moderation flow as available. No migration or application change is introduced by this pending-work record.
+- Focused SQL tests exercise owner/admin visibility, normalized duplicates, alias approval, canonical write restrictions, saved profile links, approval resolution, notes/order preservation, and removal before approval with synthetic PostgreSQL roles and data.
+- Apply reviewed migrations through the [Supabase CLI workflow](supabase-migrations.md) before enabling submissions or reviews on a hosted database. A local production build and focused tests do not verify hosted migration application or physical-device keyboard behavior.
 
 ## Broader Directory Proposal
 

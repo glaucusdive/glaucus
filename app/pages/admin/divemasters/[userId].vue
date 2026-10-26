@@ -98,6 +98,8 @@
               wrap-chips
               single-select
               singular-label="dive site"
+              footer-action-label="Site not listed? Add new dive site"
+              @footer-action="query => openAdminSiteCreator('favorite_local', query)"
               @update:model-value="(ids) => onFavoriteSelect('local', ids)"
             />
             <div
@@ -141,6 +143,8 @@
               wrap-chips
               single-select
               singular-label="dive site"
+              footer-action-label="Site not listed? Add new dive site"
+              @footer-action="query => openAdminSiteCreator('favorite_destination', query)"
               @update:model-value="(ids) => onFavoriteSelect('destination', ids)"
             />
             <div
@@ -292,6 +296,8 @@
                 wrap-chips
                 single-select
                 singular-label="dive site"
+                footer-action-label="Site not listed? Add new dive site"
+                @footer-action="query => openAdminSiteCreator({ visitedIndex: idx }, query)"
                 @update:model-value="(ids) => { diveSiteIds[idx] = ids[0] ? String(ids[0]) : '' }"
               />
             </div>
@@ -334,6 +340,13 @@
           </Button>
         </div>
       </form>
+      <DiveSiteSuggestionDialog
+        v-model:open="siteCreatorOpen"
+        mode="admin"
+        :initial-name="siteCreatorQuery"
+        :countries="countryOptions"
+        @selected="onAdminSiteCreated"
+      />
     </div>
   </div>
 </template>
@@ -400,6 +413,9 @@ const diveSiteIds = ref<string[]>([])
 const certificationList = ref<HTMLElement | null>(null)
 const jobList = ref<HTMLElement | null>(null)
 const diveSiteList = ref<HTMLElement | null>(null)
+const siteCreatorOpen = ref(false)
+const siteCreatorQuery = ref('')
+const siteCreatorTarget = ref<'favorite_local' | 'favorite_destination' | { visitedIndex: number }>('favorite_local')
 
 const trainingNameOptions = LAST_FORMAL_TRAINING_NAMES.map(name => ({ id: name, label: name }))
 
@@ -472,6 +488,26 @@ function onFavoriteSelect (kind: 'local' | 'destination', ids: string[]) {
       newLocalSite.name = ''
       newLocalSite.country_id = ''
     }
+
+    function openAdminSiteCreator (
+      target: 'favorite_local' | 'favorite_destination' | { visitedIndex: number },
+      query: string
+    ) {
+      siteCreatorTarget.value = target
+      siteCreatorQuery.value = query
+      siteCreatorOpen.value = true
+    }
+
+    function onAdminSiteCreated (site: { id: string; label: string }) {
+      rememberDiveSites([site])
+      if (siteCreatorTarget.value === 'favorite_local') {
+        favoriteLocalId.value = site.id
+      } else if (siteCreatorTarget.value === 'favorite_destination') {
+        favoriteDestinationId.value = site.id
+      } else {
+        diveSiteIds.value[siteCreatorTarget.value.visitedIndex] = site.id
+      }
+    }
   } else {
     favoriteDestinationId.value = next
     if (next !== DIVE_SITE_ADD_NEW_ID) {
@@ -502,18 +538,22 @@ async function createFavoriteSite (kind: 'local' | 'destination') {
   creating.value = true
   try {
     const headers = await authHeaders()
-    const created = await $fetch<{ id: string; label: string }>('/api/settings/divemaster/dive-site', {
+    const created = await $fetch<{ item: { id: string; name: string } }>('/api/admin/lookups/dive_sites', {
       method: 'POST',
       headers,
       body: { name: draft.name.trim(), country_id: draft.country_id }
     })
-    rememberDiveSites([{ id: created.id, label: created.label }])
+    const countryName = countryOptions.value.find(country => country.id === draft.country_id)?.label
+    rememberDiveSites([{
+      id: created.item.id,
+      label: `${created.item.name}${countryName ? ` (${countryName})` : ''}`
+    }])
     if (kind === 'local') {
-      favoriteLocalId.value = created.id
+      favoriteLocalId.value = created.item.id
       newLocalSite.name = ''
       newLocalSite.country_id = ''
     } else {
-      favoriteDestinationId.value = created.id
+      favoriteDestinationId.value = created.item.id
       newDestinationSite.name = ''
       newDestinationSite.country_id = ''
     }

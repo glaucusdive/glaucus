@@ -201,87 +201,31 @@
               <FormField label="Favorite local dive spot" label-style="auth">
                 <SearchMultiSelect
                   :model-value="favoritePickerValue(favoriteLocalId)"
-                  :options="diveSiteAddNewOptions"
                   :known-options="labelsForIds(favoritePickerValue(favoriteLocalId))"
                   :load-page="loadDiveSitePage"
                   searchable
                   wrap-chips
                   single-select
                   singular-label="dive site"
+                  footer-action-label="Site not listed? Add new dive site"
+                  @footer-action="query => openSiteSuggestion('favorite_local', query)"
                   @update:model-value="(ids) => onFavoriteSelect('local', ids)"
                 />
-                <div
-                  v-if="favoriteLocalId === DIVE_SITE_ADD_NEW_ID"
-                  class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-md bg-zinc-100 dark:bg-zinc-800/20 p-3"
-                >
-                  <FormField label="New site name" label-style="auth">
-                    <FormInput v-model="newLocalSite.name" type="text" size="sm" placeholder="Blue Hole" />
-                  </FormField>
-                  <FormField label="Country" label-style="auth">
-                    <SearchMultiSelect
-                      :model-value="newLocalSite.country_id ? [newLocalSite.country_id] : []"
-                      :options="countryOptions"
-                      searchable
-                      wrap-chips
-                      single-select
-                      singular-label="country"
-                      @update:model-value="(ids) => { newLocalSite.country_id = ids[0] ? String(ids[0]) : '' }"
-                    />
-                  </FormField>
-                  <div class="sm:col-span-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      :disabled="creatingLocalSite || !newLocalSite.name.trim() || !newLocalSite.country_id"
-                      @click="createFavoriteSite('local')"
-                    >
-                      {{ creatingLocalSite ? 'Adding…' : 'Add dive site' }}
-                    </Button>
-                  </div>
-                </div>
               </FormField>
 
               <FormField label="Favorite destination dive spot" label-style="auth">
                 <SearchMultiSelect
                   :model-value="favoritePickerValue(favoriteDestinationId)"
-                  :options="diveSiteAddNewOptions"
                   :known-options="labelsForIds(favoritePickerValue(favoriteDestinationId))"
                   :load-page="loadDiveSitePage"
                   searchable
                   wrap-chips
                   single-select
                   singular-label="dive site"
+                  footer-action-label="Site not listed? Add new dive site"
+                  @footer-action="query => openSiteSuggestion('favorite_destination', query)"
                   @update:model-value="(ids) => onFavoriteSelect('destination', ids)"
                 />
-                <div
-                  v-if="favoriteDestinationId === DIVE_SITE_ADD_NEW_ID"
-                  class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-md bg-zinc-100 dark:bg-zinc-800/20 p-3"
-                >
-                  <FormField label="New site name" label-style="auth">
-                    <FormInput v-model="newDestinationSite.name" type="text" size="sm" placeholder="Blue Corner" />
-                  </FormField>
-                  <FormField label="Country" label-style="auth">
-                    <SearchMultiSelect
-                      :model-value="newDestinationSite.country_id ? [newDestinationSite.country_id] : []"
-                      :options="countryOptions"
-                      searchable
-                      wrap-chips
-                      single-select
-                      singular-label="country"
-                      @update:model-value="(ids) => { newDestinationSite.country_id = ids[0] ? String(ids[0]) : '' }"
-                    />
-                  </FormField>
-                  <div class="sm:col-span-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      :disabled="creatingDestinationSite || !newDestinationSite.name.trim() || !newDestinationSite.country_id"
-                      @click="createFavoriteSite('destination')"
-                    >
-                      {{ creatingDestinationSite ? 'Adding…' : 'Add dive site' }}
-                    </Button>
-                  </div>
-                </div>
               </FormField>
             </div>
 
@@ -402,6 +346,8 @@
                     wrap-chips
                     single-select
                     singular-label="dive site"
+                    footer-action-label="Site not listed? Add new dive site"
+                    @footer-action="query => openSiteSuggestion({ visitedIndex: idx }, query)"
                     @update:model-value="(ids) => { selectedDiveSiteIds[idx] = ids[0] ? String(ids[0]) : '' }"
                   />
                 </div>
@@ -443,12 +389,17 @@
       </section>
       </fieldset>
     </div>
+    <DiveSiteSuggestionDialog
+      v-model:open="siteSuggestionOpen"
+      :initial-name="siteSuggestionQuery"
+      :countries="countryOptions"
+      @selected="onSiteSuggestionSelected"
+    />
   </component>
 </template>
 
 <script setup lang="ts">
 import {
-  DIVE_SITE_ADD_NEW_ID,
   isValidUsername,
   LAST_FORMAL_TRAINING_NAMES,
   LAST_FORMAL_TRAINING_OTHER,
@@ -459,8 +410,8 @@ import {
   type DivemasterJob,
   type DivemasterProfileStatus
 } from '~~/shared/divemasterProfile'
-import { DIVE_SITE_ADD_NEW_OPTION } from '~~/shared/diveSitePicker'
 import { jobDateToMonth, jobMonthToDate, normalizeJobDates } from '~~/shared/divemasterJobDates'
+import { pendingDiveSiteId, submissionIdFromPendingDiveSiteId } from '~~/shared/pendingDiveSiteIds'
 import DivemasterJobMonthInput from '~/components/DivemasterJobMonthInput.vue'
 import SettingsPage from '~/components/settings/SettingsPage.vue'
 import { revealLastProfileRow } from '~/utils/revealLastProfileRow'
@@ -474,7 +425,6 @@ const { client } = useSupabase()
 const { data: credentialCatalog } = useProfileCredentialCatalog()
 const { public: publicConfig } = useRuntimeConfig()
 const { labelsForIds, ensureDiveSiteLabels, loadDiveSitePage, rememberDiveSites } = useDiveSitePicker()
-const diveSiteAddNewOptions = [DIVE_SITE_ADD_NEW_OPTION]
 
 const loading = ref(true)
 const loadError = ref('')
@@ -508,6 +458,9 @@ const submitting = ref(false)
 const cancelling = ref(false)
 const saveMessage = ref('')
 const saveOk = ref(false)
+const siteSuggestionOpen = ref(false)
+const siteSuggestionQuery = ref('')
+const siteSuggestionTarget = ref<'favorite_local' | 'favorite_destination' | { visitedIndex: number }>('favorite_local')
 
 const form = reactive({
   headline: '',
@@ -625,10 +578,6 @@ const lastTrainingSelect = ref('')
 const favoriteLocalId = ref('')
 const favoriteDestinationId = ref('')
 const countryOptions = ref<Array<{ id: string; label: string }>>([])
-const newLocalSite = reactive({ name: '', country_id: '' })
-const newDestinationSite = reactive({ name: '', country_id: '' })
-const creatingLocalSite = ref(false)
-const creatingDestinationSite = ref(false)
 
 const courseCertOptions = ref<Array<{ id: string; label: string; agency: string }>>([])
 const agencyOptions = ref<Array<{ id: string; label: string }>>([])
@@ -723,16 +672,29 @@ function onFavoriteSelect (kind: 'local' | 'destination', ids: string[]) {
   const next = ids[0] ? String(ids[0]) : ''
   if (kind === 'local') {
     favoriteLocalId.value = next
-    if (next !== DIVE_SITE_ADD_NEW_ID) {
-      newLocalSite.name = ''
-      newLocalSite.country_id = ''
-    }
   } else {
     favoriteDestinationId.value = next
-    if (next !== DIVE_SITE_ADD_NEW_ID) {
-      newDestinationSite.name = ''
-      newDestinationSite.country_id = ''
-    }
+  }
+}
+
+function openSiteSuggestion (
+  target: 'favorite_local' | 'favorite_destination' | { visitedIndex: number },
+  query: string
+) {
+  siteSuggestionTarget.value = target
+  siteSuggestionQuery.value = query
+  siteSuggestionOpen.value = true
+}
+
+function onSiteSuggestionSelected (site: { id: string; label: string }) {
+  rememberDiveSites([site])
+  const target = siteSuggestionTarget.value
+  if (target === 'favorite_local') {
+    favoriteLocalId.value = site.id
+  } else if (target === 'favorite_destination') {
+    favoriteDestinationId.value = site.id
+  } else {
+    selectedDiveSiteIds.value[target.visitedIndex] = site.id
   }
 }
 
@@ -746,44 +708,8 @@ function resolvedLastTrainingName (): string | null {
 
 function favoriteIdForSave (id: string): string | null {
   const trimmed = id.trim()
-  if (!trimmed || trimmed === DIVE_SITE_ADD_NEW_ID) return null
+  if (!trimmed || submissionIdFromPendingDiveSiteId(trimmed)) return null
   return trimmed
-}
-
-async function createFavoriteSite (kind: 'local' | 'destination') {
-  const draft = kind === 'local' ? newLocalSite : newDestinationSite
-  const creating = kind === 'local' ? creatingLocalSite : creatingDestinationSite
-  if (!draft.name.trim() || !draft.country_id) return
-  creating.value = true
-  try {
-    const token = accessToken.value || (await client.auth.getSession()).data.session?.access_token
-    if (!token) {
-      saveOk.value = false
-      saveMessage.value = 'Sign in again to add a dive site.'
-      return
-    }
-    const created = await $fetch<{ id: string; label: string }>('/api/settings/divemaster/dive-site', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: { name: draft.name.trim(), country_id: draft.country_id }
-    })
-    rememberDiveSites([{ id: created.id, label: created.label }])
-    if (kind === 'local') {
-      favoriteLocalId.value = created.id
-      newLocalSite.name = ''
-      newLocalSite.country_id = ''
-    } else {
-      favoriteDestinationId.value = created.id
-      newDestinationSite.name = ''
-      newDestinationSite.country_id = ''
-    }
-  } catch (e: unknown) {
-    saveOk.value = false
-    const err = e as { data?: { statusMessage?: string }; statusMessage?: string; message?: string }
-    saveMessage.value = err?.data?.statusMessage || err?.statusMessage || err?.message || 'Failed to add dive site'
-  } finally {
-    creating.value = false
-  }
 }
 
 async function loadCourseCertOptions () {
@@ -866,18 +792,60 @@ async function loadAll () {
     favoriteLocalId.value = (dm.favorite_local_dive_site_id as string) || ''
     favoriteDestinationId.value = (dm.favorite_destination_dive_site_id as string) || ''
 
-    const [certResult, jobResult, siteResult] = await Promise.all([
+    const [certResult, jobResult, siteResult, pendingSiteResult] = await Promise.all([
       client.from('divemaster_certifications').select('*').eq('user_id', id).order('sort_order'),
       client.from('divemaster_jobs').select('*').eq('user_id', id).order('sort_order'),
-      client.from('divemaster_dive_sites').select('dive_site_id, note').eq('user_id', id).order('sort_order')
+      client.from('divemaster_dive_sites').select('dive_site_id, note, sort_order').eq('user_id', id).order('sort_order'),
+      client.from('divemaster_pending_dive_sites')
+        .select('submission_id, slot, note, sort_order, submission:dive_site_submissions!inner(name, status, country_id, countries(name))')
+        .eq('user_id', id)
+        .order('sort_order')
     ])
-    for (const result of [certResult, jobResult, siteResult]) {
+    for (const result of [certResult, jobResult, siteResult, pendingSiteResult]) {
       if (result.error) throw result.error
     }
     const certs = certResult.data
     const jobRows = jobResult.data
     const siteLinks = siteResult.data
-    siteNotes.value = Object.fromEntries((siteLinks ?? []).map(site => [site.dive_site_id, site.note]))
+    const pendingSiteLinks = (pendingSiteResult.data ?? []) as Array<{
+      submission_id: string
+      slot: string
+      note: string | null
+      sort_order: number
+      submission: {
+        name: string
+        status: string
+        countries?: { name?: string } | Array<{ name?: string }> | null
+      } | Array<{
+        name: string
+        status: string
+        countries?: { name?: string } | Array<{ name?: string }> | null
+      }>
+    }>
+
+    const pendingSiteOptions = pendingSiteLinks.map(link => {
+      const submission = Array.isArray(link.submission) ? link.submission[0] : link.submission
+      const country = Array.isArray(submission?.countries) ? submission.countries[0]?.name : submission?.countries?.name
+      const status = submission?.status === 'rejected' ? 'Rejected' : 'Pending'
+      return {
+        link,
+        option: {
+          id: pendingDiveSiteId(link.submission_id),
+          label: `${submission?.name || 'Dive site'}${country ? ` (${country})` : ''} · ${status}`
+        }
+      }
+    })
+    rememberDiveSites(pendingSiteOptions.map(site => site.option))
+    const localPending = pendingSiteLinks.find(link => link.slot === 'favorite_local')
+    const destinationPending = pendingSiteLinks.find(link => link.slot === 'favorite_destination')
+    if (!favoriteLocalId.value && localPending) favoriteLocalId.value = pendingDiveSiteId(localPending.submission_id)
+    if (!favoriteDestinationId.value && destinationPending) favoriteDestinationId.value = pendingDiveSiteId(destinationPending.submission_id)
+
+    siteNotes.value = Object.fromEntries([
+      ...(siteLinks ?? []).map(site => [site.dive_site_id, site.note] as const),
+      ...pendingSiteLinks.filter(link => link.slot === 'visited')
+        .map(link => [pendingDiveSiteId(link.submission_id), link.note] as const)
+    ])
 
     certifications.value = (certs ?? []).map(c => ({
       id: c.id,
@@ -904,7 +872,12 @@ async function loadAll () {
       sort_order: j.sort_order ?? 0
     }))
 
-    selectedDiveSiteIds.value = (siteLinks ?? []).map(s => String(s.dive_site_id))
+    selectedDiveSiteIds.value = [
+      ...(siteLinks ?? []).map(site => ({ id: String(site.dive_site_id), sortOrder: site.sort_order ?? 0 })),
+      ...pendingSiteOptions
+        .filter(({ link }) => link.slot === 'visited')
+        .map(({ link, option }) => ({ id: option.id, sortOrder: link.sort_order ?? 0 }))
+    ].sort((a, b) => a.sortOrder - b.sortOrder).map(site => site.id)
     await Promise.all([
       ensureDiveSiteLabels([
         favoriteLocalId.value,
@@ -1096,9 +1069,10 @@ async function saveDraft () {
     const { error: siteDeleteError } = await client.from('divemaster_dive_sites').delete().eq('user_id', id)
     if (siteDeleteError) throw siteDeleteError
     const siteIds = selectedDiveSiteIds.value.map(id => id.trim()).filter(Boolean)
-    if (siteIds.length) {
+    const canonicalSiteIds = siteIds.filter(siteId => !submissionIdFromPendingDiveSiteId(siteId))
+    if (canonicalSiteIds.length) {
       const { error } = await client.from('divemaster_dive_sites').insert(
-        siteIds.map((dive_site_id, i) => ({
+        canonicalSiteIds.map((dive_site_id, i) => ({
           user_id: id,
           dive_site_id,
           note: siteNotes.value[dive_site_id] || null,
@@ -1107,6 +1081,19 @@ async function saveDraft () {
       )
       if (error) throw error
     }
+
+    const pendingVisited = siteIds.flatMap((siteId, index) => {
+      const submissionId = submissionIdFromPendingDiveSiteId(siteId)
+      return submissionId
+        ? [{ submission_id: submissionId, note: siteNotes.value[siteId] || null, sort_order: index }]
+        : []
+    })
+    const { error: pendingSiteSaveError } = await client.rpc('save_divemaster_pending_dive_sites', {
+      p_favorite_local: submissionIdFromPendingDiveSiteId(favoriteLocalId.value) || null,
+      p_favorite_destination: submissionIdFromPendingDiveSiteId(favoriteDestinationId.value) || null,
+      p_visited: pendingVisited
+    })
+    if (pendingSiteSaveError) throw pendingSiteSaveError
 
     saveOk.value = true
     saveMessage.value = dmStatus.value === 'published' ? 'Profile saved.' : 'Draft saved.'
