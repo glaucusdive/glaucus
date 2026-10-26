@@ -5,13 +5,14 @@
         <p class="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Glaucus directory</p>
         <h1 class="mt-2 text-2xl font-semibold text-zinc-900 dark:text-white">DivePros</h1>
       </div>
-      <NuxtLink
-        to="/settings/profile"
+      <a
+        :href="router.resolve(addProfileLocation).href"
+        @click="openProfileSetup"
         class="inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
       >
         <Plus class="h-4 w-4" aria-hidden="true" />
         Add your profile
-      </NuxtLink>
+      </a>
     </header>
 
     <section aria-labelledby="divepro-directory-heading" class="flex flex-col gap-5">
@@ -110,6 +111,11 @@ import { ArrowUpRight, ChevronLeft, ChevronRight, MapPin, Plus, RotateCw, Search
 import { DIVEMASTER_DIRECTORY_PAGE_SIZE, normalizeDivemasterDirectorySearch, parseDivemasterDirectoryPage, type DirectoryDivemaster, type DivemasterDirectoryResponse } from '~~/shared/divemasterDirectory'
 
 const route = useRoute()
+const router = useRouter()
+const { isSignedIn, loading: authLoading, init: initAuth } = useAuth()
+const addProfileLocation = computed(() => isSignedIn.value
+  ? { path: '/settings/profile' }
+  : { path: '/auth', query: { signup: '1', redirect: '/settings/profile' } })
 const siteConfig = useSiteConfig()
 const searchTerm = computed(() => normalizeDivemasterDirectorySearch(route.query.q))
 const currentPage = computed(() => parseDivemasterDirectoryPage(route.query.page))
@@ -157,6 +163,13 @@ function photoUrl (professional: DirectoryDivemaster): string | undefined {
 
 function pageLocation (page: number) {
   return { path: '/for-dive-pros', query: { ...(searchTerm.value ? { q: searchTerm.value } : {}), ...(page > 1 ? { page: String(page) } : {}) } }
+}
+
+async function openProfileSetup (event: MouseEvent) {
+  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+  event.preventDefault()
+  if (authLoading.value) await initAuth()
+  await navigateTo(addProfileLocation.value)
 }
 
 async function submitSearch () {

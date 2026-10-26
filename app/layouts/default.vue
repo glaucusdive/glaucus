@@ -30,6 +30,10 @@
             <ClientOnly>
               <!-- Chat sidebar -->
               <template v-if="!isAdminRoute">
+                <NavLink to="/#hero" @click="handleCloseMobileMenu">
+                  <House class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                  Back to website
+                </NavLink>
                 <div
                   v-if="showChatInSidebar"
                   class="flex flex-col gap-1"
@@ -114,6 +118,12 @@
                   <CircleUser class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
                   Divemasters
                 </NavLink>
+                <NavLink to="/admin/profile-credential-submissions" @click="handleCloseMobileMenu">
+                  Credential suggestions
+                </NavLink>
+                <NavLink to="/admin/divemaster-certifications" @click="handleCloseMobileMenu">
+                  Divemaster certifications
+                </NavLink>
                 <NavLink to="/admin/reviews" @click="handleCloseMobileMenu">
                   <Star class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
                   Reviews
@@ -124,6 +134,10 @@
                 >
                   <MapPin class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
                   Dive sites
+                </NavLink>
+                <NavLink to="/admin/dive-site-submissions" @click="handleCloseMobileMenu">
+                  <MapPin class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
+                  Dive site suggestions
                 </NavLink>
                 <a
                   href="https://us.posthog.com"
@@ -244,6 +258,7 @@ import {
   Shield,
   ClipboardList,
   ArrowLeft,
+  House,
   LayoutDashboard,
   Database,
   FileText,

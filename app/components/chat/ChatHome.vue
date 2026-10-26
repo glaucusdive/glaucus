@@ -1,5 +1,5 @@
 <template>
-    <div class="flex flex-col h-full w-full relative">
+    <div class="flex h-full min-h-0 w-full flex-col">
       <!-- Header: min-w-0 + shrink-0 so title truncates instead of clipping actions -->
       <ShellPageHeader :title="pageHeaderTitle">
         <template #actions>
@@ -36,13 +36,14 @@
       </ShellPageHeader>
 
       <!-- Main content: full-width chat; shop detail is a bottom sheet overlay -->
-      <div class="flex-1 flex flex-row overflow-hidden relative">
+      <div class="relative flex min-h-0 flex-1 flex-row overflow-hidden">
         <!-- Chat Section -->
-        <div class="relative flex min-w-0 h-full w-full flex-col  duration-300 ease-in-out">
+        <div class="flex h-full min-h-0 w-full min-w-0 flex-col duration-300 ease-in-out">
 
           <!-- Messages Container -->
           <div ref="messagesContainer"
-            class="flex-1 overflow-y-auto p-2 md:p-4 flex flex-col gap-4 *:mx-auto *:w-full">
+            class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-2 *:mx-auto *:w-full md:p-4"
+            @scroll.passive="onChatViewportChange">
 
             <div v-if="messages.length === 0" class="flex flex-col items-start md:items-center justify-start md:justify-center gap-8 md:h-full w-full">
               <div class="text-center flex flex-col gap-4 items-center max-w-4xl pt-8 md:pt-auto">
@@ -66,7 +67,13 @@
             </div>
 
             <!-- Message history -->
-            <div v-for="(msg, index) in messages" :key="index" class="max-w-2xl">
+            <div
+              v-for="(msg, index) in messages"
+              :key="index"
+              data-chat-message
+              class="max-w-2xl transition-opacity duration-200"
+              :class="messageRowIsCurrent(index) ? '' : 'opacity-50'"
+            >
               <!-- User message -->
               <div v-if="msg.role === 'user'" class="flex justify-end">
                 <div class="max-w-[80%] bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-50 rounded-lg p-2 px-4">
@@ -77,26 +84,31 @@
               <!-- Assistant message -->
               <div v-else-if="msg.role === 'assistant'" class="flex justify-start">
                 <div class="md:max-w-[90%] flex-1 min-w-0 flex flex-col gap-2">
-                  <!-- Lead-in / narration / ack — always before shop cards when both exist -->
+                  <!-- Lead-in / acknowledgement, then the next question in its own bubble -->
                   <div
-                    v-if="msg.preamble"
+                    v-if="assistantTurnCopy(msg).ack"
                     class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 chat-bubble-pop-first"
                   >
-                    <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap">{{ msg.preamble }}</p>
+                    <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap">{{ assistantTurnCopy(msg).ack }}</p>
                   </div>
                   <div
                     class="flex flex-col gap-4 min-w-0"
-                    :class="{ 'chat-bubble-pop-follow': msg.preamble }"
+                    :class="{ 'chat-bubble-pop-follow': assistantTurnCopy(msg).ack }"
                   >
                   <!-- AI text response (chevron inside bubble when shown) -->
                   <div
-                    v-if="msg.content && !(msg.shops && msg.shops.length > 0)"
+                    v-if="assistantTurnCopy(msg).question && !(msg.shops && msg.shops.length > 0)"
                     class="bg-zinc-50 dark:bg-zinc-800 p-2 flex items-stretch gap-2 rounded-lg"
                   >
-                    <p class="text-sm lg:text-base text-zinc-800 dark:text-zinc-50 whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis">{{ msg.content }}
+                    <p
+                      class="text-sm lg:text-base whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis"
+                      :class="assistantTurnCopy(msg).emphasize
+                        ? 'font-semibold text-zinc-900 dark:text-white'
+                        : 'text-zinc-800 dark:text-zinc-50'"
+                    >{{ assistantTurnCopy(msg).question }}
                     </p>
                     <button
-                      v-if="(bookingShopForDrawer || (msg.shopId && msg.shopName)) && !(msg.shops && msg.shops.length > 0)"
+                      v-if="index === currentChatMessageIndexes.latestAssistant && (bookingShopForDrawer || (msg.shopId && msg.shopName)) && !(msg.shops && msg.shops.length > 0)"
                       type="button"
                       @click="toggleBookingFormDrawerFromMessage(msg)"
                       class="w-10 shrink-0 self-stretch flex items-center justify-center rounded-sm border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200  cursor-pointer"
@@ -142,9 +154,10 @@
                             <CardSearchResult
                               :shop="shop"
                               :active="selectedShopId === shop.id"
+                              :booking-disabled="index !== activeChipMessageIndex"
                               :match-badges="msg.searchMatchBadges"
                               :search-filters="msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : undefined"
-                              @start-booking="handleStartBookingFromCard"
+                              @start-booking="(shop) => handleStartBookingFromCard(shop, index)"
                             />
                           </div>
                         </div>
@@ -179,9 +192,8 @@
 
                   <!-- Selectable options: filter chips first; primary book CTA on its own row below (flex gap) so it is not confused with filters -->
                   <div
-                    v-if="(msg.selectableOptions && msg.selectableOptions.length > 0) || (msg.shops?.length && selectedShopId && selectedShopName)"
-                    class="flex flex-col gap-4 p-2 transition-opacity duration-200"
-                    :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
+                    v-if="index === activeChipMessageIndex && ((msg.selectableOptions && msg.selectableOptions.length > 0) || (msg.shops?.length && selectedShopId && selectedShopName))"
+                    class="flex flex-col gap-4 p-2"
                   >
                     <div
                       v-if="(msg.selectableOptions || []).filter(o => o.label !== 'Load next 20').length > 0"
@@ -209,9 +221,8 @@
 
                   <!-- Rental gear: pick items or Done (no gear); toggle locally, commit on Done -->
                   <div
-                    v-if="Array.isArray(msg.rentalEquipmentOptions)"
-                    class="flex flex-col gap-4 p-2 transition-opacity duration-200"
-                    :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
+                    v-if="index === activeChipMessageIndex && Array.isArray(msg.rentalEquipmentOptions)"
+                    class="flex flex-col gap-4 p-2"
                   >
                     <p v-if="index === activeChipMessageIndex" class="text-xs text-zinc-500 dark:text-zinc-400">
                       Select all that apply, then tap Done.
@@ -241,9 +252,8 @@
 
                   <!-- Courses: toggle locally, commit on Done -->
                   <div
-                    v-if="msg.courseOptions && msg.courseOptions.length > 0"
-                    class="flex flex-col gap-4 p-2 transition-opacity duration-200"
-                    :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
+                    v-if="index === activeChipMessageIndex && msg.courseOptions && msg.courseOptions.length > 0"
+                    class="flex flex-col gap-4 p-2"
                   >
                     <p v-if="index === activeChipMessageIndex" class="text-xs text-zinc-500 dark:text-zinc-400">
                       Select all that apply, then tap Done.
@@ -281,9 +291,8 @@
 
                   <!-- Dive sites: toggle locally, commit on Done -->
                   <div
-                    v-if="msg.diveSiteOptions && msg.diveSiteOptions.length > 0"
-                    class="flex flex-col gap-4 p-2 transition-opacity duration-200"
-                    :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
+                    v-if="index === activeChipMessageIndex && msg.diveSiteOptions && msg.diveSiteOptions.length > 0"
+                    class="flex flex-col gap-4 p-2"
                   >
                     <p v-if="index === activeChipMessageIndex" class="text-xs text-zinc-500 dark:text-zinc-400">
                       Select all that apply, then tap Done.
@@ -324,7 +333,7 @@
             </div>
 
             <!-- Loading: mapped progress + optional stream preview + dots + brand-friendly line -->
-            <div v-if="isLoading" class="flex justify-start max-w-2xl">
+            <div v-if="isLoading" data-chat-message class="flex max-w-2xl justify-start">
               <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3 flex flex-col gap-2 max-w-[min(90%,42rem)] min-w-0">
                 <p v-if="searchStreamPreview" class="text-sm text-zinc-800 dark:text-white whitespace-pre-wrap min-w-0">{{ searchStreamPreview }}</p>
                 <div class="flex items-center gap-2.5 min-h-[1.25rem]">
@@ -346,7 +355,7 @@
           </div>
 
           <!-- Input area: max width lives on parent so ChatComposer fills available width -->
-          <div class="flex items-stretch justify-center z-1 w-full min-w-0 overflow-hidden">
+          <div ref="composerAnchorRef" class="z-1 flex w-full min-w-0 items-stretch justify-center overflow-hidden">
             <div class="w-full min-w-0 max-w-4xl 2xl:min-w-md">
               <ChatComposer
                 ref="chatComposerRef"
@@ -358,6 +367,19 @@
               />
             </div>
           </div>
+
+          <Teleport to="body">
+            <Button
+              v-if="showJumpToLatest"
+              type="button"
+              variant="primary"
+              class="fixed z-40 min-w-12 w-max max-w-none whitespace-nowrap !rounded-full px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              :style="jumpLatestStyle"
+              @click="onJumpToLatestClick"
+            >
+              View latest message
+            </Button>
+          </Teleport>
 
           <!-- Shop detail: teleported full-viewport sheet (above layout chrome); booking form stays layout right drawer -->
           <ClientOnly>
@@ -391,6 +413,7 @@
 import { ref, computed, nextTick, onMounted, watch, onUnmounted } from 'vue'
 import { ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Undo2 } from 'lucide-vue-next'
 import ChatComposer from '~/components/chat/ChatComposer.vue'
+import Button from '~/components/ui/Button.vue'
 import BottomSheetDrawer from '~/components/ui/BottomSheetDrawer.vue'
 import CardSearchResult from '~/components/CardSearchResult.vue'
 import ShopDetailPanel from '~/components/ShopDetailPanel.vue'
@@ -641,6 +664,11 @@ function startChatLoadingBrand (kind) {
 
 const messages = ref([])
 const messagesContainer = ref(null)
+const composerAnchorRef = ref(null)
+const showJumpToLatest = ref(false)
+const jumpLatestStyle = ref({ left: '50%', top: '0px', transform: 'translate(-50%, -100%)' })
+const NEAR_BOTTOM_PX = 80
+let scrollRetryTimers = []
 const isRestoringCache = ref(true)
 /** After cache restore or session switch, sync profile from the latest booking payload in memory (same merge as each new assistant turn). */
 let debounceProfileFromChatTimer = null
@@ -748,21 +776,61 @@ const bookingShopForDrawer = computed(() => {
   return null
 })
 
-// Index of the last assistant message that has chips (selectable options, gear, dive sites) — only that message's chips are active; older ones are faded for history
+// Live chat actions belong only to the latest assistant message, and only when that
+// message itself has shops or chips. A later plain question (for example a name
+// step) leaves every older Book this and chip inactive. Nothing is live while a reply is loading.
+function messageHasChatActions (message) {
+  if (!message || message.role !== 'assistant') return false
+  const hasSelectable = message.selectableOptions && message.selectableOptions.length > 0
+  const hasGear = Array.isArray(message.rentalEquipmentOptions)
+  const hasCourses = message.courseOptions && message.courseOptions.length > 0
+  const hasDiveSites = message.diveSiteOptions && message.diveSiteOptions.length > 0
+  const hasShops = message.shops && message.shops.length > 0
+  return Boolean(hasSelectable || hasGear || hasCourses || hasDiveSites || hasShops)
+}
+
 const activeChipMessageIndex = computed(() => {
+  if (isLoading.value) return -1
   const list = messages.value
   for (let i = list.length - 1; i >= 0; i--) {
-    const m = list[i]
-    if (m.role !== 'assistant') continue
-    const hasSelectable = m.selectableOptions && m.selectableOptions.length > 0
-    const hasGear = Array.isArray(m.rentalEquipmentOptions) && m.rentalEquipmentOptions.length > 0
-    const hasCourses = m.courseOptions && m.courseOptions.length > 0
-    const hasDiveSites = m.diveSiteOptions && m.diveSiteOptions.length > 0
-    const hasBookChip = m.shops?.length && selectedShopId.value && selectedShopName.value
-    if (hasSelectable || hasGear || hasCourses || hasDiveSites || hasBookChip) return i
+    if (list[i].role !== 'assistant') continue
+    return messageHasChatActions(list[i]) ? i : -1
   }
   return -1
 })
+
+const currentChatMessageIndexes = computed(() => {
+  const list = messages.value
+  let latestUser = -1
+  let latestAssistant = -1
+  for (let i = list.length - 1; i >= 0; i--) {
+    if (latestUser < 0 && list[i].role === 'user') latestUser = i
+    if (latestAssistant < 0 && list[i].role === 'assistant') latestAssistant = i
+    if (latestUser >= 0 && latestAssistant >= 0) break
+  }
+  return { latestUser, latestAssistant }
+})
+
+function messageRowIsCurrent (index) {
+  const { latestUser, latestAssistant } = currentChatMessageIndexes.value
+  return index === latestUser || index === latestAssistant
+}
+
+/** Split "Got it — shop. What's next?" into an acknowledgement bubble and a bold next-step bubble. */
+function assistantTurnCopy (msg) {
+  const preamble = typeof msg?.preamble === 'string' ? msg.preamble.trim() : ''
+  const content = typeof msg?.content === 'string' ? msg.content.trim() : ''
+  const hasShops = Array.isArray(msg?.shops) && msg.shops.length > 0
+  if (hasShops) return { ack: preamble, question: content, emphasize: false }
+  if (preamble && content) {
+    return { ack: preamble, question: content, emphasize: msg?.intent === 'booking' }
+  }
+  const combined = content.match(/^(Got it — .+)\.\s+((?:What|How|I noted)[\s\S]+)$/)
+  if (combined) {
+    return { ack: `${combined[1]}.`, question: combined[2].trim(), emphasize: true }
+  }
+  return { ack: preamble, question: content, emphasize: false }
+}
 
 /** Local multi-select draft for booking chips (courses / dive sites / gear) — commit on Done only. */
 const bookingChipDraft = ref(null)
@@ -1577,14 +1645,23 @@ onMounted(() => {
     window.addEventListener('pageshow', onChatPageShow)
     document.addEventListener('visibilitychange', onChatVisibilityChange)
     window.addEventListener(SIGN_OUT_CHAT_RESET_EVENT, resetChatUiForSignOut)
+    window.addEventListener('resize', onChatViewportChange)
+    window.visualViewport?.addEventListener('resize', onChatViewportChange)
+    window.visualViewport?.addEventListener('scroll', onChatViewportChange)
+    nextTick(() => onChatViewportChange())
   }
 })
 
 onUnmounted(() => {
+  scrollRetryTimers.forEach((id) => clearTimeout(id))
+  scrollRetryTimers = []
   if (import.meta.client) {
     window.removeEventListener('pageshow', onChatPageShow)
     document.removeEventListener('visibilitychange', onChatVisibilityChange)
     window.removeEventListener(SIGN_OUT_CHAT_RESET_EVENT, resetChatUiForSignOut)
+    window.removeEventListener('resize', onChatViewportChange)
+    window.visualViewport?.removeEventListener('resize', onChatViewportChange)
+    window.visualViewport?.removeEventListener('scroll', onChatViewportChange)
   }
 })
 
@@ -1592,40 +1669,96 @@ onUnmounted(() => {
 watch([messages, userInput, preferGuidedThisSession, guidedSearchState, guidedBookingHints, tripRequirements], persistCache, { deep: true })
 watch([selectedShopId, detailDrawerShopId, isOpen, drawerData], persistCache, { deep: true })
 
-// Auto-scroll when new messages arrive; stop at exact/other divider when present.
-function getLatestExactOtherDivider () {
+// Auto-scroll when new messages arrive. Pin to the exact/other divider only when
+// that divider is inside the latest message. Later turns (Book this) go to the end.
+function dividerInLatestMessage () {
   const container = messagesContainer.value
   if (!container) return null
-  const dividers = container.querySelectorAll('[data-search-exact-other-divider]')
-  return dividers.length ? dividers[dividers.length - 1] : null
+  const rows = container.querySelectorAll('[data-chat-message]')
+  const last = rows[rows.length - 1]
+  if (!last) return null
+  return last.querySelector('[data-search-exact-other-divider]')
 }
 
-function scrollContainerToDividerBottom (container, divider) {
-  const containerRect = container.getBoundingClientRect()
-  const dividerRect = divider.getBoundingClientRect()
-  const targetTop = container.scrollTop + (dividerRect.bottom - containerRect.bottom)
-  container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' })
+function prefersInstantChatScroll () {
+  if (typeof window === 'undefined') return true
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const coarse = window.matchMedia('(hover: none) and (pointer: coarse)').matches
+  const ua = navigator.userAgent || ''
+  const iOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  return reduce || coarse || iOS
 }
 
-const scrollToBottom = async () => {
+function applyContainerScroll (container, top) {
+  const next = Math.max(0, top)
+  if (prefersInstantChatScroll()) {
+    container.scrollTop = next
+    return
+  }
+  container.scrollTo({ top: next, behavior: 'smooth' })
+}
+
+function scrollTargetTop (container, pinDivider) {
+  if (pinDivider) {
+    const divider = dividerInLatestMessage()
+    if (divider) {
+      const containerRect = container.getBoundingClientRect()
+      const dividerRect = divider.getBoundingClientRect()
+      return container.scrollTop + (dividerRect.bottom - containerRect.bottom)
+    }
+  }
+  return container.scrollHeight
+}
+
+function updateJumpLatestPosition () {
+  const el = composerAnchorRef.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  jumpLatestStyle.value = {
+    left: `${rect.left + rect.width / 2}px`,
+    top: `${Math.max(8, rect.top - 8)}px`,
+    transform: 'translate(-50%, -100%)'
+  }
+}
+
+function updateJumpToLatest () {
+  const container = messagesContainer.value
+  if (!container || messages.value.length === 0) {
+    showJumpToLatest.value = false
+    return
+  }
+  const distance = container.scrollHeight - container.scrollTop - container.clientHeight
+  showJumpToLatest.value = distance > NEAR_BOTTOM_PX
+  if (showJumpToLatest.value) updateJumpLatestPosition()
+}
+
+function onChatViewportChange () {
+  updateJumpToLatest()
+  if (showJumpToLatest.value) updateJumpLatestPosition()
+}
+
+const scrollToBottom = async (options = {}) => {
+  const pinDivider = options.pinDivider !== false
   await nextTick()
+  scrollRetryTimers.forEach((id) => clearTimeout(id))
+  scrollRetryTimers = []
   const runScroll = () => {
     const container = messagesContainer.value
     if (!container) return
-    const divider = getLatestExactOtherDivider()
-    if (divider) {
-      scrollContainerToDividerBottom(container, divider)
-      return
-    }
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior: 'smooth'
-    })
+    applyContainerScroll(container, scrollTargetTop(container, pinDivider))
+    updateJumpToLatest()
   }
-  requestAnimationFrame(runScroll)
-  // Retry after layout + card stagger so the divider position is stable.
-  setTimeout(runScroll, 150)
-  setTimeout(runScroll, 450)
+  requestAnimationFrame(() => {
+    runScroll()
+    requestAnimationFrame(runScroll)
+  })
+  // Retry after layout + card stagger so the target position is stable.
+  scrollRetryTimers.push(setTimeout(runScroll, 150))
+  scrollRetryTimers.push(setTimeout(runScroll, 450))
+}
+
+function onJumpToLatestClick () {
+  void scrollToBottom({ pinDivider: false })
 }
 
 // Watch for message updates and auto-scroll
@@ -2651,8 +2784,9 @@ const stepBack = () => {
 }
 
 /** Explicit CTA on result card: same path as shop detail panel “Start booking”. */
-function handleStartBookingFromCard (shop) {
+function handleStartBookingFromCard (shop, messageIndex) {
   if (!shop?.id) return
+  if (messageIndex !== activeChipMessageIndex.value) return
   armShopDetailCloseGuard()
   void handleStartBookingFromPanel(shop.id, shop.business_name ?? '', 'card')
 }

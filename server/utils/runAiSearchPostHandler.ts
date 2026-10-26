@@ -10,7 +10,7 @@ import {
 } from '../utils/bookingPreSend'
 import { buildDiveShopQuery, type SearchFilters } from '../utils/buildDiveShopQuery'
 import {
-  bookingGotItWithShopMessage,
+  bookingGotItWithShopParts,
   bookingShopFieldsForClient,
   shopDisplayLabel
 } from '../utils/shopDisplayForClient'
@@ -227,6 +227,21 @@ function bookingCoursesDateAckParts (p: BookingPayload, startDate: string, endDa
     messagePreamble: `Got it — ${startDate} to ${endDate}.`,
     message: bookingCoursesStepMessage(p)
   }
+}
+
+/** Shop pick acknowledgement in one bubble, the next booking question in the next. */
+function bookingShopOpenCopy (shopLabel: string, step: string | undefined, payload: BookingPayload) {
+  const question =
+    step === 'email'
+      ? 'What email should we use for the booking?'
+      : step === 'dates'
+        ? 'What are your trip dates (start and end)?'
+        : step === 'courses'
+          ? bookingCoursesStepMessage(payload)
+          : step === 'diveSites'
+            ? bookingDiveSitesStepMessage(payload)
+            : "What's the name for the booking?"
+  return bookingGotItWithShopParts(shopLabel, question)
 }
 
 /**
@@ -1371,9 +1386,6 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
         const startingFreshBooking = (effectiveWantsToBook || (resolvedByNamedShop && allowAutoBook)) && !continuingBooking
         const noPayloadYet = !bookingPayload || !(bookingPayload.name && String(bookingPayload.name).trim())
 
-        const coursesIntroMessage = (displayName: string, p: BookingPayload) =>
-          bookingGotItWithShopMessage(displayName, bookingCoursesStepMessage(p))
-
         // If shop has no rental gear and user is just starting booking, tell them and offer to continue or pick another shop
         if (startingFreshBooking && noPayloadYet && rentalEquipment.length === 0) {
           return withAgentMeta({
@@ -1426,23 +1438,14 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             courseSeedBase
           ) as BookingPayload
           nextHint = getNextBookingStep(initialPayload)
-          const firstMessage = nextHint?.step === 'name'
-            ? bookingGotItWithShopMessage(shopLabel, "What's the name for the booking?")
-            : nextHint?.step === 'email'
-              ? bookingGotItWithShopMessage(shopLabel, 'What email should we use for the booking?')
-              : nextHint?.step === 'dates'
-                ? bookingGotItWithShopMessage(shopLabel, 'What are your trip dates (start and end)?')
-                : nextHint?.step === 'courses'
-                  ? coursesIntroMessage(shopLabel, initialPayload)
-                  : nextHint?.step === 'diveSites'
-                    ? bookingGotItWithShopMessage(shopLabel, bookingDiveSitesStepMessage(initialPayload))
-                    : bookingGotItWithShopMessage(shopLabel, "What's the name for the booking?")
+          const firstCopy = bookingShopOpenCopy(shopLabel, nextHint?.step, initialPayload)
           const rankedFresh = rankedCourses()
           return withAgentMeta({
             success: true,
             intent: 'booking' as const,
             bookingReady: false,
-            message: firstMessage,
+            message: firstCopy.message,
+            ...(firstCopy.messagePreamble ? { messagePreamble: firstCopy.messagePreamble } : {}),
             shopId: resolvedShop.id,
             shopName: shopLabel,
             shopLocation: shopClient.shopLocation,
@@ -1617,23 +1620,13 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               const nextSw = getNextBookingStep(mergedSw)
               const switchedClient = bookingShopFieldsForClient(newShop)
               const switchedLabel = switchedClient.shopDisplayName
-              const switchOpen =
-                nextSw?.step === 'name'
-                  ? bookingGotItWithShopMessage(switchedLabel, "What's the name for the booking?")
-                  : nextSw?.step === 'email'
-                    ? bookingGotItWithShopMessage(switchedLabel, 'What email should we use for the booking?')
-                    : nextSw?.step === 'dates'
-                      ? bookingGotItWithShopMessage(switchedLabel, 'What are your trip dates (start and end)?')
-                      : nextSw?.step === 'courses'
-                        ? bookingGotItWithShopMessage(switchedLabel, bookingCoursesStepMessage(mergedSw))
-                        : nextSw?.step === 'diveSites'
-                          ? bookingGotItWithShopMessage(switchedLabel, bookingDiveSitesStepMessage(mergedSw))
-                          : bookingGotItWithShopMessage(switchedLabel, "What's the name for the booking?")
+              const switchOpen = bookingShopOpenCopy(switchedLabel, nextSw?.step, mergedSw)
               return withAgentMeta({
                 success: true,
                 intent: 'booking' as const,
                 bookingReady: false,
-                message: switchOpen,
+                message: switchOpen.message,
+                ...(switchOpen.messagePreamble ? { messagePreamble: switchOpen.messagePreamble } : {}),
                 ...switchedClient,
                 bookingPayload: mergedSw,
                 selectableOptions: undefined,
@@ -1750,23 +1743,14 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               courseSeedBase
             ) as BookingPayload
             nextHint = getNextBookingStep(initialPayload)
-            const firstMessage = nextHint?.step === 'name'
-              ? bookingGotItWithShopMessage(shopLabel, "What's the name for the booking?")
-              : nextHint?.step === 'email'
-                ? bookingGotItWithShopMessage(shopLabel, 'What email should we use for the booking?')
-                : nextHint?.step === 'dates'
-                  ? bookingGotItWithShopMessage(shopLabel, 'What are your trip dates (start and end)?')
-                  : nextHint?.step === 'courses'
-                    ? coursesIntroMessage(shopLabel, initialPayload)
-                    : nextHint?.step === 'diveSites'
-                      ? bookingGotItWithShopMessage(shopLabel, bookingDiveSitesStepMessage(initialPayload))
-                      : bookingGotItWithShopMessage(shopLabel, "What's the name for the booking?")
+            const firstCopy = bookingShopOpenCopy(shopLabel, nextHint?.step, initialPayload)
             const rankedContinue = rankedCourses()
             return withAgentMeta({
               success: true,
               intent: 'booking' as const,
               bookingReady: false,
-              message: firstMessage,
+              message: firstCopy.message,
+              ...(firstCopy.messagePreamble ? { messagePreamble: firstCopy.messagePreamble } : {}),
               shopId: resolvedShop.id,
               shopName: shopLabel,
             shopLocation: shopClient.shopLocation,

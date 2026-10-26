@@ -143,8 +143,11 @@
       </section>
 
       <!-- Certifications -->
-      <section v-if="profile.certifications.length" class="space-y-4">
+      <section v-if="profile.certifications.length || ownerPendingCertifications.length || ownerPendingCertificationsError" class="space-y-4">
         <h2 class="text-xl font-semibold text-zinc-900 dark:text-white">Certifications</h2>
+        <p v-if="ownerPendingCertificationsError" role="alert" class="text-sm text-red-600 dark:text-red-400">
+          {{ ownerPendingCertificationsError }}
+        </p>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div
             v-for="cert in profile.certifications"
@@ -167,13 +170,39 @@
                 <span v-if="cert.issued_at">Issued {{ formatMonthYear(cert.issued_at) }}</span>
               </p>
               <p v-if="cert.cert_number" class="text-xs text-zinc-500">#{{ cert.cert_number }}</p>
-              <div
-                v-if="(cert.students_certified ?? 0) > 0"
-                class="mt-auto pt-4"
+            </div>
+          </div>
+          <div
+            v-for="cert in ownerPendingCertifications"
+            :key="cert.id"
+            class="flex flex-col rounded-md border border-zinc-800 bg-transparent overflow-hidden"
+          >
+            <div v-if="cert.image_url" class="relative aspect-video w-full bg-transparent p-1">
+              <img
+                :src="cert.image_url"
+                :alt="cert.name"
+                class="inset-0 aspect-video w-full object-cover rounded-xs"
+                loading="lazy"
               >
-                <p class="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white">{{ cert.students_certified }}</p>
-                <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-500">Students certified</p>
+            </div>
+            <div class="flex flex-col gap-1 p-6 grow">
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 class="text-lg text-zinc-900 dark:text-white">{{ cert.name }}</h3>
+                <span
+                  class="rounded-full border px-2 py-0.5 text-xs font-medium"
+                  :class="cert.approval_status === 'pending'
+                    ? 'border-amber-500/50 bg-amber-50 text-amber-800 dark:border-amber-400/40 dark:bg-amber-950/40 dark:text-amber-200'
+                    : 'border-red-500/50 bg-red-50 text-red-800 dark:border-red-400/40 dark:bg-red-950/40 dark:text-red-200'"
+                >
+                  {{ cert.approval_status === 'pending' ? 'Pending review' : 'Rejected' }}
+                </span>
               </div>
+              <p class="text-sm text-zinc-500 dark:text-zinc-400">
+                <span v-if="cert.agency">{{ cert.agency }}</span>
+                <span v-if="cert.agency && cert.issued_at"> / </span>
+                <span v-if="cert.issued_at">Issued {{ formatMonthYear(cert.issued_at) }}</span>
+              </p>
+              <p v-if="cert.cert_number" class="text-xs text-zinc-500">#{{ cert.cert_number }}</p>
             </div>
           </div>
         </div>
@@ -207,13 +236,22 @@
       </section>
 
       <!-- Dive sites grid -->
-      <section v-if="profile.dive_sites.length" class="space-y-4">
+      <section v-if="profile.dive_sites.length || ownerPendingDiveSites.length || ownerPendingSitesError" class="space-y-4">
         <h2 class="text-xl font-semibold text-zinc-900 dark:text-white">Sites Dived</h2>
+        <p v-if="ownerPendingSitesError" role="alert" class="text-sm text-red-600 dark:text-red-400">
+          {{ ownerPendingSitesError }}
+        </p>
         <div class="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <DivemasterDiveSiteTile
             v-for="site in profile.dive_sites"
             :key="site.dive_site_id"
             :site="site"
+          />
+          <DivemasterDiveSiteTile
+            v-for="site in ownerPendingDiveSites"
+            :key="site.dive_site_id"
+            :site="site"
+            pending
           />
         </div>
       </section>
@@ -335,6 +373,32 @@ const displayName = computed(() => profile.value?.display_name || profile.value?
 const reviewUsername = computed(() => profile.value?.username || '')
 const { isSignedIn, accessToken, user, init, loading: authLoading } = useAuth()
 const { client } = useSupabase()
+type OwnerPendingDiveSite = {
+  dive_site_id: string
+  name: string
+  country_name: string | null
+  note: string | null
+  sort_order: number
+  pending: true
+}
+type OwnerPendingCertification = {
+  id: string
+  name: string
+  agency: string | null
+  cert_number: string | null
+  issued_at: string | null
+  expires_at: string | null
+  image_url: string | null
+  students_certified: number
+  sort_order: number
+  approval_status: 'pending' | 'rejected'
+}
+const ownerPendingDiveSites = ref<OwnerPendingDiveSite[]>([])
+const ownerPendingSitesError = ref('')
+let pendingSitesRequest = 0
+const ownerPendingCertifications = ref<OwnerPendingCertification[]>([])
+const ownerPendingCertificationsError = ref('')
+let pendingCertificationsRequest = 0
 const ownerUsername = ref('')
 const verifiedOwnerId = ref('')
 const isOwner = computed(() => !!user.value?.id && verifiedOwnerId.value === user.value.id && !!profile.value && ownerUsername.value === profile.value.username)
@@ -371,6 +435,61 @@ watch([() => user.value?.id, username], async ([id]) => {
   }
 }, { immediate: true })
 
+async function refreshOwnerPendingDiveSites () {
+  const request = ++pendingSitesRequest
+  ownerPendingSitesError.value = ''
+  if (!isOwner.value || !profile.value) {
+    ownerPendingDiveSites.value = []
+    return
+  }
+
+  try {
+    const token = accessToken.value || (await client.auth.getSession()).data.session?.access_token
+    if (!token) throw new Error('Sign in again to view your pending dive sites.')
+    const sites = await $fetch<OwnerPendingDiveSite[]>(
+      `/api/divemaster/${encodeURIComponent(profile.value.username)}/pending-sites`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    if (request === pendingSitesRequest && isOwner.value) ownerPendingDiveSites.value = sites
+  } catch (error) {
+    if (request !== pendingSitesRequest) return
+    ownerPendingDiveSites.value = []
+    ownerPendingSitesError.value = error instanceof Error
+      ? error.message
+      : 'Could not load pending dive sites.'
+  }
+}
+
+async function refreshOwnerPendingCertifications () {
+  const request = ++pendingCertificationsRequest
+  ownerPendingCertificationsError.value = ''
+  if (!isOwner.value || !profile.value) {
+    ownerPendingCertifications.value = []
+    return
+  }
+
+  try {
+    const token = accessToken.value || (await client.auth.getSession()).data.session?.access_token
+    if (!token) throw new Error('Sign in again to view your pending certifications.')
+    const certifications = await $fetch<OwnerPendingCertification[]>(
+      `/api/divemaster/${encodeURIComponent(profile.value.username)}/pending-certifications`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    if (request === pendingCertificationsRequest && isOwner.value) ownerPendingCertifications.value = certifications
+  } catch (error) {
+    if (request !== pendingCertificationsRequest) return
+    ownerPendingCertifications.value = []
+    ownerPendingCertificationsError.value = error instanceof Error
+      ? error.message
+      : 'Could not load pending certifications.'
+  }
+}
+
+watch([isOwner, username], () => {
+  void refreshOwnerPendingDiveSites()
+  void refreshOwnerPendingCertifications()
+}, { immediate: true })
+
 function startEditing () {
   if (!isOwner.value) return
   profileSaved.value = false
@@ -395,6 +514,8 @@ async function refreshSavedProfile () {
   try {
     await refreshProfile()
     if (error.value || !profile.value) throw new Error('Profile refresh failed.')
+    await refreshOwnerPendingDiveSites()
+    await refreshOwnerPendingCertifications()
     editing.value = false
     profileSaved.value = true
     await nextTick()

@@ -15,6 +15,7 @@ Before proposing or implementing a feature or fix, read the relevant document be
 | Trip and booking state | [Trip requirements state map](docs/trip-requirements-state-map.md) |
 | Shop reviews and verification | [Shop review flow](docs/shop-review-flow.md) |
 | Divemaster profiles, owner editing, job dates | [Current implementation and broader proposal](docs/dive-master-plan.md) |
+| Training/certification suggestions, custom labels and admin review | [Profile credential suggestions](docs/profile-credential-suggestions.md) |
 | Divemaster reviews and owner/visitor UI | [Divemaster review flow](docs/divemaster-review-flow.md) |
 | Location autocomplete | [Proposed local-first design and Google constraints](docs/location-autocomplete-design.md) |
 | Shop locations | [Multi-location audit](docs/diveshop-multi-location-audit.md) and [fix plan](docs/diveshop-multi-location-fix-plan.md) |

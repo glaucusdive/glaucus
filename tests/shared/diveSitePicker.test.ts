@@ -9,6 +9,7 @@ import {
   mapDiveSitePickerRow
 } from '../../shared/diveSitePicker'
 import { DIVE_SITE_ADD_NEW_ID } from '../../shared/divemasterProfile'
+import { pendingDiveSiteId } from '../../shared/pendingDiveSiteIds'
 
 describe('diveSitePicker', () => {
   it('escapes ilike wildcards and formats labels with country', () => {
@@ -23,7 +24,7 @@ describe('diveSitePicker', () => {
   })
 
   it('drops blank ids and the add-new sentinel before lookup', () => {
-    expect(diveSiteIdsForLookup(['', '  ', DIVE_SITE_ADD_NEW_ID, 'a', 'a', 'b'])).toEqual(['a', 'b'])
+    expect(diveSiteIdsForLookup(['', '  ', DIVE_SITE_ADD_NEW_ID, pendingDiveSiteId('request'), 'a', 'a', 'b'])).toEqual(['a', 'b'])
   })
 
   it('pages alphabetical names and reports another page when the page is full', async () => {

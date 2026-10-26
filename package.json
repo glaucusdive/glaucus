@@ -19,6 +19,7 @@
     "@revolist/vue3-datagrid": "^4.21.8",
     "@supabase/supabase-js": "^2.54.0",
     "chrono-node": "^2.9.0",
+    "fuse.js": "^7.5.0",
     "gsap": "^3.13.0",
     "lucide-vue-next": "^0.544.0",
     "marked": "^18.0.5",
@@ -31,6 +32,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.11",
     "vitest": "^2.1.9"
   }
 }

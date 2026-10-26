@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { DIVE_SITE_ADD_NEW_ID } from './divemasterProfile'
+import { PENDING_DIVE_SITE_ID_PREFIX } from './pendingDiveSiteIds'
 
 export const DIVE_SITE_PICKER_PAGE_SIZE = 50
 
@@ -53,7 +54,7 @@ export function diveSiteIdsForLookup (ids: string[]): string[] {
   return [...new Set(
     ids
       .map(id => id.trim())
-      .filter(id => id && id !== DIVE_SITE_ADD_NEW_ID)
+      .filter(id => id && id !== DIVE_SITE_ADD_NEW_ID && !id.startsWith(PENDING_DIVE_SITE_ID_PREFIX))
   )]
 }
 
