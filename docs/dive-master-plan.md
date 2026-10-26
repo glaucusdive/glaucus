@@ -16,6 +16,15 @@ This document separates the existing divemaster implementation from the broader 
 - Existing RLS and publication guards remain authoritative. Owners can edit published content immediately without a new review cycle; they cannot use the editor to change moderation/publication fields. This differs from the future approval model proposed below.
 - Profile, certification, job, and dive-site saves are separate writes, not an atomic database transaction. A late failure can partially persist changes. The shared owner editor preserves existing certification metadata, linked job shops, and dive-site notes.
 
+### Public DivePros Directory
+
+- Landing navigation and the footer now use **For DivePros**, opening `/for-dive-pros`. Existing homepage diver content and `/for-businesses` remain unchanged.
+- The [directory](../app/components/divemaster/DivemasterDirectory.vue) follows the business directory layout: responsive tiles with photo, name, headline and location; name/location search; alphabetical ordering; and 24 profiles per page. Missing or broken photos use an icon fallback, and missing display names fall back to username. Tiles link to the existing `/divemaster/{username}` profiles.
+- **Add your profile** uses the existing `/settings/profile` page. Guests sign in or sign up first; switching auth modes preserves the return destination. New profiles remain drafts and require existing admin approval before publication. Existing professionals manage their current profile. No new registration page, approval rule, or profile-save behavior is introduced.
+- `GET /api/divemasters` calls a bounded, server-only published-profile query and exposes only the five tile fields plus pagination metadata. Draft/pending profiles, account IDs, emails, moderation fields and certification details are excluded. Search matches literal text rather than treating user input as SQL or wildcard syntax.
+- Deployment requires applying [20261025120000_divemaster_directory.sql](../supabase/migrations/20261025120000_divemaster_directory.sql) to the intended Supabase database before live listings can load. It adds a read-only, service-role-only function without changing RLS or existing records. The migration has not been applied by this implementation. Missing query/configuration produces a retryable error, not a misleading empty directory.
+- Search URLs use `noindex, follow`; the base directory is included in the sitemap. See [implementation-log.md](implementation-log.md) for verification and database-testing limitations.
+
 ### Searchable Pickers On Mobile
 
 - Adding a Sites Dived row in the shared owner editor scrolls the newly rendered row into view and focuses its picker trigger without opening the dropdown. This applies to Settings and inline editing; it does not save the draft.
@@ -40,7 +49,7 @@ This document separates the existing divemaster implementation from the broader 
 
 ## Broader Directory Proposal
 
-**Proposed decision:** Add a public directory for all dive professionals, with chat-first profile creation, admin-approved publishing, independent reviews, and a private contact form. Reuse Nuxt, Supabase, and the existing AI/email integrations.
+**Proposed decision:** Extend the implemented public directory with chat-first profile creation, richer discovery, and a private contact form. Existing admin-approved publishing and reviews remain in place. Reuse Nuxt, Supabase, and the existing AI/email integrations; capabilities below are future scope unless listed in Current Implementation.
 
 **Profile Experience**
 - Shareable pages with photo, biography, roles, locations, languages, specialties, experience, certifications, achievements, and associations.

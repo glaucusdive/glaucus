@@ -1,5 +1,15 @@
 # Implementation Log
 
+## 2026-10-25 - For DivePros directory
+
+- Replaced the landing header/mobile menu/footer **For Divers** link with **For DivePros** at `/for-dive-pros`, using the existing business directory's layout and visual conventions. Existing homepage content and business flows remain intact.
+- Added responsive photo/name/headline/location tiles, fallback media/name handling, literal name/location search, alphabetical pagination (24/page), loading/error/retry/empty states, canonical metadata, search `noindex`, and the directory sitemap entry.
+- **Add your profile** links to the existing Profile Settings flow. Existing auth mode-switch links now preserve the normalized return destination. Draft creation, admin approval, published-profile editing, and existing per-profile URLs are unchanged.
+- Added the server-only `GET /api/divemasters` read endpoint and [directory migration](../supabase/migrations/20261025120000_divemaster_directory.sql). The SQL function joins only published profiles, bounds query/page inputs, returns only tile fields and counts, and permits execution only by `service_role`. No remote migration or profile/account writes were executed. Apply this migration to the intended database before expecting live directory results.
+- Ten focused shared/API tests pass. SQL checks assert the source contract; SQL execution against PostgreSQL was not available because no local PostgreSQL client/runtime was running. This is not evidence of a remotely applied or executed migration.
+- Synthetic browser checks passed for 24+1 profile pagination, search/reset/clear, empty results, `noindex`, missing-photo/name fallback, tile links, desktop/mobile navigation, and guest sign-in/sign-up return destinations. Layout had no horizontal overflow at 320px, 375px, and 1280px; desktop used three columns. No signup or profile-save submission was made. Actual post-login and admin-approval workflows were not rerun.
+- Integration verification: full suite 645 passed / 1 skipped; Nuxt production build passed. Desktop and mobile screenshots were checked with synthetic tile data. Live directory data remains gated on applying and verifying the migration.
+
 ## 2026-10-25 - Single-select picker dismissal
 
 - Choosing an option in a shared single-select picker now selects that value, blurs Search, closes the panel through its existing cleanup path, and restores trigger focus with `preventScroll`. Re-selecting the same option keeps it selected; clearing remains an explicit remove action.
