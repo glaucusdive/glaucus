@@ -1,5 +1,35 @@
 # Implementation Log
 
+## 2026-10-25 - Booking next question is its own bubble
+
+- Shop-pick replies such as “Got it — Dive Academy Fiji. What’s the name for the booking?” now render as two bubbles: the acknowledgement, then the next question in semibold.
+- New booking responses send the acknowledgement as `messagePreamble` and the question as `message`. Older saved replies that still use one sentence split the same way in the chat.
+- No database or config migration.
+- Verification: local chat render of the combined name sentence shows two bubbles, with the question at font-weight 600.
+
+## 2026-10-25 - Stale chat actions stay hidden
+
+- Book this and answer chips render only on the latest assistant message, and only when that message has shops or chips. A later plain question, such as a contact name, hides every older action. Nothing is clickable while a reply is loading.
+- The latest user message and the latest assistant message stay at full opacity. Every earlier message, including shop cards, is `opacity-50`. Older Book this buttons, answer chips, and the booking-form chevron are not rendered. Profile, website, call, and email links stay usable.
+- A click on a stale Book this is ignored, so it cannot be stored as the next booking answer.
+- No database or config migration.
+- Verification: local chat at a 375px width. On a search result alone, Book this is present. After a later “What’s your name?” message, that Book this and the older chips are not in the page, and the current step’s chip still is. With an older search plus a later user and assistant pair, the older user message and the shop-card message compute to `opacity: 0.5`. The latest user message and the latest assistant message stay at `opacity: 1`. The shop website link still renders. A physical iPhone was not used.
+
+## 2026-10-25 - Chat scrolls to the latest message
+
+- Book this on an earlier shop now scrolls to the new booking messages. The exact/other search divider only pins the view when that divider is inside the latest message.
+- Touch and iOS set the message pane `scrollTop` directly and retry after layout. The chat column uses `min-h-0` so that pane is the scrollport.
+- A fixed blue “View latest message” pill (`min-h-12`, `min-w-12`, `whitespace-nowrap`, `rounded-full`, no icon) sits above the composer when the list is more than 80px from the bottom. The label stays on one line. Clicking it scrolls to the end and does not stop on an older divider.
+- No database or config migration.
+- Verification: local chat at `http://localhost:3000/?chat=1` on a 390px viewport. With a long thread, the message pane scrolls (`scrollHeight` greater than `clientHeight`). Scrolling up shows a `position: fixed` “View latest message” button with `min-height` and `min-width` of 48px, sitting just above the composer. Clicking it scrolls to the end and the button goes away. A physical iPhone was not used.
+
+## 2026-10-25 - Mobile page zoom locked off
+
+- Site viewport is now `width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no` in `app/app.vue`.
+- Text inputs, textareas, and selects are 16px up to 1024px and on coarse pointers, so iOS does not zoom the page when the chat keyboard opens. Checkboxes, radios, and file inputs are unchanged.
+- Desktop field sizes stay on the existing Tailwind scale. No database or config migration.
+- Verification: local dev server at `http://localhost:3000`. Rendered viewport meta is `width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no`. At a 390px mobile viewport, the chat field, email field, and password field compute to 16px; focusing the chat field and typing left `visualViewport.scale` at 1. At 1440px the chat field stays 14px. A physical iPhone was not used.
+
 ## 2026-10-25 - Pending dive-site requirements recorded
 
 - Added [Pending Dive-Site Work](dive-master-plan.md#pending-dive-site-work): persistent **Site not listed? Add new dive site**, prefilled name/required country, exact/similar duplicate checks, private pending submissions and saved profile associations, and admin approve/merge/reject with explicit alias review.

@@ -319,3 +319,16 @@
 .blog-embed-inner iframe {
   @apply absolute inset-0 h-full w-full border-0;
 }
+
+/*
+ * iOS Safari zooms the whole page when a focused field computes under 16px.
+ * Unlayered so this wins over Tailwind text-sm / text-xs on form controls.
+ * Phones, tablets, and any coarse pointer. Checkboxes, radios, and file inputs stay untouched.
+ */
+@media (max-width: 1024px), ((hover: none) and (pointer: coarse)) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):not([type='button']):not([type='submit']):not([type='reset']):not([type='image']):not([type='color']),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

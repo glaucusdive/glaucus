@@ -32,8 +32,9 @@
           </div>
         </div>
         <button
+          v-if="!bookingDisabled"
           type="button"
-          class="shrink-0 rounded-md border border-zinc-300 bg-transparent px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-transparent dark:text-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
+          class="shrink-0 cursor-pointer rounded-md border border-zinc-300 bg-transparent px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-transparent dark:text-zinc-200 dark:hover:bg-zinc-800"
           @click.stop="$emit('start-booking', shop)"
         >
           Book this
@@ -115,6 +116,11 @@ const props = defineProps({
   matchBadges: {
     type: Array,
     default: undefined
+  },
+  /** Older search cards cannot start a booking once a later assistant turn is current. */
+  bookingDisabled: {
+    type: Boolean,
+    default: false
   },
   /** Echo of assistant message `filters` so pills can match wreck / activity style vs browse mode. */
   searchFilters: {
