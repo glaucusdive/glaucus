@@ -1,5 +1,12 @@
 # Implementation Log
 
+## 2026-10-25 - Supabase CLI migration workflow
+
+- Added the [CLI migration guide](supabase-migrations.md) and linked it from the README documentation map. It covers project linking, history inspection, preview/apply, manually applied SQL, and carefully scoped history repair.
+- Added Git ignore rules for generated `*_remote_schema.sql` snapshots (including double-underscore names) and local snapshot storage. The guide explicitly requires moving unwanted snapshots outside `supabase/migrations`: Git ignore rules do not prevent CLI execution.
+- Routine deployment does not require `db pull`. Existing staged snapshot deletion was left unchanged; no snapshot files were deleted or moved by this documentation update, and no database push, pull, link, reset, or history repair was executed.
+- Verification: both snapshot naming forms and local storage passed `git check-ignore`; documentation file links and diff whitespace checks passed. Push/list/repair flags were verified against installed CLI help (2.121.0). Application tests/build were not rerun for these documentation/ignore-only changes.
+
 ## 2026-10-25 - For DivePros directory
 
 - Replaced the landing header/mobile menu/footer **For Divers** link with **For DivePros** at `/for-dive-pros`, using the existing business directory's layout and visual conventions. Existing homepage content and business flows remain intact.
