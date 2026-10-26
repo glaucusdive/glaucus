@@ -1,5 +1,12 @@
 # Implementation Log
 
+## 2026-10-25 - Test DivePro discovery exclusion
+
+- Added an exact, case-normalized designation for `sashdivemastertest`. A forward migration excludes that username inside `list_public_divemasters` before counts/pagination, preserving the service-role-only grant and ordinary published-profile matching.
+- Sitemap entries omit the designated profile; its direct page emits `noindex, nofollow` and remains accessible. No profile data or publication status is changed; shop behavior is unchanged.
+- Verification: 17 focused tests passed, including embedded PostgreSQL browse/search/count/pagination and RPC permissions. Production build passed. The local direct profile returned HTTP 200 with the expected server-rendered robots tag.
+- Hosted migration remains unapplied by this work. Apply [20261025160000](../supabase/migrations/20261025160000_hide_test_divemaster_directory.sql) and deploy the application changes to enable all exclusions. Existing search-engine listings may take time to disappear.
+
 ## 2026-10-25 - Public profile PDF flyers
 
 - Shop and divemaster sharing now previews a branded one-page A4 flyer. Download PDF and Print use that identical high-resolution artwork, generated locally in the browser. The old SVG download action is removed; copy link and native share remain.

@@ -353,6 +353,7 @@
 <script setup lang="ts">
 import { ChevronRight, Pencil, QrCode, Star, StarHalf } from 'lucide-vue-next'
 import ProfileShareDialog from '~/components/ProfileShareDialog.vue'
+import { isTestDivemasterUsername } from '~~/shared/testDivemasters'
 import type { PublicDivemasterProfile } from '~~/shared/divemasterProfile'
 import { formatJobMonth } from '~~/shared/divemasterJobDates'
 import { deleteDivemasterReview, useDivemasterReviews } from '~/composables/useDivemasterReviews'
@@ -700,7 +701,8 @@ useSeoMeta({
   description: seoDescription,
   ogTitle: seoTitle,
   ogDescription: seoDescription,
-  ogImage: computed(() => profile.value?.avatar_url || undefined)
+  ogImage: computed(() => profile.value?.avatar_url || undefined),
+  robots: computed(() => isTestDivemasterUsername(profile.value?.username || username.value) ? 'noindex, nofollow' : 'index, follow')
 })
 
 function formatMonthYear (iso: string | null | undefined) {
