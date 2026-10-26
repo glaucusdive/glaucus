@@ -1,5 +1,5 @@
 <template>
-    <div class="flex flex-col h-full w-full relative">
+    <div class="flex h-full min-h-0 w-full flex-col">
       <!-- Header: min-w-0 + shrink-0 so title truncates instead of clipping actions -->
       <ShellPageHeader :title="pageHeaderTitle">
         <template #actions>
@@ -36,13 +36,14 @@
       </ShellPageHeader>
 
       <!-- Main content: full-width chat; shop detail is a bottom sheet overlay -->
-      <div class="flex-1 flex flex-row overflow-hidden relative">
+      <div class="relative flex min-h-0 flex-1 flex-row overflow-hidden">
         <!-- Chat Section -->
-        <div class="relative flex min-w-0 h-full w-full flex-col  duration-300 ease-in-out">
+        <div class="flex h-full min-h-0 w-full min-w-0 flex-col duration-300 ease-in-out">
 
           <!-- Messages Container -->
           <div ref="messagesContainer"
-            class="flex-1 overflow-y-auto p-2 md:p-4 flex flex-col gap-4 *:mx-auto *:w-full">
+            class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-2 *:mx-auto *:w-full md:p-4"
+            @scroll.passive="onChatViewportChange">
 
             <div v-if="messages.length === 0" class="flex flex-col items-start md:items-center justify-start md:justify-center gap-8 md:h-full w-full">
               <div class="text-center flex flex-col gap-4 items-center max-w-4xl pt-8 md:pt-auto">
@@ -66,7 +67,7 @@
             </div>
 
             <!-- Message history -->
-            <div v-for="(msg, index) in messages" :key="index" class="max-w-2xl">
+            <div v-for="(msg, index) in messages" :key="index" data-chat-message class="max-w-2xl">
               <!-- User message -->
               <div v-if="msg.role === 'user'" class="flex justify-end">
                 <div class="max-w-[80%] bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-50 rounded-lg p-2 px-4">
@@ -324,7 +325,7 @@
             </div>
 
             <!-- Loading: mapped progress + optional stream preview + dots + brand-friendly line -->
-            <div v-if="isLoading" class="flex justify-start max-w-2xl">
+            <div v-if="isLoading" data-chat-message class="flex max-w-2xl justify-start">
               <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3 flex flex-col gap-2 max-w-[min(90%,42rem)] min-w-0">
                 <p v-if="searchStreamPreview" class="text-sm text-zinc-800 dark:text-white whitespace-pre-wrap min-w-0">{{ searchStreamPreview }}</p>
                 <div class="flex items-center gap-2.5 min-h-[1.25rem]">
@@ -346,7 +347,7 @@
           </div>
 
           <!-- Input area: max width lives on parent so ChatComposer fills available width -->
-          <div class="flex items-stretch justify-center z-1 w-full min-w-0 overflow-hidden">
+          <div ref="composerAnchorRef" class="z-1 flex w-full min-w-0 items-stretch justify-center overflow-hidden">
             <div class="w-full min-w-0 max-w-4xl 2xl:min-w-md">
               <ChatComposer
                 ref="chatComposerRef"
@@ -358,6 +359,19 @@
               />
             </div>
           </div>
+
+          <Teleport to="body">
+            <Button
+              v-if="showJumpToLatest"
+              type="button"
+              variant="primary"
+              class="fixed z-40 min-w-12 w-max max-w-none whitespace-nowrap !rounded-full px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              :style="jumpLatestStyle"
+              @click="onJumpToLatestClick"
+            >
+              View latest message
+            </Button>
+          </Teleport>
 
           <!-- Shop detail: teleported full-viewport sheet (above layout chrome); booking form stays layout right drawer -->
           <ClientOnly>
@@ -391,6 +405,7 @@
 import { ref, computed, nextTick, onMounted, watch, onUnmounted } from 'vue'
 import { ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Undo2 } from 'lucide-vue-next'
 import ChatComposer from '~/components/chat/ChatComposer.vue'
+import Button from '~/components/ui/Button.vue'
 import BottomSheetDrawer from '~/components/ui/BottomSheetDrawer.vue'
 import CardSearchResult from '~/components/CardSearchResult.vue'
 import ShopDetailPanel from '~/components/ShopDetailPanel.vue'
@@ -641,6 +656,11 @@ function startChatLoadingBrand (kind) {
 
 const messages = ref([])
 const messagesContainer = ref(null)
+const composerAnchorRef = ref(null)
+const showJumpToLatest = ref(false)
+const jumpLatestStyle = ref({ left: '50%', top: '0px', transform: 'translate(-50%, -100%)' })
+const NEAR_BOTTOM_PX = 80
+let scrollRetryTimers = []
 const isRestoringCache = ref(true)
 /** After cache restore or session switch, sync profile from the latest booking payload in memory (same merge as each new assistant turn). */
 let debounceProfileFromChatTimer = null
@@ -1577,14 +1597,23 @@ onMounted(() => {
     window.addEventListener('pageshow', onChatPageShow)
     document.addEventListener('visibilitychange', onChatVisibilityChange)
     window.addEventListener(SIGN_OUT_CHAT_RESET_EVENT, resetChatUiForSignOut)
+    window.addEventListener('resize', onChatViewportChange)
+    window.visualViewport?.addEventListener('resize', onChatViewportChange)
+    window.visualViewport?.addEventListener('scroll', onChatViewportChange)
+    nextTick(() => onChatViewportChange())
   }
 })
 
 onUnmounted(() => {
+  scrollRetryTimers.forEach((id) => clearTimeout(id))
+  scrollRetryTimers = []
   if (import.meta.client) {
     window.removeEventListener('pageshow', onChatPageShow)
     document.removeEventListener('visibilitychange', onChatVisibilityChange)
     window.removeEventListener(SIGN_OUT_CHAT_RESET_EVENT, resetChatUiForSignOut)
+    window.removeEventListener('resize', onChatViewportChange)
+    window.visualViewport?.removeEventListener('resize', onChatViewportChange)
+    window.visualViewport?.removeEventListener('scroll', onChatViewportChange)
   }
 })
 
@@ -1592,40 +1621,96 @@ onUnmounted(() => {
 watch([messages, userInput, preferGuidedThisSession, guidedSearchState, guidedBookingHints, tripRequirements], persistCache, { deep: true })
 watch([selectedShopId, detailDrawerShopId, isOpen, drawerData], persistCache, { deep: true })
 
-// Auto-scroll when new messages arrive; stop at exact/other divider when present.
-function getLatestExactOtherDivider () {
+// Auto-scroll when new messages arrive. Pin to the exact/other divider only when
+// that divider is inside the latest message. Later turns (Book this) go to the end.
+function dividerInLatestMessage () {
   const container = messagesContainer.value
   if (!container) return null
-  const dividers = container.querySelectorAll('[data-search-exact-other-divider]')
-  return dividers.length ? dividers[dividers.length - 1] : null
+  const rows = container.querySelectorAll('[data-chat-message]')
+  const last = rows[rows.length - 1]
+  if (!last) return null
+  return last.querySelector('[data-search-exact-other-divider]')
 }
 
-function scrollContainerToDividerBottom (container, divider) {
-  const containerRect = container.getBoundingClientRect()
-  const dividerRect = divider.getBoundingClientRect()
-  const targetTop = container.scrollTop + (dividerRect.bottom - containerRect.bottom)
-  container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' })
+function prefersInstantChatScroll () {
+  if (typeof window === 'undefined') return true
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const coarse = window.matchMedia('(hover: none) and (pointer: coarse)').matches
+  const ua = navigator.userAgent || ''
+  const iOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  return reduce || coarse || iOS
 }
 
-const scrollToBottom = async () => {
+function applyContainerScroll (container, top) {
+  const next = Math.max(0, top)
+  if (prefersInstantChatScroll()) {
+    container.scrollTop = next
+    return
+  }
+  container.scrollTo({ top: next, behavior: 'smooth' })
+}
+
+function scrollTargetTop (container, pinDivider) {
+  if (pinDivider) {
+    const divider = dividerInLatestMessage()
+    if (divider) {
+      const containerRect = container.getBoundingClientRect()
+      const dividerRect = divider.getBoundingClientRect()
+      return container.scrollTop + (dividerRect.bottom - containerRect.bottom)
+    }
+  }
+  return container.scrollHeight
+}
+
+function updateJumpLatestPosition () {
+  const el = composerAnchorRef.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  jumpLatestStyle.value = {
+    left: `${rect.left + rect.width / 2}px`,
+    top: `${Math.max(8, rect.top - 8)}px`,
+    transform: 'translate(-50%, -100%)'
+  }
+}
+
+function updateJumpToLatest () {
+  const container = messagesContainer.value
+  if (!container || messages.value.length === 0) {
+    showJumpToLatest.value = false
+    return
+  }
+  const distance = container.scrollHeight - container.scrollTop - container.clientHeight
+  showJumpToLatest.value = distance > NEAR_BOTTOM_PX
+  if (showJumpToLatest.value) updateJumpLatestPosition()
+}
+
+function onChatViewportChange () {
+  updateJumpToLatest()
+  if (showJumpToLatest.value) updateJumpLatestPosition()
+}
+
+const scrollToBottom = async (options = {}) => {
+  const pinDivider = options.pinDivider !== false
   await nextTick()
+  scrollRetryTimers.forEach((id) => clearTimeout(id))
+  scrollRetryTimers = []
   const runScroll = () => {
     const container = messagesContainer.value
     if (!container) return
-    const divider = getLatestExactOtherDivider()
-    if (divider) {
-      scrollContainerToDividerBottom(container, divider)
-      return
-    }
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior: 'smooth'
-    })
+    applyContainerScroll(container, scrollTargetTop(container, pinDivider))
+    updateJumpToLatest()
   }
-  requestAnimationFrame(runScroll)
-  // Retry after layout + card stagger so the divider position is stable.
-  setTimeout(runScroll, 150)
-  setTimeout(runScroll, 450)
+  requestAnimationFrame(() => {
+    runScroll()
+    requestAnimationFrame(runScroll)
+  })
+  // Retry after layout + card stagger so the target position is stable.
+  scrollRetryTimers.push(setTimeout(runScroll, 150))
+  scrollRetryTimers.push(setTimeout(runScroll, 450))
+}
+
+function onJumpToLatestClick () {
+  void scrollToBottom({ pinDivider: false })
 }
 
 // Watch for message updates and auto-scroll

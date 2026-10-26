@@ -1,5 +1,13 @@
 # Implementation Log
 
+## 2026-10-25 - Chat scrolls to the latest message
+
+- Book this on an earlier shop now scrolls to the new booking messages. The exact/other search divider only pins the view when that divider is inside the latest message.
+- Touch and iOS set the message pane `scrollTop` directly and retry after layout. The chat column uses `min-h-0` so that pane is the scrollport.
+- A fixed blue “View latest message” pill (`min-h-12`, `min-w-12`, `whitespace-nowrap`, `rounded-full`, no icon) sits above the composer when the list is more than 80px from the bottom. The label stays on one line. Clicking it scrolls to the end and does not stop on an older divider.
+- No database or config migration.
+- Verification: local chat at `http://localhost:3000/?chat=1` on a 390px viewport. With a long thread, the message pane scrolls (`scrollHeight` greater than `clientHeight`). Scrolling up shows a `position: fixed` “View latest message” button with `min-height` and `min-width` of 48px, sitting just above the composer. Clicking it scrolls to the end and the button goes away. A physical iPhone was not used.
+
 ## 2026-10-25 - Mobile page zoom locked off
 
 - Site viewport is now `width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no` in `app/app.vue`.
