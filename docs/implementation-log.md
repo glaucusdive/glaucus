@@ -1,5 +1,13 @@
 # Implementation Log
 
+## 2026-10-25 - Stale chat actions stay disabled
+
+- Book this and answer chips are live only on the latest assistant message, and only when that message has shops or chips. A later plain question, such as a contact name, fades every older action. Nothing is clickable while a reply is loading.
+- The latest user message and the latest assistant message stay at full opacity. Every earlier message, including shop cards, is `opacity-50`. Older Book this buttons stay disabled. Profile, website, call, and email links stay usable. The booking-form chevron still opens the form.
+- A click on a stale Book this is ignored, so it cannot be stored as the next booking answer.
+- No database or config migration.
+- Verification: local chat at a 375px width. On a search result alone, Book this is enabled. After a later “What’s your name?” message, that Book this is `disabled` and `pointer-events: none`, and clicking it does not add a message. With an older search plus a later user and assistant pair, the older user message and the shop-card message compute to `opacity: 0.5`. The latest user message and the latest assistant message stay at `opacity: 1`. The shop profile link still points at `/shops/aqua-trek`. A physical iPhone was not used.
+
 ## 2026-10-25 - Chat scrolls to the latest message
 
 - Book this on an earlier shop now scrolls to the new booking messages. The exact/other search divider only pins the view when that divider is inside the latest message.

@@ -67,7 +67,13 @@
             </div>
 
             <!-- Message history -->
-            <div v-for="(msg, index) in messages" :key="index" data-chat-message class="max-w-2xl">
+            <div
+              v-for="(msg, index) in messages"
+              :key="index"
+              data-chat-message
+              class="max-w-2xl transition-opacity duration-200"
+              :class="messageRowIsCurrent(index) ? '' : 'opacity-50'"
+            >
               <!-- User message -->
               <div v-if="msg.role === 'user'" class="flex justify-end">
                 <div class="max-w-[80%] bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-50 rounded-lg p-2 px-4">
@@ -143,9 +149,10 @@
                             <CardSearchResult
                               :shop="shop"
                               :active="selectedShopId === shop.id"
+                              :booking-disabled="index !== activeChipMessageIndex"
                               :match-badges="msg.searchMatchBadges"
                               :search-filters="msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : undefined"
-                              @start-booking="handleStartBookingFromCard"
+                              @start-booking="(shop) => handleStartBookingFromCard(shop, index)"
                             />
                           </div>
                         </div>
@@ -182,7 +189,7 @@
                   <div
                     v-if="(msg.selectableOptions && msg.selectableOptions.length > 0) || (msg.shops?.length && selectedShopId && selectedShopName)"
                     class="flex flex-col gap-4 p-2 transition-opacity duration-200"
-                    :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
+                    :class="index !== activeChipMessageIndex ? 'pointer-events-none' : ''"
                   >
                     <div
                       v-if="(msg.selectableOptions || []).filter(o => o.label !== 'Load next 20').length > 0"
@@ -212,7 +219,7 @@
                   <div
                     v-if="Array.isArray(msg.rentalEquipmentOptions)"
                     class="flex flex-col gap-4 p-2 transition-opacity duration-200"
-                    :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
+                    :class="index !== activeChipMessageIndex ? 'pointer-events-none' : ''"
                   >
                     <p v-if="index === activeChipMessageIndex" class="text-xs text-zinc-500 dark:text-zinc-400">
                       Select all that apply, then tap Done.
@@ -244,7 +251,7 @@
                   <div
                     v-if="msg.courseOptions && msg.courseOptions.length > 0"
                     class="flex flex-col gap-4 p-2 transition-opacity duration-200"
-                    :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
+                    :class="index !== activeChipMessageIndex ? 'pointer-events-none' : ''"
                   >
                     <p v-if="index === activeChipMessageIndex" class="text-xs text-zinc-500 dark:text-zinc-400">
                       Select all that apply, then tap Done.
@@ -284,7 +291,7 @@
                   <div
                     v-if="msg.diveSiteOptions && msg.diveSiteOptions.length > 0"
                     class="flex flex-col gap-4 p-2 transition-opacity duration-200"
-                    :class="index !== activeChipMessageIndex ? 'opacity-50 pointer-events-none' : ''"
+                    :class="index !== activeChipMessageIndex ? 'pointer-events-none' : ''"
                   >
                     <p v-if="index === activeChipMessageIndex" class="text-xs text-zinc-500 dark:text-zinc-400">
                       Select all that apply, then tap Done.
@@ -768,21 +775,45 @@ const bookingShopForDrawer = computed(() => {
   return null
 })
 
-// Index of the last assistant message that has chips (selectable options, gear, dive sites) — only that message's chips are active; older ones are faded for history
+// Live chat actions belong only to the latest assistant message, and only when that
+// message itself has shops or chips. A later plain question (for example a name
+// step) leaves every older Book this and chip inactive. Nothing is live while a reply is loading.
+function messageHasChatActions (message) {
+  if (!message || message.role !== 'assistant') return false
+  const hasSelectable = message.selectableOptions && message.selectableOptions.length > 0
+  const hasGear = Array.isArray(message.rentalEquipmentOptions)
+  const hasCourses = message.courseOptions && message.courseOptions.length > 0
+  const hasDiveSites = message.diveSiteOptions && message.diveSiteOptions.length > 0
+  const hasShops = message.shops && message.shops.length > 0
+  return Boolean(hasSelectable || hasGear || hasCourses || hasDiveSites || hasShops)
+}
+
 const activeChipMessageIndex = computed(() => {
+  if (isLoading.value) return -1
   const list = messages.value
   for (let i = list.length - 1; i >= 0; i--) {
-    const m = list[i]
-    if (m.role !== 'assistant') continue
-    const hasSelectable = m.selectableOptions && m.selectableOptions.length > 0
-    const hasGear = Array.isArray(m.rentalEquipmentOptions) && m.rentalEquipmentOptions.length > 0
-    const hasCourses = m.courseOptions && m.courseOptions.length > 0
-    const hasDiveSites = m.diveSiteOptions && m.diveSiteOptions.length > 0
-    const hasBookChip = m.shops?.length && selectedShopId.value && selectedShopName.value
-    if (hasSelectable || hasGear || hasCourses || hasDiveSites || hasBookChip) return i
+    if (list[i].role !== 'assistant') continue
+    return messageHasChatActions(list[i]) ? i : -1
   }
   return -1
 })
+
+const currentChatMessageIndexes = computed(() => {
+  const list = messages.value
+  let latestUser = -1
+  let latestAssistant = -1
+  for (let i = list.length - 1; i >= 0; i--) {
+    if (latestUser < 0 && list[i].role === 'user') latestUser = i
+    if (latestAssistant < 0 && list[i].role === 'assistant') latestAssistant = i
+    if (latestUser >= 0 && latestAssistant >= 0) break
+  }
+  return { latestUser, latestAssistant }
+})
+
+function messageRowIsCurrent (index) {
+  const { latestUser, latestAssistant } = currentChatMessageIndexes.value
+  return index === latestUser || index === latestAssistant
+}
 
 /** Local multi-select draft for booking chips (courses / dive sites / gear) — commit on Done only. */
 const bookingChipDraft = ref(null)
@@ -2736,8 +2767,9 @@ const stepBack = () => {
 }
 
 /** Explicit CTA on result card: same path as shop detail panel “Start booking”. */
-function handleStartBookingFromCard (shop) {
+function handleStartBookingFromCard (shop, messageIndex) {
   if (!shop?.id) return
+  if (messageIndex !== activeChipMessageIndex.value) return
   armShopDetailCloseGuard()
   void handleStartBookingFromPanel(shop.id, shop.business_name ?? '', 'card')
 }
