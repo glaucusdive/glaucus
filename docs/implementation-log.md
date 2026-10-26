@@ -1,5 +1,17 @@
 # Implementation Log
 
+## 2026-10-25 - Experience month-name display
+
+- Public Experience dates now use abbreviated month names and four-digit years, for example `Apr 2021`, instead of `04/21`. Current roles continue to show Present. UTC formatting prevents month shifts across timezones.
+- Editing controls, validation, and persisted dates are unchanged. Thirty focused date-helper/admin-validation tests passed, including legacy full dates, month-only values, and early years. Touched-file diagnostics and diff whitespace checks passed; a full suite/build was not rerun for this formatting-only change.
+
+## 2026-10-25 - Compact public-profile dive-site tiles
+
+- Replaced full-width Sites Dived image areas and empty placeholders with compact [site tiles](../app/components/DivemasterDiveSiteTile.vue). Existing photos use 64px thumbnails; missing/broken photos have no image area. Site names, countries, and notes remain visible and wrap naturally.
+- Retained a one/two/three-column responsive grid, with top-aligned tiles. No upload flow, database changes, or changes to shared site imagery were introduced.
+- Five [rendered-component tests](../tests/divemasterDiveSiteTile.test.ts) pass, including collapse after a failed image and retrying a replacement URL. Synthetic public-profile browser checks at 320px, 375px, 768px, and 1280px verified mixed-photo layouts, thumbnail dimensions, and no tile overflow. Mobile and desktop screenshots were checked. No profile data was saved.
+- Integration verification: full suite 650 passed / 1 skipped; Nuxt production build passed.
+
 ## 2026-10-25 - Supabase CLI migration workflow
 
 - Added the [CLI migration guide](supabase-migrations.md) and linked it from the README documentation map. It covers project linking, history inspection, preview/apply, manually applied SQL, and carefully scoped history repair.

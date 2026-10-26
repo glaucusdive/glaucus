@@ -16,6 +16,12 @@ This document separates the existing divemaster implementation from the broader 
 - Existing RLS and publication guards remain authoritative. Owners can edit published content immediately without a new review cycle; they cannot use the editor to change moderation/publication fields. This differs from the future approval model proposed below.
 - Profile, certification, job, and dive-site saves are separate writes, not an atomic database transaction. A late failure can partially persist changes. The shared owner editor preserves existing certification metadata, linked job shops, and dive-site notes.
 
+### Sites Dived Display
+
+- Public profiles use compact, text-first [site tiles](../app/components/DivemasterDiveSiteTile.vue): one column on phones, two from `sm`, and three from `lg`. Tiles align at the top, and long site names and notes wrap without truncation.
+- Available photos appear as fixed 64px thumbnails beside the site name, country, and optional note. Missing or failed images are omitted entirely; there is no large empty photo placeholder. A replacement URL can load after a previous image fails.
+- This changes presentation only. It does not add uploads, change shared dive-site cover photos, or modify profile records. [Tile tests](../tests/divemasterDiveSiteTile.test.ts) cover missing, valid, broken, and replaced photos plus long text.
+
 ### Public DivePros Directory
 
 - Landing navigation and the footer now use **For DivePros**, opening `/for-dive-pros`. Existing homepage diver content and `/for-businesses` remain unchanged.
@@ -36,9 +42,9 @@ This document separates the existing divemaster implementation from the broader 
 ### Past Job Dates
 
 - Past jobs and certification issue dates use explicit Month and Year dropdowns in the shared owner editor and admin editor. Year options descend from the current year to 1950, retaining saved years outside that range. The shared control is [DivemasterJobMonthInput.vue](../app/components/DivemasterJobMonthInput.vue).
-- Public employment dates show `MM/YY` ranges or Present. Certification issue dates retain their existing month/year display. Training dates retain their existing full-date inputs and display rules.
+- Public employment dates show abbreviated month and four-digit year ranges, such as `Apr 2021`, or Present. Formatting uses UTC to avoid timezone month shifts. Certification issue dates retain their existing month/year display. Training dates retain their existing full-date inputs and display rules.
 - Certification issue dates remain optional. Existing full dates load as their month/year; explicit Save normalizes submitted issue dates to `YYYY-MM-01` before persistence. Date normalization runs before writes. No migration or bulk backfill is performed.
-- Existing `2020-06-19` loads as June 2020 and displays as `06/20`. Viewing or opening the editor does not write. Explicit Save normalizes all submitted job dates to `YYYY-MM-01`, even if only another profile field was edited. No bulk backfill is performed.
+- Existing `2020-06-19` loads as June 2020 and displays as `Jun 2020`. Viewing or opening the editor does not write. Explicit Save normalizes all submitted job dates to `YYYY-MM-01`, even if only another profile field was edited. No bulk backfill is performed.
 - Dates remain optional; partial month/year pairs must be completed before Save. Current role clears/disables End. A supplied end date takes precedence over inconsistent Current state when serializing.
 - [Date helpers](../shared/divemasterJobDates.ts) validate legacy dates and picker values before persistence. The [admin update endpoint](../server/api/admin/divemasters/[userId].patch.ts) also normalizes/validates before writes. Existing DATE columns remain in use; these UI changes require no new migration.
 
