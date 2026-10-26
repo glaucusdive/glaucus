@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import { compileScript, parse } from '@vue/compiler-sfc'
+import { parse as parseTemplate, NodeTypes, type ElementNode, type RootNode, type TemplateChildNode } from '@vue/compiler-dom'
 import { transformWithEsbuild } from 'vite'
 import { describe, expect, it, vi } from 'vitest'
+import { revealLastProfileRow } from '../app/utils/revealLastProfileRow'
 
 async function loadHandler (path: string, name: string, context: Record<string, unknown>) {
   const source = readFileSync(new URL(path, import.meta.url), 'utf8')
@@ -84,7 +86,8 @@ describe('New Sites Dived row visibility', () => {
     const selectedDiveSiteIds = { value: ['existing-site'] }
     const add = await loadHandler('../app/components/DivemasterProfileEditor.vue', 'addDiveSiteRow', {
       selectedDiveSiteIds,
-      diveSiteList: { value: { lastElementChild: row } },
+      diveSiteList: { value: { querySelectorAll: () => [row] } },
+      revealLastProfileRow,
       HTMLElement: Row,
       nextTick: () => Promise.resolve()
     })
@@ -105,17 +108,19 @@ describe('New Sites Dived row visibility', () => {
     }
     const first = new Row()
     const last = new Row()
-    const list = { value: { lastElementChild: first } }
+    let current = first
+    const list = { value: { querySelectorAll: () => [current] } }
     const selectedDiveSiteIds = { value: [] as string[] }
     const add = await loadHandler('../app/components/DivemasterProfileEditor.vue', 'addDiveSiteRow', {
       selectedDiveSiteIds,
       diveSiteList: list,
+      revealLastProfileRow,
       HTMLElement: Row,
       nextTick: () => Promise.resolve()
     })
     await add()
     selectedDiveSiteIds.value.pop()
-    list.value.lastElementChild = last
+    current = last
     await add()
     expect(first.scrollIntoView).toHaveBeenCalledOnce()
     expect(last.scrollIntoView).toHaveBeenCalledOnce()
@@ -183,5 +188,70 @@ describe('Picker selection dismissal', () => {
     picker.toggleOption('first-site')
     expect(picker.emitValue).toHaveBeenCalledWith(['second-site'])
     expect(picker.open.value).toBe(true)
+  })
+})
+
+describe.each([
+  ['owner', '../app/components/DivemasterProfileEditor.vue', 'selectedDiveSiteIds'],
+  ['admin', '../app/pages/admin/divemasters/[userId].vue', 'diveSiteIds']
+])('%s bottom add controls', (_, path, siteField) => {
+  it.each([
+    ['addCert', 'certifications', 'certificationList', 'button[aria-haspopup="listbox"]'],
+    ['addJob', 'jobs', 'jobList', 'input'],
+    ['addDiveSiteRow', siteField, 'diveSiteList', 'button[aria-haspopup="listbox"]']
+  ])('%s appends then reveals its new row', async (handler, field, listName, selector) => {
+    const existing = field === siteField ? 'existing-site' : { id: 'existing-row' }
+    const values = { value: [existing] }
+    const list = {}
+    const reveal = vi.fn()
+    const add = await loadHandler(path, handler, {
+      [field]: values,
+      [listName]: { value: list },
+      nextTick: () => Promise.resolve(),
+      revealLastProfileRow: reveal
+    })
+    const pending = add()
+    expect(values.value).toHaveLength(2)
+    expect(values.value[0]).toBe(existing)
+    expect(reveal).not.toHaveBeenCalled()
+    await pending
+    expect(reveal).toHaveBeenCalledWith(list, selector)
+  })
+
+  it('places specific add actions after the marked rows in each list', () => {
+    const { descriptor } = parse(readFileSync(new URL(path, import.meta.url), 'utf8'))
+    const elements: ElementNode[] = []
+    function visit (node: RootNode | TemplateChildNode) {
+      if (node.type === NodeTypes.ELEMENT) elements.push(node)
+      if ('children' in node && Array.isArray(node.children)) node.children.forEach(visit)
+    }
+    visit(parseTemplate(descriptor.template!.content))
+    for (const [refName, label] of [
+      ['certificationList', 'Add certification'], ['jobList', 'Add job'], ['diveSiteList', 'Add dive site']
+    ]) {
+      const list = elements.find(node => node.props.some(prop => prop.type === NodeTypes.ATTRIBUTE && prop.name === 'ref' && prop.value?.content === refName))!
+      const children = list.children.filter((node): node is ElementNode => node.type === NodeTypes.ELEMENT)
+      const rowIndex = children.findIndex(node => node.props.some(prop => prop.type === NodeTypes.ATTRIBUTE && prop.name === 'data-profile-row'))
+      expect(rowIndex).toBeGreaterThan(0)
+      const footer = children[children.length - 1]
+      expect(children.indexOf(footer)).toBeGreaterThan(rowIndex)
+      expect(footer.loc.source).toContain(label)
+      expect(footer.loc.source).toContain('justify-end')
+      expect(children[0].loc.source).not.toContain('<Button')
+    }
+  })
+})
+
+describe('Profile row reveal helper', () => {
+  it('targets marked rows rather than the footer and tolerates empty lists', () => {
+    const focus = vi.fn()
+    const row = { scrollIntoView: vi.fn(), querySelector: vi.fn(() => ({ focus })) }
+    const querySelectorAll = vi.fn(() => [row])
+    revealLastProfileRow({ querySelectorAll } as unknown as HTMLElement, 'input')
+    expect(querySelectorAll).toHaveBeenCalledWith('[data-profile-row]')
+    expect(row.scrollIntoView).toHaveBeenCalledOnce()
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true })
+    expect(() => revealLastProfileRow(null, 'input')).not.toThrow()
+    expect(() => revealLastProfileRow({ querySelectorAll: () => [] } as unknown as HTMLElement, 'input')).not.toThrow()
   })
 })

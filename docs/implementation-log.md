@@ -1,5 +1,35 @@
 # Implementation Log
 
+## 2026-10-25 - Personal certification fields only
+
+- Removed **Students certified** inputs from owner and admin certification forms and the related count from public certification cards. Teaching features are deferred; name, agency, certification number, issued date, and existing certificate images are unchanged.
+- Kept existing student-count columns, values, loading, normalization, and save serialization intact. No database migration or backfill is required, and no saved counts were cleared.
+- Thirty-two focused tests passed, including all three certification templates, an admin save retaining a legacy count, and existing add/picker behavior. No live profile changes were submitted.
+- Integration verification: full suite 683 passed / 1 skipped; Nuxt production build passed. No live authenticated browser save or database mutation was performed for this UI-only change.
+
+## 2026-10-25 - Bottom add actions for profile lists
+
+- Moved Certifications, Past jobs, and Sites Dived add actions below their rows in both the shared owner editor and admin editor, right-aligned and labeled **Add certification**, **Add job**, and **Add dive site**.
+- Each action appends a draft row, waits for rendering, and uses the shared [row reveal helper](../app/utils/revealLastProfileRow.ts) to scroll/focus the new picker trigger or job Title input. Explicit row markers keep the helper from selecting the new footer button. Existing rows, sort order, dates, saving, and admin approval are unchanged.
+- Focused tests passed: 19 picker/list tests, five Account-control tests, and four admin date-validation tests. Coverage includes all six owner/admin add handlers, footer placement, removal/re-addition, and empty lists.
+- Synthetic browser checks using the owner list templates and shared controls passed at 375px and 1280px: each action stays below rows, appends a visible row, focuses the correct control, and avoids horizontal overflow. Mobile screenshot checked. Admin handler/template behavior was tested without an authenticated admin session; no profile data was saved.
+- Integration verification: full suite 679 passed / 1 skipped; Nuxt production build passed.
+
+## 2026-10-25 - Signup-first DivePros profile CTA
+
+- **For DivePros -> Add your profile** now defaults guests to the existing auth page in sign-up mode with `/settings/profile` as the return destination. Signed-in users still open Profile Settings directly. The origin is not hardcoded, and ordinary clicks resolve pending auth before navigation; modified clicks retain native link behavior.
+- Existing registration forms, sign-in/sign-up switching, username setup, draft creation, and admin approval remain unchanged. No account or profile writes were made during validation.
+- Ten [CTA tests](../tests/divemasterDirectoryCta.test.ts) and five existing directory tests pass, covering guest/signed-in targets, pending auth resolution, return destinations, and modified clicks. Browser checks verified the real guest CTA and sign-up/sign-in handoff; signed-in destination behavior was tested with synthetic auth state.
+- Integration verification: full suite 670 passed / 1 skipped; Nuxt production build passed.
+
+## 2026-10-25 - Profile Settings Account controls
+
+- Moved the Settings Save button from the navigation header to the Account heading row, with save feedback underneath. The inline public-profile Edit toolbar retains Cancel and Save without duplicate Account actions.
+- Removed existing-account username display, public URL helper, cooldown notice, and rename controls. First-time username setup remains available only while the account has no username, preserving the existing draft application prerequisite. Stored usernames, public URLs, server-side rename policy, and profile-save behavior are unchanged.
+- Five [Account template tests](../tests/profileAccountControls.test.ts) and ten existing picker/focus tests pass. Tests render the actual Account and inline-toolbar templates with synthetic states; they do not submit account/profile changes.
+- Synthetic browser layout checks using the actual Account template and shared controls passed at 320px, 375px, and 1280px: one Save beside Account, no existing-username block, and no horizontal overflow. Mobile screenshot checked. A signed-in save was not tested because the local session redirected to auth; no profile writes were submitted.
+- Integration verification: full suite 660 passed / 1 skipped; Nuxt production build passed. Stored usernames and public profile links are unchanged.
+
 ## 2026-10-25 - Experience month-name display
 
 - Public Experience dates now use abbreviated month names and four-digit years, for example `Apr 2021`, instead of `04/21`. Current roles continue to show Present. UTC formatting prevents month shifts across timezones.

@@ -2,7 +2,7 @@
   <component
     :is="embedded ? 'div' : SettingsPage"
     title="Profile Settings"
-    description="Username and dive professional profile. Public pages go live after admin approval."
+    description="Dive professional profile. Public pages go live after admin approval."
     back-to="/settings"
   >
     <div v-if="embedded" class="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900">
@@ -15,26 +15,6 @@
       </div>
       <p v-if="saveMessage" role="status" class="w-full text-sm" :class="saveOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">{{ saveMessage }}</p>
     </div>
-    <template #actions>
-      <div v-if="!loading" class="flex items-center gap-4">
-        <p
-          v-if="saveMessage"
-          class="max-w-40 truncate text-sm sm:max-w-xs"
-          :class="saveOk ? 'text-green-400' : 'text-red-400'"
-          :title="saveMessage"
-        >
-          {{ saveMessage }}
-        </p>
-        <Button
-          type="button"
-          variant="primary"
-          :disabled="saving || cancelling || loading || !!loadError"
-          @click="saveProfile"
-        >
-          {{ saving ? 'Saving…' : 'Save' }}
-        </Button>
-      </div>
-    </template>
     
     <div v-if="loading" class="p-4 lg:py-12 lg:px-24 text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
     <p v-else-if="loadError" role="alert" class="p-4 text-sm text-red-600 dark:text-red-400">{{ loadError }}</p>
@@ -42,7 +22,18 @@
     <div v-else class="divide-y divide-zinc-800">
       <fieldset :disabled="saving" class="min-w-0">
       <section class="p-4 lg:py-12 lg:px-24 flex flex-col gap-4">
-        <h2 v-if="!embedded" class="text-base font-bold text-white">Account</h2>
+        <div v-if="!embedded" class="flex min-w-0 items-center justify-between gap-3">
+          <h2 class="text-base font-bold text-white">Account</h2>
+          <Button
+            type="button"
+            variant="primary"
+            :disabled="saving || cancelling || loading || !!loadError"
+            @click="saveProfile"
+          >
+            {{ saving ? 'Saving…' : 'Save' }}
+          </Button>
+        </div>
+        <p v-if="!embedded && saveMessage" role="status" class="text-sm [overflow-wrap:anywhere]" :class="saveOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">{{ saveMessage }}</p>
         <div class="flex flex-col gap-2">
           <FormField label="Full name" label-style="auth" field-id="dm-full-name" required>
             <FormInput
@@ -55,26 +46,8 @@
             />
           </FormField>
         </div>
-        <FormField v-if="!embedded" label="Username" label-style="auth" field-id="dm-username">
-          <!-- Locked: show current username in a disabled input -->
-          <template v-if="usernameLocked && username">
-            <FormInput
-              id="dm-username"
-              :model-value="`@${username}`"
-              type="text"
-              disabled
-            />
-            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-              Used for glaucusdive.com/divemaster/{{ username }}
-            </p>
-            <p v-if="usernameCooldownUntil" class="text-xs text-amber-600 dark:text-amber-400 mt-1">
-              {{ formatUsernameCooldownMessage(usernameCooldownUntil) }}
-            </p>
-            <p v-else class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-              Changes allowed once every 90 days; old URLs redirect to the new one.
-            </p>
-          </template>
-          <template v-else>
+        <template v-if="!embedded && !username">
+          <FormField label="Username" label-style="auth" field-id="dm-username">
             <FormInput
               id="dm-username"
               v-model="usernameInput"
@@ -84,22 +57,20 @@
             />
             <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
               Lowercase letters, numbers, hyphens. Used for glaucusdive.com/divemaster/…
-              Changes allowed once every 90 days; old URLs redirect to the new one.
             </p>
-          </template>
-        </FormField>
-        <div v-if="usernameMessage" class="text-sm" :class="usernameOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
-          {{ usernameMessage }}
-        </div>
-        <button
-          v-if="!embedded && !usernameLocked"
-          type="button"
-          class="px-4 py-2 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 cursor-pointer"
-          :disabled="savingUsername"
-          @click="saveUsername"
-        >
-          {{ savingUsername ? 'Saving…' : (username ? 'Change username' : 'Save username') }}
-        </button>
+          </FormField>
+          <div v-if="usernameMessage" class="text-sm" :class="usernameOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+            {{ usernameMessage }}
+          </div>
+          <button
+            type="button"
+            class="px-4 py-2 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 cursor-pointer"
+            :disabled="savingUsername"
+            @click="saveUsername"
+          >
+            {{ savingUsername ? 'Saving…' : 'Save username' }}
+          </button>
+        </template>
       </section>
 
       <section class="p-4 lg:py-12 lg:px-24 flex flex-col gap-8">
@@ -316,16 +287,14 @@
               </FormField>
             </div>
 
-            <div class="space-y-2">
+            <div ref="certificationList" class="space-y-2">
               <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Certifications</h3>
-                <Button type="button" variant="secondary" @click="addCert">
-                  Add
-                </Button>
               </div>
               <div
                 v-for="(c, idx) in certifications"
                 :key="c.id || idx"
+                data-profile-row
                 class="rounded-md bg-zinc-100 dark:bg-zinc-800/20 p-3 space-y-2"
               >
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -357,24 +326,22 @@
                   <FormField label="Issued" label-style="auth">
                     <DivemasterJobMonthInput v-model="c.issued_at" label="Issued" />
                   </FormField>
-                  <FormField label="Students certified" label-style="auth">
-                    <FormInput v-model="c.students_certified" type="number" size="sm" min="0" />
-                  </FormField>
                 </div>
                 <button type="button" class="text-xs text-red-600 dark:text-red-400 cursor-pointer" @click="certifications.splice(idx, 1)">Remove</button>
               </div>
+              <div class="flex justify-end">
+                <Button type="button" variant="secondary" @click="addCert">Add certification</Button>
+              </div>
             </div>
 
-            <div class="space-y-2">
+            <div ref="jobList" class="space-y-2">
               <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Past jobs</h3>
-                <Button type="button" variant="secondary" @click="addJob">
-                  Add
-                </Button>
               </div>
               <div
                 v-for="(j, idx) in jobs"
                 :key="j.id || idx"
+                data-profile-row
                 class="rounded-md bg-zinc-100 dark:bg-zinc-800/20 p-3 space-y-2"
               >
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -413,18 +380,19 @@
                 </FormField>
                 <button type="button" class="text-xs text-red-600 dark:text-red-400 cursor-pointer" @click="jobs.splice(idx, 1)">Remove</button>
               </div>
+              <div class="flex justify-end">
+                <Button type="button" variant="secondary" @click="addJob">Add job</Button>
+              </div>
             </div>
 
             <div ref="diveSiteList" class="space-y-2">
               <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Sites Dived</h3>
-                <Button type="button" variant="secondary" @click="addDiveSiteRow">
-                  Add
-                </Button>
               </div>
               <div
                 v-for="(siteId, idx) in selectedDiveSiteIds"
                 :key="idx"
+                data-profile-row
                 class="flex gap-2 items-center"
               >
                 <div class="min-w-0 flex-1">
@@ -447,6 +415,9 @@
                 >
                   Remove
                 </button>
+              </div>
+              <div class="flex justify-end">
+                <Button type="button" variant="secondary" @click="addDiveSiteRow">Add dive site</Button>
               </div>
             </div>
 
@@ -481,14 +452,12 @@
 <script setup lang="ts">
 import {
   DIVE_SITE_ADD_NEW_ID,
-  formatUsernameCooldownMessage,
   isValidUsername,
   LAST_FORMAL_TRAINING_NAMES,
   LAST_FORMAL_TRAINING_OTHER,
   lastFormalTrainingSelectValue,
   normalizeUsername,
   parseStudentsCertified,
-  usernameChangeAvailableAt,
   type DivemasterCertification,
   type DivemasterJob,
   type DivemasterProfileStatus
@@ -497,6 +466,7 @@ import { DIVE_SITE_ADD_NEW_OPTION } from '~~/shared/diveSitePicker'
 import { jobDateToMonth, jobMonthToDate, normalizeJobDates } from '~~/shared/divemasterJobDates'
 import DivemasterJobMonthInput from '~/components/DivemasterJobMonthInput.vue'
 import SettingsPage from '~/components/settings/SettingsPage.vue'
+import { revealLastProfileRow } from '~/utils/revealLastProfileRow'
 
 const props = withDefaults(defineProps<{ embedded?: boolean; expectedUsername?: string }>(), { embedded: false, expectedUsername: '' })
 const emit = defineEmits<{ saved: []; cancel: []; dirty: [boolean]; saving: [boolean] }>()
@@ -516,7 +486,6 @@ const initialSnapshot = ref('')
 const fullNameInput = ref('')
 const username = ref('')
 const usernameInput = ref('')
-const usernameChangedAt = ref<string | null>(null)
 const savingUsername = ref(false)
 const usernameMessage = ref('')
 const usernameOk = ref(false)
@@ -531,14 +500,6 @@ function fullNameFromAuthMetadata (): string {
   }
   return ''
 }
-
-const usernameCooldownUntil = computed(() => usernameChangeAvailableAt(usernameChangedAt.value))
-/** Locked when a username is set and still inside the 90-day window (or legacy with no stamp). */
-const usernameLocked = computed(() => {
-  if (!username.value) return false
-  if (!usernameChangedAt.value) return true
-  return !!usernameCooldownUntil.value
-})
 
 const dmStatus = ref<DivemasterProfileStatus | null>(null)
 const applying = ref(false)
@@ -676,6 +637,8 @@ const certifications = ref<Array<DivemasterCertification & { agency: string; cer
 const jobs = ref<Array<DivemasterJob & { location: string; start_date: string; end_date: string; description: string; is_current: boolean }>>([])
 const selectedDiveSiteIds = ref<string[]>([])
 const diveSiteList = ref<HTMLElement | null>(null)
+const certificationList = ref<HTMLElement | null>(null)
+const jobList = ref<HTMLElement | null>(null)
 
 const trainingNameOptions = LAST_FORMAL_TRAINING_NAMES.map(name => ({ id: name, label: name }))
 
@@ -686,7 +649,7 @@ const statusLabel = computed(() => {
   return ''
 })
 
-function addCert () {
+async function addCert () {
   certifications.value.push({
     name: '',
     agency: '',
@@ -695,9 +658,11 @@ function addCert () {
     students_certified: 0,
     sort_order: certifications.value.length
   })
+  await nextTick()
+  revealLastProfileRow(certificationList.value, 'button[aria-haspopup="listbox"]')
 }
 
-function addJob () {
+async function addJob () {
   jobs.value.push({
     title: '',
     organization: '',
@@ -708,6 +673,8 @@ function addJob () {
     description: '',
     sort_order: jobs.value.length
   })
+  await nextTick()
+  revealLastProfileRow(jobList.value, 'input')
 }
 
 function onJobCurrentChange (j: { is_current: boolean; end_date: string }) {
@@ -721,10 +688,7 @@ function onJobEndDateChange (j: { is_current: boolean; end_date: string }) {
 async function addDiveSiteRow () {
   selectedDiveSiteIds.value.push('')
   await nextTick()
-  const row = diveSiteList.value?.lastElementChild
-  if (!(row instanceof HTMLElement)) return
-  row.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' })
-  row.querySelector<HTMLButtonElement>('button[aria-haspopup="listbox"]')?.focus({ preventScroll: true })
+  revealLastProfileRow(diveSiteList.value, 'button[aria-haspopup="listbox"]')
 }
 
 function optionsWithLegacy (
@@ -871,7 +835,7 @@ async function loadAll () {
 
     const { data: profile, error: profileError } = await client
       .from('profiles')
-      .select('username, username_changed_at, display_name')
+      .select('username, display_name')
       .eq('id', id)
       .maybeSingle()
 
@@ -884,7 +848,6 @@ async function loadAll () {
 
     username.value = (profile?.username as string) || ''
     usernameInput.value = username.value
-    usernameChangedAt.value = (profile?.username_changed_at as string | null) || null
 
     const { data: dm, error: dmError } = await client
       .from('divemaster_profiles')
@@ -1039,7 +1002,6 @@ async function saveUsername () {
     )
     username.value = res.username
     usernameInput.value = res.username
-    usernameChangedAt.value = res.username_changed_at
     usernameOk.value = true
     usernameMessage.value = res.unchanged ? 'Username unchanged.' : 'Username saved.'
   } catch (e: unknown) {

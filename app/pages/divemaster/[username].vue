@@ -167,13 +167,6 @@
                 <span v-if="cert.issued_at">Issued {{ formatMonthYear(cert.issued_at) }}</span>
               </p>
               <p v-if="cert.cert_number" class="text-xs text-zinc-500">#{{ cert.cert_number }}</p>
-              <div
-                v-if="(cert.students_certified ?? 0) > 0"
-                class="mt-auto pt-4"
-              >
-                <p class="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white">{{ cert.students_certified }}</p>
-                <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-500">Students certified</p>
-              </div>
             </div>
           </div>
         </div>
