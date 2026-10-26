@@ -6,6 +6,10 @@ Last formal training and certification-name pickers in owner Settings, inline pr
 
 Personal training/certifications remain self-reported profile text. Approval of a shared label is **not** verification of a person's certification, certification number, training history, or agency membership.
 
+New certifications added to a published divemaster profile are separately moderated as profile content. Existing certifications stay approved when edited; a new certification is visible to its owner as **Pending review** and hidden from public profiles until approved. This review does not verify the person's identity or credential with the issuing agency.
+
+In the owner profile editor, new and pending certification-name chips show a **· Pending** suffix, rejected entries show **· Rejected**, and approved entries have no status suffix. These labels do not change the saved certification name.
+
 ## Picker Behavior
 
 - Existing substring matches appear first. Fuse.js supplies similar matches only when there are no normal matches and the search has at least three characters. Similar matches are labeled; no value is selected automatically.
@@ -31,6 +35,8 @@ Open `/admin/profile-credential-submissions` through **Credential suggestions** 
 - Merge resolves to an existing name in the same kind/agency. For training, the existing curated list is also eligible. Approving the proposed name as an alias is a separate unchecked-by-default choice.
 - Reject records a private reason without publishing the label.
 - Personal profile text is not rewritten by a catalog merge or rejection. Existing public profile publication and approval rules are unchanged.
+
+For newly added personal credentials (rather than shared catalog labels), use `/admin/divemaster-certifications`. Approving one publishes that certification on its owner's profile; rejecting it leaves it private to the owner.
 
 ## Endpoints
 

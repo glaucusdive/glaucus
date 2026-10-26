@@ -7,7 +7,7 @@ import * as Vue from 'vue'
 import { describe, expect, it } from 'vitest'
 import type { DivemasterDiveSiteLink } from '../shared/divemasterProfile'
 
-async function createTile (site: DivemasterDiveSiteLink) {
+async function createTile (site: DivemasterDiveSiteLink, pending = false) {
   const source = readFileSync(new URL('../app/components/DivemasterDiveSiteTile.vue', import.meta.url), 'utf8')
   const { descriptor } = parse(source)
   const script = compileScript(descriptor, { id: 'dive-site-tile-test', inlineTemplate: true })
@@ -33,7 +33,7 @@ async function createTile (site: DivemasterDiveSiteLink) {
     }
   })
   return {
-    render: () => renderToString(Vue.createSSRApp({ render: () => Vue.h(module.exports.default, { site }) })),
+    render: () => renderToString(Vue.createSSRApp({ render: () => Vue.h(module.exports.default, { site, pending }) })),
     failImage: () => imageProps!.onError()
   }
 }
@@ -47,6 +47,18 @@ describe('Compact Sites Dived tiles', () => {
     expect(html).toContain('Test note')
     expect(html).not.toContain('<img')
     expect(html).not.toContain('aspect-video')
+  })
+
+  it('marks owner-only pending sites as pending review', async () => {
+    const tile = await createTile({
+      dive_site_id: 'pending-site',
+      name: 'Test Reef',
+      country_name: 'Test Country',
+      image_url: null
+    }, true)
+    const html = await tile.render()
+    expect(html).toContain('Test Reef')
+    expect(html).toContain('Pending review')
   })
 
   it('renders a fixed small thumbnail when a photo exists', async () => {

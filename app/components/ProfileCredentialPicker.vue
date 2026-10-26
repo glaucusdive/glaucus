@@ -53,18 +53,25 @@ const props = withDefaults(defineProps<{
   modelValue: string
   kind: ProfileCredentialKind
   agency?: string
+  selectedLabelSuffix?: string
   options: Array<{ id: string; label: string; agency?: string }>
   agencies?: Array<{ id: string; label: string }>
   catalog?: ProfileCredentialEntry[]
-}>(), { agency: '', agencies: () => [], catalog: () => [] })
+}>(), { agency: '', selectedLabelSuffix: '', agencies: () => [], catalog: () => [] })
 const emit = defineEmits<{ 'update:modelValue': [string]; 'update:agency': [string] }>()
 const { accessToken } = useAuth()
 const { client } = useSupabase()
 const fieldId = useId()
-const choices = computed(() => buildProfileCredentialOptions(props.kind, props.options, props.catalog, props.agency))
+const choices = computed(() => buildProfileCredentialOptions(props.kind, props.options, props.catalog, props.agency).map(option =>
+  props.selectedLabelSuffix && option.id === credentialOptionId(props.modelValue, props.agency)
+    ? { ...option, label: `${option.label} · ${props.selectedLabelSuffix}` }
+    : option
+))
 const selected = computed(() => choices.value.find(option => option.id === credentialOptionId(props.modelValue, props.agency)) || {
   id: credentialOptionId(props.modelValue, props.agency), name: props.modelValue,
-  agency: props.agency, label: props.modelValue, searchTerms: []
+  agency: props.agency,
+  label: props.selectedLabelSuffix ? `${props.modelValue} · ${props.selectedLabelSuffix}` : props.modelValue,
+  searchTerms: []
 })
 const entryDialog = ref<HTMLDialogElement | null>(null)
 const pickerRoot = ref<HTMLElement | null>(null)

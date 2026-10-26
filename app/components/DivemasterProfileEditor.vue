@@ -248,6 +248,7 @@
                       :options="courseCertOptions"
                       :agencies="agencyOptions"
                       :catalog="credentialCatalog"
+                      :selected-label-suffix="c.approval_status === 'rejected' ? 'Rejected' : c.approval_status === 'pending' || !c.id ? 'Pending' : ''"
                     />
                   </FormField>
                   <FormField label="Agency" label-style="auth">
@@ -581,7 +582,7 @@ const countryOptions = ref<Array<{ id: string; label: string }>>([])
 
 const courseCertOptions = ref<Array<{ id: string; label: string; agency: string }>>([])
 const agencyOptions = ref<Array<{ id: string; label: string }>>([])
-const certifications = ref<Array<DivemasterCertification & { agency: string; cert_number: string; issued_at: string; students_certified: number }>>([])
+const certifications = ref<Array<DivemasterCertification & { agency: string; cert_number: string; issued_at: string; students_certified: number; approval_status?: 'pending' | 'approved' | 'rejected' }>>([])
 const jobs = ref<Array<DivemasterJob & { location: string; start_date: string; end_date: string; description: string; is_current: boolean }>>([])
 const selectedDiveSiteIds = ref<string[]>([])
 const diveSiteList = ref<HTMLElement | null>(null)
@@ -856,6 +857,7 @@ async function loadAll () {
       expires_at: c.expires_at,
       image_url: c.image_url,
       students_certified: parseStudentsCertified(c.students_certified),
+      approval_status: c.approval_status,
       sort_order: c.sort_order ?? 0
     }))
 
@@ -1025,24 +1027,37 @@ async function saveDraft () {
     }).eq('user_id', id)
     if (dmErr) throw dmErr
 
-    const { error: certDeleteError } = await client.from('divemaster_certifications').delete().eq('user_id', id)
-    if (certDeleteError) throw certDeleteError
-    if (certifications.value.length) {
-      const { error } = await client.from('divemaster_certifications').insert(
-        normalizedCertifications
-          .map((c, i) => ({
-            user_id: id,
-            name: c.name.trim(),
-            agency: c.agency?.trim() || null,
-            cert_number: c.cert_number?.trim() || null,
-            issued_at: c.issued_at,
-            expires_at: c.expires_at || null,
-            image_url: c.image_url || null,
-            students_certified: parseStudentsCertified(c.students_certified),
-            sort_order: i
-          }))
-      )
+    const { data: currentCertifications, error: currentCertificationError } = await client
+      .from('divemaster_certifications')
+      .select('id')
+      .eq('user_id', id)
+    if (currentCertificationError) throw currentCertificationError
+    const retainedCertificationIds = new Set(normalizedCertifications.map(cert => cert.id).filter((certId): certId is string => !!certId))
+    const removedCertificationIds = (currentCertifications ?? [])
+      .map(cert => cert.id as string)
+      .filter(certId => !retainedCertificationIds.has(certId))
+    if (removedCertificationIds.length) {
+      const { error } = await client.from('divemaster_certifications')
+        .delete()
+        .eq('user_id', id)
+        .in('id', removedCertificationIds)
       if (error) throw error
+    }
+    for (const [index, cert] of normalizedCertifications.entries()) {
+      const values = {
+        name: cert.name.trim(),
+        agency: cert.agency?.trim() || null,
+        cert_number: cert.cert_number?.trim() || null,
+        issued_at: cert.issued_at,
+        expires_at: cert.expires_at || null,
+        image_url: cert.image_url || null,
+        students_certified: parseStudentsCertified(cert.students_certified),
+        sort_order: index
+      }
+      const result = cert.id
+        ? await client.from('divemaster_certifications').update(values).eq('user_id', id).eq('id', cert.id)
+        : await client.from('divemaster_certifications').insert({ ...values, user_id: id })
+      if (result.error) throw result.error
     }
 
     const { error: jobDeleteError } = await client.from('divemaster_jobs').delete().eq('user_id', id)

@@ -1,5 +1,12 @@
 # Implementation Log
 
+## 2026-10-25 - Moderated new divemaster certifications
+
+- Existing certifications are backfilled as approved and remain approved when edited. New owner-added certifications are forced to pending by a database trigger; owners cannot change the review status themselves.
+- Pending/rejected certification details are returned only by an authenticated owner-checked endpoint, shown on the owner's profile with a status label, and omitted from public profile responses. Admins can approve or reject from `/admin/divemaster-certifications`; decisions record reviewer and time.
+- Added migration [20261025150000](../supabase/migrations/20261025150000_divemaster_certification_review.sql), including public-read policy enforcement and status guards. Apply through the [Supabase migration workflow](supabase-migrations.md) before deployment; it has not been applied to a hosted database.
+- Verification: PGlite tests cover backfilled visibility, forced pending inserts, owner status-write denial and public filtering; targeted certification/dive-site tests and Nuxt production build passed.
+
 ## 2026-10-25 - Moderated dive-site suggestions in profile pickers
 
 - Added the persistent **Site not listed? Add new dive site** action to favorite local/destination and Sites Dived pickers in owner and admin profile editing. The owner form prefills the search and requires a country; exact canonical/approved-alias matches reuse the existing ID, and country-scoped similar sites are shown before an explicit submission.
