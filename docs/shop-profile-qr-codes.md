@@ -61,7 +61,7 @@ Keep this workflow separate from `shop_update_submissions`: that table tracks pr
 
 - Uses the token-based partner page at `/partner/{token}` to submit profile changes.
 - Partner submissions are reviewed before changes go live; the portal is not an authenticated self-service profile editor.
-- A future partner-facing QR download must not expose or encode the partner token. Keep it conditional on a verified shop-to-owner permission model.
+- The validated partner page includes QR flyer preview, PDF download, and Print for the linked shop. These use the persisted public listing, never pending form changes or the private partner token.
 
 ### Glaucus administrator
 
@@ -116,17 +116,22 @@ Social and review links are stored in `diveshops.social_links`. Admins can set t
 
 ### Implemented public profile action
 
-The shared shop detail header now has a **Share** control on each public business profile. It opens an accessible dialog containing:
+The shared shop detail header has a **Share** control on each public business profile. It opens an accessible sharing-only dialog containing:
 
-- A high-error-correction SVG QR code for the current shop's canonical profile URL.
 - The shop name and readable absolute URL.
-- **Copy link**, **Share**, **Download**, and **Print** actions.
+- **Copy link** and native **Share**, with copy fallback when native sharing is unavailable.
 
-The QR stays inside the dialog rather than permanently occupying profile space. It uses black on white with a quiet zone for reliable scanning. The same control appears on the full profile page and chat shop-detail panel because both use the shared detail component.
+The same public control appears on the full profile page and chat shop-detail panel. Public sharing does not render a QR or generate flyer artwork.
 
 ### Partner and admin access
 
-The public profile share action is available without account ownership. A partner-only download should wait until access to a shop is verifiably scoped to that shop. Admins may need a bulk or print workflow for distributing QR materials to businesses; define whether it is per-shop or batch before implementation.
+The existing private `/partner/{token}` page provides **QR flyer and sharing** after server-side token validation for its linked shop, including after submitting updates. Invalid or revoked links expose no promotional tools. Changing partner routes clears the previous shop and closes its dialog; stale loads are ignored.
+
+The server returns a separate public sharing snapshot from persisted shop fields. Unsaved form edits, pending submissions, and submitter contact details are not flyer inputs. Flyers encode only the canonical public `/shops/{slug}` URL (legacy shop ID fallback), never the partner path or token. They contain public name, business type/location, and available website/phone/email.
+
+Authorized representatives get a branded A4 flyer preview, **Download PDF**, and **Print**, alongside Copy link and Share. Preview, PDF, and printout use identical browser-generated artwork with a high-error-correction black-and-white QR and quiet zone. PDF code is lazy-loaded locally; no remote document service is used. SVG download is not offered.
+
+DivePros use this same dialog, with flyer access enabled only for the verified profile owner. Flyer capability defaults off and is cleared when permission or profile changes. This is a UI distinction, not a privacy boundary: visitors can still copy public URLs, generate their own QR codes, or use browser printing. Partner links authorize representatives rather than establishing account-linked ownership. Admin bulk distribution remains outside this change.
 
 ### Destination lifecycle
 
@@ -158,7 +163,7 @@ Do not promise review stars in Google results. Google restricts self-serving Loc
 2. **New-listing approval:** Persist new inquiries, add an admin review queue, and create the public shop plus junction rows only after approval. Keep pending/denied submissions out of public profile, directory, and sitemap queries. Keep partner edits in their existing approval flow.
 3. **Implemented:** Admin, new-listing, and partner forms can enter up to 12 labeled social/review URLs. Writes normalize to valid HTTP(S); partner changes remain pending until admin approval; public profiles render configured links below contact details. Apply the social-links migration before deploying. Re-enabling hours/languages/description, adding business media, payment methods, and nearby-shop navigation remain future decisions.
 4. **SEO foundations:** Add canonical metadata for shop profiles and validate direct and UUID routes.
-5. **Implemented:** Public profile Share dialog with QR preview, copy link, native share/copy fallback, SVG download, and print layout. Partner/admin distribution surfaces remain future work until their permissions and operational requirements are defined.
+5. **Implemented:** Public profile Share dialog with copy link and native share/copy fallback. Validated shop partners and verified DivePro owners additionally get flyer preview, PDF download, and matching print layout using public details only. Admin bulk distribution remains future work.
 6. **Reviews and measurement:** Decide if review content should be server-rendered; keep Google and Glaucus rating sources distinct. Monitor Search Console without making indexing/rich snippets acceptance guarantees.
 
 ## Acceptance Checks
@@ -172,7 +177,7 @@ Do not promise review stars in Google results. Google restricts self-serving Loc
 - Directory supports search and pagination, has stable ordering, and its tiles link directly to the matching profile slug.
 - The For Businesses link opens the directory on desktop and mobile; **List your shop** opens `/for-businesses/list-your-shop` and retains the reviewed inquiry flow.
 - Search/discovery surfaces contain crawlable profile links in addition to interactive drawer and booking actions.
-- Each profile's Share dialog shows a QR for its canonical slug URL; download and print include the shop name and readable URL. QR destinations resolve without sign-in.
+- Public Share offers Copy link and native Share without flyer generation. Validated partner flyers encode the canonical public slug URL; download and print include the published shop name and readable URL. QR destinations resolve without sign-in.
 - Previously printed QR codes remain valid if a shop slug is changed.
 - Public reviews remain readable when signed out; review writing follows the current sign-in and RLS rules.
 - Admin/new-listing/partner forms round-trip labeled social links; unsafe or invalid protocols do not render as external links.

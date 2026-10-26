@@ -40,6 +40,11 @@ if (import.meta.server) {
 }
 
 const authResolved = ref(!hasAuthCookie.value)
+const websiteMode = useState('websiteMode', () => false)
+
+watch(() => route.query.chat, (chat) => {
+  if (chat === '1') websiteMode.value = false
+}, { immediate: true, flush: 'sync' })
 
 const guestChat = computed(
   () => authResolved.value && !isSignedIn.value && route.query.chat === '1'
@@ -49,7 +54,7 @@ const landingSectionIds = new Set(['hero', 'whatisglaucus', 'feature1', 'aboutus
 const onLandingSection = computed(() => landingSectionIds.has((route.hash || '').replace(/^#/, '')))
 
 const signedInChat = computed(
-  () => authResolved.value && isSignedIn.value && !onLandingSection.value && (route.query.chat === '1' || route.path === '/')
+  () => authResolved.value && isSignedIn.value && !onLandingSection.value && (route.query.chat === '1' || (route.path === '/' && !websiteMode.value))
 )
 
 const showChatShell = computed(() => guestChat.value || signedInChat.value)
@@ -96,7 +101,7 @@ watch(
 /** Signed-in users open chat; sign-out keeps guest chat shell (see handleSignOut). */
 watch(isSignedIn, (signedIn) => {
   if (!authResolved.value) return
-  if (onLandingSection.value) return
+  if (onLandingSection.value || websiteMode.value) return
   if (signedIn && route.path === '/' && route.query.chat !== '1') {
     void router.replace({ path: '/', query: { ...route.query, chat: '1' } })
     return

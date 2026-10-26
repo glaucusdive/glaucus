@@ -1,5 +1,39 @@
 # Implementation Log
 
+## 2026-10-25 - Clean Back to website URL
+
+- Sidebar **Back to website** now links to `/` rather than `/#hero`. An in-memory Nuxt state flag remembers the website choice during the current app session, so signed-in users are not immediately returned to chat.
+- Explicit `/?chat=1` navigation clears that choice and reopens chat. A full reload resets the in-memory preference, preserving signed-in default chat behavior. Guest navigation and existing landing-section anchors remain unchanged.
+- Verification: six focused homepage/menu navigation tests and the production build passed.
+
+## 2026-10-25 - Owner promotional tools and public sharing
+
+- Public shop and DivePro profiles retain Copy link and native Share; public dialogs no longer render QR codes or generate flyer artwork. Shop chat detail panels use the same sharing-only behavior.
+- Verified DivePro owners retain QR flyer preview, PDF download, and Print on their own profiles. The shared dialog defaults flyer capability off, clears stale artwork on profile/permission changes, and guards promotional actions.
+- Shop representatives get the flyer tools on the existing validated partner page, including its submission-success view. The portal returns a separate snapshot of persisted public shop fields; form edits and submitter details cannot alter flyer content. All output uses the canonical public shop URL, never the partner URL/token.
+- This is a product UI distinction, not privacy protection for public data. No account-linked shop ownership system, migration, admin bypass, or deployment is introduced.
+- Verification: 31 focused tests passed covering rendering, generation lifecycle, matching preview/PDF/print artwork, partner validation, stale loads/submission responses, public snapshots, existing form submission helpers, flyer layout, and shop loading. Production build passed. Local HTTP checks confirmed the Acquatica shop page returns 200 with Share, and the partner page remains noindex without server-rendered promotional tools before validation. Browser automation was unavailable; authenticated visual and physical printing checks remain manual. The temporary validation server was stopped.
+
+## 2026-10-25 - Test DivePro discovery exclusion
+
+- Added an exact, case-normalized designation for `sashdivemastertest`. A forward migration excludes that username inside `list_public_divemasters` before counts/pagination, preserving the service-role-only grant and ordinary published-profile matching.
+- Sitemap entries omit the designated profile; its direct page emits `noindex, nofollow` and remains accessible. No profile data or publication status is changed; shop behavior is unchanged.
+- Verification: 17 focused tests passed, including embedded PostgreSQL browse/search/count/pagination and RPC permissions. Production build passed. The local direct profile returned HTTP 200 with the expected server-rendered robots tag.
+- Hosted migration remains unapplied by this work. Apply [20261025160000](../supabase/migrations/20261025160000_hide_test_divemaster_directory.sql) and deploy the application changes to enable all exclusions. Existing search-engine listings may take time to disappear.
+
+## 2026-10-25 - Public profile PDF flyers
+
+- Shop and divemaster sharing now previews a branded one-page A4 flyer. Download PDF and Print use that identical high-resolution artwork, generated locally in the browser. The old SVG download action is removed; copy link and native share remain.
+- Divemaster flyers include only public name, headline/location and a shortened bio. Shop flyers include public name, business type/location, website, phone and email. Both include the public URL and a high-contrast QR with a quiet zone; private/pending details and photos are excluded.
+- PDF generation is lazy-loaded; preparation/download failures and blocked print windows show actionable errors. No migration is needed.
+- Flyer sections flow after their actual rendered text, rather than reserving blank rows for missing or short names/details. The QR follows the last detail with a compact gap in preview, PDF, and print.
+- Verification: 10 focused tests and the production build passed. Local browser checks generated valid single-page PDFs for shop and synthetic divemaster profiles, including a Unicode name; the print handler received the identical preview PNG. Browser barcode detection decoded both flyer QRs to their exact public profile URLs. Physical printing and a phone-camera scan remain manual checks.
+
+## 2026-10-25 - Direct shop page loading
+
+- Fixed `useShopDetail` so both synchronous component callers and awaited server-rendered page callers receive the shop and nearby-shop refs. Previously, awaiting the underlying Nuxt async-data promise discarded these added properties, causing direct shop URLs to return HTTP 500.
+- Verification: the Acquatica Scuba ASD page returned HTTP 200 locally and rendered its shop heading in the browser; synchronous/awaited composable and shop SEO tests passed, as did the production build. Production requires deployment of this fix.
+
 ## 2026-10-25 - Moderated new divemaster certifications
 
 - Existing certifications are backfilled as approved and remain approved when edited. New owner-added certifications are forced to pending by a database trigger; owners cannot change the review status themselves.

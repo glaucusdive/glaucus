@@ -2,6 +2,7 @@ import { requirePortalToken } from '../../../utils/portalToken'
 import { getSupabaseServiceRoleClient } from '../../../utils/supabaseServiceRole'
 import { fetchPortalLookups, fetchShopFormSnapshot } from '../../../utils/buildShopSnapshot'
 import { mergeDiveSitesIntoLookups } from '../../../utils/mergeDiveSitesIntoLookups'
+import type { ShopPortalPublicProfile } from '../../../../shared/shopPortalPayload'
 
 export default defineEventHandler(async (event) => {
   const token = String(event.context.params?.token ?? '').trim()
@@ -11,7 +12,7 @@ export default defineEventHandler(async (event) => {
 
   const { data: shopMeta, error: shopMetaError } = await client
     .from('diveshops')
-    .select('business_name, country_id')
+    .select('business_name, country_id, slug')
     .eq('id', shopId)
     .maybeSingle()
 
@@ -32,10 +33,18 @@ export default defineEventHandler(async (event) => {
 
   await mergeDiveSitesIntoLookups(client, lookups, snapshot.dive_site_ids)
 
+  const publicProfile: ShopPortalPublicProfile = {
+    slugOrId: shopMeta.slug || shopId,
+    name: snapshot.business_name,
+    subtitle: [snapshot.type, snapshot.city, snapshot.state, lookups.countries.find(country => country.id === shopMeta.country_id)?.name].filter(Boolean).join(' · '),
+    contacts: [snapshot.website_url, snapshot.phone, snapshot.email].filter((value): value is string => !!value)
+  }
+
   return {
     shopId,
     businessName: shopMeta.business_name ?? snapshot.business_name,
     snapshot,
-    lookups
+    lookups,
+    publicProfile
   }
 })

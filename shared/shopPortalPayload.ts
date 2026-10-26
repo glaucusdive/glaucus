@@ -16,6 +16,13 @@ export interface ShopLookups {
   diveBusinessTypes: { id: string; name: string; label?: string }[]
 }
 
+export interface ShopPortalPublicProfile {
+  slugOrId: string
+  name: string
+  subtitle: string
+  contacts: string[]
+}
+
 export type SubmissionStatus = 'pending' | 'approved' | 'denied'
 
 export interface ShopWriteFields {
