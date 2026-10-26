@@ -8,6 +8,7 @@ Before proposing or implementing a feature or fix, read the relevant document be
 
 | Area | Context |
 | --- | --- |
+| Supabase CLI, applying migrations, unwanted remote-schema snapshots | [Migration workflow and troubleshooting](docs/supabase-migrations.md) |
 | Accounts, customer capabilities, business relationships and internal staff | [Proposed workspaces and access model](docs/accounts-workspaces-access-model.md) |
 | UI and shared controls | [Design conventions](docs/design.md) |
 | Booking notifications and send boundary | [Booking email flow](docs/booking-email-flow.md) |
@@ -154,7 +155,7 @@ The root [.env.example](.env.example) lists the app's supported local settings. 
 | `NUXT_PUBLIC_GA4_ENABLED`, `NUXT_PUBLIC_GA4_ID` | Optional Google Analytics 4; disabled by default |
 | `NUXT_SITE_URL` | Canonical site URL; use `http://localhost:3000` for local development |
 
-PostHog dashboards: [docs/posthog-dashboard-prompts.md](docs/posthog-dashboard-prompts.md). GA4 runs alongside PostHog; link the GA4 property to Search Console in Google Admin after deploy. Supabase CLI: `supabase login`, `supabase link`, `supabase db push` (use the glaucus account; omit `--profile glaucus`).
+PostHog dashboards: [docs/posthog-dashboard-prompts.md](docs/posthog-dashboard-prompts.md). GA4 runs alongside PostHog; link the GA4 property to Search Console in Google Admin after deploy. For Supabase CLI setup, migration preview/apply, and unwanted `remote_schema` snapshots, follow the [migration guide](docs/supabase-migrations.md). Routine migration deployment does not require `supabase db pull`.
 
 ## Dive shop chat (optional AI-first search)
 

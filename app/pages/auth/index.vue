@@ -209,14 +209,14 @@
         <p class="text-center text-sm text-zinc-600 dark:text-zinc-400">
           <NuxtLink
             v-if="isSignUp"
-            to="/auth"
+            :to="{ path: '/auth', query: { redirect: authRedirectTarget() } }"
             class="underline hover:no-underline"
           >
             Already have an account? Sign in
           </NuxtLink>
           <NuxtLink
             v-else-if="!forgotMode"
-            to="/auth/signup"
+            :to="{ path: '/auth', query: { signup: '1', redirect: authRedirectTarget() } }"
             class="underline hover:no-underline"
           >
             Create an account

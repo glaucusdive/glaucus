@@ -116,6 +116,7 @@
           class="border-b border-zinc-200 px-2 py-2 dark:border-zinc-700"
         >
           <input
+            ref="searchInputRef"
             v-model="searchQuery"
             type="search"
             placeholder="Search…"
@@ -228,18 +229,10 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { ChevronDown, Check } from 'lucide-vue-next'
 import { normalizeLookupId } from '~/utils/lookupIds'
+import { searchPickerPosition } from '~/utils/searchPickerPosition'
 import { formInputClass, formInputSmClass } from '~/components/ui/formControlClasses'
 
-const searchInputClass = `${formInputClass} ${formInputSmClass} w-full`
-
-const PANEL_GAP = 4
-const VIEWPORT_MARGIN = 8
-const PANEL_MAX_HEIGHT_PX = 320
-const PANEL_MIN_USABLE_PX = 160
-
-function getMaxPanelHeight () {
-  return Math.min(PANEL_MAX_HEIGHT_PX, window.innerHeight * 0.5)
-}
+const searchInputClass = `${formInputClass} ${formInputSmClass} w-full max-lg:text-base`
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
@@ -285,6 +278,7 @@ const pendingSavingName = ref('')
 const addError = ref('')
 const newInputRef = ref(null)
 const searchQuery = ref('')
+const searchInputRef = ref(null)
 const remoteOptions = ref([])
 const remoteLoading = ref(false)
 const remoteHasMore = ref(false)
@@ -431,11 +425,18 @@ function emitValue (next) {
 
 function toggleOption (id) {
   const sid = String(id).trim()
+  if (props.singleSelect) {
+    emitValue([sid])
+    searchInputRef.value?.blur()
+    close()
+    rootRef.value?.querySelector('button[aria-haspopup="listbox"]')?.focus({ preventScroll: true })
+    return
+  }
   const want = normalizeLookupId(sid)
   if (isSelected(id)) {
     emitValue(props.modelValue.filter((x) => normalizeLookupId(x) !== want))
   } else {
-    emitValue(props.singleSelect ? [sid] : [...props.modelValue, sid])
+    emitValue([...props.modelValue, sid])
   }
 }
 
@@ -447,44 +448,13 @@ function removeId (id) {
 function positionPanel () {
   const el = rootRef.value
   if (!el) return
-  const r = el.getBoundingClientRect()
-  const width = props.wrapChips
-    ? Math.min(Math.max(r.width, 280), window.innerWidth - VIEWPORT_MARGIN * 2)
-    : Math.min(320, Math.max(200, window.innerWidth - VIEWPORT_MARGIN * 2))
-  const left = Math.max(VIEWPORT_MARGIN, Math.min(r.left, window.innerWidth - width - VIEWPORT_MARGIN))
-
-  const maxPanelHeight = getMaxPanelHeight()
-  const panel = panelRef.value
-  const measuredHeight = panel
-    ? Math.min(panel.getBoundingClientRect().height, maxPanelHeight)
-    : maxPanelHeight
-
-  const spaceBelow = window.innerHeight - r.bottom - VIEWPORT_MARGIN
-  const spaceAbove = r.top - VIEWPORT_MARGIN
-
-  const openAbove =
-    (spaceBelow < measuredHeight && spaceAbove > spaceBelow)
-    || (spaceBelow < PANEL_MIN_USABLE_PX && spaceAbove > spaceBelow)
-
-  if (openAbove) {
-    const maxH = Math.min(maxPanelHeight, spaceAbove - PANEL_GAP)
-    panelStyle.value = {
-      bottom: `${window.innerHeight - r.top + PANEL_GAP}px`,
-      top: 'auto',
-      left: `${left}px`,
-      width: `${width}px`,
-      maxHeight: `${Math.max(80, maxH)}px`
-    }
-  } else {
-    const maxH = Math.min(maxPanelHeight, spaceBelow - PANEL_GAP)
-    panelStyle.value = {
-      top: `${r.bottom + PANEL_GAP}px`,
-      bottom: 'auto',
-      left: `${left}px`,
-      width: `${width}px`,
-      maxHeight: `${Math.max(80, maxH)}px`
-    }
-  }
+  const viewport = window.visualViewport
+  panelStyle.value = searchPickerPosition(el.getBoundingClientRect(), {
+    top: viewport?.offsetTop ?? 0,
+    left: viewport?.offsetLeft ?? 0,
+    width: viewport?.width ?? window.innerWidth,
+    height: viewport?.height ?? window.innerHeight
+  }, props.wrapChips, panelRef.value?.getBoundingClientRect().height)
 }
 
 function schedulePositionPanel () {
@@ -499,6 +469,11 @@ function toggleOpen () {
   open.value = !open.value
   if (open.value) {
     schedulePositionPanel()
+    void nextTick(() => {
+      if (open.value && !props.disabled && props.searchable) {
+        searchInputRef.value?.focus({ preventScroll: true })
+      }
+    })
     if (typeof props.loadPage === 'function') void fetchRemotePage(true)
   }
 }
@@ -536,9 +511,13 @@ watch(open, (v) => {
   if (v) {
     window.addEventListener('resize', positionPanel)
     window.addEventListener('scroll', positionPanel, true)
+    window.visualViewport?.addEventListener('resize', positionPanel)
+    window.visualViewport?.addEventListener('scroll', positionPanel)
   } else {
     window.removeEventListener('resize', positionPanel)
     window.removeEventListener('scroll', positionPanel, true)
+    window.visualViewport?.removeEventListener('resize', positionPanel)
+    window.visualViewport?.removeEventListener('scroll', positionPanel)
   }
 })
 
@@ -570,6 +549,8 @@ onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown, true)
   window.removeEventListener('resize', positionPanel)
   window.removeEventListener('scroll', positionPanel, true)
+  window.visualViewport?.removeEventListener('resize', positionPanel)
+  window.visualViewport?.removeEventListener('scroll', positionPanel)
 })
 
 function startCreate () {
