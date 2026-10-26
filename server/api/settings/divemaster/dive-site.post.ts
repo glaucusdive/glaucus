@@ -1,5 +1,5 @@
 import { getAuthUser, getBearerToken, createSupabaseClientForUser } from '../../../utils/getAuthUser'
-import { createLookupItem } from '../../../utils/createLookupItem'
+import { validateDiveSiteSuggestion } from '../../../../shared/diveSiteSuggestions'
 
 export default defineEventHandler(async (event) => {
   const user = await getAuthUser(event)
@@ -11,14 +11,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   }
 
-  const body = await readBody(event) as { name?: string; country_id?: string }
-  const name = typeof body.name === 'string' ? body.name.trim() : ''
-  const country_id = typeof body.country_id === 'string' ? body.country_id.trim() : ''
-  if (!name) {
-    throw createError({ statusCode: 400, statusMessage: 'name is required' })
-  }
-  if (!country_id) {
-    throw createError({ statusCode: 400, statusMessage: 'country_id is required' })
+  let input: ReturnType<typeof validateDiveSiteSuggestion>
+  try {
+    const body = await readBody(event) as { name?: unknown; country_id?: unknown }
+    input = validateDiveSiteSuggestion({ name: body?.name, countryId: body?.country_id })
+  } catch (error) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: error instanceof Error ? error.message : 'Enter a valid dive site name and country.'
+    })
   }
 
   const config = useRuntimeConfig()
@@ -28,18 +29,19 @@ export default defineEventHandler(async (event) => {
     token
   )
 
-  try {
-    const created = await createLookupItem(client, 'dive_sites', name, { country_id })
-    const { data: country } = await client
-      .from('countries')
-      .select('name')
-      .eq('id', country_id)
-      .maybeSingle()
-    const countryName = country?.name ? ` (${country.name})` : ''
-    return { id: created.id, label: `${created.label}${countryName}` }
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Failed to create dive site'
-    const status = /unique|duplicate|23505/i.test(message) ? 409 : 400
-    throw createError({ statusCode: status, statusMessage: message })
+  const { data, error } = await client.rpc('submit_dive_site_suggestion', {
+    p_name: input.name,
+    p_country_id: input.countryId
+  })
+  if (error) {
+    throw createError({
+      statusCode: error.code === 'P0001' ? 429 : error.code === '22023' ? 400 : 503,
+      statusMessage: error.code === 'P0001'
+        ? 'Suggestion limit reached. Try again later.'
+        : error.code === '22023'
+          ? 'Enter a valid dive site name and country.'
+          : 'Could not submit this suggestion. Try again later.'
+    })
   }
+  return data
 })

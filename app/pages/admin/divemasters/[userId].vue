@@ -62,14 +62,12 @@
           <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Profile highlights</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormField label="Last formal training" label-style="auth">
-              <SearchMultiSelect
-                :model-value="lastTrainingSelect ? [lastTrainingSelect] : []"
+              <ProfileCredentialPicker
+                :model-value="lastTrainingSelect === LAST_FORMAL_TRAINING_OTHER && form.last_formal_training_other ? form.last_formal_training_other : lastTrainingSelect"
+                kind="training"
                 :options="trainingNameOptions"
-                searchable
-                wrap-chips
-                single-select
-                singular-label="training"
-                @update:model-value="onLastTrainingSelect"
+                :catalog="credentialCatalog"
+                @update:model-value="value => onLastTrainingSelect([value])"
               />
             </FormField>
             <FormField label="Training date" label-style="auth">
@@ -100,6 +98,8 @@
               wrap-chips
               single-select
               singular-label="dive site"
+              footer-action-label="Site not listed? Add new dive site"
+              @footer-action="query => openAdminSiteCreator('favorite_local', query)"
               @update:model-value="(ids) => onFavoriteSelect('local', ids)"
             />
             <div
@@ -143,6 +143,8 @@
               wrap-chips
               single-select
               singular-label="dive site"
+              footer-action-label="Site not listed? Add new dive site"
+              @footer-action="query => openAdminSiteCreator('favorite_destination', query)"
               @update:model-value="(ids) => onFavoriteSelect('destination', ids)"
             />
             <div
@@ -177,28 +179,25 @@
           </FormField>
         </div>
 
-        <div class="space-y-2">
+        <div ref="certificationList" class="space-y-2">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Certifications</h3>
-            <Button type="button" variant="secondary" @click="addCert">
-              Add
-            </Button>
           </div>
           <div
             v-for="(c, idx) in certifications"
             :key="idx"
+            data-profile-row
             class="border border-zinc-200 dark:border-zinc-700 rounded-md p-3 space-y-2"
           >
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <FormField label="Name" label-style="auth">
-                <SearchMultiSelect
-                  :model-value="c.name ? [c.name] : []"
-                  :options="optionsWithLegacy(courseCertOptions, c.name)"
-                  searchable
-                  wrap-chips
-                  single-select
-                  singular-label="cert"
-                  @update:model-value="(ids) => { c.name = ids[0] ? String(ids[0]) : '' }"
+                <ProfileCredentialPicker
+                  v-model="c.name"
+                  v-model:agency="c.agency"
+                  kind="certification"
+                  :options="courseCertOptions"
+                  :agencies="agencyOptions"
+                  :catalog="credentialCatalog"
                 />
               </FormField>
               <FormField label="Agency" label-style="auth">
@@ -218,24 +217,22 @@
               <FormField label="Issued" label-style="auth">
                 <DivemasterJobMonthInput v-model="c.issued_at" label="Issued" />
               </FormField>
-              <FormField label="Students certified" label-style="auth">
-                <FormInput v-model="c.students_certified" type="number" size="sm" min="0" />
-              </FormField>
             </div>
             <button type="button" class="text-xs text-red-600 dark:text-red-400 cursor-pointer" @click="certifications.splice(idx, 1)">Remove</button>
           </div>
+          <div class="flex justify-end">
+            <Button type="button" variant="secondary" @click="addCert">Add certification</Button>
+          </div>
         </div>
 
-        <div class="space-y-2">
+        <div ref="jobList" class="space-y-2">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Past jobs</h3>
-            <Button type="button" variant="secondary" @click="addJob">
-              Add
-            </Button>
           </div>
           <div
             v-for="(j, idx) in jobs"
             :key="idx"
+            data-profile-row
             class="border border-zinc-200 dark:border-zinc-700 rounded-md p-3 space-y-2"
           >
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -274,18 +271,19 @@
             </FormField>
             <button type="button" class="text-xs text-red-600 dark:text-red-400 cursor-pointer" @click="jobs.splice(idx, 1)">Remove</button>
           </div>
+          <div class="flex justify-end">
+            <Button type="button" variant="secondary" @click="addJob">Add job</Button>
+          </div>
         </div>
 
-        <div class="space-y-2">
+        <div ref="diveSiteList" class="space-y-2">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Sites Dived</h3>
-            <Button type="button" variant="secondary" @click="addDiveSiteRow">
-              Add
-            </Button>
           </div>
           <div
             v-for="(siteId, idx) in diveSiteIds"
             :key="idx"
+            data-profile-row
             class="flex gap-2 items-center"
           >
             <div class="min-w-0 flex-1">
@@ -298,6 +296,8 @@
                 wrap-chips
                 single-select
                 singular-label="dive site"
+                footer-action-label="Site not listed? Add new dive site"
+                @footer-action="query => openAdminSiteCreator({ visitedIndex: idx }, query)"
                 @update:model-value="(ids) => { diveSiteIds[idx] = ids[0] ? String(ids[0]) : '' }"
               />
             </div>
@@ -308,6 +308,9 @@
             >
               Remove
             </button>
+          </div>
+          <div class="flex justify-end">
+            <Button type="button" variant="secondary" @click="addDiveSiteRow">Add dive site</Button>
           </div>
         </div>
 
@@ -337,6 +340,13 @@
           </Button>
         </div>
       </form>
+      <DiveSiteSuggestionDialog
+        v-model:open="siteCreatorOpen"
+        mode="admin"
+        :initial-name="siteCreatorQuery"
+        :countries="countryOptions"
+        @selected="onAdminSiteCreated"
+      />
     </div>
   </div>
 </template>
@@ -355,6 +365,8 @@ import {
 import { DIVE_SITE_ADD_NEW_OPTION } from '~~/shared/diveSitePicker'
 import { jobDateToMonth, jobMonthToDate, normalizeJobDates } from '~~/shared/divemasterJobDates'
 import DivemasterJobMonthInput from '~/components/DivemasterJobMonthInput.vue'
+import { revealLastProfileRow } from '~/utils/revealLastProfileRow'
+import { fetchProfileCertificationOptions } from '~~/shared/profileCredentialCatalog'
 
 definePageMeta({ layout: 'default', middleware: 'admin' })
 useSeoMeta({ title: 'Admin · Edit divemaster', robots: 'noindex, nofollow' })
@@ -363,6 +375,7 @@ const route = useRoute()
 const userId = computed(() => String(route.params.userId || ''))
 const { accessToken, init } = useAuth()
 const { client } = useSupabase()
+const { data: credentialCatalog } = useProfileCredentialCatalog()
 const { labelsForIds, ensureDiveSiteLabels, loadDiveSitePage, rememberDiveSites } = useDiveSitePicker()
 const diveSiteAddNewOptions = [DIVE_SITE_ADD_NEW_OPTION]
 
@@ -392,21 +405,29 @@ const newLocalSite = reactive({ name: '', country_id: '' })
 const newDestinationSite = reactive({ name: '', country_id: '' })
 const creatingLocalSite = ref(false)
 const creatingDestinationSite = ref(false)
-const courseCertOptions = ref<Array<{ id: string; label: string }>>([])
+const courseCertOptions = ref<Array<{ id: string; label: string; agency: string }>>([])
 const agencyOptions = ref<Array<{ id: string; label: string }>>([])
 const certifications = ref<Array<DivemasterCertification & { agency: string; cert_number: string; issued_at: string; students_certified: number }>>([])
 const jobs = ref<Array<DivemasterJob & { location: string; start_date: string; end_date: string; description: string; is_current: boolean }>>([])
 const diveSiteIds = ref<string[]>([])
+const certificationList = ref<HTMLElement | null>(null)
+const jobList = ref<HTMLElement | null>(null)
+const diveSiteList = ref<HTMLElement | null>(null)
+const siteCreatorOpen = ref(false)
+const siteCreatorQuery = ref('')
+const siteCreatorTarget = ref<'favorite_local' | 'favorite_destination' | { visitedIndex: number }>('favorite_local')
 
 const trainingNameOptions = LAST_FORMAL_TRAINING_NAMES.map(name => ({ id: name, label: name }))
 
 const headerTitle = computed(() => `Admin · ${form.display_name || form.username || 'Divemaster'}`)
 
-function addCert () {
+async function addCert () {
   certifications.value.push({ name: '', agency: '', cert_number: '', issued_at: '', students_certified: 0 })
+  await nextTick()
+  revealLastProfileRow(certificationList.value, 'button[aria-haspopup="listbox"]')
 }
 
-function addJob () {
+async function addJob () {
   jobs.value.push({
     title: '',
     organization: '',
@@ -416,6 +437,8 @@ function addJob () {
     is_current: false,
     description: ''
   })
+  await nextTick()
+  revealLastProfileRow(jobList.value, 'input')
 }
 
 function onJobCurrentChange (j: { is_current: boolean; end_date: string }) {
@@ -426,8 +449,10 @@ function onJobEndDateChange (j: { is_current: boolean; end_date: string }) {
   if (String(j.end_date || '').trim()) j.is_current = false
 }
 
-function addDiveSiteRow () {
+async function addDiveSiteRow () {
   diveSiteIds.value.push('')
+  await nextTick()
+  revealLastProfileRow(diveSiteList.value, 'button[aria-haspopup="listbox"]')
 }
 
 function optionsWithLegacy (
@@ -463,6 +488,26 @@ function onFavoriteSelect (kind: 'local' | 'destination', ids: string[]) {
       newLocalSite.name = ''
       newLocalSite.country_id = ''
     }
+
+    function openAdminSiteCreator (
+      target: 'favorite_local' | 'favorite_destination' | { visitedIndex: number },
+      query: string
+    ) {
+      siteCreatorTarget.value = target
+      siteCreatorQuery.value = query
+      siteCreatorOpen.value = true
+    }
+
+    function onAdminSiteCreated (site: { id: string; label: string }) {
+      rememberDiveSites([site])
+      if (siteCreatorTarget.value === 'favorite_local') {
+        favoriteLocalId.value = site.id
+      } else if (siteCreatorTarget.value === 'favorite_destination') {
+        favoriteDestinationId.value = site.id
+      } else {
+        diveSiteIds.value[siteCreatorTarget.value.visitedIndex] = site.id
+      }
+    }
   } else {
     favoriteDestinationId.value = next
     if (next !== DIVE_SITE_ADD_NEW_ID) {
@@ -493,18 +538,22 @@ async function createFavoriteSite (kind: 'local' | 'destination') {
   creating.value = true
   try {
     const headers = await authHeaders()
-    const created = await $fetch<{ id: string; label: string }>('/api/settings/divemaster/dive-site', {
+    const created = await $fetch<{ item: { id: string; name: string } }>('/api/admin/lookups/dive_sites', {
       method: 'POST',
       headers,
       body: { name: draft.name.trim(), country_id: draft.country_id }
     })
-    rememberDiveSites([{ id: created.id, label: created.label }])
+    const countryName = countryOptions.value.find(country => country.id === draft.country_id)?.label
+    rememberDiveSites([{
+      id: created.item.id,
+      label: `${created.item.name}${countryName ? ` (${countryName})` : ''}`
+    }])
     if (kind === 'local') {
-      favoriteLocalId.value = created.id
+      favoriteLocalId.value = created.item.id
       newLocalSite.name = ''
       newLocalSite.country_id = ''
     } else {
-      favoriteDestinationId.value = created.id
+      favoriteDestinationId.value = created.item.id
       newDestinationSite.name = ''
       newDestinationSite.country_id = ''
     }
@@ -532,18 +581,7 @@ async function loadCountryOptions () {
 }
 
 async function loadCourseCertOptions () {
-  const { data } = await client
-    .from('courses')
-    .select('certification_name')
-    .order('certification_name')
-  const names = new Set<string>()
-  for (const row of data ?? []) {
-    const n = String(row.certification_name || '').trim()
-    if (n) names.add(n)
-  }
-  courseCertOptions.value = [...names]
-    .sort((a, b) => a.localeCompare(b))
-    .map(name => ({ id: name, label: name }))
+  courseCertOptions.value = await fetchProfileCertificationOptions(client)
 }
 
 async function loadAgencyOptions () {

@@ -93,7 +93,7 @@ export default defineEventHandler(async (event): Promise<DivemasterApiResult> =>
   const favoriteIds = [favoriteLocalId, favoriteDestinationId].filter(Boolean) as string[]
 
   const [{ data: certs }, { data: jobs }, { data: siteLinks }, { data: favoriteRows }] = await Promise.all([
-    client.from('divemaster_certifications').select('*').eq('user_id', profile.id).order('sort_order'),
+    client.from('divemaster_certifications').select('*').eq('user_id', profile.id).eq('approval_status', 'approved').order('sort_order'),
     client.from('divemaster_jobs').select('*').eq('user_id', profile.id).order('sort_order'),
     client
       .from('divemaster_dive_sites')

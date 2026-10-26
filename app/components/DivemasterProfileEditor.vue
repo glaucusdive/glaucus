@@ -2,7 +2,7 @@
   <component
     :is="embedded ? 'div' : SettingsPage"
     title="Profile Settings"
-    description="Username and dive professional profile. Public pages go live after admin approval."
+    description="Dive professional profile. Public pages go live after admin approval."
     back-to="/settings"
   >
     <div v-if="embedded" class="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900">
@@ -15,26 +15,6 @@
       </div>
       <p v-if="saveMessage" role="status" class="w-full text-sm" :class="saveOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">{{ saveMessage }}</p>
     </div>
-    <template #actions>
-      <div v-if="!loading" class="flex items-center gap-4">
-        <p
-          v-if="saveMessage"
-          class="max-w-40 truncate text-sm sm:max-w-xs"
-          :class="saveOk ? 'text-green-400' : 'text-red-400'"
-          :title="saveMessage"
-        >
-          {{ saveMessage }}
-        </p>
-        <Button
-          type="button"
-          variant="primary"
-          :disabled="saving || cancelling || loading || !!loadError"
-          @click="saveProfile"
-        >
-          {{ saving ? 'Saving…' : 'Save' }}
-        </Button>
-      </div>
-    </template>
     
     <div v-if="loading" class="p-4 lg:py-12 lg:px-24 text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
     <p v-else-if="loadError" role="alert" class="p-4 text-sm text-red-600 dark:text-red-400">{{ loadError }}</p>
@@ -42,7 +22,18 @@
     <div v-else class="divide-y divide-zinc-800">
       <fieldset :disabled="saving" class="min-w-0">
       <section class="p-4 lg:py-12 lg:px-24 flex flex-col gap-4">
-        <h2 v-if="!embedded" class="text-base font-bold text-white">Account</h2>
+        <div v-if="!embedded" class="flex min-w-0 items-center justify-between gap-3">
+          <h2 class="text-base font-bold text-white">Account</h2>
+          <Button
+            type="button"
+            variant="primary"
+            :disabled="saving || cancelling || loading || !!loadError"
+            @click="saveProfile"
+          >
+            {{ saving ? 'Saving…' : 'Save' }}
+          </Button>
+        </div>
+        <p v-if="!embedded && saveMessage" role="status" class="text-sm [overflow-wrap:anywhere]" :class="saveOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">{{ saveMessage }}</p>
         <div class="flex flex-col gap-2">
           <FormField label="Full name" label-style="auth" field-id="dm-full-name" required>
             <FormInput
@@ -55,26 +46,8 @@
             />
           </FormField>
         </div>
-        <FormField v-if="!embedded" label="Username" label-style="auth" field-id="dm-username">
-          <!-- Locked: show current username in a disabled input -->
-          <template v-if="usernameLocked && username">
-            <FormInput
-              id="dm-username"
-              :model-value="`@${username}`"
-              type="text"
-              disabled
-            />
-            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-              Used for glaucusdive.com/divemaster/{{ username }}
-            </p>
-            <p v-if="usernameCooldownUntil" class="text-xs text-amber-600 dark:text-amber-400 mt-1">
-              {{ formatUsernameCooldownMessage(usernameCooldownUntil) }}
-            </p>
-            <p v-else class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-              Changes allowed once every 90 days; old URLs redirect to the new one.
-            </p>
-          </template>
-          <template v-else>
+        <template v-if="!embedded && !username">
+          <FormField label="Username" label-style="auth" field-id="dm-username">
             <FormInput
               id="dm-username"
               v-model="usernameInput"
@@ -84,22 +57,20 @@
             />
             <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
               Lowercase letters, numbers, hyphens. Used for glaucusdive.com/divemaster/…
-              Changes allowed once every 90 days; old URLs redirect to the new one.
             </p>
-          </template>
-        </FormField>
-        <div v-if="usernameMessage" class="text-sm" :class="usernameOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
-          {{ usernameMessage }}
-        </div>
-        <button
-          v-if="!embedded && !usernameLocked"
-          type="button"
-          class="px-4 py-2 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 cursor-pointer"
-          :disabled="savingUsername"
-          @click="saveUsername"
-        >
-          {{ savingUsername ? 'Saving…' : (username ? 'Change username' : 'Save username') }}
-        </button>
+          </FormField>
+          <div v-if="usernameMessage" class="text-sm" :class="usernameOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+            {{ usernameMessage }}
+          </div>
+          <button
+            type="button"
+            class="px-4 py-2 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 cursor-pointer"
+            :disabled="savingUsername"
+            @click="saveUsername"
+          >
+            {{ savingUsername ? 'Saving…' : 'Save username' }}
+          </button>
+        </template>
       </section>
 
       <section class="p-4 lg:py-12 lg:px-24 flex flex-col gap-8">
@@ -201,14 +172,12 @@
               <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Profile highlights</h3>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FormField label="Last formal training" label-style="auth">
-                  <SearchMultiSelect
-                    :model-value="lastTrainingSelect ? [lastTrainingSelect] : []"
+                  <ProfileCredentialPicker
+                    :model-value="lastTrainingSelect === LAST_FORMAL_TRAINING_OTHER && form.last_formal_training_other ? form.last_formal_training_other : lastTrainingSelect"
+                    kind="training"
                     :options="trainingNameOptions"
-                    searchable
-                    wrap-chips
-                    single-select
-                    singular-label="training"
-                    @update:model-value="onLastTrainingSelect"
+                    :catalog="credentialCatalog"
+                    @update:model-value="value => onLastTrainingSelect([value])"
                   />
                 </FormField>
                 <FormField label="Training date" label-style="auth">
@@ -232,112 +201,54 @@
               <FormField label="Favorite local dive spot" label-style="auth">
                 <SearchMultiSelect
                   :model-value="favoritePickerValue(favoriteLocalId)"
-                  :options="diveSiteAddNewOptions"
                   :known-options="labelsForIds(favoritePickerValue(favoriteLocalId))"
                   :load-page="loadDiveSitePage"
                   searchable
                   wrap-chips
                   single-select
                   singular-label="dive site"
+                  footer-action-label="Site not listed? Add new dive site"
+                  @footer-action="query => openSiteSuggestion('favorite_local', query)"
                   @update:model-value="(ids) => onFavoriteSelect('local', ids)"
                 />
-                <div
-                  v-if="favoriteLocalId === DIVE_SITE_ADD_NEW_ID"
-                  class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-md bg-zinc-100 dark:bg-zinc-800/20 p-3"
-                >
-                  <FormField label="New site name" label-style="auth">
-                    <FormInput v-model="newLocalSite.name" type="text" size="sm" placeholder="Blue Hole" />
-                  </FormField>
-                  <FormField label="Country" label-style="auth">
-                    <SearchMultiSelect
-                      :model-value="newLocalSite.country_id ? [newLocalSite.country_id] : []"
-                      :options="countryOptions"
-                      searchable
-                      wrap-chips
-                      single-select
-                      singular-label="country"
-                      @update:model-value="(ids) => { newLocalSite.country_id = ids[0] ? String(ids[0]) : '' }"
-                    />
-                  </FormField>
-                  <div class="sm:col-span-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      :disabled="creatingLocalSite || !newLocalSite.name.trim() || !newLocalSite.country_id"
-                      @click="createFavoriteSite('local')"
-                    >
-                      {{ creatingLocalSite ? 'Adding…' : 'Add dive site' }}
-                    </Button>
-                  </div>
-                </div>
               </FormField>
 
               <FormField label="Favorite destination dive spot" label-style="auth">
                 <SearchMultiSelect
                   :model-value="favoritePickerValue(favoriteDestinationId)"
-                  :options="diveSiteAddNewOptions"
                   :known-options="labelsForIds(favoritePickerValue(favoriteDestinationId))"
                   :load-page="loadDiveSitePage"
                   searchable
                   wrap-chips
                   single-select
                   singular-label="dive site"
+                  footer-action-label="Site not listed? Add new dive site"
+                  @footer-action="query => openSiteSuggestion('favorite_destination', query)"
                   @update:model-value="(ids) => onFavoriteSelect('destination', ids)"
                 />
-                <div
-                  v-if="favoriteDestinationId === DIVE_SITE_ADD_NEW_ID"
-                  class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-md bg-zinc-100 dark:bg-zinc-800/20 p-3"
-                >
-                  <FormField label="New site name" label-style="auth">
-                    <FormInput v-model="newDestinationSite.name" type="text" size="sm" placeholder="Blue Corner" />
-                  </FormField>
-                  <FormField label="Country" label-style="auth">
-                    <SearchMultiSelect
-                      :model-value="newDestinationSite.country_id ? [newDestinationSite.country_id] : []"
-                      :options="countryOptions"
-                      searchable
-                      wrap-chips
-                      single-select
-                      singular-label="country"
-                      @update:model-value="(ids) => { newDestinationSite.country_id = ids[0] ? String(ids[0]) : '' }"
-                    />
-                  </FormField>
-                  <div class="sm:col-span-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      :disabled="creatingDestinationSite || !newDestinationSite.name.trim() || !newDestinationSite.country_id"
-                      @click="createFavoriteSite('destination')"
-                    >
-                      {{ creatingDestinationSite ? 'Adding…' : 'Add dive site' }}
-                    </Button>
-                  </div>
-                </div>
               </FormField>
             </div>
 
-            <div class="space-y-2">
+            <div ref="certificationList" class="space-y-2">
               <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Certifications</h3>
-                <Button type="button" variant="secondary" @click="addCert">
-                  Add
-                </Button>
               </div>
               <div
                 v-for="(c, idx) in certifications"
                 :key="c.id || idx"
+                data-profile-row
                 class="rounded-md bg-zinc-100 dark:bg-zinc-800/20 p-3 space-y-2"
               >
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <FormField label="Name" label-style="auth">
-                    <SearchMultiSelect
-                      :model-value="c.name ? [c.name] : []"
-                      :options="optionsWithLegacy(courseCertOptions, c.name)"
-                      searchable
-                      wrap-chips
-                      single-select
-                      singular-label="cert"
-                      @update:model-value="(ids) => { c.name = ids[0] ? String(ids[0]) : '' }"
+                    <ProfileCredentialPicker
+                      v-model="c.name"
+                      v-model:agency="c.agency"
+                      kind="certification"
+                      :options="courseCertOptions"
+                      :agencies="agencyOptions"
+                      :catalog="credentialCatalog"
+                      :selected-label-suffix="c.approval_status === 'rejected' ? 'Rejected' : c.approval_status === 'pending' || !c.id ? 'Pending' : ''"
                     />
                   </FormField>
                   <FormField label="Agency" label-style="auth">
@@ -357,24 +268,22 @@
                   <FormField label="Issued" label-style="auth">
                     <DivemasterJobMonthInput v-model="c.issued_at" label="Issued" />
                   </FormField>
-                  <FormField label="Students certified" label-style="auth">
-                    <FormInput v-model="c.students_certified" type="number" size="sm" min="0" />
-                  </FormField>
                 </div>
                 <button type="button" class="text-xs text-red-600 dark:text-red-400 cursor-pointer" @click="certifications.splice(idx, 1)">Remove</button>
               </div>
+              <div class="flex justify-end">
+                <Button type="button" variant="secondary" @click="addCert">Add certification</Button>
+              </div>
             </div>
 
-            <div class="space-y-2">
+            <div ref="jobList" class="space-y-2">
               <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Past jobs</h3>
-                <Button type="button" variant="secondary" @click="addJob">
-                  Add
-                </Button>
               </div>
               <div
                 v-for="(j, idx) in jobs"
                 :key="j.id || idx"
+                data-profile-row
                 class="rounded-md bg-zinc-100 dark:bg-zinc-800/20 p-3 space-y-2"
               >
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -413,18 +322,19 @@
                 </FormField>
                 <button type="button" class="text-xs text-red-600 dark:text-red-400 cursor-pointer" @click="jobs.splice(idx, 1)">Remove</button>
               </div>
+              <div class="flex justify-end">
+                <Button type="button" variant="secondary" @click="addJob">Add job</Button>
+              </div>
             </div>
 
             <div ref="diveSiteList" class="space-y-2">
               <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Sites Dived</h3>
-                <Button type="button" variant="secondary" @click="addDiveSiteRow">
-                  Add
-                </Button>
               </div>
               <div
                 v-for="(siteId, idx) in selectedDiveSiteIds"
                 :key="idx"
+                data-profile-row
                 class="flex gap-2 items-center"
               >
                 <div class="min-w-0 flex-1">
@@ -437,6 +347,8 @@
                     wrap-chips
                     single-select
                     singular-label="dive site"
+                    footer-action-label="Site not listed? Add new dive site"
+                    @footer-action="query => openSiteSuggestion({ visitedIndex: idx }, query)"
                     @update:model-value="(ids) => { selectedDiveSiteIds[idx] = ids[0] ? String(ids[0]) : '' }"
                   />
                 </div>
@@ -447,6 +359,9 @@
                 >
                   Remove
                 </button>
+              </div>
+              <div class="flex justify-end">
+                <Button type="button" variant="secondary" @click="addDiveSiteRow">Add dive site</Button>
               </div>
             </div>
 
@@ -475,37 +390,42 @@
       </section>
       </fieldset>
     </div>
+    <DiveSiteSuggestionDialog
+      v-model:open="siteSuggestionOpen"
+      :initial-name="siteSuggestionQuery"
+      :countries="countryOptions"
+      @selected="onSiteSuggestionSelected"
+    />
   </component>
 </template>
 
 <script setup lang="ts">
 import {
-  DIVE_SITE_ADD_NEW_ID,
-  formatUsernameCooldownMessage,
   isValidUsername,
   LAST_FORMAL_TRAINING_NAMES,
   LAST_FORMAL_TRAINING_OTHER,
   lastFormalTrainingSelectValue,
   normalizeUsername,
   parseStudentsCertified,
-  usernameChangeAvailableAt,
   type DivemasterCertification,
   type DivemasterJob,
   type DivemasterProfileStatus
 } from '~~/shared/divemasterProfile'
-import { DIVE_SITE_ADD_NEW_OPTION } from '~~/shared/diveSitePicker'
 import { jobDateToMonth, jobMonthToDate, normalizeJobDates } from '~~/shared/divemasterJobDates'
+import { pendingDiveSiteId, submissionIdFromPendingDiveSiteId } from '~~/shared/pendingDiveSiteIds'
 import DivemasterJobMonthInput from '~/components/DivemasterJobMonthInput.vue'
 import SettingsPage from '~/components/settings/SettingsPage.vue'
+import { revealLastProfileRow } from '~/utils/revealLastProfileRow'
+import { fetchProfileCertificationOptions } from '~~/shared/profileCredentialCatalog'
 
 const props = withDefaults(defineProps<{ embedded?: boolean; expectedUsername?: string }>(), { embedded: false, expectedUsername: '' })
 const emit = defineEmits<{ saved: []; cancel: []; dirty: [boolean]; saving: [boolean] }>()
 
 const { user, accessToken } = useAuth()
 const { client } = useSupabase()
+const { data: credentialCatalog } = useProfileCredentialCatalog()
 const { public: publicConfig } = useRuntimeConfig()
 const { labelsForIds, ensureDiveSiteLabels, loadDiveSitePage, rememberDiveSites } = useDiveSitePicker()
-const diveSiteAddNewOptions = [DIVE_SITE_ADD_NEW_OPTION]
 
 const loading = ref(true)
 const loadError = ref('')
@@ -516,7 +436,6 @@ const initialSnapshot = ref('')
 const fullNameInput = ref('')
 const username = ref('')
 const usernameInput = ref('')
-const usernameChangedAt = ref<string | null>(null)
 const savingUsername = ref(false)
 const usernameMessage = ref('')
 const usernameOk = ref(false)
@@ -532,14 +451,6 @@ function fullNameFromAuthMetadata (): string {
   return ''
 }
 
-const usernameCooldownUntil = computed(() => usernameChangeAvailableAt(usernameChangedAt.value))
-/** Locked when a username is set and still inside the 90-day window (or legacy with no stamp). */
-const usernameLocked = computed(() => {
-  if (!username.value) return false
-  if (!usernameChangedAt.value) return true
-  return !!usernameCooldownUntil.value
-})
-
 const dmStatus = ref<DivemasterProfileStatus | null>(null)
 const applying = ref(false)
 const saving = ref(false)
@@ -548,6 +459,9 @@ const submitting = ref(false)
 const cancelling = ref(false)
 const saveMessage = ref('')
 const saveOk = ref(false)
+const siteSuggestionOpen = ref(false)
+const siteSuggestionQuery = ref('')
+const siteSuggestionTarget = ref<'favorite_local' | 'favorite_destination' | { visitedIndex: number }>('favorite_local')
 
 const form = reactive({
   headline: '',
@@ -665,17 +579,15 @@ const lastTrainingSelect = ref('')
 const favoriteLocalId = ref('')
 const favoriteDestinationId = ref('')
 const countryOptions = ref<Array<{ id: string; label: string }>>([])
-const newLocalSite = reactive({ name: '', country_id: '' })
-const newDestinationSite = reactive({ name: '', country_id: '' })
-const creatingLocalSite = ref(false)
-const creatingDestinationSite = ref(false)
 
-const courseCertOptions = ref<Array<{ id: string; label: string }>>([])
+const courseCertOptions = ref<Array<{ id: string; label: string; agency: string }>>([])
 const agencyOptions = ref<Array<{ id: string; label: string }>>([])
-const certifications = ref<Array<DivemasterCertification & { agency: string; cert_number: string; issued_at: string; students_certified: number }>>([])
+const certifications = ref<Array<DivemasterCertification & { agency: string; cert_number: string; issued_at: string; students_certified: number; approval_status?: 'pending' | 'approved' | 'rejected' }>>([])
 const jobs = ref<Array<DivemasterJob & { location: string; start_date: string; end_date: string; description: string; is_current: boolean }>>([])
 const selectedDiveSiteIds = ref<string[]>([])
 const diveSiteList = ref<HTMLElement | null>(null)
+const certificationList = ref<HTMLElement | null>(null)
+const jobList = ref<HTMLElement | null>(null)
 
 const trainingNameOptions = LAST_FORMAL_TRAINING_NAMES.map(name => ({ id: name, label: name }))
 
@@ -686,7 +598,7 @@ const statusLabel = computed(() => {
   return ''
 })
 
-function addCert () {
+async function addCert () {
   certifications.value.push({
     name: '',
     agency: '',
@@ -695,9 +607,11 @@ function addCert () {
     students_certified: 0,
     sort_order: certifications.value.length
   })
+  await nextTick()
+  revealLastProfileRow(certificationList.value, 'button[aria-haspopup="listbox"]')
 }
 
-function addJob () {
+async function addJob () {
   jobs.value.push({
     title: '',
     organization: '',
@@ -708,6 +622,8 @@ function addJob () {
     description: '',
     sort_order: jobs.value.length
   })
+  await nextTick()
+  revealLastProfileRow(jobList.value, 'input')
 }
 
 function onJobCurrentChange (j: { is_current: boolean; end_date: string }) {
@@ -721,10 +637,7 @@ function onJobEndDateChange (j: { is_current: boolean; end_date: string }) {
 async function addDiveSiteRow () {
   selectedDiveSiteIds.value.push('')
   await nextTick()
-  const row = diveSiteList.value?.lastElementChild
-  if (!(row instanceof HTMLElement)) return
-  row.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' })
-  row.querySelector<HTMLButtonElement>('button[aria-haspopup="listbox"]')?.focus({ preventScroll: true })
+  revealLastProfileRow(diveSiteList.value, 'button[aria-haspopup="listbox"]')
 }
 
 function optionsWithLegacy (
@@ -760,16 +673,29 @@ function onFavoriteSelect (kind: 'local' | 'destination', ids: string[]) {
   const next = ids[0] ? String(ids[0]) : ''
   if (kind === 'local') {
     favoriteLocalId.value = next
-    if (next !== DIVE_SITE_ADD_NEW_ID) {
-      newLocalSite.name = ''
-      newLocalSite.country_id = ''
-    }
   } else {
     favoriteDestinationId.value = next
-    if (next !== DIVE_SITE_ADD_NEW_ID) {
-      newDestinationSite.name = ''
-      newDestinationSite.country_id = ''
-    }
+  }
+}
+
+function openSiteSuggestion (
+  target: 'favorite_local' | 'favorite_destination' | { visitedIndex: number },
+  query: string
+) {
+  siteSuggestionTarget.value = target
+  siteSuggestionQuery.value = query
+  siteSuggestionOpen.value = true
+}
+
+function onSiteSuggestionSelected (site: { id: string; label: string }) {
+  rememberDiveSites([site])
+  const target = siteSuggestionTarget.value
+  if (target === 'favorite_local') {
+    favoriteLocalId.value = site.id
+  } else if (target === 'favorite_destination') {
+    favoriteDestinationId.value = site.id
+  } else {
+    selectedDiveSiteIds.value[target.visitedIndex] = site.id
   }
 }
 
@@ -783,59 +709,12 @@ function resolvedLastTrainingName (): string | null {
 
 function favoriteIdForSave (id: string): string | null {
   const trimmed = id.trim()
-  if (!trimmed || trimmed === DIVE_SITE_ADD_NEW_ID) return null
+  if (!trimmed || submissionIdFromPendingDiveSiteId(trimmed)) return null
   return trimmed
 }
 
-async function createFavoriteSite (kind: 'local' | 'destination') {
-  const draft = kind === 'local' ? newLocalSite : newDestinationSite
-  const creating = kind === 'local' ? creatingLocalSite : creatingDestinationSite
-  if (!draft.name.trim() || !draft.country_id) return
-  creating.value = true
-  try {
-    const token = accessToken.value || (await client.auth.getSession()).data.session?.access_token
-    if (!token) {
-      saveOk.value = false
-      saveMessage.value = 'Sign in again to add a dive site.'
-      return
-    }
-    const created = await $fetch<{ id: string; label: string }>('/api/settings/divemaster/dive-site', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: { name: draft.name.trim(), country_id: draft.country_id }
-    })
-    rememberDiveSites([{ id: created.id, label: created.label }])
-    if (kind === 'local') {
-      favoriteLocalId.value = created.id
-      newLocalSite.name = ''
-      newLocalSite.country_id = ''
-    } else {
-      favoriteDestinationId.value = created.id
-      newDestinationSite.name = ''
-      newDestinationSite.country_id = ''
-    }
-  } catch (e: unknown) {
-    saveOk.value = false
-    const err = e as { data?: { statusMessage?: string }; statusMessage?: string; message?: string }
-    saveMessage.value = err?.data?.statusMessage || err?.statusMessage || err?.message || 'Failed to add dive site'
-  } finally {
-    creating.value = false
-  }
-}
-
 async function loadCourseCertOptions () {
-  const { data } = await client
-    .from('courses')
-    .select('certification_name')
-    .order('certification_name')
-  const names = new Set<string>()
-  for (const row of data ?? []) {
-    const n = String(row.certification_name || '').trim()
-    if (n) names.add(n)
-  }
-  courseCertOptions.value = [...names]
-    .sort((a, b) => a.localeCompare(b))
-    .map(name => ({ id: name, label: name }))
+  courseCertOptions.value = await fetchProfileCertificationOptions(client)
 }
 
 async function loadAgencyOptions () {
@@ -871,7 +750,7 @@ async function loadAll () {
 
     const { data: profile, error: profileError } = await client
       .from('profiles')
-      .select('username, username_changed_at, display_name')
+      .select('username, display_name')
       .eq('id', id)
       .maybeSingle()
 
@@ -884,7 +763,6 @@ async function loadAll () {
 
     username.value = (profile?.username as string) || ''
     usernameInput.value = username.value
-    usernameChangedAt.value = (profile?.username_changed_at as string | null) || null
 
     const { data: dm, error: dmError } = await client
       .from('divemaster_profiles')
@@ -915,18 +793,60 @@ async function loadAll () {
     favoriteLocalId.value = (dm.favorite_local_dive_site_id as string) || ''
     favoriteDestinationId.value = (dm.favorite_destination_dive_site_id as string) || ''
 
-    const [certResult, jobResult, siteResult] = await Promise.all([
+    const [certResult, jobResult, siteResult, pendingSiteResult] = await Promise.all([
       client.from('divemaster_certifications').select('*').eq('user_id', id).order('sort_order'),
       client.from('divemaster_jobs').select('*').eq('user_id', id).order('sort_order'),
-      client.from('divemaster_dive_sites').select('dive_site_id, note').eq('user_id', id).order('sort_order')
+      client.from('divemaster_dive_sites').select('dive_site_id, note, sort_order').eq('user_id', id).order('sort_order'),
+      client.from('divemaster_pending_dive_sites')
+        .select('submission_id, slot, note, sort_order, submission:dive_site_submissions!inner(name, status, country_id, countries(name))')
+        .eq('user_id', id)
+        .order('sort_order')
     ])
-    for (const result of [certResult, jobResult, siteResult]) {
+    for (const result of [certResult, jobResult, siteResult, pendingSiteResult]) {
       if (result.error) throw result.error
     }
     const certs = certResult.data
     const jobRows = jobResult.data
     const siteLinks = siteResult.data
-    siteNotes.value = Object.fromEntries((siteLinks ?? []).map(site => [site.dive_site_id, site.note]))
+    const pendingSiteLinks = (pendingSiteResult.data ?? []) as Array<{
+      submission_id: string
+      slot: string
+      note: string | null
+      sort_order: number
+      submission: {
+        name: string
+        status: string
+        countries?: { name?: string } | Array<{ name?: string }> | null
+      } | Array<{
+        name: string
+        status: string
+        countries?: { name?: string } | Array<{ name?: string }> | null
+      }>
+    }>
+
+    const pendingSiteOptions = pendingSiteLinks.map(link => {
+      const submission = Array.isArray(link.submission) ? link.submission[0] : link.submission
+      const country = Array.isArray(submission?.countries) ? submission.countries[0]?.name : submission?.countries?.name
+      const status = submission?.status === 'rejected' ? 'Rejected' : 'Pending'
+      return {
+        link,
+        option: {
+          id: pendingDiveSiteId(link.submission_id),
+          label: `${submission?.name || 'Dive site'}${country ? ` (${country})` : ''} · ${status}`
+        }
+      }
+    })
+    rememberDiveSites(pendingSiteOptions.map(site => site.option))
+    const localPending = pendingSiteLinks.find(link => link.slot === 'favorite_local')
+    const destinationPending = pendingSiteLinks.find(link => link.slot === 'favorite_destination')
+    if (!favoriteLocalId.value && localPending) favoriteLocalId.value = pendingDiveSiteId(localPending.submission_id)
+    if (!favoriteDestinationId.value && destinationPending) favoriteDestinationId.value = pendingDiveSiteId(destinationPending.submission_id)
+
+    siteNotes.value = Object.fromEntries([
+      ...(siteLinks ?? []).map(site => [site.dive_site_id, site.note] as const),
+      ...pendingSiteLinks.filter(link => link.slot === 'visited')
+        .map(link => [pendingDiveSiteId(link.submission_id), link.note] as const)
+    ])
 
     certifications.value = (certs ?? []).map(c => ({
       id: c.id,
@@ -937,6 +857,7 @@ async function loadAll () {
       expires_at: c.expires_at,
       image_url: c.image_url,
       students_certified: parseStudentsCertified(c.students_certified),
+      approval_status: c.approval_status,
       sort_order: c.sort_order ?? 0
     }))
 
@@ -953,7 +874,12 @@ async function loadAll () {
       sort_order: j.sort_order ?? 0
     }))
 
-    selectedDiveSiteIds.value = (siteLinks ?? []).map(s => String(s.dive_site_id))
+    selectedDiveSiteIds.value = [
+      ...(siteLinks ?? []).map(site => ({ id: String(site.dive_site_id), sortOrder: site.sort_order ?? 0 })),
+      ...pendingSiteOptions
+        .filter(({ link }) => link.slot === 'visited')
+        .map(({ link, option }) => ({ id: option.id, sortOrder: link.sort_order ?? 0 }))
+    ].sort((a, b) => a.sortOrder - b.sortOrder).map(site => site.id)
     await Promise.all([
       ensureDiveSiteLabels([
         favoriteLocalId.value,
@@ -1039,7 +965,6 @@ async function saveUsername () {
     )
     username.value = res.username
     usernameInput.value = res.username
-    usernameChangedAt.value = res.username_changed_at
     usernameOk.value = true
     usernameMessage.value = res.unchanged ? 'Username unchanged.' : 'Username saved.'
   } catch (e: unknown) {
@@ -1102,24 +1027,37 @@ async function saveDraft () {
     }).eq('user_id', id)
     if (dmErr) throw dmErr
 
-    const { error: certDeleteError } = await client.from('divemaster_certifications').delete().eq('user_id', id)
-    if (certDeleteError) throw certDeleteError
-    if (certifications.value.length) {
-      const { error } = await client.from('divemaster_certifications').insert(
-        normalizedCertifications
-          .map((c, i) => ({
-            user_id: id,
-            name: c.name.trim(),
-            agency: c.agency?.trim() || null,
-            cert_number: c.cert_number?.trim() || null,
-            issued_at: c.issued_at,
-            expires_at: c.expires_at || null,
-            image_url: c.image_url || null,
-            students_certified: parseStudentsCertified(c.students_certified),
-            sort_order: i
-          }))
-      )
+    const { data: currentCertifications, error: currentCertificationError } = await client
+      .from('divemaster_certifications')
+      .select('id')
+      .eq('user_id', id)
+    if (currentCertificationError) throw currentCertificationError
+    const retainedCertificationIds = new Set(normalizedCertifications.map(cert => cert.id).filter((certId): certId is string => !!certId))
+    const removedCertificationIds = (currentCertifications ?? [])
+      .map(cert => cert.id as string)
+      .filter(certId => !retainedCertificationIds.has(certId))
+    if (removedCertificationIds.length) {
+      const { error } = await client.from('divemaster_certifications')
+        .delete()
+        .eq('user_id', id)
+        .in('id', removedCertificationIds)
       if (error) throw error
+    }
+    for (const [index, cert] of normalizedCertifications.entries()) {
+      const values = {
+        name: cert.name.trim(),
+        agency: cert.agency?.trim() || null,
+        cert_number: cert.cert_number?.trim() || null,
+        issued_at: cert.issued_at,
+        expires_at: cert.expires_at || null,
+        image_url: cert.image_url || null,
+        students_certified: parseStudentsCertified(cert.students_certified),
+        sort_order: index
+      }
+      const result = cert.id
+        ? await client.from('divemaster_certifications').update(values).eq('user_id', id).eq('id', cert.id)
+        : await client.from('divemaster_certifications').insert({ ...values, user_id: id })
+      if (result.error) throw result.error
     }
 
     const { error: jobDeleteError } = await client.from('divemaster_jobs').delete().eq('user_id', id)
@@ -1146,9 +1084,10 @@ async function saveDraft () {
     const { error: siteDeleteError } = await client.from('divemaster_dive_sites').delete().eq('user_id', id)
     if (siteDeleteError) throw siteDeleteError
     const siteIds = selectedDiveSiteIds.value.map(id => id.trim()).filter(Boolean)
-    if (siteIds.length) {
+    const canonicalSiteIds = siteIds.filter(siteId => !submissionIdFromPendingDiveSiteId(siteId))
+    if (canonicalSiteIds.length) {
       const { error } = await client.from('divemaster_dive_sites').insert(
-        siteIds.map((dive_site_id, i) => ({
+        canonicalSiteIds.map((dive_site_id, i) => ({
           user_id: id,
           dive_site_id,
           note: siteNotes.value[dive_site_id] || null,
@@ -1157,6 +1096,19 @@ async function saveDraft () {
       )
       if (error) throw error
     }
+
+    const pendingVisited = siteIds.flatMap((siteId, index) => {
+      const submissionId = submissionIdFromPendingDiveSiteId(siteId)
+      return submissionId
+        ? [{ submission_id: submissionId, note: siteNotes.value[siteId] || null, sort_order: index }]
+        : []
+    })
+    const { error: pendingSiteSaveError } = await client.rpc('save_divemaster_pending_dive_sites', {
+      p_favorite_local: submissionIdFromPendingDiveSiteId(favoriteLocalId.value) || null,
+      p_favorite_destination: submissionIdFromPendingDiveSiteId(favoriteDestinationId.value) || null,
+      p_visited: pendingVisited
+    })
+    if (pendingSiteSaveError) throw pendingSiteSaveError
 
     saveOk.value = true
     saveMessage.value = dmStatus.value === 'published' ? 'Profile saved.' : 'Draft saved.'

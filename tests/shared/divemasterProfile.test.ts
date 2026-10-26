@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { parse } from '@vue/compiler-sfc'
 import {
   DIVE_SITE_ADD_NEW_ID,
   formatUsernameCooldownMessage,
@@ -51,5 +53,21 @@ describe('divemasterProfile helpers', () => {
     expect(available).not.toBeNull()
     expect(formatUsernameCooldownMessage(available!)).toContain('2026')
     expect(usernameChangeAvailableAt(changed.toISOString(), new Date('2026-05-01T00:00:00.000Z'))).toBeNull()
+  })
+})
+
+describe('Personal certification presentation', () => {
+  it.each([
+    '../../app/components/DivemasterProfileEditor.vue',
+    '../../app/pages/admin/divemasters/[userId].vue',
+    '../../app/pages/divemaster/[username].vue'
+  ])('omits teaching counts in %s without removing certification details', path => {
+    const { descriptor } = parse(readFileSync(new URL(path, import.meta.url), 'utf8'))
+    const template = descriptor.template!.content
+    expect(template).not.toContain('students_certified')
+    expect(template).not.toContain('Students certified')
+    expect(template).toContain('Certifications')
+    expect(template).toContain('issued_at')
+    expect(template).toContain('cert_number')
   })
 })

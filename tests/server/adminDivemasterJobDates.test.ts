@@ -27,8 +27,8 @@ describe('admin divemaster job date writes', () => {
 
   afterEach(() => vi.unstubAllGlobals())
 
-  async function invoke (jobs: unknown[]) {
-    vi.stubGlobal('readBody', async () => ({ jobs }))
+  async function invoke (jobs: unknown[], certifications?: unknown[]) {
+    vi.stubGlobal('readBody', async () => ({ jobs, certifications }))
     const { default: handler } = await import('../../server/api/admin/divemasters/[userId].patch')
     return handler({} as never)
   }
@@ -55,5 +55,12 @@ describe('admin divemaster job date writes', () => {
     mocks.requireAdmin.mockRejectedValue(new Error('Unauthorized'))
     await expect(invoke([])).rejects.toThrow('Unauthorized')
     expect(mocks.service).not.toHaveBeenCalled()
+  })
+
+  it('preserves a stored student count when certification details are saved', async () => {
+    await invoke([], [{ name: 'Test certification', agency: 'Test Agency', issued_at: '2021-04-01', students_certified: 17 }])
+    expect(mocks.insert).toHaveBeenCalledWith([expect.objectContaining({
+      name: 'Test certification', agency: 'Test Agency', issued_at: '2021-04-01', students_certified: 17
+    })])
   })
 })

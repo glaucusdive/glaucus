@@ -1,5 +1,98 @@
 # Implementation Log
 
+## 2026-10-25 - Moderated new divemaster certifications
+
+- Existing certifications are backfilled as approved and remain approved when edited. New owner-added certifications are forced to pending by a database trigger; owners cannot change the review status themselves.
+- Pending/rejected certification details are returned only by an authenticated owner-checked endpoint, shown on the owner's profile with a status label, and omitted from public profile responses. Admins can approve or reject from `/admin/divemaster-certifications`; decisions record reviewer and time.
+- Added migration [20261025150000](../supabase/migrations/20261025150000_divemaster_certification_review.sql), including public-read policy enforcement and status guards. Apply through the [Supabase migration workflow](supabase-migrations.md) before deployment; it has not been applied to a hosted database.
+- Verification: PGlite tests cover backfilled visibility, forced pending inserts, owner status-write denial and public filtering; targeted certification/dive-site tests and Nuxt production build passed.
+
+## 2026-10-25 - Moderated dive-site suggestions in profile pickers
+
+- Added the persistent **Site not listed? Add new dive site** action to favorite local/destination and Sites Dived pickers in owner and admin profile editing. The owner form prefills the search and requires a country; exact canonical/approved-alias matches reuse the existing ID, and country-scoped similar sites are shown before an explicit submission.
+- Ordinary users submit private suggestions rather than writing to `dive_sites`. Their pending/rejected submissions and saved profile associations are readable only by the submitter and admins. Pending links remain private in the profile editor and are stored separately from canonical favorite/site foreign keys; public profile queries remain canonical-only.
+- Added an admin queue with approve, merge into an existing same-country site, and reject-with-reason. Admins may explicitly approve the submitted name as an alias. Approval/merge rechecks exact canonical/alias duplicates and transactionally resolves only saved links, preserving favorite fields, visited-site notes, and ordering without reattaching removed links.
+- Admin profile editing can still add canonical sites directly. The previous owner direct-create endpoint now routes through the moderated submission procedure.
+- Migrations [20261025140000](../supabase/migrations/20261025140000_dive_site_suggestions.sql) and [20261025141000](../supabase/migrations/20261025141000_dive_site_suggestion_profiles.sql) have been exercised in isolated PGlite tests; they have not been applied to a hosted Supabase database.
+- Focused suggestion/picker tests passed, including SQL privacy, deduplication, canonical-write protection, alias approval, country-scoped similarity, profile-link resolution, and removal-before-approval. Full test suite: 728 passed / 1 skipped. Nuxt production build passed. Physical mobile-device and hosted migration rollout checks remain outstanding.
+
+## 2026-10-25 - Booking next question is its own bubble
+
+- Shop-pick replies such as “Got it — Dive Academy Fiji. What’s the name for the booking?” now render as two bubbles: the acknowledgement, then the next question in semibold.
+- New booking responses send the acknowledgement as `messagePreamble` and the question as `message`. Older saved replies that still use one sentence split the same way in the chat.
+- No database or config migration.
+- Verification: local chat render of the combined name sentence shows two bubbles, with the question at font-weight 600.
+
+## 2026-10-25 - Stale chat actions stay hidden
+
+- Book this and answer chips render only on the latest assistant message, and only when that message has shops or chips. A later plain question, such as a contact name, hides every older action. Nothing is clickable while a reply is loading.
+- The latest user message and the latest assistant message stay at full opacity. Every earlier message, including shop cards, is `opacity-50`. Older Book this buttons, answer chips, and the booking-form chevron are not rendered. Profile, website, call, and email links stay usable.
+- A click on a stale Book this is ignored, so it cannot be stored as the next booking answer.
+- No database or config migration.
+- Verification: local chat at a 375px width. On a search result alone, Book this is present. After a later “What’s your name?” message, that Book this and the older chips are not in the page, and the current step’s chip still is. With an older search plus a later user and assistant pair, the older user message and the shop-card message compute to `opacity: 0.5`. The latest user message and the latest assistant message stay at `opacity: 1`. The shop website link still renders. A physical iPhone was not used.
+
+## 2026-10-25 - Chat scrolls to the latest message
+
+- Book this on an earlier shop now scrolls to the new booking messages. The exact/other search divider only pins the view when that divider is inside the latest message.
+- Touch and iOS set the message pane `scrollTop` directly and retry after layout. The chat column uses `min-h-0` so that pane is the scrollport.
+- A fixed blue “View latest message” pill (`min-h-12`, `min-w-12`, `whitespace-nowrap`, `rounded-full`, no icon) sits above the composer when the list is more than 80px from the bottom. The label stays on one line. Clicking it scrolls to the end and does not stop on an older divider.
+- No database or config migration.
+- Verification: local chat at `http://localhost:3000/?chat=1` on a 390px viewport. With a long thread, the message pane scrolls (`scrollHeight` greater than `clientHeight`). Scrolling up shows a `position: fixed` “View latest message” button with `min-height` and `min-width` of 48px, sitting just above the composer. Clicking it scrolls to the end and the button goes away. A physical iPhone was not used.
+
+## 2026-10-25 - Mobile page zoom locked off
+
+- Site viewport is now `width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no` in `app/app.vue`.
+- Text inputs, textareas, and selects are 16px up to 1024px and on coarse pointers, so iOS does not zoom the page when the chat keyboard opens. Checkboxes, radios, and file inputs are unchanged.
+- Desktop field sizes stay on the existing Tailwind scale. No database or config migration.
+- Verification: local dev server at `http://localhost:3000`. Rendered viewport meta is `width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no`. At a 390px mobile viewport, the chat field, email field, and password field compute to 16px; focusing the chat field and typing left `visualViewport.scale` at 1. At 1440px the chat field stays 14px. A physical iPhone was not used.
+
+## 2026-10-25 - Pending dive-site requirements recorded
+
+- Added [Pending Dive-Site Work](dive-master-plan.md#pending-dive-site-work): persistent **Site not listed? Add new dive site**, prefilled name/required country, exact/similar duplicate checks, private pending submissions and saved profile associations, and admin approve/merge/reject with explicit alias review.
+- Recorded public-visibility, cancellation, canonical-write protection, transaction, trusted-workflow compatibility, and verification requirements. Linked the pending scope from the credential guide so training/certification support is not mistaken for implemented dive-site support.
+- Documentation only: no application, migration, permission, or database changes; dive-site implementation remains deferred.
+
+## 2026-10-25 - Training and certification suggestions
+
+- Added Fuse.js-backed, opt-in exact-first/similar-result matching and persistent Not listed actions for training and certification names in owner/admin editors. Certification choices preserve agency identity; shared SearchMultiSelect behavior for other fields remains unchanged.
+- Added a custom-entry dialog with name prefill, required certification agency, existing-match choices, and explicit shared-list suggestion consent. Personal-only entries update the profile draft without shared writes; shared submissions require authentication. Existing training Other text and profile saves remain supported.
+- Added a separate approved credential-label catalog and private suggestion queue, with authenticated submission, admin approval/merge/rejection, explicit alias approval, duplicate reuse, quotas, RLS and database-level authorization. Added `/admin/profile-credential-submissions` and its admin menu entry. No shop courses or dive-site records are created by this feature.
+- The migration imports existing course-name/agency pairs as an initial baseline. Deployed profile pickers then read the moderated catalog instead of the live course table, preventing later legacy course writes from bypassing review without changing shop-course permissions. SQL and client tests cover the baseline and post-migration isolation.
+- Migration [20261025130000_profile_credential_suggestions.sql](../supabase/migrations/20261025130000_profile_credential_suggestions.sql) must be applied before hosted shared submissions/review work. It has been executed only in isolated embedded PostgreSQL tests, not on a remote Supabase project.
+- Matching, endpoint and SQL tests passed. SQL tests executed real PostgreSQL permission/state transitions with synthetic roles and data. Browser checks verified typo recovery, persistent Not listed, prefilled names/agencies, agency-distinct options, and personal-only entry at phone/desktop widths. No live account/profile write or admin approval was submitted. See [feature documentation](profile-credential-suggestions.md).
+- Final verification: full suite 711 passed / 1 skipped; Nuxt production build passed. Ten matching/catalog tests, nine endpoint tests and eight SQL tests cover the new contracts; existing focus tests also cover persistent action query handoff. Browser checks confirmed cancel preserves the prior value and focus returns to the trigger. Hosted auth/review rollout remains untested until the migration is applied.
+- Added runtime `fuse.js` and test-only `@electric-sql/pglite`. The package installer reported 98 dependency audit findings; no broad audit fix or unrelated dependency upgrade was performed.
+
+## 2026-10-25 - Personal certification fields only
+
+- Removed **Students certified** inputs from owner and admin certification forms and the related count from public certification cards. Teaching features are deferred; name, agency, certification number, issued date, and existing certificate images are unchanged.
+- Kept existing student-count columns, values, loading, normalization, and save serialization intact. No database migration or backfill is required, and no saved counts were cleared.
+- Thirty-two focused tests passed, including all three certification templates, an admin save retaining a legacy count, and existing add/picker behavior. No live profile changes were submitted.
+- Integration verification: full suite 683 passed / 1 skipped; Nuxt production build passed. No live authenticated browser save or database mutation was performed for this UI-only change.
+
+## 2026-10-25 - Bottom add actions for profile lists
+
+- Moved Certifications, Past jobs, and Sites Dived add actions below their rows in both the shared owner editor and admin editor, right-aligned and labeled **Add certification**, **Add job**, and **Add dive site**.
+- Each action appends a draft row, waits for rendering, and uses the shared [row reveal helper](../app/utils/revealLastProfileRow.ts) to scroll/focus the new picker trigger or job Title input. Explicit row markers keep the helper from selecting the new footer button. Existing rows, sort order, dates, saving, and admin approval are unchanged.
+- Focused tests passed: 19 picker/list tests, five Account-control tests, and four admin date-validation tests. Coverage includes all six owner/admin add handlers, footer placement, removal/re-addition, and empty lists.
+- Synthetic browser checks using the owner list templates and shared controls passed at 375px and 1280px: each action stays below rows, appends a visible row, focuses the correct control, and avoids horizontal overflow. Mobile screenshot checked. Admin handler/template behavior was tested without an authenticated admin session; no profile data was saved.
+- Integration verification: full suite 679 passed / 1 skipped; Nuxt production build passed.
+
+## 2026-10-25 - Signup-first DivePros profile CTA
+
+- **For DivePros -> Add your profile** now defaults guests to the existing auth page in sign-up mode with `/settings/profile` as the return destination. Signed-in users still open Profile Settings directly. The origin is not hardcoded, and ordinary clicks resolve pending auth before navigation; modified clicks retain native link behavior.
+- Existing registration forms, sign-in/sign-up switching, username setup, draft creation, and admin approval remain unchanged. No account or profile writes were made during validation.
+- Ten [CTA tests](../tests/divemasterDirectoryCta.test.ts) and five existing directory tests pass, covering guest/signed-in targets, pending auth resolution, return destinations, and modified clicks. Browser checks verified the real guest CTA and sign-up/sign-in handoff; signed-in destination behavior was tested with synthetic auth state.
+- Integration verification: full suite 670 passed / 1 skipped; Nuxt production build passed.
+
+## 2026-10-25 - Profile Settings Account controls
+
+- Moved the Settings Save button from the navigation header to the Account heading row, with save feedback underneath. The inline public-profile Edit toolbar retains Cancel and Save without duplicate Account actions.
+- Removed existing-account username display, public URL helper, cooldown notice, and rename controls. First-time username setup remains available only while the account has no username, preserving the existing draft application prerequisite. Stored usernames, public URLs, server-side rename policy, and profile-save behavior are unchanged.
+- Five [Account template tests](../tests/profileAccountControls.test.ts) and ten existing picker/focus tests pass. Tests render the actual Account and inline-toolbar templates with synthetic states; they do not submit account/profile changes.
+- Synthetic browser layout checks using the actual Account template and shared controls passed at 320px, 375px, and 1280px: one Save beside Account, no existing-username block, and no horizontal overflow. Mobile screenshot checked. A signed-in save was not tested because the local session redirected to auth; no profile writes were submitted.
+- Integration verification: full suite 660 passed / 1 skipped; Nuxt production build passed. Stored usernames and public profile links are unchanged.
+
 ## 2026-10-25 - Booking next question is its own bubble
 
 - Shop-pick replies such as “Got it — Dive Academy Fiji. What’s the name for the booking?” now render as two bubbles: the acknowledgement, then the next question in semibold.

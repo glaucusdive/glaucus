@@ -6,6 +6,7 @@ import {
   type DiveSitePickerOption,
   type DiveSitePickerPage
 } from '~~/shared/diveSitePicker'
+import { DIVE_SITE_ADD_NEW_ID } from '~~/shared/divemasterProfile'
 
 /**
  * Per-page dive site labels and paged search.
@@ -26,7 +27,7 @@ export function useDiveSitePicker () {
 
   function labelsForIds (ids: string[]): DiveSitePickerOption[] {
     const out: DiveSitePickerOption[] = []
-    for (const id of diveSiteIdsForLookup(ids)) {
+    for (const id of [...new Set(ids.map(value => value.trim()).filter(value => value && value !== DIVE_SITE_ADD_NEW_ID))]) {
       const label = labelById.value.get(id)
       if (label) out.push({ id, label })
     }
