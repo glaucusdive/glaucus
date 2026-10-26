@@ -114,6 +114,9 @@
                   <CircleUser class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
                   Divemasters
                 </NavLink>
+                <NavLink to="/admin/profile-credential-submissions" @click="handleCloseMobileMenu">
+                  Credential suggestions
+                </NavLink>
                 <NavLink to="/admin/reviews" @click="handleCloseMobileMenu">
                   <Star class="w-4 h-4 shrink-0 opacity-80" stroke-width="1.75" aria-hidden="true" />
                   Reviews

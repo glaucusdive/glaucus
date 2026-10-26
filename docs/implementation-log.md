@@ -1,5 +1,22 @@
 # Implementation Log
 
+## 2026-10-25 - Pending dive-site requirements recorded
+
+- Added [Pending Dive-Site Work](dive-master-plan.md#pending-dive-site-work): persistent **Site not listed? Add new dive site**, prefilled name/required country, exact/similar duplicate checks, private pending submissions and saved profile associations, and admin approve/merge/reject with explicit alias review.
+- Recorded public-visibility, cancellation, canonical-write protection, transaction, trusted-workflow compatibility, and verification requirements. Linked the pending scope from the credential guide so training/certification support is not mistaken for implemented dive-site support.
+- Documentation only: no application, migration, permission, or database changes; dive-site implementation remains deferred.
+
+## 2026-10-25 - Training and certification suggestions
+
+- Added Fuse.js-backed, opt-in exact-first/similar-result matching and persistent Not listed actions for training and certification names in owner/admin editors. Certification choices preserve agency identity; shared SearchMultiSelect behavior for other fields remains unchanged.
+- Added a custom-entry dialog with name prefill, required certification agency, existing-match choices, and explicit shared-list suggestion consent. Personal-only entries update the profile draft without shared writes; shared submissions require authentication. Existing training Other text and profile saves remain supported.
+- Added a separate approved credential-label catalog and private suggestion queue, with authenticated submission, admin approval/merge/rejection, explicit alias approval, duplicate reuse, quotas, RLS and database-level authorization. Added `/admin/profile-credential-submissions` and its admin menu entry. No shop courses or dive-site records are created by this feature.
+- The migration imports existing course-name/agency pairs as an initial baseline. Deployed profile pickers then read the moderated catalog instead of the live course table, preventing later legacy course writes from bypassing review without changing shop-course permissions. SQL and client tests cover the baseline and post-migration isolation.
+- Migration [20261025130000_profile_credential_suggestions.sql](../supabase/migrations/20261025130000_profile_credential_suggestions.sql) must be applied before hosted shared submissions/review work. It has been executed only in isolated embedded PostgreSQL tests, not on a remote Supabase project.
+- Matching, endpoint and SQL tests passed. SQL tests executed real PostgreSQL permission/state transitions with synthetic roles and data. Browser checks verified typo recovery, persistent Not listed, prefilled names/agencies, agency-distinct options, and personal-only entry at phone/desktop widths. No live account/profile write or admin approval was submitted. See [feature documentation](profile-credential-suggestions.md).
+- Final verification: full suite 711 passed / 1 skipped; Nuxt production build passed. Ten matching/catalog tests, nine endpoint tests and eight SQL tests cover the new contracts; existing focus tests also cover persistent action query handoff. Browser checks confirmed cancel preserves the prior value and focus returns to the trigger. Hosted auth/review rollout remains untested until the migration is applied.
+- Added runtime `fuse.js` and test-only `@electric-sql/pglite`. The package installer reported 98 dependency audit findings; no broad audit fix or unrelated dependency upgrade was performed.
+
 ## 2026-10-25 - Personal certification fields only
 
 - Removed **Students certified** inputs from owner and admin certification forms and the related count from public certification cards. Teaching features are deferred; name, agency, certification number, issued date, and existing certificate images are unchanged.

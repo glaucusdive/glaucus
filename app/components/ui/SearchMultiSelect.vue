@@ -124,6 +124,7 @@
             @keydown.stop
           >
         </div>
+        <p v-if="localMatches.similar && !loadPage" class="border-b border-zinc-200 px-3 py-2 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400" role="status">Similar matches</p>
         <ul
           ref="listRef"
           class="min-h-0 flex-1 divide-y divide-zinc-200 overflow-y-auto dark:divide-zinc-700"
@@ -137,7 +138,7 @@
             Loading…
           </li>
           <li
-            v-else-if="loadPage && !remoteLoading && !remoteError && filteredOptions.length === 0"
+            v-else-if="!remoteLoading && !remoteError && filteredOptions.length === 0"
             class="px-3 py-2 text-sm text-zinc-500 dark:text-zinc-400"
           >
             No matches
@@ -178,6 +179,9 @@
             {{ remoteError }}
           </li>
         </ul>
+        <div v-if="footerActionLabel" class="border-t border-zinc-200 p-2 dark:border-zinc-700">
+          <button type="button" class="w-full rounded px-2 py-2 text-left text-sm text-blue-700 hover:bg-zinc-100 dark:text-blue-300 dark:hover:bg-zinc-800" @click="onFooterAction">{{ footerActionLabel }}</button>
+        </div>
         <div
           v-if="allowAdd && typeof onCreate === 'function'"
           class="border-t border-zinc-200 bg-zinc-100 px-2 py-2 dark:border-zinc-700 dark:bg-zinc-800"
@@ -230,6 +234,7 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { ChevronDown, Check } from 'lucide-vue-next'
 import { normalizeLookupId } from '~/utils/lookupIds'
 import { searchPickerPosition } from '~/utils/searchPickerPosition'
+import { matchPickerOptions } from '~~/shared/profileCredentialCatalog'
 import { formInputClass, formInputSmClass } from '~/components/ui/formControlClasses'
 
 const searchInputClass = `${formInputClass} ${formInputSmClass} w-full max-lg:text-base`
@@ -243,6 +248,8 @@ const props = defineProps({
   singleSelect: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
   searchable: { type: Boolean, default: false },
+  fuzzySearch: { type: Boolean, default: false },
+  footerActionLabel: { type: String, default: '' },
   /** Form/portal layout: wrap chips onto multiple lines instead of grid-style horizontal scroll. */
   wrapChips: { type: Boolean, default: false },
   onCreate: { type: Function, default: null },
@@ -261,7 +268,7 @@ const props = defineProps({
   excludeIds: { type: Array, default: () => [] }
 })
 
-const emit = defineEmits(['update:modelValue', 'created', 'discard-pending'])
+const emit = defineEmits(['update:modelValue', 'created', 'discard-pending', 'footer-action'])
 
 const REMOTE_SEARCH_DEBOUNCE_MS = 200
 const REMOTE_SCROLL_THRESHOLD_PX = 48
@@ -322,9 +329,11 @@ function matchesQuery (label) {
   return String(label || '').toLowerCase().includes(q)
 }
 
+const localMatches = computed(() => matchPickerOptions(props.options, props.searchable ? searchQuery.value : '', props.fuzzySearch))
+
 const filteredOptions = computed(() => {
   if (typeof props.loadPage !== 'function') {
-    return props.options.filter((o) => matchesQuery(optionLabel(o)))
+    return props.fuzzySearch ? localMatches.value.options : props.options.filter(o => matchesQuery(optionLabel(o)))
   }
   const seen = new Set()
   const remote = []
@@ -489,6 +498,12 @@ function close () {
   creating.value = false
   newName.value = ''
   searchQuery.value = ''
+}
+
+function onFooterAction () {
+  const query = searchQuery.value.trim()
+  close()
+  emit('footer-action', query)
 }
 
 function onDocPointerDown (e) {

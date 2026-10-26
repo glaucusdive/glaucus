@@ -36,6 +36,16 @@ async function createPicker (overrides = {}) {
 }
 
 describe('Searchable picker focus', () => {
+  it('keeps the typed name when opening a persistent Not listed action', async () => {
+    const searchQuery = { value: 'Missing Test Credential' }
+    const close = vi.fn(() => { searchQuery.value = '' })
+    const emit = vi.fn()
+    const action = await loadHandler('../app/components/ui/SearchMultiSelect.vue', 'onFooterAction', { searchQuery, close, emit })
+    action()
+    expect(close).toHaveBeenCalledOnce()
+    expect(emit).toHaveBeenCalledWith('footer-action', 'Missing Test Credential')
+  })
+
   it('positions then focuses Search after rendering, without waiting for options', async () => {
     const picker = await createPicker({ loadPage: vi.fn() })
     picker.toggleOpen()

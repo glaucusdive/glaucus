@@ -62,14 +62,12 @@
           <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Profile highlights</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormField label="Last formal training" label-style="auth">
-              <SearchMultiSelect
-                :model-value="lastTrainingSelect ? [lastTrainingSelect] : []"
+              <ProfileCredentialPicker
+                :model-value="lastTrainingSelect === LAST_FORMAL_TRAINING_OTHER && form.last_formal_training_other ? form.last_formal_training_other : lastTrainingSelect"
+                kind="training"
                 :options="trainingNameOptions"
-                searchable
-                wrap-chips
-                single-select
-                singular-label="training"
-                @update:model-value="onLastTrainingSelect"
+                :catalog="credentialCatalog"
+                @update:model-value="value => onLastTrainingSelect([value])"
               />
             </FormField>
             <FormField label="Training date" label-style="auth">
@@ -189,14 +187,13 @@
           >
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <FormField label="Name" label-style="auth">
-                <SearchMultiSelect
-                  :model-value="c.name ? [c.name] : []"
-                  :options="optionsWithLegacy(courseCertOptions, c.name)"
-                  searchable
-                  wrap-chips
-                  single-select
-                  singular-label="cert"
-                  @update:model-value="(ids) => { c.name = ids[0] ? String(ids[0]) : '' }"
+                <ProfileCredentialPicker
+                  v-model="c.name"
+                  v-model:agency="c.agency"
+                  kind="certification"
+                  :options="courseCertOptions"
+                  :agencies="agencyOptions"
+                  :catalog="credentialCatalog"
                 />
               </FormField>
               <FormField label="Agency" label-style="auth">
@@ -356,6 +353,7 @@ import { DIVE_SITE_ADD_NEW_OPTION } from '~~/shared/diveSitePicker'
 import { jobDateToMonth, jobMonthToDate, normalizeJobDates } from '~~/shared/divemasterJobDates'
 import DivemasterJobMonthInput from '~/components/DivemasterJobMonthInput.vue'
 import { revealLastProfileRow } from '~/utils/revealLastProfileRow'
+import { fetchProfileCertificationOptions } from '~~/shared/profileCredentialCatalog'
 
 definePageMeta({ layout: 'default', middleware: 'admin' })
 useSeoMeta({ title: 'Admin · Edit divemaster', robots: 'noindex, nofollow' })
@@ -364,6 +362,7 @@ const route = useRoute()
 const userId = computed(() => String(route.params.userId || ''))
 const { accessToken, init } = useAuth()
 const { client } = useSupabase()
+const { data: credentialCatalog } = useProfileCredentialCatalog()
 const { labelsForIds, ensureDiveSiteLabels, loadDiveSitePage, rememberDiveSites } = useDiveSitePicker()
 const diveSiteAddNewOptions = [DIVE_SITE_ADD_NEW_OPTION]
 
@@ -393,7 +392,7 @@ const newLocalSite = reactive({ name: '', country_id: '' })
 const newDestinationSite = reactive({ name: '', country_id: '' })
 const creatingLocalSite = ref(false)
 const creatingDestinationSite = ref(false)
-const courseCertOptions = ref<Array<{ id: string; label: string }>>([])
+const courseCertOptions = ref<Array<{ id: string; label: string; agency: string }>>([])
 const agencyOptions = ref<Array<{ id: string; label: string }>>([])
 const certifications = ref<Array<DivemasterCertification & { agency: string; cert_number: string; issued_at: string; students_certified: number }>>([])
 const jobs = ref<Array<DivemasterJob & { location: string; start_date: string; end_date: string; description: string; is_current: boolean }>>([])
@@ -542,18 +541,7 @@ async function loadCountryOptions () {
 }
 
 async function loadCourseCertOptions () {
-  const { data } = await client
-    .from('courses')
-    .select('certification_name')
-    .order('certification_name')
-  const names = new Set<string>()
-  for (const row of data ?? []) {
-    const n = String(row.certification_name || '').trim()
-    if (n) names.add(n)
-  }
-  courseCertOptions.value = [...names]
-    .sort((a, b) => a.localeCompare(b))
-    .map(name => ({ id: name, label: name }))
+  courseCertOptions.value = await fetchProfileCertificationOptions(client)
 }
 
 async function loadAgencyOptions () {

@@ -17,6 +17,7 @@ This document separates the existing divemaster implementation from the broader 
 - Existing RLS and publication guards remain authoritative. Owners can edit published content immediately without a new review cycle; they cannot use the editor to change moderation/publication fields. This differs from the future approval model proposed below.
 - Profile, certification, job, and dive-site saves are separate writes, not an atomic database transaction. A late failure can partially persist changes. The shared owner editor preserves existing certification metadata, linked job shops, and dive-site notes.
 - Certification entry focuses on personal credentials: name, agency, number, and issued date. **Students certified** is not shown in owner/admin forms or public certification cards; teaching-related features are deferred. Existing stored counts remain in the load/save contract so ordinary profile edits do not erase them. No schema or data migration is required.
+- Training and certification-name pickers offer opt-in typo tolerance, agency-aware choices, and persistent Not listed actions. Custom entries can be used as self-reported personal profile text; only admin-approved suggestions enter the shared label catalog. Catalog approval does not verify a person's credential. Existing Other training text is retained. See [credential suggestion flow](profile-credential-suggestions.md) for the required catalog migration, moderation queue, permissions, and personal/shared distinction. Dive-site typo matching and moderated site creation remain separate pending work.
 - In owner and admin editors, **Add certification**, **Add job**, and **Add dive site** sit below their respective rows, right-aligned. Each appends a draft row, scrolls it into view after rendering, and focuses the certification/site picker trigger or job Title input. Empty lists retain their add action; removal and re-addition follow the same pattern. No save or approval is triggered by Add.
 
 ### Sites Dived Display
@@ -55,6 +56,38 @@ This document separates the existing divemaster implementation from the broader 
 
 - Owners retain average rating, count, and review list, but are not invited to review themselves. Empty profiles show **No rating / 0 Reviews**. Review forms and author controls are suppressed for owners and while signed-in ownership is unresolved; other visitors retain the normal review flow. Server-side self-review rejection remains required. See [divemaster-review-flow.md](divemaster-review-flow.md).
 - Profile Location supports TomTom suggestions in the shared owner editor and remains manually editable when suggestions are unavailable. The separate database-first and Google fallback design remains a [proposal](location-autocomplete-design.md).
+
+## Pending Dive-Site Work
+
+**Status:** Agreed requirements, not implemented. The training/certification suggestion feature does not provide this flow. The existing **Add dive site** button only appends a row for selecting an existing site; existing favorite-site creation paths do not yet provide the moderation boundary below.
+
+### Search And Entry
+
+- Scope: favorite local site, favorite destination site, and Sites Dived in owner Settings, inline profile editing, and admin editing. Chat, TomTom location fields, and directory searches remain outside this work.
+- Keep normal exact/partial matches first. When none match, offer typo-tolerant **Similar dive sites** with country context. Selection must use an existing site ID; never automatically correct, merge, or create a site.
+- Add a persistent **Site not listed? Add new dive site** action outside filtered results, including when there are no matches. Keep it distinct from the bottom **Add dive site** row action.
+- Open a small form with the searched name prefilled and a required country from the existing country list. Check normalized name/country and approved aliases for exact duplicates, then show possible similar sites in that country before submission.
+- Reuse an exact existing site. If none of the suggestions is right, allow an explicit new-site submission; approximate similarity alone must not force a selection or merge. Repeated identical submissions should reuse the user's pending request rather than create duplicates. Failed lookup or empty search alone must never create anything.
+
+### Pending And Public Visibility
+
+- New user submissions remain separate from the canonical shared `dive_sites` catalog until reviewed. Only the submitter and admins can read pending/rejected submissions; enforce this with database permissions/RLS as well as endpoint authorization.
+- Owners may select a pending site and see **Pending** privately. Save persists the pending profile association; the pending site stays hidden from public profiles and global suggestions. The rest of a profile remains usable and publishable.
+- Submission and profile Save are separate explicit actions. Cancelling the new-site form creates nothing. Cancelling a profile edit does not undo an already submitted suggestion, but must not persist its unsaved profile association. Approval must not reattach a site the user removed or never saved.
+- Keep submission references separate from existing canonical-site foreign keys. Reject unauthorized references and prevent ordinary users from bypassing review with direct canonical-site inserts/updates. Preserve trusted admin and approved shop-submission creation workflows.
+
+### Admin Review And Reuse
+
+- Provide an admin queue with **Approve**, **Merge into existing site**, and **Reject** with a reason. Admin-created canonical sites may publish directly; ordinary user submissions may not.
+- Approval/merge must recheck duplicates and resolve saved pending selections transactionally. Preserve favorite slots, visited-site notes, and ordering; deduplicate existing profile/site associations without losing data. Concurrent or repeated review must not create another canonical site or repeat writes blindly.
+- Only explicitly admin-approved alternate names become searchable aliases pointing to a canonical site ID. Pending/rejected names must not enter global suggestions automatically. Preserve country context and genuine ambiguity.
+- Broader site suggestions may use canonical sites and approved aliases once available. A submitted or approved site does not prove that a shop visits it: operator discovery must use confirmed shop/site associations, not inferred relationships.
+
+### Delivery Gates
+
+- Implement the schema, private pending associations, review transactions, and permissions before replacing the current direct creation path. Add indexed, bounded typo search rather than downloading the full catalog into each browser.
+- Verify exact/similar matching, country duplicates, no-result entry, duplicate/race handling, owner/private versus public visibility, approval/merge/rejection, and cancellation/removal before approval. Test actual SQL permissions and transactions with synthetic data, plus owner/admin pickers at mobile and desktop widths.
+- Document and apply reviewed migrations through the [Supabase CLI workflow](supabase-migrations.md). Until this work is implemented and verified, do not present the creation/moderation flow as available. No migration or application change is introduced by this pending-work record.
 
 ## Broader Directory Proposal
 
