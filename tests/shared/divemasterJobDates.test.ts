@@ -4,12 +4,22 @@ import { formatJobMonth, jobDateToMonth, jobMonthToDate, normalizeJobDates } fro
 describe('divemaster past job dates', () => {
   it('loads a legacy date without changing its month', () => {
     expect(jobDateToMonth('2020-06-19')).toBe('2020-06')
-    expect(formatJobMonth('2020-06-19')).toBe('06/20')
+    expect(formatJobMonth('2020-06-19')).toBe('Jun 2020')
     expect(jobMonthToDate('2020-06')).toBe('2020-06-01')
   })
 
   it.each(['2026-01', '2026-12', '2024-02-29', '2000-02-29', '0099-03-15'])('accepts valid months and legacy dates: %s', value => {
     expect(jobMonthToDate(value)).toBe(`${value.slice(0, 7)}-01`)
+  })
+
+  it.each([
+    ['2021-04-01', 'Apr 2021'],
+    ['2021-04', 'Apr 2021'],
+    ['1999-01-31', 'Jan 1999'],
+    ['2030-12', 'Dec 2030'],
+    ['0099-03-15', 'Mar 0099']
+  ])('formats %s as %s', (value, expected) => {
+    expect(formatJobMonth(value)).toBe(expected)
   })
 
   it.each(['2026-00', '2026-13', '0000-01', '2023-02-29', '1900-02-29', '2020-06-00', '2020-06-31', '2020-6', '06/20', 'invalid'])('rejects malformed nonempty input: %s', value => {

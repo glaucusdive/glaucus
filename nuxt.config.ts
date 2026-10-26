@@ -48,6 +48,7 @@ export default defineNuxtConfig({
       { loc: '/' },
       { loc: '/blog' },
       { loc: '/for-businesses' },
+      { loc: '/for-dive-pros' },
       { loc: '/privacy' },
       { loc: '/legal' }
     ]

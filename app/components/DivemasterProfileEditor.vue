@@ -415,7 +415,7 @@
               </div>
             </div>
 
-            <div class="space-y-2">
+            <div ref="diveSiteList" class="space-y-2">
               <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Sites Dived</h3>
                 <Button type="button" variant="secondary" @click="addDiveSiteRow">
@@ -675,6 +675,7 @@ const agencyOptions = ref<Array<{ id: string; label: string }>>([])
 const certifications = ref<Array<DivemasterCertification & { agency: string; cert_number: string; issued_at: string; students_certified: number }>>([])
 const jobs = ref<Array<DivemasterJob & { location: string; start_date: string; end_date: string; description: string; is_current: boolean }>>([])
 const selectedDiveSiteIds = ref<string[]>([])
+const diveSiteList = ref<HTMLElement | null>(null)
 
 const trainingNameOptions = LAST_FORMAL_TRAINING_NAMES.map(name => ({ id: name, label: name }))
 
@@ -717,8 +718,13 @@ function onJobEndDateChange (j: { is_current: boolean; end_date: string }) {
   if (String(j.end_date || '').trim()) j.is_current = false
 }
 
-function addDiveSiteRow () {
+async function addDiveSiteRow () {
   selectedDiveSiteIds.value.push('')
+  await nextTick()
+  const row = diveSiteList.value?.lastElementChild
+  if (!(row instanceof HTMLElement)) return
+  row.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' })
+  row.querySelector<HTMLButtonElement>('button[aria-haspopup="listbox"]')?.focus({ preventScroll: true })
 }
 
 function optionsWithLegacy (
