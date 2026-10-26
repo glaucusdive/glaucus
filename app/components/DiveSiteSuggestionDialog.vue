@@ -1,6 +1,7 @@
 <template>
   <dialog
     ref="dialog"
+    id="dive-site-suggestion-modal"
     aria-labelledby="dive-site-suggestion-title"
     class="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-lg border border-zinc-300 bg-white p-5 text-zinc-900 shadow-xl backdrop:bg-black/60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
     @cancel.prevent="close"
@@ -39,6 +40,7 @@
         <SearchMultiSelect
           :model-value="countryId ? [countryId] : []"
           :options="countries"
+          teleport-target="#dive-site-suggestion-modal"
           searchable
           wrap-chips
           single-select

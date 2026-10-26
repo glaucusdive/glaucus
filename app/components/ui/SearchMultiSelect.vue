@@ -104,7 +104,7 @@
       >—</span>
     </div>
 
-    <Teleport to="body">
+    <Teleport :to="teleportTarget">
       <div
         v-if="open && !disabled"
         ref="panelRef"
@@ -250,6 +250,8 @@ const props = defineProps({
   searchable: { type: Boolean, default: false },
   fuzzySearch: { type: Boolean, default: false },
   footerActionLabel: { type: String, default: '' },
+  /** Teleport target for the results panel; use a top-layer dialog when inside one. */
+  teleportTarget: { type: String, default: 'body' },
   /** Form/portal layout: wrap chips onto multiple lines instead of grid-style horizontal scroll. */
   wrapChips: { type: Boolean, default: false },
   onCreate: { type: Function, default: null },
