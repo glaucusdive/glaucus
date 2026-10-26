@@ -19,9 +19,19 @@ export function shopDisplayLabel (shop: ShopPickLabelFields): string {
 }
 
 /** After picking or switching shop — display name already includes location when known. */
+export function bookingGotItWithShopParts (
+  shopDisplayName: string,
+  followUpQuestion: string
+): { message: string; messagePreamble?: string } {
+  const ack = `Got it — ${shopDisplayName.trim()}.`
+  const question = followUpQuestion.trim()
+  if (!question) return { message: ack }
+  return { messagePreamble: ack, message: question }
+}
+
 export function bookingGotItWithShopMessage (shopDisplayName: string, followUpQuestion: string): string {
-  const q = followUpQuestion.trim()
-  return q ? `Got it — ${shopDisplayName}. ${q}` : `Got it — ${shopDisplayName}.`
+  const parts = bookingGotItWithShopParts(shopDisplayName, followUpQuestion)
+  return parts.messagePreamble ? `${parts.messagePreamble} ${parts.message}` : parts.message
 }
 
 export function bookingShopFieldsForClient (

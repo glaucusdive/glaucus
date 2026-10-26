@@ -1,9 +1,16 @@
 # Implementation Log
 
+## 2026-10-25 - Booking next question is its own bubble
+
+- Shop-pick replies such as “Got it — Dive Academy Fiji. What’s the name for the booking?” now render as two bubbles: the acknowledgement, then the next question in semibold.
+- New booking responses send the acknowledgement as `messagePreamble` and the question as `message`. Older saved replies that still use one sentence split the same way in the chat.
+- No database or config migration.
+- Verification: local chat render of the combined name sentence shows two bubbles, with the question at font-weight 600.
+
 ## 2026-10-25 - Stale chat actions stay disabled
 
 - Book this and answer chips are live only on the latest assistant message, and only when that message has shops or chips. A later plain question, such as a contact name, fades every older action. Nothing is clickable while a reply is loading.
-- The latest user message and the latest assistant message stay at full opacity. Every earlier message, including shop cards, is `opacity-50`. Older Book this buttons stay disabled. Profile, website, call, and email links stay usable. The booking-form chevron still opens the form.
+- The latest user message and the latest assistant message stay at full opacity. Every earlier message, including shop cards, is `opacity-50`. Older Book this buttons, answer chips, and the booking-form chevron are not rendered. Profile, website, call, and email links stay usable.
 - A click on a stale Book this is ignored, so it cannot be stored as the next booking answer.
 - No database or config migration.
 - Verification: local chat at a 375px width. On a search result alone, Book this is enabled. After a later “What’s your name?” message, that Book this is `disabled` and `pointer-events: none`, and clicking it does not add a message. With an older search plus a later user and assistant pair, the older user message and the shop-card message compute to `opacity: 0.5`. The latest user message and the latest assistant message stay at `opacity: 1`. The shop profile link still points at `/shops/aqua-trek`. A physical iPhone was not used.

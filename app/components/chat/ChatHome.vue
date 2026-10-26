@@ -84,26 +84,31 @@
               <!-- Assistant message -->
               <div v-else-if="msg.role === 'assistant'" class="flex justify-start">
                 <div class="md:max-w-[90%] flex-1 min-w-0 flex flex-col gap-2">
-                  <!-- Lead-in / narration / ack — always before shop cards when both exist -->
+                  <!-- Lead-in / acknowledgement, then the next question in its own bubble -->
                   <div
-                    v-if="msg.preamble"
+                    v-if="assistantTurnCopy(msg).ack"
                     class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-2 chat-bubble-pop-first"
                   >
-                    <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap">{{ msg.preamble }}</p>
+                    <p class="text-sm lg:text-base text-zinc-800 dark:text-white whitespace-pre-wrap">{{ assistantTurnCopy(msg).ack }}</p>
                   </div>
                   <div
                     class="flex flex-col gap-4 min-w-0"
-                    :class="{ 'chat-bubble-pop-follow': msg.preamble }"
+                    :class="{ 'chat-bubble-pop-follow': assistantTurnCopy(msg).ack }"
                   >
                   <!-- AI text response (chevron inside bubble when shown) -->
                   <div
-                    v-if="msg.content && !(msg.shops && msg.shops.length > 0)"
+                    v-if="assistantTurnCopy(msg).question && !(msg.shops && msg.shops.length > 0)"
                     class="bg-zinc-50 dark:bg-zinc-800 p-2 flex items-stretch gap-2 rounded-lg"
                   >
-                    <p class="text-sm lg:text-base text-zinc-800 dark:text-zinc-50 whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis">{{ msg.content }}
+                    <p
+                      class="text-sm lg:text-base whitespace-pre-wrap flex-1 min-w-0 overflow-hidden text-ellipsis"
+                      :class="assistantTurnCopy(msg).emphasize
+                        ? 'font-semibold text-zinc-900 dark:text-white'
+                        : 'text-zinc-800 dark:text-zinc-50'"
+                    >{{ assistantTurnCopy(msg).question }}
                     </p>
                     <button
-                      v-if="(bookingShopForDrawer || (msg.shopId && msg.shopName)) && !(msg.shops && msg.shops.length > 0)"
+                      v-if="index === currentChatMessageIndexes.latestAssistant && (bookingShopForDrawer || (msg.shopId && msg.shopName)) && !(msg.shops && msg.shops.length > 0)"
                       type="button"
                       @click="toggleBookingFormDrawerFromMessage(msg)"
                       class="w-10 shrink-0 self-stretch flex items-center justify-center rounded-sm border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200  cursor-pointer"
@@ -187,9 +192,8 @@
 
                   <!-- Selectable options: filter chips first; primary book CTA on its own row below (flex gap) so it is not confused with filters -->
                   <div
-                    v-if="(msg.selectableOptions && msg.selectableOptions.length > 0) || (msg.shops?.length && selectedShopId && selectedShopName)"
-                    class="flex flex-col gap-4 p-2 transition-opacity duration-200"
-                    :class="index !== activeChipMessageIndex ? 'pointer-events-none' : ''"
+                    v-if="index === activeChipMessageIndex && ((msg.selectableOptions && msg.selectableOptions.length > 0) || (msg.shops?.length && selectedShopId && selectedShopName))"
+                    class="flex flex-col gap-4 p-2"
                   >
                     <div
                       v-if="(msg.selectableOptions || []).filter(o => o.label !== 'Load next 20').length > 0"
@@ -217,9 +221,8 @@
 
                   <!-- Rental gear: pick items or Done (no gear); toggle locally, commit on Done -->
                   <div
-                    v-if="Array.isArray(msg.rentalEquipmentOptions)"
-                    class="flex flex-col gap-4 p-2 transition-opacity duration-200"
-                    :class="index !== activeChipMessageIndex ? 'pointer-events-none' : ''"
+                    v-if="index === activeChipMessageIndex && Array.isArray(msg.rentalEquipmentOptions)"
+                    class="flex flex-col gap-4 p-2"
                   >
                     <p v-if="index === activeChipMessageIndex" class="text-xs text-zinc-500 dark:text-zinc-400">
                       Select all that apply, then tap Done.
@@ -249,9 +252,8 @@
 
                   <!-- Courses: toggle locally, commit on Done -->
                   <div
-                    v-if="msg.courseOptions && msg.courseOptions.length > 0"
-                    class="flex flex-col gap-4 p-2 transition-opacity duration-200"
-                    :class="index !== activeChipMessageIndex ? 'pointer-events-none' : ''"
+                    v-if="index === activeChipMessageIndex && msg.courseOptions && msg.courseOptions.length > 0"
+                    class="flex flex-col gap-4 p-2"
                   >
                     <p v-if="index === activeChipMessageIndex" class="text-xs text-zinc-500 dark:text-zinc-400">
                       Select all that apply, then tap Done.
@@ -289,9 +291,8 @@
 
                   <!-- Dive sites: toggle locally, commit on Done -->
                   <div
-                    v-if="msg.diveSiteOptions && msg.diveSiteOptions.length > 0"
-                    class="flex flex-col gap-4 p-2 transition-opacity duration-200"
-                    :class="index !== activeChipMessageIndex ? 'pointer-events-none' : ''"
+                    v-if="index === activeChipMessageIndex && msg.diveSiteOptions && msg.diveSiteOptions.length > 0"
+                    class="flex flex-col gap-4 p-2"
                   >
                     <p v-if="index === activeChipMessageIndex" class="text-xs text-zinc-500 dark:text-zinc-400">
                       Select all that apply, then tap Done.
@@ -813,6 +814,22 @@ const currentChatMessageIndexes = computed(() => {
 function messageRowIsCurrent (index) {
   const { latestUser, latestAssistant } = currentChatMessageIndexes.value
   return index === latestUser || index === latestAssistant
+}
+
+/** Split "Got it — shop. What's next?" into an acknowledgement bubble and a bold next-step bubble. */
+function assistantTurnCopy (msg) {
+  const preamble = typeof msg?.preamble === 'string' ? msg.preamble.trim() : ''
+  const content = typeof msg?.content === 'string' ? msg.content.trim() : ''
+  const hasShops = Array.isArray(msg?.shops) && msg.shops.length > 0
+  if (hasShops) return { ack: preamble, question: content, emphasize: false }
+  if (preamble && content) {
+    return { ack: preamble, question: content, emphasize: msg?.intent === 'booking' }
+  }
+  const combined = content.match(/^(Got it — .+)\.\s+((?:What|How|I noted)[\s\S]+)$/)
+  if (combined) {
+    return { ack: `${combined[1]}.`, question: combined[2].trim(), emphasize: true }
+  }
+  return { ack: preamble, question: content, emphasize: false }
 }
 
 /** Local multi-select draft for booking chips (courses / dive sites / gear) — commit on Done only. */

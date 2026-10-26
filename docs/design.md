@@ -48,7 +48,8 @@ Add new brand colors here **before** scattering hex across components.
 - Use **Nuxt UI** `UButton` (or project primitives) where the app already does; for bespoke landing CTAs, keep **rounded corners**, clear **hover** (``), and **focus-visible** ring (Tailwind `focus-visible:outline-none focus-visible:ring-2` pattern) so keyboard users get a visible target.
 - **Primary on dark:** Light-filled button with dark label is the current landing pattern; mirror for other high-contrast CTAs.
 - **Chat jump control:** “View latest message” reuses `Button` ([app/components/ui/Button.vue](../app/components/ui/Button.vue)) as a viewport-fixed blue pill (`fixed`, `variant="primary"`, `!rounded-full`, `min-h-12`, `min-w-12`, `whitespace-nowrap`) just above the chat composer when the message list is not at the bottom. The label stays on one line, with no icon.
-- **Stale chat actions:** The latest user message and the latest assistant message stay at full opacity. Every earlier message, including shop cards, is `opacity-50`. Book this and answer chips stay clickable only on the latest assistant message. Shop profile and contact links stay usable.
+- **Stale chat actions:** The latest user message and the latest assistant message stay at full opacity. Every earlier message, including shop cards, is `opacity-50`. Book this, answer chips, and the booking-form chevron render only on the current step. They are not shown disabled on older messages. Shop profile and contact links stay usable.
+- **Booking next step:** When a booking reply acknowledges what was just saved and then asks the next question, those are two bubbles. The acknowledgement stays regular weight. The next question is `font-semibold`.
 
 ### Inputs
 

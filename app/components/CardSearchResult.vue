@@ -32,13 +32,9 @@
           </div>
         </div>
         <button
+          v-if="!bookingDisabled"
           type="button"
-          :disabled="bookingDisabled"
-          :aria-disabled="bookingDisabled ? 'true' : 'false'"
-          class="shrink-0 rounded-md border border-zinc-300 bg-transparent px-3 py-1.5 text-sm font-medium text-zinc-800 dark:border-zinc-600 dark:bg-transparent dark:text-zinc-200"
-          :class="bookingDisabled
-            ? 'pointer-events-none'
-            : 'cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800'"
+          class="shrink-0 cursor-pointer rounded-md border border-zinc-300 bg-transparent px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-transparent dark:text-zinc-200 dark:hover:bg-zinc-800"
           @click.stop="$emit('start-booking', shop)"
         >
           Book this
