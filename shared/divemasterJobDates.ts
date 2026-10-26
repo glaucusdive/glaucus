@@ -22,7 +22,10 @@ export function jobMonthToDate (value: string | null | undefined): string | null
 export function formatJobMonth (value: string | null | undefined): string {
   try {
     const month = jobDateToMonth(value)
-    return month ? `${month.slice(5, 7)}/${month.slice(2, 4)}` : ''
+    if (!month) return ''
+    const label = new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' })
+      .format(new Date(`${month}-01T00:00:00Z`))
+    return `${label} ${month.slice(0, 4)}`
   } catch {
     return ''
   }

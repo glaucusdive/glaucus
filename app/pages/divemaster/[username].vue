@@ -209,32 +209,12 @@
       <!-- Dive sites grid -->
       <section v-if="profile.dive_sites.length" class="space-y-4">
         <h2 class="text-xl font-semibold text-zinc-900 dark:text-white">Sites Dived</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <div
+        <div class="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <DivemasterDiveSiteTile
             v-for="site in profile.dive_sites"
             :key="site.dive_site_id"
-            class="flex flex-col rounded-md border border-zinc-800 bg-transparent overflow-hidden transition-colors hover:border-zinc-700"
-          >
-            <div class="relative aspect-video w-full bg-transparent p-1">
-              <img
-                v-if="site.image_url"
-                :src="site.image_url"
-                :alt="site.name || 'Dive site'"
-                class="inset-0 aspect-video object-cover rounded-xs"
-                loading="lazy"
-              >
-              <div
-                v-else
-                class="rounded-xs bg-zinc-800 aspect-video"
-                aria-hidden="true"
-              />
-            </div>
-            <div class="p-6 space-y-1">
-              <h3 class="text-lg text-zinc-900 dark:text-white">{{ site.name }}</h3>
-              <p v-if="site.country_name" class="text-sm text-zinc-500 dark:text-zinc-400">{{ site.country_name }}</p>
-              <p v-if="site.note" class="text-sm text-zinc-500">{{ site.note }}</p>
-            </div>
-          </div>
+            :site="site"
+          />
         </div>
       </section>
 

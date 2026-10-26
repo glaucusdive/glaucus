@@ -2,6 +2,10 @@
 .branches
 .temp
 
+# Local-only remote schema snapshots; keep them outside migrations before CLI push.
+/migrations/*_remote_schema.sql
+/.local/
+
 # dotenvx
 .env.keys
 .env.local
