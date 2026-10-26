@@ -1,5 +1,13 @@
 # Implementation Log
 
+## 2026-10-25 - Owner promotional tools and public sharing
+
+- Public shop and DivePro profiles retain Copy link and native Share; public dialogs no longer render QR codes or generate flyer artwork. Shop chat detail panels use the same sharing-only behavior.
+- Verified DivePro owners retain QR flyer preview, PDF download, and Print on their own profiles. The shared dialog defaults flyer capability off, clears stale artwork on profile/permission changes, and guards promotional actions.
+- Shop representatives get the flyer tools on the existing validated partner page, including its submission-success view. The portal returns a separate snapshot of persisted public shop fields; form edits and submitter details cannot alter flyer content. All output uses the canonical public shop URL, never the partner URL/token.
+- This is a product UI distinction, not privacy protection for public data. No account-linked shop ownership system, migration, admin bypass, or deployment is introduced.
+- Verification: 31 focused tests passed covering rendering, generation lifecycle, matching preview/PDF/print artwork, partner validation, stale loads/submission responses, public snapshots, existing form submission helpers, flyer layout, and shop loading. Production build passed. Local HTTP checks confirmed the Acquatica shop page returns 200 with Share, and the partner page remains noindex without server-rendered promotional tools before validation. Browser automation was unavailable; authenticated visual and physical printing checks remain manual. The temporary validation server was stopped.
+
 ## 2026-10-25 - Test DivePro discovery exclusion
 
 - Added an exact, case-normalized designation for `sashdivemastertest`. A forward migration excludes that username inside `list_public_divemasters` before counts/pagination, preserving the service-role-only grant and ordinary published-profile matching.

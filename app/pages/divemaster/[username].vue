@@ -65,7 +65,7 @@
           aria-label="Share divemaster profile"
           @click="shareProfileOpen = true"
         >
-          <QrCode class="size-5" aria-hidden="true" />
+          <Share2 class="size-5" aria-hidden="true" />
           <span>Share</span>
         </button>
         <button
@@ -322,6 +322,7 @@
         v-if="profile"
         v-model:open="shareProfileOpen"
         profile-type="divemaster"
+        :can-use-flyer="isOwner"
         :profile-name="displayName"
         :url="profileShareUrl"
         :file-name="profile.username"
@@ -351,7 +352,7 @@
 </template>
 
 <script setup lang="ts">
-import { ChevronRight, Pencil, QrCode, Star, StarHalf } from 'lucide-vue-next'
+import { ChevronRight, Pencil, Share2, Star, StarHalf } from 'lucide-vue-next'
 import ProfileShareDialog from '~/components/ProfileShareDialog.vue'
 import { isTestDivemasterUsername } from '~~/shared/testDivemasters'
 import type { PublicDivemasterProfile } from '~~/shared/divemasterProfile'

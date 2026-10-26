@@ -22,7 +22,7 @@
             aria-label="Share shop profile"
             @click="shareProfileOpen = true"
           >
-            <QrCode class="h-4 w-4" aria-hidden="true" />
+            <Share2 class="h-4 w-4" aria-hidden="true" />
             <span class="hidden sm:inline">Share</span>
           </button>
         </div>
@@ -368,7 +368,7 @@
 </template>
 
 <script setup>
-import { MapPin, Phone, Mail, Globe, ChevronLeft, ExternalLink, QrCode, X } from 'lucide-vue-next'
+import { MapPin, Phone, Mail, Globe, ChevronLeft, ExternalLink, Share2, X } from 'lucide-vue-next'
 import CardInfo from '~/components/CardInfo.vue'
 import CardReview from '~/components/CardReview.vue'
 import ShopReviewForm from '~/components/ShopReviewForm.vue'

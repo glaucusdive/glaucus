@@ -24,10 +24,10 @@
       </header>
 
       <div class="flex flex-col gap-4">
-        <p class="text-sm text-zinc-600 dark:text-zinc-400">Flyer preview — your PDF and printout use this same design.</p>
-        <img v-if="flyerImage" :src="flyerImage" :alt="`Flyer preview for ${profileName}`" width="1240" height="1754" class="mx-auto h-auto w-full max-w-sm rounded border border-zinc-200 bg-white">
-        <p v-if="generating" role="status" class="text-sm">Preparing flyer…</p>
-        <div ref="qrElement" class="hidden" aria-hidden="true">
+        <p v-if="canUseFlyer" class="text-sm text-zinc-600 dark:text-zinc-400">Flyer preview — your PDF and printout use this same design.</p>
+        <img v-if="canUseFlyer && flyerImage" :src="flyerImage" :alt="`Flyer preview for ${profileName}`" width="1240" height="1754" class="mx-auto h-auto w-full max-w-sm rounded border border-zinc-200 bg-white">
+        <p v-if="canUseFlyer && generating" role="status" class="text-sm">Preparing flyer…</p>
+        <div v-if="canUseFlyer" ref="qrElement" class="hidden" aria-hidden="true">
           <QrcodeVue
             :value="url"
             :size="256"
@@ -41,7 +41,7 @@
         </div>
 
         <div class="flex min-w-0 flex-col gap-3">
-          <p class="text-sm font-medium">Scan to open this {{ profileType }} profile</p>
+          <p class="text-sm font-medium">{{ canUseFlyer ? 'Scan to open' : 'Share' }} this {{ profileType }} profile</p>
           <p class="break-all rounded-md bg-zinc-100 p-3 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">{{ url }}</p>
           <div class="qr-screen-actions grid grid-cols-2 gap-2">
             <Button type="button" variant="secondary" @click="copyLink">
@@ -52,11 +52,11 @@
               <Share2 class="mr-2 h-4 w-4" aria-hidden="true" />
               Share
             </Button>
-            <Button type="button" variant="secondary" :disabled="!flyerImage || downloading || generating" @click="downloadPdf">
+            <Button v-if="canUseFlyer" type="button" variant="secondary" :disabled="!flyerImage || downloading || generating" @click="downloadPdf">
               <Download class="mr-2 h-4 w-4" aria-hidden="true" />
               {{ downloading ? 'Preparing PDF…' : 'Download PDF' }}
             </Button>
-            <Button type="button" variant="secondary" :disabled="!flyerImage || generating" @click="printQr">
+            <Button v-if="canUseFlyer" type="button" variant="secondary" :disabled="!flyerImage || generating" @click="printQr">
               <Printer class="mr-2 h-4 w-4" aria-hidden="true" />
               Print
             </Button>
@@ -92,6 +92,7 @@ const props = defineProps<{
   url: string
   fileName: string
   details?: ProfileFlyerDetails
+  canUseFlyer?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -108,10 +109,11 @@ const generating = ref(false)
 const downloading = ref(false)
 let flyerRequest = 0
 
-watch(() => [props.open, props.profileName, props.url, props.details] as const, async ([open]) => {
+watch(() => [props.open, props.canUseFlyer, props.profileName, props.profileType, props.fileName, props.url, props.details] as const, async ([open]) => {
   const request = ++flyerRequest
   flyerImage.value = ''
   generating.value = false
+  downloading.value = false
   statusMessage.value = ''
   errorMessage.value = ''
   await nextTick()
@@ -124,7 +126,7 @@ watch(() => [props.open, props.profileName, props.url, props.details] as const, 
   } else if (!open && dialog.open) {
     dialog.close()
   }
-  if (!open) return
+  if (!open || !props.canUseFlyer) return
   generating.value = true
   try {
     const svg = qrSvg()
@@ -136,7 +138,7 @@ watch(() => [props.open, props.profileName, props.url, props.details] as const, 
   } finally {
     if (request === flyerRequest) generating.value = false
   }
-}, { deep: true, immediate: true })
+}, { deep: true, immediate: true, flush: 'sync' })
 
 function closeDialog () {
   emit('update:open', false)
@@ -178,7 +180,8 @@ async function shareLink () {
 }
 
 async function downloadPdf () {
-  if (!flyerImage.value || downloading.value) return
+  if (!props.open || !props.canUseFlyer || !flyerImage.value || downloading.value) return
+  const request = flyerRequest
   downloading.value = true
   errorMessage.value = ''
   statusMessage.value = ''
@@ -187,15 +190,16 @@ async function downloadPdf () {
   const fileName = props.fileName || props.profileType
   try {
     const { jsPDF } = await import('jspdf')
+    if (request !== flyerRequest || !props.open || !props.canUseFlyer) return
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
     pdf.setProperties({ title: `${name} — Glaucus profile` })
     pdf.addImage(image, 'PNG', 0, 0, 210, 297, undefined, 'FAST')
     pdf.save(`${fileName}-glaucus-profile.pdf`)
     statusMessage.value = 'PDF downloaded.'
   } catch {
-    errorMessage.value = 'Could not download the PDF. Try again, or use Print and Save as PDF.'
+    if (request === flyerRequest) errorMessage.value = 'Could not download the PDF. Try again, or use Print and Save as PDF.'
   } finally {
-    downloading.value = false
+    if (request === flyerRequest) downloading.value = false
   }
 }
 
@@ -210,7 +214,7 @@ function escapeHtml (value: string): string {
 }
 
 function printQr () {
-  if (!flyerImage.value) return
+  if (!props.open || !props.canUseFlyer || !flyerImage.value) return
   const popup = window.open('', '_blank')
   if (!popup) {
     errorMessage.value = 'Your browser blocked the print window. Allow pop-ups or download the PDF instead.'
