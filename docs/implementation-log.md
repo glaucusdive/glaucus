@@ -1,5 +1,11 @@
 # Implementation Log
 
+## 2026-10-25 - Clean Back to website URL
+
+- Sidebar **Back to website** now links to `/` rather than `/#hero`. An in-memory Nuxt state flag remembers the website choice during the current app session, so signed-in users are not immediately returned to chat.
+- Explicit `/?chat=1` navigation clears that choice and reopens chat. A full reload resets the in-memory preference, preserving signed-in default chat behavior. Guest navigation and existing landing-section anchors remain unchanged.
+- Verification: six focused homepage/menu navigation tests and the production build passed.
+
 ## 2026-10-25 - Owner promotional tools and public sharing
 
 - Public shop and DivePro profiles retain Copy link and native Share; public dialogs no longer render QR codes or generate flyer artwork. Shop chat detail panels use the same sharing-only behavior.
