@@ -6,6 +6,8 @@ Research date: 2026-10-27.
 
 Team review: implementation is paused pending discussion. This document records the proposed scope and sequencing; it does not authorize application changes, schema deployment, account onboarding, or live payments.
 
+Payment release policy: include Stripe sandbox checkout in the first end-to-end demo. Production payments must remain disabled by default until technical safeguards, operational readiness, and applicable compliance requirements have been reviewed and explicitly approved. Sandbox success is not authorization to accept real money.
+
 ## 1. Glaucus Is a Marketplace
 
 Glaucus connects independent dive operators with customers who discover trips, see pricing, and book through the Glaucus website. It is not intended to be only a directory or an email lead-generation service.
@@ -345,6 +347,8 @@ The AI chat may help customers discover offerings and collect booking preference
 
 ### Stripe sandbox and test cards
 
+Sandbox integration is part of the first customer/vendor onboarding demo, not a feature deferred until the final release. Demonstrate test operator onboarding, quotes, checkout, commission routing, and database payment/audit history together. Production compliance approval is a gate for real money, not a prerequisite for developing this sandbox integration after implementation is authorized.
+
 Use Stripe sandbox/test mode for the full integration before any live launch. These are Stripe's published synthetic test cards, not real customer cards; they must never be used against live-mode checkout.
 
 | Scenario | Test card number | Expected result |
@@ -356,6 +360,15 @@ Use Stripe sandbox/test mode for the full integration before any live launch. Th
 For interactive testing, use a future expiry date, any three-digit CVC, and a valid-format postal code when requested. Use synthetic customer details. Do not use real cards or customer records, store card numbers/CVCs in Glaucus, or send card data directly from the Glaucus server. Automated server-side tests should use Stripe's documented test PaymentMethod identifiers or mocked provider responses rather than raw card-number requests.
 
 Keep sandbox/test and live API credentials, webhook signing secrets, connected account IDs, and stored provider references separated by environment. Scope webhook processing to the expected environment and account. Use Stripe-hosted test onboarding for operator accounts; do not collect real bank credentials for test fixtures.
+
+### Demo-only environment controls
+
+- Use only test credentials, test connected accounts, and synthetic customer/quote data. Do not mix demo bookings or transactions into real customer history.
+- Enforce demo-only operation on the server: reject live credentials and live-mode provider objects/events on sandbox paths. A client flag or UI label is not sufficient protection.
+- Keep production payment/session creation, real charges, and live transfer/payout initiation disabled. Missing or inconsistent environment configuration must fail closed rather than fall back to live credentials.
+- Clearly label the demo and its payment results as sandbox/test mode. A test payment or transfer represents neither a real reservation nor real funds or bank settlement.
+- Retain authentication, booking ownership checks, explicit customer payment consent, server-calculated amounts, idempotency, signature verification, and audit records in the demo; these are not optional production-only safeguards.
+- Any demo commission is a synthetic configured example, not a final commercial rate. Test Connect funds routing does not prove live payout eligibility or resolve contractual responsibilities.
 
 Test the complete journey, not only the payment form:
 
@@ -420,11 +433,13 @@ The three access paths in section 6 are the agreed direction: authenticated My B
 
 ## 12. Suggested Delivery Phases
 
-Recommended first vertical slice: **request -> durable reference -> operator-approved quote -> customer review -> verified payment**. Build and release the non-payment steps independently; do not require a complete offerings catalog to start.
+First deliverable: a working onboarding demo covering **request -> durable reference -> operator-approved quote -> My Bookings review -> Stripe sandbox checkout -> verified test webhook -> database transaction/audit history -> customer and operator status**. Include test Connect onboarding and commission routing. Do not require a complete offerings catalog to start.
+
+The work packages below describe dependencies, not a requirement to release a non-payment product first. Build the foundations incrementally while integrating sandbox checkout into this first milestone. Live activation is a separate, explicitly approved milestone.
 
 Relative effort below is a sequencing aid, not a delivery estimate. Persistence, permissions, and payment work require implementation review even when the visible UI is small.
 
-### Phase A: low-hanging starting work, no payments
+### Work Package A: booking foundations for the first sandbox demo
 
 | Work item | Relative effort | Dependency and definition of done |
 | --- | --- | --- |
@@ -435,33 +450,50 @@ Relative effort below is a sequencing aid, not a delivery estimate. Persistence,
 | Reference in existing admin booking views | Small after persistence | Authorized exact-reference lookup without adding a public lookup endpoint |
 | Notification failure visibility | Small to medium | Admin can distinguish saved requests from delivered notifications; recovery cannot create another request or blindly duplicate messages |
 
-Suggested first two implementation tickets, after team approval: (1) repurpose My Drafts into My Bookings and clean up route references; (2) add durable request identity and return/display the reference in both submission paths, then include it in notifications. Do not merely decorate a potentially failed best-effort submission log with a code. Preserve the existing review association and draft behavior with regression tests.
+Suggested first two implementation tickets, after team approval: (1) repurpose My Drafts into My Bookings and clean up route references; (2) add durable request identity and return/display the reference in both submission paths, then include it in notifications. These support the sandbox checkout milestone rather than postponing checkout to a later release. Do not merely decorate a potentially failed best-effort submission log with a code. Preserve the existing review association and draft behavior with regression tests.
 
-Acceptance for Phase A: a successfully saved new request has exactly one stable reference; repeated submissions with the same operation ID return that reference; notification failure does not lose the request; unauthorized users cannot retrieve it. No Stripe account, public catalog, deposit workflow, or commission rate is needed for this phase.
+Acceptance for Work Package A: a successfully saved new request has exactly one stable reference; repeated submissions with the same operation ID return that reference; notification failure does not lose the request; unauthorized users cannot retrieve it. This foundation can be tested independently, but the complete first demo also needs Stripe test credentials and connected accounts from Work Package C. No public catalog, deposit workflow, or final commission rate is needed for the sandbox demo.
 
-### Phase B: useful quoting workflow, still no money movement
+### Work Package B: quotes and customer access for sandbox checkout
 
 | Work item | Relative effort | Dependency and definition of done |
 | --- | --- | --- |
 | Draft itemized quote with total, currency, expiry, and terms | Medium | Saved request; server validation and deterministic totals; no customer-entered payable amount |
 | Admin-assisted quote entry | Medium | Existing admin authorization plus recorded operator approval and audit trail; optional pilot bridge, not permission to invent prices |
 | Shop quote entry | Medium to large | Authenticated, approved shop-manager access; cannot rely on the current partner token |
-| Extend My Bookings with quote detail | Medium | Reuse the Phase A page with ownership-scoped reads; keep request, quote, and payment states separate |
+| Extend My Bookings with quote detail | Medium | Reuse the Work Package A page with ownership-scoped reads; keep request, quote, and payment states separate |
 | Guest quote access | Medium | Reference plus email verification or private expiring link, scoped session, rate limits, and non-enumerating responses |
 | Quote-ready notification | Small after quote/access work | Email points to the trusted Glaucus quote page; direct website/dashboard access also works |
 
-Ship draft/view/accept quote behavior without a Pay button until payments are ready. Accepting a quote is not proof of payment or a confirmed reservation. Store the accepted version and terms; quote revisions require renewed acceptance. Prefer a single currency and full quoted amount in the first payment release.
+Include Review Quote and Pay in the first demo, connected to sandbox checkout through Work Package C. Disable Pay only when the quote or sandbox integration is not eligible/ready, rather than withholding it until production approval. Accepting a quote is not proof of payment or a confirmed reservation. Store the accepted version and terms; quote revisions require renewed acceptance. Start with USD and payment of the full quoted amount in the demo.
 
-### Phase C: payment prerequisites, not optional shortcuts
+### Work Package C: Stripe sandbox checkout and transaction tracking
 
-- Agree seller identity, commission calculation, processing-cost responsibility, taxes, cancellation, refunds, and dispute operations.
-- Establish financial authorization and Stripe Connect onboarding, account mappings, capability/readiness checks, and disconnection handling.
-- Choose hosted versus embedded Checkout and charge/account configuration. Keep secrets server-only and separate test/live state.
-- Add immutable payable snapshots, availability commitments, concurrency controls, and a durable payment/event/notification lifecycle.
+- Configure test-mode Stripe Checkout and Connect, test operator account onboarding, readiness checks, and a proposed charge/account model. Finalize the real seller/account configuration before any live launch.
+- Use authorized shop/admin quote entry and ownership-scoped customer/guest access; current shareable partner links cannot authorize financial activity.
+- Create or reuse checkout idempotently from the current quote. Block expired, superseded, already-paid, or otherwise ineligible requests.
+- Process signed test webhooks with expected environment/account/amount checks, duplicate and out-of-order protection, and durable recovery.
+- Persist test payment attempts, verified transactions, configured commission snapshots, refunds, and audit events, all linked to the saved booking reference.
+- Show test payment pending, successful, failed, and refund results consistently in customer and operator views. Failed email delivery must not cause another charge or erase payment success.
+- Exercise test cards, 3D Secure, decline/retry, duplicate clicks/events, expired quotes, sandbox refunds, and test account disconnection.
+- Demonstrate a durable notification/reconciliation path; do not substitute a browser success redirect or manual paid-status toggle for verified provider state.
 
-This work can overlap with Phase B but must finish before accepting real payments. Manual admin quote entry does not remove operator payment-readiness requirements.
+Acceptance for the first milestone: a customer and vendor can follow the full reference-to-quote-to-test-payment flow, see the resulting statuses, and inspect matching test transaction/audit records. No real money is charged, transferred, or paid out. Foundational authorization and payment-integrity checks remain required in sandbox even though production policy/compliance approval is pending.
 
-### Phase D: smallest safe payment-enabled release
+### Production readiness gate: mandatory before real payments
+
+Production payment processing is prohibited until all of the following are satisfied:
+
+- Technical safeguards: verified customer/operator permissions, immutable accepted quotes, safe availability commitments, server-side totals, idempotency/concurrency protection, signed webhooks, environment isolation, and tested failure/retry behavior.
+- Operational readiness: durable event/notification processing, transaction reconciliation, monitoring and alerts, recovery procedures, refund/dispute handling, and named support/finance owners.
+- Business and compliance review: approved seller identity and Stripe account/charge configuration, live operator verification and capabilities, commission/processing-fee allocation, applicable tax obligations, privacy/security obligations, and cancellation/refund/dispute policies respecting consumer rights.
+- Launch authorization: documented review and explicit go-live approval by accountable technical and business owners, with appropriate legal/compliance input. Passing sandbox tests alone does not satisfy this requirement.
+
+Implement this as a server-enforced, default-off live-payments gate, not only a hidden button. Only authorized operational configuration may enable production payment/session creation and live transfer/payout initiation after approval. Missing configuration, absent operator readiness, or unapproved production setup must deny the operation. Do not auto-enable live payments when sandbox tests pass or a live key becomes available.
+
+Stripe's services do not automatically discharge all marketplace compliance responsibilities. Record which requirements apply and who approves them before going live. Manual admin quote entry does not remove live operator payment-readiness requirements.
+
+### Limited live pilot: only after production approval
 
 Support US pilot operators, USD quotes, and customer-initiated payment of the full accepted quote. Compute the agreed commission server-side and snapshot it with the payment. Do not make a published catalog mandatory.
 
@@ -474,7 +506,7 @@ Support US pilot operators, USD quotes, and customer-initiated payment of the fu
 
 Do not treat a generic payment link, browser success page, or manual "mark paid" control as a substitute for this lifecycle.
 
-### Phase E: defer until the reference-to-payment flow works
+### Later expansion: after the sandbox demo and according to pilot needs
 
 - Public offering catalog and portal price publishing, using existing admin review, old-payload compatibility, and atomic/stale-approval protection.
 - Published-price booking using the same request reference, quote/order, and payment infrastructure.
