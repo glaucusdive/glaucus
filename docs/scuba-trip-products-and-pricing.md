@@ -4,6 +4,8 @@ Status: product direction and proposed implementation, not a record of shipped p
 
 Research date: 2026-10-27.
 
+Team review: implementation is paused pending discussion. This document records the proposed scope and sequencing; it does not authorize application changes, schema deployment, account onboarding, or live payments.
+
 ## 1. Glaucus Is a Marketplace
 
 Glaucus connects independent dive operators with customers who discover trips, see pricing, and book through the Glaucus website. It is not intended to be only a directory or an email lead-generation service.
@@ -288,6 +290,22 @@ Use separate reservation, payment, refund/dispute, and notification states. A co
 
 A request can refer directly to an operator and a trip description without an offering or departure ID. Adding a catalog later must not invalidate those requests. Keep separate request/quote statuses such as `awaiting_quote`, `quote_ready`, `accepted`, `expired`, and `declined` from payment statuses such as `unpaid`, `processing`, and `paid`; final names are an implementation decision.
 
+### Payment transactions and audit records
+
+One canonical booking and reference should support both published-price and operator-quoted trips. The difference is where the accepted price originates, not a separate payment system.
+
+Persist the following in the database with appropriate ownership checks, service-only writes for financial state, and retention/access policies:
+
+- Booking identity, operator, customer association, and the stable readable reference.
+- Immutable quote/order versions, itemized totals, currency, accepted terms, acceptance time, and actor.
+- Payment attempts with their own internal IDs, operation/idempotency keys, gateway/account/environment scope, Checkout Session and PaymentIntent IDs, and lifecycle timestamps.
+- Transaction records for verified financial movements, including refunds and application fees where applicable. Distinguish attempts from successful transactions; never count repeated webhook deliveries as additional revenue.
+- Agreed platform commission and fee-allocation snapshots, with actual processing fees reconciled separately when available. Do not promise operator net proceeds from an estimated fee.
+- Provider event IDs and durable processing outcomes, including retry/reconciliation state. Keep collected payments, operator transfers, bank payouts, and trip completion distinct.
+- Append-only audit events for quote issuance/revision, acceptance, payment transitions, cancellation requests, refund approval, and support decisions. Corrections add traceable events rather than silently rewriting history.
+
+Do not treat mutable application status or this operational transaction history as a complete accounting ledger. Define reconciliation, currency handling, and reporting responsibilities with the finance team. Never retain card numbers, CVCs, secret keys, or unnecessary raw customer/payment payloads in transaction or audit records.
+
 ## 10. Stripe Integration Direction
 
 ### Checkout and Connect solve different problems
@@ -325,6 +343,31 @@ Connect is not an escrow service. Charging a customer, transferring funds, and p
 
 The AI chat may help customers discover offerings and collect booking preferences. It must not invent charge amounts, bypass canonical booking steps, or charge/refund without a separate explicit authorized action.
 
+### Stripe sandbox and test cards
+
+Use Stripe sandbox/test mode for the full integration before any live launch. These are Stripe's published synthetic test cards, not real customer cards; they must never be used against live-mode checkout.
+
+| Scenario | Test card number | Expected result |
+| --- | --- | --- |
+| Successful card payment | `4242 4242 4242 4242` | Payment succeeds; the verified webhook updates the matching booking and transaction exactly once |
+| 3D Secure authentication | `4000 0025 0000 3155` | Customer completes authentication before success; abandoned authentication must not mark the booking paid |
+| Insufficient funds | `4000 0000 0000 9995` | Payment declines; the quote remains available for an eligible retry without recording a successful transaction |
+
+For interactive testing, use a future expiry date, any three-digit CVC, and a valid-format postal code when requested. Use synthetic customer details. Do not use real cards or customer records, store card numbers/CVCs in Glaucus, or send card data directly from the Glaucus server. Automated server-side tests should use Stripe's documented test PaymentMethod identifiers or mocked provider responses rather than raw card-number requests.
+
+Keep sandbox/test and live API credentials, webhook signing secrets, connected account IDs, and stored provider references separated by environment. Scope webhook processing to the expected environment and account. Use Stripe-hosted test onboarding for operator accounts; do not collect real bank credentials for test fixtures.
+
+Test the complete journey, not only the payment form:
+
+1. Submit a synthetic request, obtain its saved reference, and issue an operator-approved quote.
+2. Verify signed-in and guest access resolve to the same current quote and amount due.
+3. Pay using each relevant scenario above and verify the customer-facing result against server/provider state.
+4. Confirm database payment attempts, successful transactions, commission snapshots, and audit events match the result; retain the booking reference across every step.
+5. Replay duplicate webhooks, submit checkout concurrently, and simulate ambiguous timeouts or failed email delivery; none may produce a second logical charge or confirmation.
+6. Exercise expired/revised quotes, abandoned checkout, full/partial refunds, account disconnection, and reconciliation after a processing failure.
+
+Use Stripe CLI forwarding or a dedicated test webhook endpoint for end-to-end testing, including connected-account events where required by the chosen charge model. Sandbox tests do not prove live operator eligibility or settle legal, tax, fee, and cancellation policies.
+
 ## 11. Current Application Versus Proposed Marketplace
 
 The existing application uses Nuxt, Vue, Supabase, Netlify, and Resend. Its booking endpoint sends booking requests by email. This is not yet a priced reservation and payment engine.
@@ -342,6 +385,39 @@ Relevant existing surfaces:
 
 Do not relabel an existing "request sent" confirmation as a paid booking. Preserve the structured pre-send gate and existing review-verification meaning during migration: a verified booking review currently associates with a successfully sent request, not proof of payment or trip completion.
 
+### Repurpose My Drafts as My Bookings
+
+Reuse the existing combined draft/sent-request page instead of building a duplicate history page. The proposed customer destination is `/settings/bookings`, titled **My Bookings**.
+
+- Move the existing page behavior from [settings drafts](../app/pages/settings/drafts.vue) to the proposed bookings route, preserving authentication, private-page SEO, draft resume/delete, and sent-request details.
+- Start with **Drafts** and **Requests** tabs. Do not display unsupported payment or cancellation states just to fill the screen.
+- Update the [settings menu](../app/pages/settings/index.vue) from My drafts to My Bookings and point it directly to the new route.
+- Update the existing [legacy profile redirect](../app/pages/profile/drafts.vue) to point directly to `/settings/bookings`, avoiding a redirect chain.
+- Keep `/settings/drafts` only as a thin compatibility redirect for existing bookmarks; all active internal navigation should use `/settings/bookings`.
+- Keep draft API/database names and resume storage keys unchanged; they still describe real drafts rather than stale navigation.
+
+Initially show actual account-owned sent requests with shop, requested dates, diver count, submission time, and **Request sent**. Display the human-readable reference only after it exists in the authoritative backend; do not invent one from part of a UUID. Distinguish loading, empty, and retryable failure states.
+
+### Customer dashboard as the lifecycle grows
+
+| Capability | Display or action | Backend prerequisite |
+| --- | --- | --- |
+| Request history | Drafts and sent requests | Existing authenticated request/draft reads |
+| Booking references | Stable reference in list/detail and support | Durable reference creation |
+| Quotes | Awaiting quote, quote ready, accepted, expired; Review Quote | Versioned operator quotes and scoped access |
+| Amount due | Currency, accepted total, due now, and later balance if supported | Authoritative quote/order and payment schedule |
+| Payments | Pay action, processing/paid/failed, receipts and refunds | Eligible checkout plus verified payment/transaction records |
+| Trips | Confirmed upcoming reservations and past dated trips | Authoritative reservation lifecycle, not email-send status |
+| Cancellations | Request cancellation, under review, approved or declined | Audited review workflow and accepted cancellation terms |
+
+Keep one booking detail view as the common home for the quote/order, payments, trip, and support history. A separate Orders page is not necessary for the same underlying booking. Add filters or tabs only when real data supports them.
+
+Past dates do not prove that a trip was completed, and a future request is not a confirmed upcoming trip. Missing payment integration means **Payment not tracked**, not a fabricated zero balance or an assumed paid/unpaid result.
+
+For confirmed bookings, the agreed cancellation behavior is **Request cancellation**, followed by staff review. Track request, approval/decline, and any refund independently. A cancellation request neither immediately cancels the reservation nor automatically refunds a charge.
+
+The three access paths in section 6 are the agreed direction: authenticated My Bookings, verified guest Find Booking, and optional secure quote-ready email links. A guest needs a separate verification entry point; the private settings page remains authenticated. Email links are convenient, not mandatory, and opening one must never accept terms or initiate payment. Re-check authorization on every quote, checkout, receipt, and cancellation request.
+
 ## 12. Suggested Delivery Phases
 
 Recommended first vertical slice: **request -> durable reference -> operator-approved quote -> customer review -> verified payment**. Build and release the non-payment steps independently; do not require a complete offerings catalog to start.
@@ -352,13 +428,14 @@ Relative effort below is a sequencing aid, not a delivery estimate. Persistence,
 
 | Work item | Relative effort | Dependency and definition of done |
 | --- | --- | --- |
+| Repurpose My Drafts as My Bookings | Small before quote/payment work | Reuse Drafts/Requests behavior, update active navigation and legacy redirects, preserve resume/delete and ownership checks |
 | Canonical request and unique reference | Medium; foundational, not cosmetic | Save reliably before sending; enforce unique reference and idempotent request creation; record notification outcome independently |
 | Reference in customer and shop emails | Small after persistence | Same reference in both emails and API response; email wording still says request, not confirmed booking |
 | Reference in form/chat success screens | Small after persistence | Both entry points show the same saved reference and preserve explicit pre-send confirmation |
 | Reference in existing admin booking views | Small after persistence | Authorized exact-reference lookup without adding a public lookup endpoint |
 | Notification failure visibility | Small to medium | Admin can distinguish saved requests from delivered notifications; recovery cannot create another request or blindly duplicate messages |
 
-First implementation ticket: add durable request identity and return/display the reference in both submission paths, then include it in notifications. Do not merely decorate a potentially failed best-effort submission log with a code. Preserve the existing review association and draft behavior with regression tests.
+Suggested first two implementation tickets, after team approval: (1) repurpose My Drafts into My Bookings and clean up route references; (2) add durable request identity and return/display the reference in both submission paths, then include it in notifications. Do not merely decorate a potentially failed best-effort submission log with a code. Preserve the existing review association and draft behavior with regression tests.
 
 Acceptance for Phase A: a successfully saved new request has exactly one stable reference; repeated submissions with the same operation ID return that reference; notification failure does not lose the request; unauthorized users cannot retrieve it. No Stripe account, public catalog, deposit workflow, or commission rate is needed for this phase.
 
@@ -369,7 +446,7 @@ Acceptance for Phase A: a successfully saved new request has exactly one stable 
 | Draft itemized quote with total, currency, expiry, and terms | Medium | Saved request; server validation and deterministic totals; no customer-entered payable amount |
 | Admin-assisted quote entry | Medium | Existing admin authorization plus recorded operator approval and audit trail; optional pilot bridge, not permission to invent prices |
 | Shop quote entry | Medium to large | Authenticated, approved shop-manager access; cannot rely on the current partner token |
-| Customer My Bookings and quote detail | Medium | Ownership-scoped reads; correct separation of request, quote, and payment states |
+| Extend My Bookings with quote detail | Medium | Reuse the Phase A page with ownership-scoped reads; keep request, quote, and payment states separate |
 | Guest quote access | Medium | Reference plus email verification or private expiring link, scoped session, rate limits, and non-enumerating responses |
 | Quote-ready notification | Small after quote/access work | Email points to the trusted Glaucus quote page; direct website/dashboard access also works |
 
@@ -429,11 +506,11 @@ This document alone does not require code changes, new dependencies, migrations,
 - Does each offering use request-to-book, instant booking, or customized quotation?
 - Who can confirm requests and issue revised quotes initially: authorized shop staff, admins coordinating with shops, or both?
 - Who maintains authoritative availability, including sales through other channels?
-- Is payment hosted or embedded, and are customer accounts optional?
+- Is payment hosted or embedded? Account and verified guest access are intended; decide whether both ship in the first payment release.
 - Who is the contractual seller, and which Connect account/charge configuration fits that relationship?
 - Who bears processing/Connect fees, dispute losses, refunds, and applicable tax obligations?
 - What is the agreed platform fee/commission, its calculation basis, and whether it is deducted from the operator price or added transparently to the customer total?
-- Should initial customer access support signed-in accounts, verified guests, or both? Email links should remain optional for customers who prefer direct website access.
+- What are the verification-code/session lifetimes, resend limits, and support recovery policy for guest access? Email links remain optional for customers who prefer direct website access.
 - Are deposits required for the initial products? Who collects the remaining balance and when?
 - What are each operator's weather, cancellation, no-show, and refund rules?
 - Which mandatory charges, if any, are collected separately by the operator?
@@ -449,5 +526,6 @@ Industry examples were reviewed on 2026-10-27. Operator availability, prices, in
 - [Stripe direct charges](https://docs.stripe.com/connect/direct-charges).
 - [Stripe destination charges](https://docs.stripe.com/connect/destination-charges).
 - [Stripe webhook documentation](https://docs.stripe.com/webhooks).
+- [Stripe testing documentation and synthetic test cards](https://docs.stripe.com/testing).
 
 Product examples illustrate industry patterns, not a promise of availability, operator partnership, inventory integration, or current pricing. Payment and marketplace recommendations are design proposals, not legal or tax advice.
