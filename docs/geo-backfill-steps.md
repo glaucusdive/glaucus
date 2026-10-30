@@ -75,9 +75,28 @@ node --env-file=.env scripts/list-missing-geocodes.mjs && wc -l csvfiles/missing
 
 Expected: the row count drops by the number of applied shops.
 
+## TomTom run results
+
+Last dry run (`--provider=tomtom`, 683 shops attempted of 752):
+
+- `would-apply`: 163
+- `skipped`: 520
+- `failed`: 0 recorded as `failed`; 4 of the skips are request errors (HTTP 429 rate limit)
+
+The remaining 520 are skipped for four reasons:
+
+| Reason | Count | Cause | Possible fix |
+|---|---|---|---|
+| Address mismatch | 328 | TomTom's city, state, or country differs from the shop record. Often the correct place at another admin level (e.g., a village inside a regency, or a borough vs. its city). Some are wrong matches in another region. | Accept city differences when the country and state agree and the TomTom score is high. Route the rest to manual review. |
+| No result | 178 | Query combines city, state, and country into one string, which is too noisy. | Retry with a simpler `city, country` query. |
+| No address | 10 | Source row has no address fields. | Fill the address in the source data, then re-run. |
+| Request failed | 4 | HTTP 429 from TomTom. | Retry these with a longer delay than 100 ms. |
+
+These are proposed improvements and are not implemented. Any change needs a new dry run and review before `--from-report` is used.
+
 ## Notes
 
 - Nominatim usage policy: keep one request per second and the descriptive User-Agent. Do not parallelize.
 - TomTom requests count against your plan's quota. Check the remaining quota before large runs.
 - City-level matches do not guarantee street-level accuracy. Spot-check a sample on a map.
-- The `docs/*.csv` outputs are for review and can be deleted after the backfill.
+- The `csvfiles/*.csv` outputs are for review and can be deleted after the backfill.
