@@ -181,6 +181,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.95.0** — Partner dive shops pin above chat search when they match organically; Load next keeps prior pages bookable (2026-10-30).
 - **0.94.3** — Put the marketing header on the dive shop directory so section links return to the homepage (2026-10-19).
 - **0.94.2** — Restore the public dive shop directory and allow that page to be indexed (2026-10-19).
 - **0.94.1** — Remove the public dive shop directory so a full list of shop names is not on one page (2026-10-19).

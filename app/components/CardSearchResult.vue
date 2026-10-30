@@ -2,9 +2,11 @@
   <div
     :class="[
       'relative border rounded-lg p-4 bg-white dark:bg-zinc-900',
-      active
-        ? 'bg-zinc-50 border-blue-400'
-        : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-600'
+      partner
+        ? 'border-blue-500 dark:border-violet-400'
+        : active
+          ? 'bg-zinc-50 border-blue-400'
+          : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-600'
     ]"
   >
     <!-- Main content: not a single click target; use Book this or the detail chevron -->
@@ -12,6 +14,12 @@
       <!-- Header: name + rating, Book this top-right -->
       <div class="flex flex-row justify-between items-start gap-2">
         <div class="min-w-0 flex-1">
+          <p
+            v-if="partner"
+            class="mb-1 text-xs font-medium uppercase tracking-wide text-blue-700 dark:text-violet-300"
+          >
+            Partner
+          </p>
           <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">
             {{ shop.business_name }}
           </h3>
@@ -119,6 +127,11 @@ const props = defineProps({
   },
   /** Older search cards cannot start a booking once a later assistant turn is current. */
   bookingDisabled: {
+    type: Boolean,
+    default: false
+  },
+  /** Partner strip card: accent border + Partner label (organic duplicates stay unmarked). */
+  partner: {
     type: Boolean,
     default: false
   },

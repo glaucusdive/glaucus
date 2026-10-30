@@ -1,5 +1,18 @@
 # Implementation Log
 
+## 2026-10-30 - Partner strip scroll pin
+
+- Chat auto-scroll after search results prefers `[data-search-partner-divider]` in the latest message, then the exact/other divider, then true bottom. Same divider-bottom geometry as the existing exact/other pin so Partner cards stay in view instead of scrolling past to “Load next”.
+- “View latest message” still uses `pinDivider: false` and scrolls to the end. No payload or partner-on-pagination changes.
+- Verification: code path updated in `ChatHome.vue`; manual Alameda + Deep Ocean check remains the confirmation that Partner stays visible after results land.
+
+## 2026-10-30 - Partner shop pin + Load next continuity
+
+- Added `diveshops.is_partner` (boolean, default false) via migration `20261030120000_diveshops_is_partner.sql`. Admin shop form gets a Partner shop checkbox (`FormCheckbox`); admin grid shows a Partner column. Flag is admin-write only (not partner-portal).
+- First-page search responses may include `partnerShops` picked only from the organic match list (`pickPartnerShops`). Chat shows a Partner strip + HR above organic cards; partner-strip cards use a blue/violet border and Partner label. Organic duplicates may still appear below. Pagination pages omit the partner strip. Unrelated searches never inject partners.
+- Chat stale-actions exception: while the live turn is still shop results, earlier pages in the same Load-next chain stay undimmed and keep Book this; chips remain latest-only.
+- Verification: focused unit tests for `pickPartnerShops` and admin form `is_partner` mapping passed. Fixed CSV→form typing for required `is_partner`. Migration is **not** applied to hosted Supabase by this work — apply when you approve, then tick Partner on Deep Ocean Explore Store in admin. Version bumped to **0.95.0**.
+
 ## 2026-10-25 - Clean Back to website URL
 
 - Sidebar **Back to website** now links to `/` rather than `/#hero`. An in-memory Nuxt state flag remembers the website choice during the current app session, so signed-in users are not immediately returned to chat.

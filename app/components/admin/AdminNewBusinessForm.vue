@@ -50,6 +50,16 @@
           @update:model-value="patch({ phone: $event })"
         />
       </FormField>
+      <FormCheckbox
+        :id="fieldId('is-partner')"
+        :model-value="Boolean(modelValue.is_partner)"
+        @update:model-value="patch({ is_partner: Boolean($event) })"
+      >
+        Partner shop
+      </FormCheckbox>
+      <p class="text-xs text-zinc-500 dark:text-zinc-400 -mt-2">
+        When this shop matches a search organically, pin it in a Partner section above other results.
+      </p>
     </div>
 
     <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -189,6 +199,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import FormCheckbox from '~/components/ui/FormCheckbox.vue'
 import {
   unknownNamesFromWarnings,
   filterDiscardedPendingNames,

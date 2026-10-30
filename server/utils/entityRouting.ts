@@ -18,6 +18,7 @@ import type { SearchMatchFacets } from '../../shared/searchResultGroups'
 import { capSparseWidenShopList, buildSearchMatchContext } from '../../shared/searchResultGroups'
 import { enrichShopsForSearchCards } from './enrichShopsForSearchCards'
 import { createDiveshopReadClient, PUBLIC_SHOP_LIST_SELECT } from './diveshopRead'
+import { pickPartnerShops } from '../../shared/partnerSearchShops'
 
 /** Avoid ilike metacharacters from user input. */
 function sanitizeIlike (s: string): string {
@@ -184,7 +185,8 @@ export async function formatEntitySearchResponse (
   filters: SearchFilters,
   shops: ShopRow[] | null | undefined,
   message: string,
-  facets?: SearchMatchFacets | null
+  facets?: SearchMatchFacets | null,
+  opts?: { includePartnerShops?: boolean }
 ) {
   const ctx = buildSearchMatchContext(filters)
   const list = capSparseWidenShopList(shops || [], ctx)
@@ -202,6 +204,8 @@ export async function formatEntitySearchResponse (
     remainingMore > 0 ? [buildSearchPaginationSelectableOption(remainingMore, pageSize)] : undefined
   const searchMatchBadges =
     responseShops.length > 0 ? buildSearchMatchBadges(filters, facets ?? null) : []
+  const partnerShops =
+    opts?.includePartnerShops === false ? [] : pickPartnerShops(enriched)
   return {
     success: true as const,
     message,
@@ -210,7 +214,8 @@ export async function formatEntitySearchResponse (
     hasMoreResults: resultCount > pageSize,
     filters,
     selectableOptions,
-    ...(searchMatchBadges.length ? { searchMatchBadges } : {})
+    ...(searchMatchBadges.length ? { searchMatchBadges } : {}),
+    ...(partnerShops.length ? { partnerShops } : {})
   }
 }
 
