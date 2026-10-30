@@ -66,7 +66,8 @@ export function placeSearchTokens (placeRaw: string): string[] {
     seen.add(s.toLowerCase())
     out.push(s)
   }
-  add(full)
+  // Short codes such as "CA" would substring-match every country; they are handled as state codes instead.
+  if (full.length >= MIN_TOKEN_LEN) add(full)
   const words = full.split(/\s+/).filter(w => w.length >= MIN_TOKEN_LEN)
   for (const word of words) {
     if (GENERIC_PLACE_TOKEN_WORDS.has(word.toLowerCase())) continue

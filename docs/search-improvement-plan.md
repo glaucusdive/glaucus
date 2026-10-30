@@ -83,6 +83,15 @@ Shops without coordinates rank last within their tier and have no distance order
 6. Raise the candidate fetch size for place queries, so re-ranking does not cut off a city's shops.
 7. Confirm "ask for more shops" paging works in the geo branch.
 
+### Future enhancements
+
+- **Bug: "I want to dive in CA" returns Italian shops.** A two-letter place token is matched as a substring (`ilike '%CA%'`) across shop fields in any country. Fix: match a bare state code by exact `state` value, default to the US, and add a test that no non-US shops appear.
+- **Ambiguous "CA"** (California or Canada). Resolve from conversation context or from which candidates exist in the data. If both match, ask with chips. Never default silently.
+- **State-level intent via the NLU step.** Extend the JSON with `country`, `state`, and `targets` (`shops`, `dive_sites`). Search both, and label the groups separately in the reply. Zero-result groups should say so.
+- **Place hierarchy.** Build a lookup that maps names and aliases to `{level, canonical name, parent}` for city, state, country, region, ocean, and continent. Use the existing `regions` table as a starting point. One filter function applies any level.
+- **GenAI for fallback and wording only.** Use the model when the lookup misses (constrained JSON with a fixed level enum, validated server-side) and to summarize structured results. The database decides which shops match.
+- **Dive-site coverage for state queries.** Check how many dive sites have a state or country set before relying on state-level dive-site searches.
+
 ## Verification
 
 - Unit tests for place parsing, country precedence, and the proximity comparator.
