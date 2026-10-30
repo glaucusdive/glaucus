@@ -15,7 +15,7 @@ Backfills missing `diveshops.latitude` and `diveshops.longitude` using OpenStree
 node --env-file=.env scripts/list-missing-geocodes.mjs
 ```
 
-Writes `csvfiles/missing-geo-shops.csv`. Expected: 752 rows before the backfill.
+Writes `csvfiles/missing-geo-shops.csv`. Expected: 752 rows before the backfill, 520 after the partial apply (see Current database status).
 
 ## Step 2: Dry run (no database writes)
 
@@ -74,6 +74,18 @@ node --env-file=.env scripts/list-missing-geocodes.mjs && wc -l csvfiles/missing
 ```
 
 Expected: the row count drops by the number of applied shops.
+
+## Current database status (checked 2026-10-29)
+
+| Check | Count |
+|---|---|
+| Total `diveshops` rows | 752 |
+| `latitude` or `longitude` null | 520 |
+| Both coordinates set | 232 |
+
+Geocoded shops by country: United States 116, Mexico 45, France 34, Italy 10, Indonesia 6, Australia 5, and 11 other countries with 1 to 2 each.
+
+The 232 count does not show which provider wrote each row. It is not confirmed that the 163 TomTom `would-apply` rows were applied. Check `csvfiles/geocode-dry-run.csv` against the database before claiming coverage. Accuracy of the 232 written rows has not been reviewed.
 
 ## TomTom run results
 

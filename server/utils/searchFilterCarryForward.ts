@@ -35,6 +35,18 @@ function hasGeo (f: SearchFilters): boolean {
 }
 
 /**
+ * True when the current message names its own place ("City ST", "in Bali", "Fiji").
+ * Such a message must not inherit geo from the previous search.
+ */
+export function userMessageNamesPlace (message: string): boolean {
+  const m = String(message || '').trim()
+  if (!m) return false
+  if (/\b[A-Z][A-Za-z.'-]+(?:\s[A-Z][A-Za-z.'-]+)*,?\s+[A-Z]{2}\b/.test(m)) return true
+  if (/\b(?:in|near|around|off|at)\s+[A-Z][\p{L}'-]+/u.test(m)) return true
+  return false
+}
+
+/**
  * NLU extracted a new place this turn that does not overlap the previous search geo.
  * Then skip carrying activity / course hint from last (avoid e.g. Bali cave → Thailand).
  */
@@ -76,7 +88,7 @@ export function carryForwardUnsetSearchAxes (
   let out = { ...filters }
   const placeShift = nluPlaceOverridesLastGeoContext(interpretTurn ?? null, last)
 
-  if (!hasGeo(out) && hasGeo(last)) {
+  if (!hasGeo(out) && hasGeo(last) && !userMessageNamesPlace(userMessage)) {
     out = {
       ...out,
       ...(last.country?.trim() ? { country: last.country } : {}),
