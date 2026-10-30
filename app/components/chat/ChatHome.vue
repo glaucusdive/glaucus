@@ -1770,13 +1770,24 @@ onUnmounted(() => {
 watch([messages, userInput, preferGuidedThisSession, guidedSearchState, guidedBookingHints, tripRequirements], persistCache, { deep: true })
 watch([selectedShopId, detailDrawerShopId, isOpen, drawerData], persistCache, { deep: true })
 
-// Auto-scroll when new messages arrive. Pin to the exact/other divider only when
-// that divider is inside the latest message. Later turns (Book this) go to the end.
-function dividerInLatestMessage () {
+// Auto-scroll when new messages arrive. Prefer Partner strip HR, then exact/other
+// divider, when that element is inside the latest message. Later turns (Book this)
+// and “View latest message” go to the true end.
+function latestChatMessageEl () {
   const container = messagesContainer.value
   if (!container) return null
   const rows = container.querySelectorAll('[data-chat-message]')
-  const last = rows[rows.length - 1]
+  return rows[rows.length - 1] || null
+}
+
+function partnerDividerInLatestMessage () {
+  const last = latestChatMessageEl()
+  if (!last) return null
+  return last.querySelector('[data-search-partner-divider]')
+}
+
+function dividerInLatestMessage () {
+  const last = latestChatMessageEl()
   if (!last) return null
   return last.querySelector('[data-search-exact-other-divider]')
 }
@@ -1799,14 +1810,18 @@ function applyContainerScroll (container, top) {
   container.scrollTo({ top: next, behavior: 'smooth' })
 }
 
+function scrollTopForDivider (container, divider) {
+  const containerRect = container.getBoundingClientRect()
+  const dividerRect = divider.getBoundingClientRect()
+  return container.scrollTop + (dividerRect.bottom - containerRect.bottom)
+}
+
 function scrollTargetTop (container, pinDivider) {
   if (pinDivider) {
-    const divider = dividerInLatestMessage()
-    if (divider) {
-      const containerRect = container.getBoundingClientRect()
-      const dividerRect = divider.getBoundingClientRect()
-      return container.scrollTop + (dividerRect.bottom - containerRect.bottom)
-    }
+    const partnerDivider = partnerDividerInLatestMessage()
+    if (partnerDivider) return scrollTopForDivider(container, partnerDivider)
+    const exactOtherDivider = dividerInLatestMessage()
+    if (exactOtherDivider) return scrollTopForDivider(container, exactOtherDivider)
   }
   return container.scrollHeight
 }

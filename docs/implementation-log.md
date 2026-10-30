@@ -1,5 +1,11 @@
 # Implementation Log
 
+## 2026-10-30 - Partner strip scroll pin
+
+- Chat auto-scroll after search results prefers `[data-search-partner-divider]` in the latest message, then the exact/other divider, then true bottom. Same divider-bottom geometry as the existing exact/other pin so Partner cards stay in view instead of scrolling past to “Load next”.
+- “View latest message” still uses `pinDivider: false` and scrolls to the end. No payload or partner-on-pagination changes.
+- Verification: code path updated in `ChatHome.vue`; manual Alameda + Deep Ocean check remains the confirmation that Partner stays visible after results land.
+
 ## 2026-10-30 - Partner shop pin + Load next continuity
 
 - Added `diveshops.is_partner` (boolean, default false) via migration `20261030120000_diveshops_is_partner.sql`. Admin shop form gets a Partner shop checkbox (`FormCheckbox`); admin grid shows a Partner column. Flag is admin-write only (not partner-portal).
