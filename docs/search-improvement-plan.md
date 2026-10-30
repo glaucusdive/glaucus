@@ -69,6 +69,20 @@ Shops without coordinates rank last within their tier and have no distance order
 - Geocoding provider for the backfill: Nominatim (free, slow, one request per second) or TomTom (keyed, faster).
 - Anchor for cities with no shops.
 
+## Next steps
+
+1. Done: multi-result place message now offers to narrow by city or dive type, or ask for more shops. Paging for this branch is not yet confirmed.
+2. Streamline the `diveshops` table:
+   - Audit duplicates and inconsistent `city`, `state`, and `country_id` values. The state filter needs one format.
+   - Confirm whether the 163 TomTom rows were applied, by comparing the dry-run report with non-null `latitude`.
+   - Review the 232 written coordinates for accuracy before relying on distance ranking.
+   - Backfill the remaining 520 only from reviewed results, then remove `csvfiles/missing-geo-shops.csv`.
+3. Live verification in the app: "dive in Monterey CA", "Fiji", "Cozumel", "Florida Keys". Record results in [search-demo-guide.md](search-demo-guide.md).
+4. Add a handler-level test for the zero-result guard in `runAiSearchPostHandler.ts`.
+5. Reproduce with debug logs (plan step 1) to confirm which branch returns results.
+6. Raise the candidate fetch size for place queries, so re-ranking does not cut off a city's shops.
+7. Confirm "ask for more shops" paging works in the geo branch.
+
 ## Verification
 
 - Unit tests for place parsing, country precedence, and the proximity comparator.

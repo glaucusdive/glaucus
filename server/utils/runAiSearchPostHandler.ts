@@ -1128,7 +1128,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             const pickMessage =
               geoList.length === 1
                 ? `${pickIntro} Pick one to start booking, or name a city or area to narrow down.`
-                : `${pickIntro} Which one would you like to book?`
+                : `${pickIntro} Which one would you like to book? You can name a city or dive type to narrow this down, or ask for more shops in the area.`
             return withAgentMeta({
               ...(await formatEntitySearchResponse(
                 supabaseUrl,
