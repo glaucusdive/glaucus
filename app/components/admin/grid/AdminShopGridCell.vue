@@ -135,7 +135,7 @@ const SELECT_PROPS = new Set([
   'dive_site_ids'
 ])
 
-const READONLY_TEXT_PROPS = new Set(['created_at_display', 'updated_at_display'])
+const READONLY_TEXT_PROPS = new Set(['created_at_display', 'updated_at_display', 'is_partner'])
 
 const props = defineProps<
   ColumnDataSchemaModel<ShopGridRow> & { gridContext: AdminShopGridContext }
@@ -179,6 +179,7 @@ const textField = computed({
 
 const displayRead = computed(() => {
   const v = model.value[prop.value]
+  if (prop.value === 'is_partner') return v ? 'Yes' : ''
   if (v == null || v === '') return ''
   if (prop.value === 'street_address') return String(v).replace(/\s+/g, ' ').trim()
   return String(v)

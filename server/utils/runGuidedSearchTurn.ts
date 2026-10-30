@@ -457,6 +457,9 @@ async function assembleGuidedSearchResponse (
     selectableOptions: tailOptions,
     ...restTail
   } = tail
+  const partnerShops = Array.isArray((formatted as { partnerShops?: unknown[] }).partnerShops)
+    ? (formatted as { partnerShops?: unknown[] }).partnerShops
+    : undefined
   return {
     success: true,
     intent: 'search',
@@ -467,6 +470,7 @@ async function assembleGuidedSearchResponse (
     filters: presented.filters,
     selectableOptions: tailOptions ?? guidedResultsSelectableOptions(state, formatted),
     ...(searchMatchBadges.length ? { searchMatchBadges } : {}),
+    ...(partnerShops?.length ? { partnerShops } : {}),
     ...restTail
   } as GuidedFlowSearchResponse
 }
@@ -540,7 +544,9 @@ export async function runGuidedSearchTurn (
         supabaseKey,
         combinedFilters,
         slice,
-        remaining > 0 ? 'Here are more dive businesses matching your filters.' : 'Here are the remaining dive businesses matching your filters.'
+        remaining > 0 ? 'Here are more dive businesses matching your filters.' : 'Here are the remaining dive businesses matching your filters.',
+        null,
+        { includePartnerShops: false }
       )
       const bookingHints: GuidedFlowSearchResponse['bookingHints'] =
         state.courseIntent?.trim() || state.diveSiteTypeLabel
@@ -590,7 +596,9 @@ export async function runGuidedSearchTurn (
         slice,
         remaining > 0
           ? `Here are more dive businesses for “${state.courseIntent}”.`
-          : `Here are the remaining dive businesses for “${state.courseIntent}”.`
+          : `Here are the remaining dive businesses for “${state.courseIntent}”.`,
+        null,
+        { includePartnerShops: false }
       )
       return await assembleGuidedSearchResponse(
         supabaseUrl,
@@ -632,7 +640,9 @@ export async function runGuidedSearchTurn (
         slice as unknown[],
         remaining > 0
           ? `Here are more shops matching "${state.nameQuery}".`
-          : `Here are the remaining shops matching "${state.nameQuery}".`
+          : `Here are the remaining shops matching "${state.nameQuery}".`,
+        null,
+        { includePartnerShops: false }
       )
       return await assembleGuidedSearchResponse(supabaseUrl, supabaseKey, state, formatted, state.courseIntent?.trim() ?? null, {
         totalResults: total,
@@ -666,7 +676,9 @@ export async function runGuidedSearchTurn (
       supabaseKey,
       filters,
       slice,
-      remaining > 0 ? 'Here are more dive shops for your filters.' : 'Here are the remaining dive shops for your filters.'
+      remaining > 0 ? 'Here are more dive shops for your filters.' : 'Here are the remaining dive shops for your filters.',
+      null,
+      { includePartnerShops: false }
     )
     return await assembleGuidedSearchResponse(supabaseUrl, supabaseKey, state, formatted, state.courseIntent?.trim() ?? null, {
       totalResults: total,

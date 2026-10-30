@@ -23,6 +23,7 @@ import { attachSearchMatchGroups } from './searchMatchGroups'
 import { filtersWithActivityMatchContext, formatNoActivityMatchesMessage } from './searchActivityWidenMessage'
 import { normalizeClientSearchFilters } from './normalizeClientSearchFilters'
 import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from './openAiChatModel'
+import { pickPartnerShops } from '../../shared/partnerSearchShops'
 
 /** Optional post-result chips: narrow directory by business / trip format. */
 export const TRIP_TYPE_OPTIONAL_FILTER_CHIPS: { label: string; value: string }[] = [
@@ -706,12 +707,28 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
         }
       : null
 
+  let partnerShops: unknown[] = []
+  if (paginationOffset === 0) {
+    partnerShops = pickPartnerShops((shops || []) as { is_partner?: boolean | null }[])
+  }
+
   if (responseShops.length > 0) {
     await enrichShopsForSearchCards(supabaseUrl, supabaseKey, responseShops)
     responseShops = await attachSearchMatchGroups(
       supabaseUrl,
       supabaseKey,
       responseShops as Parameters<typeof attachSearchMatchGroups>[2],
+      filters,
+      facetHintsForBadges
+    )
+  }
+
+  if (partnerShops.length > 0) {
+    await enrichShopsForSearchCards(supabaseUrl, supabaseKey, partnerShops)
+    partnerShops = await attachSearchMatchGroups(
+      supabaseUrl,
+      supabaseKey,
+      partnerShops as Parameters<typeof attachSearchMatchGroups>[2],
       filters,
       facetHintsForBadges
     )
@@ -765,6 +782,7 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     hasMoreResults: hasMorePages,
     filters,
     selectableOptions: selectableOptionsWithTripFilter,
-    ...(searchMatchBadges.length ? { searchMatchBadges } : {})
+    ...(searchMatchBadges.length ? { searchMatchBadges } : {}),
+    ...(partnerShops.length ? { partnerShops } : {})
   }
 }
