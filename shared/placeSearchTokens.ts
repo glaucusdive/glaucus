@@ -66,13 +66,49 @@ export function placeSearchTokens (placeRaw: string): string[] {
     seen.add(s.toLowerCase())
     out.push(s)
   }
-  add(full)
+  // Short codes such as "CA" would substring-match every country; they are handled as state codes instead.
+  if (full.length >= MIN_TOKEN_LEN) add(full)
   const words = full.split(/\s+/).filter(w => w.length >= MIN_TOKEN_LEN)
   for (const word of words) {
     if (GENERIC_PLACE_TOKEN_WORDS.has(word.toLowerCase())) continue
     add(word)
   }
   return out
+}
+
+export const US_STATE_NAMES: Record<string, string> = {
+  AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California', CO: 'Colorado',
+  CT: 'Connecticut', DE: 'Delaware', FL: 'Florida', GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho',
+  IL: 'Illinois', IN: 'Indiana', IA: 'Iowa', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana',
+  ME: 'Maine', MD: 'Maryland', MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota',
+  MS: 'Mississippi', MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada',
+  NH: 'New Hampshire', NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York', NC: 'North Carolina',
+  ND: 'North Dakota', OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania',
+  RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas',
+  UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington', WV: 'West Virginia',
+  WI: 'Wisconsin', WY: 'Wyoming', DC: 'District of Columbia'
+}
+
+export interface PlaceCityState {
+  city: string
+  state: { code: string; name: string } | null
+}
+
+/** Parses "Monterey CA" or "Monterey, California" into city plus a US state. Returns null state when none is recognised. */
+export function parsePlaceCityState (placeRaw: string): PlaceCityState {
+  const clean = sanitizePlaceSearchToken(placeRaw).replace(/,/g, ' ').replace(/\s+/g, ' ').trim()
+  const parts = clean.split(' ')
+  const last = parts[parts.length - 1] ?? ''
+  if (parts.length >= 2 && /^[A-Za-z]{2}$/.test(last) && US_STATE_NAMES[last.toUpperCase()]) {
+    const code = last.toUpperCase()
+    return { city: parts.slice(0, -1).join(' '), state: { code, name: US_STATE_NAMES[code] } }
+  }
+  const byName = Object.entries(US_STATE_NAMES).find(([, name]) => clean.toLowerCase().endsWith(name.toLowerCase()))
+  if (byName && clean.length > byName[1].length) {
+    const city = clean.slice(0, clean.length - byName[1].length).trim()
+    return { city, state: { code: byName[0], name: byName[1] } }
+  }
+  return { city: clean, state: null }
 }
 
 export function fieldContainsToken (fieldValue: unknown, tokens: string[]): boolean {

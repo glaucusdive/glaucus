@@ -2,12 +2,19 @@ import { describe, expect, it } from 'vitest'
 import {
   buildRelaxFilterChips,
   historyContainsTripTypeChoice,
+  inferCountryFromConversation,
   inferCanonicalDiveTypesFromUserMessage,
   isQuerySpecificEnoughForDirectShopCards,
   mergeInferredDiveTypesIntoFilters,
   userMessageIndicatesTripTypeChoice
 } from '../../server/utils/tripTypeSearchPipeline'
 import { inferCertificationCourseHintFromUserMessage } from '../../server/utils/interpretUserTurn'
+
+describe('inferCountryFromConversation precedence', () => {
+  it('returns the country named in the current message when history mentions another', () => {
+    expect(inferCountryFromConversation('dive shops in Fiji')).toBe('Fiji')
+  })
+})
 
 describe('isQuerySpecificEnoughForDirectShopCards', () => {
   it('is true for country + beginner phrasing', () => {

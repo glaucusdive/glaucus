@@ -393,9 +393,10 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
 
   console.log('[AI Search] Extracted filters:', filters)
 
-  const conversationText = [...(history || []).map(h => h.content), message].join(' ')
   if (!filters.country?.trim()) {
-    const inferred = inferCountryFromConversation(conversationText)
+    // Current message first, so a new place (e.g. Fiji) overrides an earlier one in history (e.g. Bali).
+    const historyText = (history || []).map(h => h.content).join(' ')
+    const inferred = inferCountryFromConversation(message) ?? inferCountryFromConversation(historyText)
     if (inferred) {
       filters = { ...filters, country: inferred }
       console.log('[AI Search] Inferred country from conversation:', inferred)
