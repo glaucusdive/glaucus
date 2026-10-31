@@ -3,6 +3,8 @@ import { createDiveshopReadClient, PUBLIC_SHOP_LIST_SELECT } from './diveshopRea
 import { coalesceSynonymActivityTokens } from './interpretUserTurn'
 import { promotePlaceToCountryFilters } from './resolveSearchCountryIds'
 import { collectWidePlaceShopIds } from './widePlaceShopSearch'
+import { dropOtherStateCityRows, rankPlaceShops } from './placeProximityRank'
+import { parsePlaceCityState, placeSearchTokens } from '../../shared/placeSearchTokens'
 
 export interface SearchFilters {
   country?: string
@@ -211,6 +213,15 @@ export async function buildDiveShopQuery (
 
   query = applyWindow(query)
 
-  return await query
+  const result = await query
+  // Place searches: re-rank the fetched page by tier (city, state, other), distance from the city anchor, then rating.
+  // Note: the DB order (rating) and the row limit apply before this re-rank.
+  if (effectiveFilters.place?.trim() && result.data) {
+    const { city, state } = parsePlaceCityState(effectiveFilters.place)
+    const tokens = placeSearchTokens(city || effectiveFilters.place)
+    const rows = state ? dropOtherStateCityRows(result.data, tokens, state) : result.data
+    return { ...result, data: rankPlaceShops(rows, tokens, state) }
+  }
+  return result
 }
 

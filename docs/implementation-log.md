@@ -1,5 +1,15 @@
 # Implementation Log
 
+## 2026-10-29 - Search geo and ranking improvements (GLA-229)
+
+- Geo backfill tooling: `scripts/backfill-shop-geocodes.mjs` is dry-run by default and writes only reviewed rows with null coordinates (`--apply`, `--from-report`, opt-in `--provider=tomtom`). It requires city, state, and country to agree. `scripts/list-missing-geocodes.mjs` is read-only and writes `csvfiles/missing-geo-shops.csv`. Runbook: [docs/geo-backfill-steps.md](geo-backfill-steps.md).
+- Search pipeline: message country takes precedence over conversation history; geo carry-forward is skipped when the message names a new place; dive-site matching is limited to a resolved country scope; results are ranked by city and state match, then distance, then rating; "City ST" places are parsed; zero-result place searches return an explicit message instead of unrelated shops.
+- Short place codes: phrases under 4 characters are no longer used as substring tokens, so "CA" no longer matches Italian shops. Test added in `tests/server/widePlaceShopSearch.test.ts`.
+- Multi-result geo replies now offer narrowing by city or dive type, or expanding the area.
+- Docs: [docs/search-improvement-plan.md](search-improvement-plan.md) (plan, next steps, future enhancements), [docs/search-demo-guide.md](search-demo-guide.md).
+- Known gaps: live search results not yet checked for the demo queries; 520 shops still lack coordinates; state-level intent and ambiguous "CA" (California or Canada) are not implemented.
+- Verification: `npx vitest run tests/server` passed with 324 tests and 1 skipped.
+
 ## 2026-10-25 - Clean Back to website URL
 
 - Sidebar **Back to website** now links to `/` rather than `/#hero`. An in-memory Nuxt state flag remembers the website choice during the current app session, so signed-in users are not immediately returned to chat.
