@@ -322,7 +322,7 @@
         v-if="profile"
         v-model:open="shareProfileOpen"
         profile-type="divemaster"
-        :can-use-flyer="isOwner"
+        :can-use-flyer="true"
         :profile-name="displayName"
         :url="profileShareUrl"
         :file-name="profile.username"
