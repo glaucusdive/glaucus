@@ -1,14 +1,17 @@
 # Implementation Log
 
-## 2026-10-29 - Search geo and ranking improvements (GLA-229)
+## 2026-10-30 - Partner strip scroll pin
 
-- Geo backfill tooling: `scripts/backfill-shop-geocodes.mjs` is dry-run by default and writes only reviewed rows with null coordinates (`--apply`, `--from-report`, opt-in `--provider=tomtom`). It requires city, state, and country to agree. `scripts/list-missing-geocodes.mjs` is read-only and writes `csvfiles/missing-geo-shops.csv`. Runbook: [docs/geo-backfill-steps.md](geo-backfill-steps.md).
-- Search pipeline: message country takes precedence over conversation history; geo carry-forward is skipped when the message names a new place; dive-site matching is limited to a resolved country scope; results are ranked by city and state match, then distance, then rating; "City ST" places are parsed; zero-result place searches return an explicit message instead of unrelated shops.
-- Short place codes: phrases under 4 characters are no longer used as substring tokens, so "CA" no longer matches Italian shops. Test added in `tests/server/widePlaceShopSearch.test.ts`.
-- Multi-result geo replies now offer narrowing by city or dive type, or expanding the area.
-- Docs: [docs/search-improvement-plan.md](search-improvement-plan.md) (plan, next steps, future enhancements), [docs/search-demo-guide.md](search-demo-guide.md).
-- Known gaps: live search results not yet checked for the demo queries; 520 shops still lack coordinates; state-level intent and ambiguous "CA" (California or Canada) are not implemented.
-- Verification: `npx vitest run tests/server` passed with 324 tests and 1 skipped.
+- Chat auto-scroll after search results prefers `[data-search-partner-divider]` in the latest message, then the exact/other divider, then true bottom. Same divider-bottom geometry as the existing exact/other pin so Partner cards stay in view instead of scrolling past to “Load next”.
+- “View latest message” still uses `pinDivider: false` and scrolls to the end. No payload or partner-on-pagination changes.
+- Verification: code path updated in `ChatHome.vue`; manual Alameda + Deep Ocean check remains the confirmation that Partner stays visible after results land.
+
+## 2026-10-30 - Partner shop pin + Load next continuity
+
+- Added `diveshops.is_partner` (boolean, default false) via migration `20261030120000_diveshops_is_partner.sql`. Admin shop form gets a Partner shop checkbox (`FormCheckbox`); admin grid shows a Partner column. Flag is admin-write only (not partner-portal).
+- First-page search responses may include `partnerShops` picked only from the organic match list (`pickPartnerShops`). Chat shows a Partner strip + HR above organic cards; partner-strip cards use a blue/violet border and Partner label. Organic duplicates may still appear below. Pagination pages omit the partner strip. Unrelated searches never inject partners.
+- Chat stale-actions exception: while the live turn is still shop results, earlier pages in the same Load-next chain stay undimmed and keep Book this; chips remain latest-only.
+- Verification: focused unit tests for `pickPartnerShops` and admin form `is_partner` mapping passed. Fixed CSV→form typing for required `is_partner`. Migration is **not** applied to hosted Supabase by this work — apply when you approve, then tick Partner on Deep Ocean Explore Store in admin. Version bumped to **0.95.0**.
 
 ## 2026-10-25 - Clean Back to website URL
 
