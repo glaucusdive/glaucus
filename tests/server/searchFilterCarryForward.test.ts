@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   carryForwardUnsetSearchAxes,
   nluPlaceOverridesLastGeoContext,
-  userExplicitlyRequestsBroadDatasetSearch
+  userExplicitlyRequestsBroadDatasetSearch,
+  userMessageNamesPlace
 } from '../../server/utils/searchFilterCarryForward'
 
 describe('nluPlaceOverridesLastGeoContext', () => {
@@ -37,6 +38,40 @@ describe('userExplicitlyRequestsBroadDatasetSearch', () => {
     expect(userExplicitlyRequestsBroadDatasetSearch('filter down to dive resorts')).toBe(false)
     expect(userExplicitlyRequestsBroadDatasetSearch('show me dive shops in Bali')).toBe(false)
     expect(userExplicitlyRequestsBroadDatasetSearch('cave dives in Bali')).toBe(false)
+  })
+})
+
+describe('userMessageNamesPlace', () => {
+  it('detects City ST and in/near place phrases', () => {
+    expect(userMessageNamesPlace('dive shops in Monterey CA')).toBe(true)
+    expect(userMessageNamesPlace('what about near Padangbai?')).toBe(true)
+  })
+
+  it('is false for refinements with no place', () => {
+    expect(userMessageNamesPlace('filter down to dive resorts')).toBe(false)
+  })
+})
+
+describe('carryForwardUnsetSearchAxes geo guard', () => {
+  it('does not carry last geo when the message names a new place', () => {
+    const out = carryForwardUnsetSearchAxes(
+      {},
+      { country: 'Indonesia', place: 'Bali' },
+      'show me dive shops in Monterey CA',
+      null
+    )
+    expect(out.country).toBeUndefined()
+    expect(out.place).toBeUndefined()
+  })
+
+  it('still carries last geo for a refinement with no place', () => {
+    const out = carryForwardUnsetSearchAxes(
+      {},
+      { country: 'Indonesia', place: 'Bali' },
+      'filter down to dive resorts',
+      null
+    )
+    expect(out.place).toBe('Bali')
   })
 })
 

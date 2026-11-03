@@ -15,6 +15,10 @@ describe('placeSearchTokens', () => {
     expect(placeSearchTokens('Bali')).toEqual(['Bali'])
   })
 
+  it('emits no substring token for a two-letter state code', () => {
+    expect(placeSearchTokens('CA')).toEqual([])
+  })
+
   it('does not emit bare Islands when phrase is Solomon Islands', () => {
     expect(placeSearchTokens('Solomon Islands')).toEqual(['Solomon Islands', 'Solomon'])
     expect(placeSearchTokens('Solomon Islands')).not.toContain('Islands')

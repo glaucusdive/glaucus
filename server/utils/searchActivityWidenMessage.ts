@@ -58,6 +58,11 @@ export function formatNoActivityMatchesMessage (filters: SearchFilters): string 
   return `We didn't find ${activityLabel.toLowerCase()} matches in ${place}. Here are other dive shops in the area.`
 }
 
+/** Explicit zero-result copy for a place query. Avoids falling through to unrelated shops. */
+export function formatNoPlaceMatchesMessage(place: string): string {
+  return `We don't have any dive shops listed in ${place} yet. Try a nearby city, a wider area, or a country.`
+}
+
 /** Attach activity exact IDs to filters for client grouping when activity filter was applied. */
 export function filtersWithActivityMatchContext (
   filters: SearchFilters,

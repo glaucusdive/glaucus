@@ -60,11 +60,11 @@ async function setupPortal (fetch = vi.fn().mockResolvedValue(response())) {
 }
 
 describe('Profile sharing entry points', () => {
-  it('wires DivePro flyer access to verified ownership and leaves shops default-off', () => {
+  it('enables flyers on public divemaster and shop profiles while keeping partner flyers token-gated', () => {
     const divePro = readFileSync(new URL('../../app/pages/divemaster/[username].vue', import.meta.url), 'utf8')
     const shop = readFileSync(new URL('../../app/components/DiveShopDetail.vue', import.meta.url), 'utf8')
-    expect(divePro.match(/<ProfileShareDialog[\s\S]*?\/>/)?.[0]).toContain(':can-use-flyer="isOwner"')
-    expect(shop.match(/<ProfileShareDialog[\s\S]*?\/>/)?.[0]).not.toContain('can-use-flyer')
+    expect(divePro.match(/<ProfileShareDialog[\s\S]*?\/>/)?.[0]).toContain(':can-use-flyer="true"')
+    expect(shop.match(/<ProfileShareDialog[\s\S]*?\/>/)?.[0]).toContain(':can-use-flyer="true"')
     expect(partnerSource.match(/<ProfileShareDialog[\s\S]*?\/>/)?.[0]).toContain('v-if="!loading && !loadError && publicProfile"')
     expect(partnerSource.match(/<ProfileShareDialog[\s\S]*?\/>/)?.[0]).toContain('can-use-flyer')
   })

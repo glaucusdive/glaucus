@@ -68,7 +68,7 @@ import {
 } from '../utils/fetchSearchShopsWithSparseWiden'
 import { capSparseWidenShopList, buildSearchMatchContext } from '../../shared/searchResultGroups'
 import { formatHereAreOperatorsInPlace } from '../../shared/searchOperatorNoun'
-import { filtersWithActivityMatchContext, formatNoActivityMatchesMessage } from '../utils/searchActivityWidenMessage'
+import { filtersWithActivityMatchContext, formatNoActivityMatchesMessage, formatNoPlaceMatchesMessage } from '../utils/searchActivityWidenMessage'
 import { normalizeClientSearchFilters } from '../utils/normalizeClientSearchFilters'
 import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from '../utils/openAiChatModel'
 import { resolveOpenAiApiKey } from '../utils/openAiApiKey'
@@ -1128,7 +1128,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             const pickMessage =
               geoList.length === 1
                 ? `${pickIntro} Pick one to start booking, or name a city or area to narrow down.`
-                : `${pickIntro} Which one would you like to book?`
+                : `${pickIntro} Which one would you like to book? You can name a city or dive type to narrow this down, or ask for more shops in the area.`
             return withAgentMeta({
               ...(await formatEntitySearchResponse(
                 supabaseUrl,
@@ -1138,6 +1138,18 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 widenedTripType ? geoMessage : pickMessage
               )),
               intent: 'search' as const
+            })
+          }
+          if (!geoError && geoList.length === 0 && geoFilters.place?.trim()) {
+            logIntentTurn('search')
+            return withAgentMeta({
+              success: true,
+              intent: 'search' as const,
+              message: formatNoPlaceMatchesMessage(placeLabel ?? geoFilters.place.trim()),
+              shops: [],
+              totalResults: 0,
+              hasMoreResults: false,
+              filters: geoFilters
             })
           }
         }

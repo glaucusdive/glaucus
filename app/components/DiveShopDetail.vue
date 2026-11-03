@@ -356,6 +356,7 @@
     <ProfileShareDialog
       v-model:open="shareProfileOpen"
       profile-type="shop"
+      :can-use-flyer="true"
       :profile-name="shopData?.business_name || 'Dive shop'"
       :url="shopProfileUrl"
       :file-name="shopData?.slug || shopRowId || 'dive-shop'"

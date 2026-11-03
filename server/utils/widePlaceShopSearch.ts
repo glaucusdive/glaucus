@@ -84,6 +84,9 @@ export async function collectWidePlaceShopIds (
   if (!diveSiteCountryIds?.length) {
     diveSiteCountryIds = await resolveCountryIdsForSearchScope(client, { place: placeRaw })
   }
+  // Without a resolved country, dive-site name matches can pull in shops from unrelated places (e.g. a dive site named like the place).
+  // Skip the dive-site path in that case and rely on directory fields only.
+  const diveSiteScoped = !!diveSiteCountryIds?.length
 
   let scalarQuery = client.from('diveshops').select('id').or(diveshopDirectoryOrConditions(tokens))
   if (countryIds?.length) {
@@ -92,7 +95,9 @@ export async function collectWidePlaceShopIds (
   const { data: scalarRows, error: scalarErr } = await scalarQuery
   if (scalarErr) return []
 
-  const diveSiteShopIds = await shopIdsFromDiveSiteNameTokens(client, tokens, diveSiteCountryIds)
+  const diveSiteShopIds = diveSiteScoped
+    ? await shopIdsFromDiveSiteNameTokens(client, tokens, diveSiteCountryIds)
+    : []
   const union = new Set<string>([
     ...(scalarRows || []).map((r: { id: string }) => r.id).filter(Boolean),
     ...diveSiteShopIds
