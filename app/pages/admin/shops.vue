@@ -377,6 +377,7 @@ const SHOP_DATA_KEYS = [
   'region_id',
   'country_name',
   'region_name',
+  'is_partner',
   'course_ids',
   'rental_equipment_ids',
   'gas_ids',
@@ -449,6 +450,7 @@ function makeDraft (shop) {
     region_id: shop?.region_id ?? null,
     country_name: shop?.country_name ?? null,
     region_name: shop?.region_name ?? null,
+    is_partner: Boolean(shop?.is_partner),
     course_ids: Array.isArray(shop?.course_ids) ? [...shop.course_ids] : [],
     rental_equipment_ids: Array.isArray(shop?.rental_equipment_ids) ? [...shop.rental_equipment_ids] : [],
     gas_ids: Array.isArray(shop?.gas_ids) ? [...shop.gas_ids] : [],
@@ -498,6 +500,7 @@ function isDraftDifferent (row, original) {
     const b = original[f] ?? ''
     if (String(a) !== String(b)) return true
   }
+  if (Boolean(row.is_partner) !== Boolean(original.is_partner)) return true
   const idArrays = ['business_type_ids', 'course_ids', 'rental_equipment_ids', 'gas_ids', 'dive_site_ids']
   for (const f of idArrays) {
     const a = [...(row[f] || [])].sort()
@@ -594,6 +597,7 @@ function rowToPayload (row) {
     type: serializeTypeFromIds(row.business_type_ids),
     country_id: row.country_id || null,
     region_id: row.region_id || null,
+    is_partner: Boolean(row.is_partner),
     course_ids: row.course_ids || [],
     rental_equipment_ids: row.rental_equipment_ids || [],
     gas_ids: row.gas_ids || [],
@@ -866,6 +870,14 @@ const gridColumns = [
     name: 'Business Name',
     size: 240,
     pin: 'colPinStart',
+    readonly: true,
+    resize: true,
+    cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
+  }),
+  withAdminHeader({
+    prop: 'is_partner',
+    name: 'Partner',
+    size: 100,
     readonly: true,
     resize: true,
     cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })

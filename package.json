@@ -1,6 +1,6 @@
 {
   "name": "nuxt-app",
-  "version": "0.94.3",
+  "version": "0.95.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -21,7 +21,7 @@
     "chrono-node": "^2.9.0",
     "fuse.js": "^7.5.0",
     "gsap": "^3.13.0",
-    "jspdf": "^4.2.0",
+    "jspdf": "^4.2.1",
     "lucide-vue-next": "^0.544.0",
     "marked": "^18.0.5",
     "nuxt": "^4.0.1",

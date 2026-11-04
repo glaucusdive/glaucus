@@ -120,8 +120,38 @@
                     </button>
                   </div>
 
-                  <!-- Shop results: exact trip-type matches, then optional wider fill-in -->
+                  <!-- Shop results: optional Partner strip, then exact/other organic groups -->
                   <div v-if="msg.shops && msg.shops.length > 0" class="flex flex-col gap-4 md:p-2">
+                    <div
+                      v-if="Array.isArray(msg.partnerShops) && msg.partnerShops.length > 0"
+                      class="flex flex-col gap-2"
+                    >
+                      <div class="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                        <span class="font-medium">Partner</span>
+                      </div>
+                      <div class="grid grid-cols-1 gap-2">
+                        <div
+                          v-for="(shop, psi) in msg.partnerShops"
+                          :key="'partner-' + shop.id"
+                          class="chat-shop-card-stagger min-w-0"
+                          :style="{ animationDelay: `${msg.streamingShopsPending ? 0 : psi * 80}ms` }"
+                        >
+                          <CardSearchResult
+                            :shop="shop"
+                            partner
+                            :active="selectedShopId === shop.id"
+                            :booking-disabled="!searchResultsBookingEnabled(index)"
+                            :match-badges="msg.searchMatchBadges"
+                            :search-filters="msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : undefined"
+                            @start-booking="(shop) => handleStartBookingFromCard(shop, index)"
+                          />
+                        </div>
+                      </div>
+                      <hr
+                        data-search-partner-divider
+                        class="border-0 border-t border-zinc-700 my-4 dark:border-zinc-800"
+                      >
+                    </div>
                     <template
                       v-for="(group, gi) in searchResultGroupsForMessage(msg)"
                       :key="`${index}-${group.id}`"
@@ -154,7 +184,7 @@
                             <CardSearchResult
                               :shop="shop"
                               :active="selectedShopId === shop.id"
-                              :booking-disabled="index !== activeChipMessageIndex"
+                              :booking-disabled="!searchResultsBookingEnabled(index)"
                               :match-badges="msg.searchMatchBadges"
                               :search-filters="msg.filters && typeof msg.filters === 'object' && !Array.isArray(msg.filters) ? msg.filters : undefined"
                               @start-booking="(shop) => handleStartBookingFromCard(shop, index)"
@@ -811,9 +841,64 @@ const currentChatMessageIndexes = computed(() => {
   return { latestUser, latestAssistant }
 })
 
+function messageHasSearchShops (message) {
+  return Boolean(message && message.role === 'assistant' && Array.isArray(message.shops) && message.shops.length > 0)
+}
+
+/** First shop-results assistant in the current Load-next chain (inclusive). */
+function searchSessionAnchorIndex () {
+  const active = activeChipMessageIndex.value
+  if (active < 0) return -1
+  const list = messages.value
+  if (!messageHasSearchShops(list[active])) return -1
+  let anchor = active
+  for (let i = active - 1; i >= 0; i--) {
+    const m = list[i]
+    if (messageHasSearchShops(m)) {
+      anchor = i
+      continue
+    }
+    if (m?.role === 'user' && isSearchPaginationUserMessage(String(m.content || '').trim())) {
+      continue
+    }
+    break
+  }
+  return anchor
+}
+
+/**
+ * While the live turn is still a search-results page (including Load next N),
+ * earlier pages in the same search stay bookable. Booking/clarify chips stay latest-only.
+ */
+function searchResultsBookingEnabled (messageIndex) {
+  const active = activeChipMessageIndex.value
+  if (active < 0 || messageIndex < 0) return false
+  const list = messages.value
+  if (!messageHasSearchShops(list[active])) {
+    return messageIndex === active
+  }
+  if (!messageHasSearchShops(list[messageIndex])) return false
+  const anchor = searchSessionAnchorIndex()
+  return anchor >= 0 && messageIndex >= anchor && messageIndex <= active
+}
+
 function messageRowIsCurrent (index) {
   const { latestUser, latestAssistant } = currentChatMessageIndexes.value
-  return index === latestUser || index === latestAssistant
+  if (index === latestUser || index === latestAssistant) return true
+  // Same-search prior result pages stay undimmed while Load next continues the search.
+  if (messageHasSearchShops(messages.value[index]) && searchResultsBookingEnabled(index)) {
+    return true
+  }
+  // Pagination user lines ("Load next 10") stay undimmed with their search session.
+  const msg = messages.value[index]
+  if (
+    msg?.role === 'user' &&
+    isSearchPaginationUserMessage(String(msg.content || '').trim())
+  ) {
+    const anchor = searchSessionAnchorIndex()
+    return anchor >= 0 && index > anchor && index < activeChipMessageIndex.value
+  }
+  return false
 }
 
 /** Split "Got it — shop. What's next?" into an acknowledgement bubble and a bold next-step bubble. */
@@ -1238,17 +1323,22 @@ async function backfillSearchShopCardFieldsInMessages () {
   const minimal = []
   const seen = new Set()
   for (const m of msgs) {
-    if (m.role !== 'assistant' || !Array.isArray(m.shops)) continue
-    for (const s of m.shops) {
-      const id = s?.id
-      if (typeof id !== 'string' || !id || seen.has(id)) continue
-      if (
-        Array.isArray(s.cardCourseNames) &&
-        typeof s.reviewCount === 'number' &&
-        (typeof s.reviewRating === 'number' || s.reviewRating === null)
-      ) continue
-      seen.add(id)
-      minimal.push({ ...s })
+    if (m.role !== 'assistant') continue
+    const lists = [m.shops, m.partnerShops]
+    for (const list of lists) {
+      if (!Array.isArray(list)) continue
+      for (const s of list) {
+        const id = s?.id
+        if (typeof id !== 'string' || !id || seen.has(id)) continue
+        if (
+          Array.isArray(s.cardCourseNames) &&
+          typeof s.reviewCount === 'number' &&
+          (typeof s.reviewRating === 'number' || s.reviewRating === null)
+        ) continue
+        seen.add(id)
+        minimal.push({ ...s })
+        if (minimal.length >= 40) break
+      }
       if (minimal.length >= 40) break
     }
     if (minimal.length >= 40) break
@@ -1260,13 +1350,12 @@ async function backfillSearchShopCardFieldsInMessages () {
       body: { shops: minimal }
     })
     const enrById = new Map((enriched || []).map(r => [r.id, r]))
-    messages.value = msgs.map((m) => {
-      if (m.role !== 'assistant' || !Array.isArray(m.shops)) return m
-      let hit = false
-      const nextShops = m.shops.map((s) => {
+    function mergeEnrichedList (list, hitRef) {
+      if (!Array.isArray(list)) return list
+      return list.map((s) => {
         const e = enrById.get(s?.id)
         if (!e || !Array.isArray(e.cardCourseNames)) return s
-        hit = true
+        hitRef.value = true
         return {
           ...s,
           reviewCount: e.reviewCount,
@@ -1275,13 +1364,25 @@ async function backfillSearchShopCardFieldsInMessages () {
           cardDiveSiteTypeNames: e.cardDiveSiteTypeNames
         }
       })
-      if (!hit) return m
+    }
+    messages.value = msgs.map((m) => {
+      if (m.role !== 'assistant') return m
+      if (!Array.isArray(m.shops) && !Array.isArray(m.partnerShops)) return m
+      const hitRef = { value: false }
+      const nextShops = mergeEnrichedList(m.shops, hitRef)
+      const nextPartners = mergeEnrichedList(m.partnerShops, hitRef)
+      if (!hitRef.value) return m
       let badges = m.searchMatchBadges
       if ((!Array.isArray(badges) || !badges.length) && m.filters && typeof m.filters === 'object' && !Array.isArray(m.filters)) {
         const b = buildSearchMatchBadges(m.filters, null)
         if (b.length) badges = b
       }
-      return { ...m, shops: nextShops, ...(Array.isArray(badges) && badges.length ? { searchMatchBadges: badges } : {}) }
+      return {
+        ...m,
+        ...(Array.isArray(nextShops) ? { shops: nextShops } : {}),
+        ...(Array.isArray(nextPartners) ? { partnerShops: nextPartners } : {}),
+        ...(Array.isArray(badges) && badges.length ? { searchMatchBadges: badges } : {})
+      }
     })
   } catch (e) {
     console.warn('[chat] enrich search cards backfill failed', e)
@@ -1669,13 +1770,24 @@ onUnmounted(() => {
 watch([messages, userInput, preferGuidedThisSession, guidedSearchState, guidedBookingHints, tripRequirements], persistCache, { deep: true })
 watch([selectedShopId, detailDrawerShopId, isOpen, drawerData], persistCache, { deep: true })
 
-// Auto-scroll when new messages arrive. Pin to the exact/other divider only when
-// that divider is inside the latest message. Later turns (Book this) go to the end.
-function dividerInLatestMessage () {
+// Auto-scroll when new messages arrive. Prefer Partner strip HR, then exact/other
+// divider, when that element is inside the latest message. Later turns (Book this)
+// and “View latest message” go to the true end.
+function latestChatMessageEl () {
   const container = messagesContainer.value
   if (!container) return null
   const rows = container.querySelectorAll('[data-chat-message]')
-  const last = rows[rows.length - 1]
+  return rows[rows.length - 1] || null
+}
+
+function partnerDividerInLatestMessage () {
+  const last = latestChatMessageEl()
+  if (!last) return null
+  return last.querySelector('[data-search-partner-divider]')
+}
+
+function dividerInLatestMessage () {
+  const last = latestChatMessageEl()
   if (!last) return null
   return last.querySelector('[data-search-exact-other-divider]')
 }
@@ -1698,14 +1810,18 @@ function applyContainerScroll (container, top) {
   container.scrollTo({ top: next, behavior: 'smooth' })
 }
 
+function scrollTopForDivider (container, divider) {
+  const containerRect = container.getBoundingClientRect()
+  const dividerRect = divider.getBoundingClientRect()
+  return container.scrollTop + (dividerRect.bottom - containerRect.bottom)
+}
+
 function scrollTargetTop (container, pinDivider) {
   if (pinDivider) {
-    const divider = dividerInLatestMessage()
-    if (divider) {
-      const containerRect = container.getBoundingClientRect()
-      const dividerRect = divider.getBoundingClientRect()
-      return container.scrollTop + (dividerRect.bottom - containerRect.bottom)
-    }
+    const partnerDivider = partnerDividerInLatestMessage()
+    if (partnerDivider) return scrollTopForDivider(container, partnerDivider)
+    const exactOtherDivider = dividerInLatestMessage()
+    if (exactOtherDivider) return scrollTopForDivider(container, exactOtherDivider)
   }
   return container.scrollHeight
 }
@@ -2355,6 +2471,9 @@ const sendMessage = async (messageText, displayText, options = {}) => {
           role: 'assistant',
           content: guidedRes.message || '',
           shops: guidedRes.shops || [],
+          ...(Array.isArray(guidedRes.partnerShops) && guidedRes.partnerShops.length
+            ? { partnerShops: guidedRes.partnerShops }
+            : {}),
           totalResults: guidedRes.totalResults ?? 0,
           hasMoreResults: guidedRes.hasMoreResults ?? false,
           intent: 'search',
@@ -2482,6 +2601,9 @@ const sendMessage = async (messageText, displayText, options = {}) => {
             content: resetContent,
             ...(response.messagePreamble ? { preamble: response.messagePreamble } : {}),
             shops: resetShops,
+            ...(Array.isArray(response.partnerShops) && response.partnerShops.length
+              ? { partnerShops: response.partnerShops }
+              : {}),
             totalResults: response.totalResults,
             hasMoreResults: response.hasMoreResults,
             intent: response.intent,
@@ -2648,6 +2770,9 @@ const sendMessage = async (messageText, displayText, options = {}) => {
         content,
         ...(response.messagePreamble ? { preamble: response.messagePreamble } : {}),
         shops: shopsOut,
+        ...(Array.isArray(response.partnerShops) && response.partnerShops.length
+          ? { partnerShops: response.partnerShops }
+          : {}),
         totalResults: response.totalResults,
         hasMoreResults: response.hasMoreResults,
         intent: response.intent,
@@ -2671,8 +2796,9 @@ const sendMessage = async (messageText, displayText, options = {}) => {
       })
       trackOrchestratorResponseAnalytics(response, capture)
       if (
-        shopsOut.length &&
-        shopsOut.some(s => s && s.id && !Array.isArray(s.cardCourseNames))
+        (shopsOut.length && shopsOut.some(s => s && s.id && !Array.isArray(s.cardCourseNames))) ||
+        (Array.isArray(response.partnerShops) &&
+          response.partnerShops.some(s => s && s.id && !Array.isArray(s.cardCourseNames)))
       ) {
         void nextTick().then(() => backfillSearchShopCardFieldsInMessages())
       }
@@ -2786,7 +2912,7 @@ const stepBack = () => {
 /** Explicit CTA on result card: same path as shop detail panel “Start booking”. */
 function handleStartBookingFromCard (shop, messageIndex) {
   if (!shop?.id) return
-  if (messageIndex !== activeChipMessageIndex.value) return
+  if (!searchResultsBookingEnabled(messageIndex)) return
   armShopDetailCloseGuard()
   void handleStartBookingFromPanel(shop.id, shop.business_name ?? '', 'card')
 }

@@ -191,6 +191,7 @@ export function resolveCsvShopRowToForm (
     business_type_ids: typeResult.ids,
     country_id,
     region_id,
+    is_partner: false,
     course_ids: courseResult.ids,
     rental_equipment_ids: rentalResult.ids,
     gas_ids: gasResult.ids,
