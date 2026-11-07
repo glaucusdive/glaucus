@@ -12,12 +12,14 @@ export default defineNuxtPlugin(() => {
     return
   }
 
-  const { initialize } = useGtag()
+  const { enableAnalytics, initialize } = useGtag()
 
   const initGa = () => {
     if (typeof window !== 'undefined' && isAnalyticsExcludedPath(window.location.pathname)) {
       return
     }
+    // Clear ga-disable-* if a prior guard/defer left it set, then load the tag.
+    enableAnalytics()
     initialize()
   }
 
