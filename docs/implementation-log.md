@@ -1,5 +1,12 @@
 # Implementation Log
 
+## 2026-11-07 - GA4 landing defer kill switch
+
+- **Cause:** [`analytics-route-guard.client.ts`](../app/plugins/analytics-route-guard.client.ts) called `disableAnalytics()` on marketing `/` (sets `window['ga-disable-…']=true`) while [`gtag-init.client.ts`](../app/plugins/gtag-init.client.ts) deferred only `initialize()`, never `enableAnalytics()`. Hits on bare `/` were dropped after idle/interaction. Separately, prod HTML at check time had `ga4Enabled:false` and empty `ga4Id` — Netlify must set `NUXT_PUBLIC_GA4_ENABLED=true` and `NUXT_PUBLIC_GA4_ID` at **build** time and redeploy.
+- **Fix:** Deferred landing is a no-op in the route guard (no `ga-disable`); init always `enableAnalytics()` then `initialize()`. Admin still disables. Helper: [`gtagPathSync.ts`](../app/utils/gtagPathSync.ts).
+- **Verification:** `npx vitest run tests/app/gtagPathSync.test.ts tests/app/deferAnalyticsInit.test.ts tests/app/analyticsRoutePolicy.test.ts` (and typecheck). Live Realtime after Netlify env + redeploy remains the production confirmation.
+- Version: **0.95.1**.
+
 ## 2026-10-30 - Partner strip scroll pin
 
 - Chat auto-scroll after search results prefers `[data-search-partner-divider]` in the latest message, then the exact/other divider, then true bottom. Same divider-bottom geometry as the existing exact/other pin so Partner cards stay in view instead of scrolling past to “Load next”.

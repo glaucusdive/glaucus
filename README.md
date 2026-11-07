@@ -153,7 +153,7 @@ The root [.env.example](.env.example) lists the app's supported local settings. 
 | `POSTHOG_PERSONAL_API_KEY`, `POSTHOG_PROJECT_ID`, `POSTHOG_HOST` | Optional server-side PostHog admin analytics |
 | `NUXT_PUBLIC_POSTHOG_ENABLED`, `NUXT_PUBLIC_POSTHOG_KEY`, `NUXT_PUBLIC_POSTHOG_HOST` | Optional client-side PostHog analytics; disabled by default |
 | `NUXT_PUBLIC_POSTHOG_MARK_TEST_TRAFFIC` | Optional `true` to tag events `test_mode` |
-| `NUXT_PUBLIC_GA4_ENABLED`, `NUXT_PUBLIC_GA4_ID` | Optional Google Analytics 4; disabled by default |
+| `NUXT_PUBLIC_GA4_ENABLED`, `NUXT_PUBLIC_GA4_ID` | Optional Google Analytics 4; disabled by default. Set both on **Netlify prod at build time** (`ENABLED=true`, measurement ID). Marketing `/` defers the tag until interaction or ~30s idle; do not treat defer as a permanent disable. |
 | `NUXT_SITE_URL` | Canonical site URL; use `http://localhost:3000` for local development |
 
 PostHog dashboards: [docs/posthog-dashboard-prompts.md](docs/posthog-dashboard-prompts.md). GA4 runs alongside PostHog; link the GA4 property to Search Console in Google Admin after deploy. For Supabase CLI setup, migration preview/apply, and unwanted `remote_schema` snapshots, follow the [migration guide](docs/supabase-migrations.md). Routine migration deployment does not require `supabase db pull`.
@@ -181,6 +181,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.95.1** — Fix GA4 on marketing `/`: stop setting `ga-disable-*` during landing defer; enable before initialize (2026-11-07).
 - **0.95.0** — Partner dive shops pin above chat search when they match organically; Load next keeps prior pages bookable (2026-10-30).
 - **0.94.3** — Put the marketing header on the dive shop directory so section links return to the homepage (2026-10-19).
 - **0.94.2** — Restore the public dive shop directory and allow that page to be indexed (2026-10-19).

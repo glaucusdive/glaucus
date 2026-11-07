@@ -1,5 +1,6 @@
 import { isAnalyticsExcludedPath } from '~/utils/analyticsRoutePolicy'
 import { shouldDeferLandingAnalyticsForPath } from '~/utils/deferAnalyticsInit'
+import { resolveGtagPathSyncAction } from '~/utils/gtagPathSync'
 
 function syncPosthogForPath (path: string, search: string) {
   const config = useRuntimeConfig()
@@ -25,14 +26,15 @@ function syncGtagForPath (path: string, search: string) {
   if (config.public.ga4Enabled !== true || !config.public.ga4Id) return
 
   const { disableAnalytics, enableAnalytics, initialize } = useGtag()
+  const action = resolveGtagPathSyncAction(path, search)
 
-  if (isAnalyticsExcludedPath(path)) {
+  if (action === 'disable') {
     disableAnalytics()
     return
   }
 
-  if (shouldDeferLandingAnalyticsForPath(path, search)) {
-    disableAnalytics()
+  // Deferred landing: do not set ga-disable-*. gtag-init schedules enable+initialize.
+  if (action === 'defer') {
     return
   }
 
