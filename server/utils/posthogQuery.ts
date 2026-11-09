@@ -28,6 +28,25 @@ interface WebOverviewQueryResponse {
 
 interface PostHogQueryMeta {
   is_cached?: boolean
+  results?: unknown
+  dateFrom?: string
+  dateTo?: string
+  query_status?: {
+    id?: string
+    complete?: boolean
+    results?: unknown
+    error?: boolean | string
+  }
+}
+
+/** Per-request AbortSignal budget for PostHog HTTP calls (under Netlify gateway). */
+export const POSTHOG_REQUEST_TIMEOUT_MS = 8_000
+/** Wall-clock budget for a cold visitor-count fetch (overview + HogQL). */
+export const POSTHOG_COLD_PATH_BUDGET_MS = 8_000
+export const POSTHOG_ASYNC_POLL_INTERVAL_MS = 400
+
+export interface QueryTimeBudget {
+  deadlineMs: number
 }
 
 const VISITOR_COUNTS_FRESH_TTL_MS = 5 * 60 * 1000
@@ -321,23 +340,86 @@ function getPostHogConfig () {
   return { apiKey, projectId, host }
 }
 
-async function postHogQuery<T extends PostHogQueryMeta> (
-  body: Record<string, unknown>
-): Promise<T | null> {
-  const { apiKey, projectId, host } = getPostHogConfig()
-  const url = `${host}/api/projects/${projectId}/query/`
+export function createQueryTimeBudget (
+  totalMs: number = POSTHOG_COLD_PATH_BUDGET_MS,
+  nowMs: number = Date.now()
+): QueryTimeBudget {
+  return { deadlineMs: nowMs + totalMs }
+}
 
-  async function run (refresh: 'force_cache' | 'blocking'): Promise<T | null> {
-    const response = await fetch(url, {
-      method: 'POST',
+export function remainingQueryBudgetMs (
+  budget: QueryTimeBudget,
+  nowMs: number = Date.now()
+): number {
+  return Math.max(0, budget.deadlineMs - nowMs)
+}
+
+/** Cap each PostHog HTTP call by remaining cold-path budget (never unbounded). */
+export function pickPostHogFetchTimeoutMs (
+  remainingBudgetMs: number,
+  maxMs: number = POSTHOG_REQUEST_TIMEOUT_MS
+): number {
+  if (remainingBudgetMs <= 0) return 0
+  return Math.min(maxMs, remainingBudgetMs)
+}
+
+/** After force_cache miss, only async (never blocking). */
+export function postHogRefreshAfterCacheMiss (): 'async' {
+  return 'async'
+}
+
+export function getPendingPostHogQueryId (data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null
+  const status = (data as PostHogQueryMeta).query_status
+  if (!status || status.complete === true) return null
+  return typeof status.id === 'string' && status.id ? status.id : null
+}
+
+export function extractCompletedPostHogQuery<T extends PostHogQueryMeta> (data: unknown): T | null {
+  if (!data || typeof data !== 'object') return null
+  const obj = data as PostHogQueryMeta
+  const pendingId = getPendingPostHogQueryId(data)
+  if (pendingId) return null
+
+  const status = obj.query_status
+  if (status?.complete === true && status.results && typeof status.results === 'object') {
+    return status.results as T
+  }
+
+  if (obj.is_cached || 'results' in obj || 'dateFrom' in obj) {
+    return data as T
+  }
+
+  return null
+}
+
+async function defaultSleep (ms: number): Promise<void> {
+  await new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function postHogFetchJson (
+  url: string,
+  apiKey: string,
+  init: {
+    method: string
+    body?: string
+    timeoutMs: number
+    fetchImpl: typeof fetch
+  }
+): Promise<unknown | null> {
+  if (init.timeoutMs <= 0) return null
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), init.timeoutMs)
+  try {
+    const response = await init.fetchImpl(url, {
+      method: init.method,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`
       },
-      body: JSON.stringify({
-        refresh,
-        ...body
-      })
+      body: init.body,
+      signal: controller.signal
     })
 
     if (!response.ok) {
@@ -346,22 +428,131 @@ async function postHogQuery<T extends PostHogQueryMeta> (
       return null
     }
 
-    return (await response.json()) as T
+    return await response.json()
+  } catch (error) {
+    if ((error as { name?: string })?.name === 'AbortError') {
+      console.error('[posthog] query timed out after', init.timeoutMs, 'ms')
+      return null
+    }
+    console.error('[posthog] query error:', error)
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+export interface ExecutePostHogQueryOptions {
+  host: string
+  projectId: string
+  apiKey: string
+  body: Record<string, unknown>
+  budget: QueryTimeBudget
+  fetchImpl?: typeof fetch
+  sleepImpl?: (ms: number) => Promise<void>
+  nowMs?: () => number
+}
+
+/**
+ * force_cache first, then async + poll within budget. Never uses refresh=blocking.
+ */
+export async function executePostHogQuery<T extends PostHogQueryMeta> (
+  options: ExecutePostHogQueryOptions
+): Promise<T | null> {
+  const fetchImpl = options.fetchImpl ?? fetch
+  const sleepImpl = options.sleepImpl ?? defaultSleep
+  const nowMs = options.nowMs ?? Date.now
+  const queryUrl = `${options.host}/api/projects/${options.projectId}/query/`
+
+  async function postRefresh (refresh: 'force_cache' | 'async'): Promise<unknown | null> {
+    const timeoutMs = pickPostHogFetchTimeoutMs(remainingQueryBudgetMs(options.budget, nowMs()))
+    return postHogFetchJson(queryUrl, options.apiKey, {
+      method: 'POST',
+      body: JSON.stringify({
+        refresh,
+        ...options.body
+      }),
+      timeoutMs,
+      fetchImpl
+    })
   }
 
-  const cached = await run('force_cache')
-  if (cached?.is_cached) return cached
+  async function pollQuery (queryId: string): Promise<T | null> {
+    const statusUrl = `${options.host}/api/projects/${options.projectId}/query/${encodeURIComponent(queryId)}/`
 
-  return run('blocking')
+    while (remainingQueryBudgetMs(options.budget, nowMs()) > 0) {
+      const timeoutMs = pickPostHogFetchTimeoutMs(remainingQueryBudgetMs(options.budget, nowMs()))
+      const data = await postHogFetchJson(statusUrl, options.apiKey, {
+        method: 'GET',
+        timeoutMs,
+        fetchImpl
+      })
+
+      const completed = extractCompletedPostHogQuery<T>(data)
+      if (completed) return completed
+
+      const stillPending = getPendingPostHogQueryId(data)
+      if (!stillPending) {
+        // Unexpected shape; try treating payload as result.
+        return extractCompletedPostHogQuery<T>(data)
+      }
+
+      const waitMs = Math.min(
+        POSTHOG_ASYNC_POLL_INTERVAL_MS,
+        remainingQueryBudgetMs(options.budget, nowMs())
+      )
+      if (waitMs <= 0) break
+      await sleepImpl(waitMs)
+    }
+
+    return null
+  }
+
+  async function resolveResponse (data: unknown): Promise<T | null> {
+    const completed = extractCompletedPostHogQuery<T>(data)
+    if (completed) return completed
+
+    const pendingId = getPendingPostHogQueryId(data)
+    if (pendingId) return pollQuery(pendingId)
+
+    return null
+  }
+
+  const cached = await postRefresh('force_cache')
+  const fromCache = await resolveResponse(cached)
+  if (fromCache) return fromCache
+
+  if (remainingQueryBudgetMs(options.budget, nowMs()) <= 0) return null
+
+  const asyncData = await postRefresh(postHogRefreshAfterCacheMiss())
+  return resolveResponse(asyncData)
+}
+
+async function postHogQuery<T extends PostHogQueryMeta> (
+  body: Record<string, unknown>,
+  budget: QueryTimeBudget
+): Promise<T | null> {
+  const { apiKey, projectId, host } = getPostHogConfig()
+  if (!apiKey || !projectId) return null
+
+  return executePostHogQuery<T>({
+    host,
+    projectId,
+    apiKey,
+    body,
+    budget
+  })
 }
 
 async function fetchWebOverviewContext (
-  range: DashboardRange
+  range: DashboardRange,
+  budget: QueryTimeBudget
 ): Promise<{ dateFrom: string; dateTo: string; totalVisitors: number | null } | null> {
+  if (remainingQueryBudgetMs(budget) <= 0) return null
+
   const data = await postHogQuery<WebOverviewQueryResponse>({
     query: buildWebOverviewQuery(range),
     name: 'admin_dashboard_web_overview'
-  })
+  }, budget)
 
   if (!data?.dateFrom || !data?.dateTo) {
     console.error('[posthog] web overview missing date bounds:', data)
@@ -378,15 +569,18 @@ async function fetchWebOverviewContext (
 async function fetchVisitorCountsHogql (
   dateFrom: string,
   dateTo: string,
-  query: string
+  query: string,
+  budget: QueryTimeBudget
 ): Promise<PostHogVisitorCounts | null> {
+  if (remainingQueryBudgetMs(budget) <= 0) return null
+
   const data = await postHogQuery<HogQLQueryResponse>({
     query: {
       kind: 'HogQLQuery',
       query
     },
     name: 'admin_dashboard_visitor_counts'
-  })
+  }, budget)
 
   if (!data) return null
   return parsePostHogVisitorCountsRow(data.results?.[0])
@@ -400,16 +594,20 @@ function boundsMatchOverview (
 }
 
 async function fetchAndCacheVisitorCounts (
-  range: DashboardRange
+  range: DashboardRange,
+  budget: QueryTimeBudget = createQueryTimeBudget()
 ): Promise<PostHogVisitorCounts | null> {
+  if (remainingQueryBudgetMs(budget) <= 0) return null
+
   const localBounds = resolvePostHogPresetDateBounds(range)
 
   const [overview, hogqlFromLocalBounds] = await Promise.all([
-    fetchWebOverviewContext(range),
+    fetchWebOverviewContext(range, budget),
     fetchVisitorCountsHogql(
       localBounds.dateFrom,
       localBounds.dateTo,
-      buildPostHogVisitorCountsHogql(localBounds.dateFrom, localBounds.dateTo)
+      buildPostHogVisitorCountsHogql(localBounds.dateFrom, localBounds.dateTo),
+      budget
     )
   ])
 
@@ -417,20 +615,30 @@ async function fetchAndCacheVisitorCounts (
 
   let hogql = hogqlFromLocalBounds
   if (hogql && !boundsMatchOverview(localBounds, overview)) {
+    if (remainingQueryBudgetMs(budget) <= 0) {
+      const early = reconcileVisitorCounts(hogql, overview.totalVisitors)
+      if (early) {
+        writeCachedPostHogVisitorCounts(range, early)
+        return early
+      }
+      return null
+    }
     hogql = await fetchVisitorCountsHogql(
       overview.dateFrom,
       overview.dateTo,
-      buildPostHogVisitorCountsHogql(overview.dateFrom, overview.dateTo)
+      buildPostHogVisitorCountsHogql(overview.dateFrom, overview.dateTo),
+      budget
     )
   }
 
   let reconciled = hogql ? reconcileVisitorCounts(hogql, overview.totalVisitors) : null
 
-  if (!reconciled && overview.totalVisitors != null) {
+  if (!reconciled && overview.totalVisitors != null && remainingQueryBudgetMs(budget) > 0) {
     hogql = await fetchVisitorCountsHogql(
       overview.dateFrom,
       overview.dateTo,
-      buildPostHogVisitorCountsHogqlCoalesce(overview.dateFrom, overview.dateTo)
+      buildPostHogVisitorCountsHogqlCoalesce(overview.dateFrom, overview.dateTo),
+      budget
     )
     reconciled = hogql ? reconcileVisitorCounts(hogql, overview.totalVisitors) : null
   }
@@ -478,5 +686,5 @@ export async function fetchPostHogVisitorCounts (
     return stale
   }
 
-  return fetchAndCacheVisitorCounts(range)
+  return fetchAndCacheVisitorCounts(range, createQueryTimeBudget())
 }

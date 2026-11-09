@@ -1,16 +1,23 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   buildPostHogVisitorCountsHogql,
   buildWebOverviewQuery,
+  createQueryTimeBudget,
+  executePostHogQuery,
+  extractCompletedPostHogQuery,
   formatPostHogDateTime,
+  getPendingPostHogQueryId,
   mapDashboardRangeToPostHogDateFrom,
   parsePostHogVisitorCountsRow,
   parseWebOverviewVisitors,
+  pickPostHogFetchTimeoutMs,
+  postHogRefreshAfterCacheMiss,
   postHogVisitorCountsCacheKey,
   readCachedPostHogVisitorCounts,
   readFreshCachedPostHogVisitorCounts,
   readStaleCachedPostHogVisitorCounts,
   reconcileVisitorCounts,
+  remainingQueryBudgetMs,
   resolvePostHogPresetDateBounds,
   writeCachedPostHogVisitorCounts
 } from '../../server/utils/posthogQuery'
@@ -135,6 +142,86 @@ describe('posthogQuery', () => {
 
       expect(readStaleCachedPostHogVisitorCounts('7d', 1_801_000)).toBeNull()
       expect(postHogVisitorCountsCacheKey('7d')).toContain('7d')
+    })
+  })
+
+  describe('query time budget', () => {
+    it('caps fetch timeout by remaining budget and never uses blocking after cache miss', () => {
+      const budget = createQueryTimeBudget(8_000, 1_000)
+      expect(remainingQueryBudgetMs(budget, 1_000)).toBe(8_000)
+      expect(remainingQueryBudgetMs(budget, 5_000)).toBe(4_000)
+      expect(remainingQueryBudgetMs(budget, 10_000)).toBe(0)
+      expect(pickPostHogFetchTimeoutMs(4_000)).toBe(4_000)
+      expect(pickPostHogFetchTimeoutMs(20_000)).toBe(8_000)
+      expect(pickPostHogFetchTimeoutMs(0)).toBe(0)
+      expect(postHogRefreshAfterCacheMiss()).toBe('async')
+    })
+
+    it('extracts pending query ids and completed payloads', () => {
+      expect(getPendingPostHogQueryId({
+        query_status: { id: 'q1', complete: false }
+      })).toBe('q1')
+      expect(extractCompletedPostHogQuery({
+        query_status: { id: 'q1', complete: false }
+      })).toBeNull()
+      expect(extractCompletedPostHogQuery({
+        is_cached: true,
+        results: [[8, 6, 2]]
+      })).toEqual({
+        is_cached: true,
+        results: [[8, 6, 2]]
+      })
+    })
+  })
+
+  describe('executePostHogQuery', () => {
+    it('uses force_cache then async, never blocking', async () => {
+      const refreshModes: string[] = []
+      const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
+        const body = typeof init?.body === 'string' ? JSON.parse(init.body) as { refresh?: string } : {}
+        if (init?.method === 'POST') {
+          refreshModes.push(String(body.refresh))
+          if (body.refresh === 'force_cache') {
+            return {
+              ok: true,
+              json: async () => ({ is_cached: false })
+            } as Response
+          }
+          return {
+            ok: true,
+            json: async () => ({
+              query_status: { id: 'async-1', complete: false }
+            })
+          } as Response
+        }
+
+        return {
+          ok: true,
+          json: async () => ({
+            is_cached: true,
+            results: [[8, 6, 2]]
+          })
+        } as Response
+      })
+
+      let now = 1_000
+      const result = await executePostHogQuery({
+        host: 'https://us.posthog.com',
+        projectId: '1',
+        apiKey: 'phx_test',
+        body: { query: { kind: 'HogQLQuery', query: 'SELECT 1' }, name: 'test' },
+        budget: createQueryTimeBudget(8_000, now),
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleepImpl: async () => { now += 100 },
+        nowMs: () => now
+      })
+
+      expect(refreshModes).toEqual(['force_cache', 'async'])
+      expect(refreshModes).not.toContain('blocking')
+      expect(result).toEqual({
+        is_cached: true,
+        results: [[8, 6, 2]]
+      })
     })
   })
 })

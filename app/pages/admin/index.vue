@@ -284,7 +284,11 @@ interface DashboardVisitorsResponse {
   returningVisitors: number | null
   posthogConfigured: boolean
   posthogAvailable: boolean
+  posthogRefreshing?: boolean
 }
+
+const VISITOR_POLL_INTERVAL_MS = 2_000
+const VISITOR_POLL_MAX_ATTEMPTS = 5
 
 const { isAppAdmin, accessToken, init } = useAuth()
 
@@ -295,6 +299,7 @@ const selectedRange = ref('7d')
 const data = ref<DashboardResponse | null>(null)
 const visitorData = ref<DashboardVisitorsResponse | null>(null)
 const selectedBooking = ref<DashboardBookingRow | null>(null)
+let visitorsLoadGeneration = 0
 
 const bookingDrawerAriaLabel = computed(() =>
   selectedBooking.value ? `Booking for ${selectedBooking.value.name}` : 'Booking details'
@@ -365,23 +370,70 @@ const statCards = computed(() => {
   ]
 })
 
+function sleepMs (ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function fetchVisitorsOnce (): Promise<DashboardVisitorsResponse> {
+  return await $fetch<DashboardVisitorsResponse>('/api/admin/dashboard/visitors', {
+    query: { range: selectedRange.value },
+    headers: { Authorization: `Bearer ${accessToken.value}` }
+  })
+}
+
 async function loadVisitors () {
   if (!accessToken.value) return
+  const generation = ++visitorsLoadGeneration
   visitorsLoading.value = true
   try {
-    visitorData.value = await $fetch<DashboardVisitorsResponse>('/api/admin/dashboard/visitors', {
-      query: { range: selectedRange.value },
-      headers: { Authorization: `Bearer ${accessToken.value}` }
-    })
-  } catch {
+    let result: DashboardVisitorsResponse
+    try {
+      result = await fetchVisitorsOnce()
+    } catch {
+      // Timeout/gateway errors are not "unconfigured"; keep polling briefly.
+      result = {
+        newVisitors: null,
+        returningVisitors: null,
+        posthogConfigured: true,
+        posthogAvailable: false,
+        posthogRefreshing: true
+      }
+    }
+
+    let attempts = 0
+    while (
+      generation === visitorsLoadGeneration &&
+      result.posthogConfigured &&
+      !result.posthogAvailable &&
+      result.posthogRefreshing &&
+      attempts < VISITOR_POLL_MAX_ATTEMPTS
+    ) {
+      visitorData.value = result
+      attempts += 1
+      await sleepMs(VISITOR_POLL_INTERVAL_MS)
+      if (generation !== visitorsLoadGeneration) return
+      try {
+        result = await fetchVisitorsOnce()
+      } catch {
+        result = {
+          newVisitors: null,
+          returningVisitors: null,
+          posthogConfigured: true,
+          posthogAvailable: false,
+          posthogRefreshing: attempts < VISITOR_POLL_MAX_ATTEMPTS
+        }
+      }
+    }
+
+    if (generation !== visitorsLoadGeneration) return
     visitorData.value = {
-      newVisitors: null,
-      returningVisitors: null,
-      posthogConfigured: false,
-      posthogAvailable: false
+      ...result,
+      posthogRefreshing: false
     }
   } finally {
-    visitorsLoading.value = false
+    if (generation === visitorsLoadGeneration) {
+      visitorsLoading.value = false
+    }
   }
 }
 

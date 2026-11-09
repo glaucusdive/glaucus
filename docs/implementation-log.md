@@ -1,5 +1,12 @@
 # Implementation Log
 
+## 2026-11-09 - Admin visitors 504 (PostHog timeout)
+
+- **Cause:** Cold `/api/admin/dashboard/visitors` awaited multiple PostHog queries with `force_cache` then unbounded `blocking`. On Netlify that exceeded the gateway → browser **504**. In-memory SWR does not survive serverless cold instances. Client catch also labeled timeouts as “PostHog not configured.”
+- **Fix:** Bound each PostHog HTTP call and the cold visitor path (~8s). After cache miss use `refresh: async` + status poll (never `blocking`). Endpoint returns 200 with `posthogRefreshing` when counts are still null. Admin dashboard polls visitors ~2s × 5; network errors keep `posthogConfigured: true`.
+- **Verification:** `npx vitest run tests/server/posthogQuery.test.ts`. Post-deploy: Network tab should show visitors **200** (not 504); cards fill after poll or show the amber failure after polls exhaust.
+- Version: **0.95.2**.
+
 ## 2026-11-07 - GA4 landing defer kill switch
 
 - **Cause:** [`analytics-route-guard.client.ts`](../app/plugins/analytics-route-guard.client.ts) called `disableAnalytics()` on marketing `/` (sets `window['ga-disable-…']=true`) while [`gtag-init.client.ts`](../app/plugins/gtag-init.client.ts) deferred only `initialize()`, never `enableAnalytics()`. Hits on bare `/` were dropped after idle/interaction. Separately, prod HTML at check time had `ga4Enabled:false` and empty `ga4Id` — Netlify must set `NUXT_PUBLIC_GA4_ENABLED=true` and `NUXT_PUBLIC_GA4_ID` at **build** time and redeploy.

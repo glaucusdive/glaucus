@@ -11,7 +11,11 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const range = parseDashboardRange(typeof query.range === 'string' ? query.range : undefined)
   const window = resolveDashboardDateWindow(range)
-  const posthogCounts = await fetchPostHogVisitorCounts(range)
+  const configured = isPostHogQueryConfigured()
+  const posthogCounts = configured ? await fetchPostHogVisitorCounts(range) : null
+  const posthogAvailable = posthogCounts !== null
+  // Cold/timed-out attempts return null counts; client may poll while PostHog cache warms.
+  const posthogRefreshing = configured && !posthogAvailable
 
   return {
     range: window.range,
@@ -19,7 +23,8 @@ export default defineEventHandler(async (event) => {
     to: window.to,
     newVisitors: posthogCounts?.newVisitors ?? null,
     returningVisitors: posthogCounts?.returningVisitors ?? null,
-    posthogConfigured: isPostHogQueryConfigured(),
-    posthogAvailable: posthogCounts !== null
+    posthogConfigured: configured,
+    posthogAvailable,
+    posthogRefreshing
   }
 })
