@@ -95,6 +95,12 @@
           >
             {{ item.status }}
           </span>
+          <span
+            v-if="item.is_test"
+            class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200"
+          >
+            Test
+          </span>
           <div class="shrink-0 flex items-center gap-2">
             <Button
               variant="secondary"

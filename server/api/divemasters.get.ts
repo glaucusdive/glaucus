@@ -1,4 +1,5 @@
 import { getSupabaseServiceRoleClient } from '../utils/supabaseServiceRole'
+import { requestIsAppAdmin } from '../utils/requestIsAppAdmin'
 import {
   normalizeDivemasterDirectorySearch,
   parseDivemasterDirectoryPage,
@@ -9,6 +10,7 @@ export default defineEventHandler(async (event) => {
   const params = getQuery(event)
   const page = parseDivemasterDirectoryPage(params.page)
   const search = normalizeDivemasterDirectorySearch(params.q)
+  const includeTest = await requestIsAppAdmin(event)
   let client: ReturnType<typeof getSupabaseServiceRoleClient>
   try {
     client = getSupabaseServiceRoleClient()
@@ -17,7 +19,11 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const { data, error } = await client.rpc('list_public_divemasters', { p_search: search, p_page: page })
+    const { data, error } = await client.rpc('list_public_divemasters', {
+      p_search: search,
+      p_page: page,
+      p_include_test: includeTest
+    })
     if (error) throw new Error('Directory query failed')
     return publicDivemasterDirectoryResponse(data, page)
   } catch {

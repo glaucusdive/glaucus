@@ -6,6 +6,7 @@ const SITEMAP_BATCH_SIZE = 1000
 type DivemasterSitemapQueryRow = {
   status: string | null
   updated_at: string | null
+  is_test: boolean | null
   profiles: { username: string | null } | { username: string | null }[] | null
 }
 
@@ -18,14 +19,20 @@ export default defineEventHandler(async (event) => {
   assertSitemapSourceKey(event)
   try {
     const client = getSupabaseServiceRoleClient()
-    const mapped: { status: string | null, updated_at: string | null, username: string | null }[] = []
+    const mapped: {
+      status: string | null
+      updated_at: string | null
+      username: string | null
+      is_test: boolean | null
+    }[] = []
     let offset = 0
 
     while (true) {
       const { data, error } = await client
         .from('divemaster_profiles')
-        .select('status, updated_at, profiles!divemaster_profiles_user_id_fkey!inner(username)')
+        .select('status, updated_at, is_test, profiles!divemaster_profiles_user_id_fkey!inner(username)')
         .eq('status', 'published')
+        .eq('is_test', false)
         .order('updated_at', { ascending: false })
         .range(offset, offset + SITEMAP_BATCH_SIZE - 1)
 
@@ -34,7 +41,8 @@ export default defineEventHandler(async (event) => {
         mapped.push({
           status: row.status,
           updated_at: row.updated_at,
-          username: usernameOf(row.profiles)
+          username: usernameOf(row.profiles),
+          is_test: row.is_test
         })
       }
       if (!data || data.length < SITEMAP_BATCH_SIZE) break

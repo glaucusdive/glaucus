@@ -84,6 +84,8 @@ export interface PublicDivemasterProfile {
   bio: string | null
   location: string | null
   avatar_url: string | null
+  /** When true, excluded from directory/sitemaps for non-admins; profile URL still works. */
+  is_test?: boolean
   last_formal_training_name: string | null
   last_formal_training_date: string | null
   favorite_local_dive_site: DivemasterFavoriteDiveSite | null
@@ -122,6 +124,7 @@ export interface AdminDivemasterListItem {
   role: string
   status: DivemasterProfileStatus
   headline: string | null
+  is_test?: boolean
   submitted_at: string | null
   published_at: string | null
   updated_at: string | null

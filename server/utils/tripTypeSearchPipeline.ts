@@ -26,6 +26,7 @@ import { filtersWithActivityMatchContext, formatNoActivityMatchesMessage } from 
 import { normalizeClientSearchFilters } from './normalizeClientSearchFilters'
 import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from './openAiChatModel'
 import { pickPartnerShops } from '../../shared/partnerSearchShops'
+import { stampIncludeTestShops } from './stampIncludeTestShops'
 
 /** Optional post-result chips: narrow directory by business / trip format. */
 export const TRIP_TYPE_OPTIONAL_FILTER_CHIPS: { label: string; value: string }[] = [
@@ -332,6 +333,8 @@ export interface RunTripTypeSearchAfterLlmInput {
   signal?: AbortSignal
   /** Prior turn filters from the client — refinements keep ANDed axes (activity, course hint, etc.). */
   lastSearchFilters?: SearchFilters | null
+  /** When true (admin session), include `is_test` shops in results. */
+  includeTestShops?: boolean
 }
 
 /** Fewer tap targets in AI-first mode; keep pagination chips. */
@@ -372,7 +375,8 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
     interpretTurn,
     aiSearchFirst,
     signal: searchSignal,
-    lastSearchFilters
+    lastSearchFilters,
+    includeTestShops
   } = input
 
   /** Pagination offset applies only to explicit "show more" / next page — not new searches or refinements. */
@@ -408,6 +412,7 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
 
   filters = carryForwardUnsetSearchAxes(filters, lastSearchFilters ?? undefined, message, interpretTurn ?? null)
   filters = attachParsedTripDatesToSearchFilters(filters, message)
+  filters = stampIncludeTestShops(filters, !!includeTestShops)
 
   onStatus?.('Applying filters…')
 

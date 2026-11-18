@@ -1,10 +1,10 @@
 import { getSupabaseServiceRoleClient } from '../../utils/supabaseServiceRole'
 import { isDiveshopUuid } from '~/utils/shopLookup'
-import { isTestShopId, TEST_SHOP_IDS } from '~~/shared/testShops'
+import { isTestShopRow } from '~~/shared/testShops'
 
 const SHOP_DETAIL_SELECT = `
   id, slug, business_name, street_address, website_url, city, state, phone, email, type,
-  google_rating, operating_hours, languages, social_links, region_id,
+  google_rating, operating_hours, languages, social_links, region_id, is_test,
   country:countries(name),
   region:regions(name),
   diveshop_courses(courses(certification_name, depth_limit, description, course_level:course_levels(name), agency:agencies(name))),
@@ -66,11 +66,11 @@ export default defineEventHandler(async (event) => {
       .select(NEARBY_SELECT)
       .eq('region_id', regionId)
       .neq('id', shopRow.id)
-      .not('id', 'in', `(${TEST_SHOP_IDS.join(',')})`)
+      .eq('is_test', false)
       .limit(8)
 
     nearbyShops = ((nearby ?? []) as NearbyRow[])
-      .filter(row => row.slug && !isTestShopId(row.id))
+      .filter(row => row.slug && !isTestShopRow(row))
       .map(row => ({
         id: row.id,
         slug: row.slug as string,

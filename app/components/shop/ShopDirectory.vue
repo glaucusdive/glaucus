@@ -154,6 +154,7 @@ interface ShopDirectoryResponse {
 
 const route = useRoute()
 const siteConfig = useSiteConfig()
+const { accessToken } = useAuth()
 const searchTerm = computed(() => normalizeShopDirectorySearch(route.query.q))
 const currentPage = computed(() => parseShopDirectoryPage(route.query.page))
 const canonicalUrl = computed(() => {
@@ -182,12 +183,13 @@ watch(searchTerm, (value) => {
 })
 
 const { data: directoryData, pending, error } = await useAsyncData<ShopDirectoryResponse>(
-  () => `shop-directory-${currentPage.value}-${searchTerm.value}`,
+  () => `shop-directory-${currentPage.value}-${searchTerm.value}-${accessToken.value ? 'auth' : 'anon'}`,
   async () => await $fetch<ShopDirectoryResponse>('/api/shops', {
     query: {
       page: currentPage.value,
       ...(searchTerm.value ? { q: searchTerm.value } : {})
-    }
+    },
+    ...(accessToken.value ? { headers: { Authorization: `Bearer ${accessToken.value}` } } : {})
   }),
   { default: () => ({ shops: [], page: 1, pageSize: 24, total: 0 }) }
 )

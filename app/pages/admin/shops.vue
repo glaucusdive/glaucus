@@ -380,6 +380,7 @@ const SHOP_DATA_KEYS = [
   'country_name',
   'region_name',
   'is_partner',
+  'is_test',
   'course_ids',
   'rental_equipment_ids',
   'gas_ids',
@@ -457,6 +458,7 @@ function makeDraft (shop) {
     country_name: shop?.country_name ?? null,
     region_name: shop?.region_name ?? null,
     is_partner: Boolean(shop?.is_partner),
+    is_test: Boolean(shop?.is_test),
     course_ids: Array.isArray(shop?.course_ids) ? [...shop.course_ids] : [],
     rental_equipment_ids: Array.isArray(shop?.rental_equipment_ids) ? [...shop.rental_equipment_ids] : [],
     gas_ids: Array.isArray(shop?.gas_ids) ? [...shop.gas_ids] : [],
@@ -507,6 +509,7 @@ function isDraftDifferent (row, original) {
     if (String(a) !== String(b)) return true
   }
   if (Boolean(row.is_partner) !== Boolean(original.is_partner)) return true
+  if (Boolean(row.is_test) !== Boolean(original.is_test)) return true
   const idArrays = ['business_type_ids', 'course_ids', 'rental_equipment_ids', 'gas_ids', 'dive_site_ids']
   for (const f of idArrays) {
     const a = [...(row[f] || [])].sort()
@@ -612,6 +615,7 @@ function rowToPayload (row) {
     country_id: row.country_id || null,
     region_id: row.region_id || null,
     is_partner: Boolean(row.is_partner),
+    is_test: Boolean(row.is_test),
     course_ids: row.course_ids || [],
     rental_equipment_ids: row.rental_equipment_ids || [],
     gas_ids: row.gas_ids || [],
@@ -923,6 +927,14 @@ const gridColumns = [
     prop: 'is_partner',
     name: 'Partner',
     size: 100,
+    readonly: true,
+    resize: true,
+    cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
+  }),
+  withAdminHeader({
+    prop: 'is_test',
+    name: 'Test',
+    size: 80,
     readonly: true,
     resize: true,
     cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })

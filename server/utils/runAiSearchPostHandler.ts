@@ -1,5 +1,7 @@
 import { readBody, type H3Event } from 'h3'
 import { getAuthUser } from '../utils/getAuthUser'
+import { requestIsAppAdmin } from '../utils/requestIsAppAdmin'
+import { stampIncludeTestShops } from '../utils/stampIncludeTestShops'
 import {
   applyPreSendTokenToPayload,
   clearBookingPreSendFlags,
@@ -867,6 +869,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
     return await runWithRetries(async () => {
       let activeTripRequirements = normalizeTripRequirements(bodyTripRequirements)
       const authUser = await getAuthUser(event)
+      const includeTestShops = await requestIsAppAdmin(event)
+      const withTestVisibility = <T extends SearchFilters>(f: T): T =>
+        stampIncludeTestShops(f, includeTestShops) as T
       const bookingSignupTiming = parseBookingSignupTimingFromConfig(useRuntimeConfig().public.bookingSignupTiming)
 
       const agentMeta = {
@@ -969,7 +974,11 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             )
           )
           try {
-            const queryResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, relaxed)
+            const queryResult = await buildDiveShopQuery(
+              supabaseUrl,
+              supabaseKey,
+              withTestVisibility(relaxed)
+            )
             const { data: shops, error: dbErr } = queryResult
             if (!dbErr) {
               const place =
@@ -999,7 +1008,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
 
       if (clarifyChoice && pendingEntityClarifyPhrase?.trim()) {
         const phraseCtx = pendingEntityClarifyPhrase.trim()
-        const forced = await handleForcedEntityClarify(clarifyChoice, phraseCtx, supabaseUrl, supabaseKey)
+        const forced = await handleForcedEntityClarify(clarifyChoice, phraseCtx, supabaseUrl, supabaseKey, {
+          includeTestShops
+        })
         if (forced.kind === 'search') {
           return withAgentMeta({ ...forced.response, intent: 'search' as const })
         }
@@ -1097,7 +1108,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               ),
               message
             )
-          let geoFilters = buildGeoFilters()
+          let geoFilters = withTestVisibility(buildGeoFilters())
           const preferredDiveTypes = geoFilters.diveTypes
           let fetchedGeo = await fetchSearchShopsWithSparseWiden(supabaseUrl, supabaseKey, geoFilters)
           let geoList = fetchedGeo.shops as Array<{ id: string; business_name?: string; type?: string | null; google_rating?: number | null }>
@@ -1107,7 +1118,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           let geoError = fetchedGeo.error
           if (!geoError && geoList.length === 0 && (preferredDiveTypes?.length ?? 0) > 0) {
             const { diveTypes: _dropTypes, ...relaxedGeo } = geoFilters
-            geoFilters = relaxedGeo
+            geoFilters = withTestVisibility(relaxedGeo)
             const retry = await buildDiveShopQuery(supabaseUrl, supabaseKey, geoFilters)
             geoError = retry.error
             geoList = (retry.data || []) as typeof geoList
@@ -1187,7 +1198,11 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
 
         if (tryActivityOnlySearch) {
           const actFilters = mergeActivityIntoFilters({}, interpretTurn)
-          const actQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, actFilters)
+          const actQuery = await buildDiveShopQuery(
+            supabaseUrl,
+            supabaseKey,
+            withTestVisibility(actFilters)
+          )
           const actList = (actQuery.data || []) as Array<{ id: string; business_name?: string }>
           const label = nluActivityTerms.join(', ')
           pushActivity('probe', formatActivityStyleFilterLine(label, actList.length))
@@ -1261,8 +1276,11 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             }
           }
           pushActivity('probe', formatProbeDirectoryLine(referredPhrase))
-          const probe = await probeReferentPhrase(supabaseUrl, supabaseKey, referredPhrase)
+          const probe = await probeReferentPhrase(supabaseUrl, supabaseKey, referredPhrase, {
+            includeTestShops
+          })
           const routed = await routeReferentFromProbe(supabaseUrl, supabaseKey, probe, {
+            includeTestShops,
             allowAutoBook
           })
             if (routed.type === 'closest_shop_suggestion') {
@@ -1547,9 +1565,10 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           }
           const sp = switchPhrase?.trim() || pickId || ''
           if (target.kind === 'none' && switchPhrase?.trim()) {
-            const probeSw = await probeReferentPhrase(supabaseUrl, supabaseKey, sp)
+            const probeSw = await probeReferentPhrase(supabaseUrl, supabaseKey, sp, { includeTestShops })
             const routedSw = await routeReferentFromProbe(supabaseUrl, supabaseKey, probeSw, {
-              allowAutoBook: true
+              allowAutoBook: true,
+              includeTestShops
             })
             if (routedSw.type === 'search') {
               const { shopId: _s, ...carrySearch } = clearBookingPreSendFlags(
@@ -1881,7 +1900,11 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               inferSearchFiltersFromDestination(locationBrowsePlace),
               msgTrim
             )
-            const browseQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, browseFilters)
+            const browseQuery = await buildDiveShopQuery(
+              supabaseUrl,
+              supabaseKey,
+              withTestVisibility(browseFilters)
+            )
             const browseList = (browseQuery.data || []) as unknown[]
             const placeLabel =
               browseFilters.place?.trim() ||
@@ -3465,7 +3488,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             const fetched = await fetchSearchShopsWithSparseWiden(
               supabaseUrl,
               supabaseKey,
-              normalizedFromClient
+              withTestVisibility(normalizedFromClient)
             )
             if (fetched.error) {
               console.error('[AI Search] Pagination shop fetch error:', fetched.error)
@@ -3547,7 +3570,11 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               lastFilters = JSON.parse(filtersMatch[1])
               console.log('[AI Search] Extracted filters for pagination (LLM):', lastFilters)
 
-              const fetched = await fetchSearchShopsWithSparseWiden(supabaseUrl, supabaseKey, lastFilters)
+              const fetched = await fetchSearchShopsWithSparseWiden(
+                supabaseUrl,
+                supabaseKey,
+                withTestVisibility(lastFilters)
+              )
               if (fetched.error) {
                 console.error('Database error during pagination:', fetched.error)
                 throw new Error('Failed to fetch more results')
@@ -3700,7 +3727,8 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
         interpretTurn,
         aiSearchFirst,
         signal: searchAbortSignal,
-        lastSearchFilters: normalizeClientSearchFilters(bodyLastSearchFilters) ?? undefined
+        lastSearchFilters: normalizeClientSearchFilters(bodyLastSearchFilters) ?? undefined,
+        includeTestShops
       })
       activeTripRequirements = tripRequirementsAfterSearchTurn(
         activeTripRequirements,

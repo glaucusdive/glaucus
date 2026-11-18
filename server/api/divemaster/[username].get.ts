@@ -145,6 +145,7 @@ export default defineEventHandler(async (event): Promise<DivemasterApiResult> =>
     bio: dm.bio ?? null,
     location: dm.location ?? null,
     avatar_url: dm.avatar_url ?? null,
+    is_test: !!dm.is_test,
     last_formal_training_name: (dm.last_formal_training_name as string | null) ?? null,
     last_formal_training_date: (dm.last_formal_training_date as string | null) ?? null,
     favorite_local_dive_site: favoriteLocalId ? (favoriteById.get(favoriteLocalId) ?? null) : null,

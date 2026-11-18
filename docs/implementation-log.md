@@ -1,5 +1,14 @@
 # Implementation Log
 
+## 2026-11-18 - Hide test shops and DivePros (`is_test`)
+
+- Added `diveshops.is_test` and `divemaster_profiles.is_test` (migration `20261118160000_is_test_shops_and_divemasters.sql`). Seeds Dive Porter / Dive Shash shop IDs and DivePros `madebyporter`, `shashwat`, `sashdivemastertest`, `shashtest2`.
+- Public chat search, shop directory, DivePros directory hide `is_test` unless the request Bearer user is admin; sitemaps always exclude. Direct profile URLs still open with `noindex`.
+- Admin: Test checkbox on shop form + DivePro edit; Test column/badge on admin lists.
+- **Migration applied** on Glaucus Supabase (`hyldglninkgngaweejmw`) 2026-11-18 via `apply_migration` `is_test_shops_and_divemasters`.
+- **Verification:** `npx vitest run tests/shared/testVisibilityFlags.test.ts tests/server/sitemapSources.test.ts tests/shared/adminNewBusinessFormShape.test.ts tests/shared/placeRadiusTokens.test.ts`.
+- Version: **0.97.3**.
+
 ## 2026-11-18 - Expand chip survives Load next
 
 - Pagination replies (`finalizeSearchPaginationApiResponse`) keep **Expand beyond 50 miles** next to Load next (and alone when the 50-mile page is done). Typed expand still works via filter-relax. Shared helper: `placeRadiusSearchChips.ts` (also used by `formatEntitySearchResponse` / trip-type pipeline).

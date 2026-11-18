@@ -34,6 +34,10 @@ export interface SearchFilters {
    * (user chose “Expand beyond 50 miles”). Still distance-based from the geocoded place.
    */
   skipPlaceRadius?: boolean
+  /**
+   * Server-only: include `is_test` shops (admin chat search). Never accept from client echo.
+   */
+  includeTestShops?: boolean
   dates?: {
     start?: string
     end?: string
@@ -158,6 +162,11 @@ export async function buildDiveShopQuery (
   let query = client
     .from('diveshops')
     .select(PUBLIC_SHOP_LIST_SELECT)
+
+  // Public search hides test shops unless the orchestrator stamped includeTestShops (admin).
+  if (!effectiveFilters.includeTestShops) {
+    query = query.eq('is_test', false)
+  }
 
   if (activityIdFilter) {
     query = query.in('id', activityIdFilter)

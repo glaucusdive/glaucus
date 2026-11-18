@@ -20,6 +20,12 @@
     <div v-else class="flex-1 overflow-y-auto p-4 space-y-6 max-w-3xl">
       <div class="flex flex-wrap gap-2 items-center">
         <span class="text-xs font-medium px-2 py-1 rounded bg-zinc-100 dark:bg-zinc-800">{{ dm.status }}</span>
+        <span
+          v-if="dm.is_test"
+          class="text-xs font-medium px-2 py-1 rounded bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200"
+        >
+          Test
+        </span>
         <NuxtLink
           v-if="form.username && dm.status === 'published'"
           :to="`/divemaster/${form.username}`"
@@ -31,6 +37,16 @@
       </div>
 
       <form class="space-y-4" @submit.prevent="save">
+        <FormCheckbox
+          id="dm-is-test"
+          :model-value="dm.is_test"
+          @update:model-value="dm.is_test = Boolean($event)"
+        >
+          Test DivePro
+        </FormCheckbox>
+        <p class="text-xs text-zinc-500 dark:text-zinc-400 -mt-2">
+          Hide from the DivePros directory and sitemaps for non-admins. Direct profile URL still works.
+        </p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <FormField label="Full name" label-style="auth" required>
             <FormInput v-model="form.display_name" type="text" size="sm" required />
@@ -385,7 +401,7 @@ const saving = ref(false)
 const msg = ref('')
 const ok = ref(false)
 
-const dm = reactive({ status: 'draft' as DivemasterProfileStatus })
+const dm = reactive({ status: 'draft' as DivemasterProfileStatus, is_test: false })
 const form = reactive({
   display_name: '',
   username: '',
@@ -606,6 +622,7 @@ async function load () {
     form.display_name = json.profile?.display_name || ''
     form.username = json.profile?.username || ''
     dm.status = json.divemaster?.status || 'draft'
+    dm.is_test = Boolean(json.divemaster?.is_test)
     form.headline = json.divemaster?.headline || ''
     form.bio = json.divemaster?.bio || ''
     form.location = json.divemaster?.location || ''
@@ -707,6 +724,7 @@ async function save (): Promise<boolean> {
     location: form.location,
     avatar_url: form.avatar_url,
     admin_notes: form.admin_notes,
+    is_test: dm.is_test,
     last_formal_training_name: resolvedLastTrainingName(),
     last_formal_training_date: form.last_formal_training_date || null,
     favorite_local_dive_site_id: favoriteIdForSave(favoriteLocalId.value),

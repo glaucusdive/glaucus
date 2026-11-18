@@ -46,13 +46,20 @@ export function isExactCountryPhrase (
 export async function probeReferentPhrase (
   supabaseUrl: string,
   supabaseKey: string,
-  phraseRaw: string
+  phraseRaw: string,
+  options?: { includeTestShops?: boolean } | null
 ): Promise<ReferentProbe> {
   const phrase = sanitizeIlike(phraseRaw)
   const client = createClient(supabaseUrl, supabaseKey)
+  const nameOpts = options?.includeTestShops ? { includeTest: true } : undefined
+  let placeQuery = createDiveshopReadClient(supabaseUrl)
+    .from('diveshops')
+    .select('id')
+    .or(diveshopCityStateOrConditions(phrase))
+  if (!options?.includeTestShops) placeQuery = placeQuery.eq('is_test', false)
 
   const [shops, diveSitesRes, countriesRes, regionsRes, placeRes] = await Promise.all([
-    listShopsMatchingName(supabaseUrl, supabaseKey, phrase, 5),
+    listShopsMatchingName(supabaseUrl, supabaseKey, phrase, 5, nameOpts),
     client
       .from('dive_sites')
       .select('id, name')
@@ -64,11 +71,7 @@ export async function probeReferentPhrase (
       .select('id, name')
       .ilike('name', `%${phrase}%`)
       .limit(5),
-    createDiveshopReadClient(supabaseUrl)
-      .from('diveshops')
-      .select('id')
-      .or(diveshopCityStateOrConditions(phrase))
-      .limit(1)
+    placeQuery.limit(1)
   ])
 
   const diveSites = (diveSitesRes.data || []) as { id: string, name: string }[]
@@ -135,9 +138,11 @@ async function routeCountrySearch (
   supabaseUrl: string,
   supabaseKey: string,
   countryName: string,
-  probePhrase: string
+  probePhrase: string,
+  includeTestShops?: boolean
 ): Promise<EntityRouteResult> {
-  const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, { country: countryName })
+  const filters = withIncludeTest({ country: countryName }, includeTestShops)
+  const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, filters)
   const { data, error } = dbResult as { data: ShopRow[] | null, error: unknown }
   if (error) {
     return { type: 'clarify', phrase: probePhrase }
@@ -147,7 +152,7 @@ async function routeCountrySearch (
     response: await formatEntitySearchResponse(
       supabaseUrl,
       supabaseKey,
-      { country: countryName },
+      filters,
       data,
       `Here are dive shops in ${countryName}.`
     )
@@ -157,7 +162,8 @@ async function routeCountrySearch (
 async function fetchShopsByDiveSiteIds (
   supabaseUrl: string,
   supabaseKey: string,
-  siteIds: string[]
+  siteIds: string[],
+  includeTestShops?: boolean
 ): Promise<{ data: ShopRow[] | null, error: unknown }> {
   if (!siteIds.length) return { data: [], error: null }
   const client = createClient(supabaseUrl, supabaseKey)
@@ -167,10 +173,12 @@ async function fetchShopsByDiveSiteIds (
     .in('dive_site_id', siteIds)
   if (jErr || !junction?.length) return { data: [], error: jErr }
   const shopIds = [...new Set(junction.map((j: { diveshop_id: string }) => j.diveshop_id))]
-  const res = await createDiveshopReadClient(supabaseUrl)
+  let q = createDiveshopReadClient(supabaseUrl)
     .from('diveshops')
     .select(PUBLIC_SHOP_LIST_SELECT)
     .in('id', shopIds)
+  if (!includeTestShops) q = q.eq('is_test', false)
+  const res = await q
     .order('google_rating', { ascending: false, nullsFirst: false })
     .order('business_name', { ascending: true })
     .limit(50)
@@ -228,14 +236,21 @@ export type EntityRouteResult =
 export type RouteReferentOptions = {
   /** When false, single shop matches return search/disambiguation instead of booking. */
   allowAutoBook?: boolean
+  /** When true, include `is_test` shops (admin). */
+  includeTestShops?: boolean
+}
+
+function withIncludeTest (filters: SearchFilters, includeTest?: boolean): SearchFilters {
+  return includeTest ? { ...filters, includeTestShops: true } : filters
 }
 
 async function routePlaceSearchFromPhrase (
   supabaseUrl: string,
   supabaseKey: string,
-  phrase: string
+  phrase: string,
+  includeTestShops?: boolean
 ): Promise<EntityRouteResult> {
-  const geoFilters = inferSearchFiltersFromDestination(phrase)
+  const geoFilters = withIncludeTest(inferSearchFiltersFromDestination(phrase), includeTestShops)
   const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, geoFilters)
   const { data, error } = dbResult as { data: ShopRow[] | null, error: unknown }
   if (error) {
@@ -287,9 +302,11 @@ export async function routeReferentFromProbe (
   opts?: RouteReferentOptions
 ): Promise<EntityRouteResult> {
   const phrase = probe.phrase
+  const includeTest = !!opts?.includeTestShops
+  const nameOpts = includeTest ? { includeTest: true } : undefined
 
   if (probe.countries.length > 0 && isExactCountryPhrase(phrase, probe.countries)) {
-    return routeCountrySearch(supabaseUrl, supabaseKey, probe.countries[0]!.name, probe.phrase)
+    return routeCountrySearch(supabaseUrl, supabaseKey, probe.countries[0]!.name, probe.phrase, includeTest)
   }
 
   const cats = activeCategories(probe)
@@ -298,7 +315,7 @@ export async function routeReferentFromProbe (
     return { type: 'clarify', phrase: probe.phrase }
   }
   if (cats.length === 0) {
-    const closestShop = await findClosestShopNameMatch(supabaseUrl, supabaseKey, phrase)
+    const closestShop = await findClosestShopNameMatch(supabaseUrl, supabaseKey, phrase, nameOpts)
     if (closestShop) {
       return { type: 'closest_shop_suggestion', phrase, shop: closestShop }
     }
@@ -310,14 +327,14 @@ export async function routeReferentFromProbe (
   if (only === 'shop') {
     const isGeoPhrase = isKnownGeographicDestination(phrase)
     if (isGeoPhrase) {
-      return routePlaceSearchFromPhrase(supabaseUrl, supabaseKey, phrase)
+      return routePlaceSearchFromPhrase(supabaseUrl, supabaseKey, phrase, includeTest)
     }
     return routeShopMatchesToPick(supabaseUrl, supabaseKey, phrase, probe.shops)
   }
 
   if (only === 'dive_site') {
     const ids = probe.diveSites.map(s => s.id)
-    const { data, error } = await fetchShopsByDiveSiteIds(supabaseUrl, supabaseKey, ids)
+    const { data, error } = await fetchShopsByDiveSiteIds(supabaseUrl, supabaseKey, ids, includeTest)
     if (error) {
       return { type: 'clarify', phrase: probe.phrase }
     }
@@ -330,7 +347,7 @@ export async function routeReferentFromProbe (
       response: await formatEntitySearchResponse(
         supabaseUrl,
         supabaseKey,
-        {},
+        withIncludeTest({}, includeTest),
         data,
         msg
       )
@@ -338,12 +355,13 @@ export async function routeReferentFromProbe (
   }
 
   if (only === 'country') {
-    return routeCountrySearch(supabaseUrl, supabaseKey, probe.countries[0]!.name, probe.phrase)
+    return routeCountrySearch(supabaseUrl, supabaseKey, probe.countries[0]!.name, probe.phrase, includeTest)
   }
 
   if (only === 'region') {
     const regionName = probe.regions[0]!.name
-    const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, { region: regionName })
+    const filters = withIncludeTest({ region: regionName }, includeTest)
+    const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, filters)
     const { data, error } = dbResult as { data: ShopRow[] | null, error: unknown }
     if (error) {
       return { type: 'clarify', phrase: probe.phrase }
@@ -353,14 +371,15 @@ export async function routeReferentFromProbe (
       response: await formatEntitySearchResponse(
         supabaseUrl,
         supabaseKey,
-        { region: regionName },
+        filters,
         data,
         `Here are dive shops in the ${regionName} region.`
       )
     }
   }
 
-  const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, { place: phrase })
+  const placeFilters = withIncludeTest({ place: phrase }, includeTest)
+  const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, placeFilters)
   const { data, error } = dbResult as { data: ShopRow[] | null, error: unknown }
   if (error) {
     return { type: 'clarify', phrase: probe.phrase }
@@ -370,7 +389,7 @@ export async function routeReferentFromProbe (
     response: await formatEntitySearchResponse(
       supabaseUrl,
       supabaseKey,
-      { place: phrase },
+      placeFilters,
       data,
       `Here are dive shops in or near ${phrase}.`
     )
@@ -381,7 +400,8 @@ export async function handleForcedEntityClarify (
   kind: EntityClarifyKind,
   phraseRaw: string,
   supabaseUrl: string,
-  supabaseKey: string
+  supabaseKey: string,
+  options?: { includeTestShops?: boolean } | null
 ): Promise<
   | { kind: 'booking', shop: ResolvedShop }
   | { kind: 'shop_disambiguation', shops: ResolvedShop[], phrase: string }
@@ -389,6 +409,8 @@ export async function handleForcedEntityClarify (
   | { kind: 'clarify', phrase: string }
   | { kind: 'browse' }
 > {
+  const includeTest = !!options?.includeTestShops
+  const nameOpts = includeTest ? { includeTest: true } : undefined
   const sanitized = sanitizeIlike(phraseRaw)
   if (!sanitized) return { kind: 'clarify', phrase: phraseRaw }
   const phrase = cleanReferentPhraseForProbe(sanitized)
@@ -399,7 +421,7 @@ export async function handleForcedEntityClarify (
   }
 
   if (kind === 'dive_shop') {
-    const shops = await listShopsMatchingName(supabaseUrl, supabaseKey, phrase, 5)
+    const shops = await listShopsMatchingName(supabaseUrl, supabaseKey, phrase, 5, nameOpts)
     if (shops.length === 0) {
       return { kind: 'clarify', phrase }
     }
@@ -424,7 +446,12 @@ export async function handleForcedEntityClarify (
     if (!diveSites.length) {
       return { kind: 'clarify', phrase }
     }
-    const { data, error } = await fetchShopsByDiveSiteIds(supabaseUrl, supabaseKey, diveSites.map(s => s.id))
+    const { data, error } = await fetchShopsByDiveSiteIds(
+      supabaseUrl,
+      supabaseKey,
+      diveSites.map(s => s.id),
+      includeTest
+    )
     if (error) return { kind: 'clarify', phrase }
     const siteNames = diveSites.map(s => s.name).join(', ')
     return {
@@ -432,7 +459,7 @@ export async function handleForcedEntityClarify (
       response: await formatEntitySearchResponse(
         supabaseUrl,
         supabaseKey,
-        {},
+        withIncludeTest({}, includeTest),
         data,
         (data?.length ?? 0) > 0
           ? `Here are dive shops that offer ${siteNames}.`
@@ -442,10 +469,12 @@ export async function handleForcedEntityClarify (
   }
 
   if (kind === 'city') {
-    const { data: rows, error: qErr } = await createDiveshopReadClient(supabaseUrl)
+    let cityQuery = createDiveshopReadClient(supabaseUrl)
       .from('diveshops')
       .select(PUBLIC_SHOP_LIST_SELECT)
       .or(diveshopCityStateOrConditions(phrase))
+    if (!includeTest) cityQuery = cityQuery.eq('is_test', false)
+    const { data: rows, error: qErr } = await cityQuery
       .order('google_rating', { ascending: false, nullsFirst: false })
       .order('business_name', { ascending: true })
       .limit(50)
@@ -455,7 +484,7 @@ export async function handleForcedEntityClarify (
       response: await formatEntitySearchResponse(
         supabaseUrl,
         supabaseKey,
-        { place: phrase },
+        withIncludeTest({ place: phrase }, includeTest),
         rows as unknown as ShopRow[] | null,
         `Here are dive shops in or near ${phrase}.`
       )
@@ -463,7 +492,8 @@ export async function handleForcedEntityClarify (
   }
 
   if (kind === 'country') {
-    const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, { country: phrase })
+    const filters = withIncludeTest({ country: phrase }, includeTest)
+    const dbResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, filters)
     const { data, error } = dbResult as { data: ShopRow[] | null, error: unknown }
     if (error) return { kind: 'clarify', phrase }
     return {
@@ -471,7 +501,7 @@ export async function handleForcedEntityClarify (
       response: await formatEntitySearchResponse(
         supabaseUrl,
         supabaseKey,
-        { country: phrase },
+        filters,
         data,
         `Here are dive shops in ${phrase}.`
       )

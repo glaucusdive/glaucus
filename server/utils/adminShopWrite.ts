@@ -21,6 +21,7 @@ export interface ShopWritePayload {
   region_id?: string | null
   google_rating?: number | null
   is_partner?: boolean
+  is_test?: boolean
   course_ids?: string[]
   rental_equipment_ids?: string[]
   gas_ids?: string[]
@@ -42,7 +43,8 @@ const SHOP_COLUMNS = [
   'country_id',
   'region_id',
   'google_rating',
-  'is_partner'
+  'is_partner',
+  'is_test'
 ] as const
 
 function normalizeShopTypeField (value: unknown): string | null {
@@ -66,7 +68,7 @@ export function pickShopCoreFields (payload: ShopWritePayload): Record<string, u
         out[col] = normalizeShopTypeField(v)
       } else if (col === 'social_links') {
         out[col] = normalizeShopSocialLinks(v)
-      } else if (col === 'is_partner') {
+      } else if (col === 'is_partner' || col === 'is_test') {
         out[col] = Boolean(v)
       } else if (col === 'latitude' || col === 'longitude') {
         out[col] = normalizeCoordField(v)

@@ -1,5 +1,5 @@
 import { createDiveshopReadClient } from '../utils/diveshopRead'
-import { TEST_SHOP_IDS } from '~~/shared/testShops'
+import { requestIsAppAdmin } from '../utils/requestIsAppAdmin'
 import {
   normalizeShopDirectorySearch,
   parseShopDirectoryPage,
@@ -20,11 +20,15 @@ export default defineEventHandler(async (event) => {
   const page = parseShopDirectoryPage(queryParams.page)
   const search = normalizeShopDirectorySearch(queryParams.q)
   const [start, end] = shopDirectoryRange(page)
+  const includeTest = await requestIsAppAdmin(event)
   const client = createDiveshopReadClient(supabaseUrl)
   let query = client
     .from('diveshops')
-    .select('id, slug, business_name, type, city, state, google_rating, country:countries(name)', { count: 'exact' })
-    .not('id', 'in', `(${TEST_SHOP_IDS.join(',')})`)
+    .select('id, slug, business_name, type, city, state, google_rating, is_test, country:countries(name)', { count: 'exact' })
+
+  if (!includeTest) {
+    query = query.eq('is_test', false)
+  }
 
   const filter = shopDirectorySearchFilter(search)
   if (filter) query = query.or(filter)

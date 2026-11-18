@@ -182,6 +182,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.97.3** — Hide `is_test` dive shops and DivePros from public lists/search/sitemaps unless admin is logged in (2026-11-18).
 - **0.97.2** — Expand-beyond-50-miles chip stays available after Load next (and when the 50-mile page ends) (2026-11-18).
 - **0.97.1** — Place search finds shops by lat/long around the Google-geocoded place (nearby towns included; expand = 150 mi) (2026-11-18).
 - **0.97.0** — Place search keeps shops within 50 miles of the geocoded city (no Florida-for-LA country noise) (2026-11-18).
