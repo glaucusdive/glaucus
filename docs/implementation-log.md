@@ -1,5 +1,22 @@
 # Implementation Log
 
+## 2026-11-18 - Expand chip survives Load next
+
+- Pagination replies (`finalizeSearchPaginationApiResponse`) keep **Expand beyond 50 miles** next to Load next (and alone when the 50-mile page is done). Typed expand still works via filter-relax. Shared helper: `placeRadiusSearchChips.ts` (also used by `formatEntitySearchResponse` / trip-type pipeline).
+- **Verification:** `npx vitest run tests/server/placeRadiusSearchChips.test.ts tests/server/searchFilterRelaxFromFollowUp.test.ts tests/shared/placeRadiusTokens.test.ts`.
+- Version: **0.97.2**.
+
+## 2026-11-18 - Place search by geocoded lat/long (not city-name gate)
+
+- City/local place searches geocode the place via Google at query time (`geocodePlaceQuery`), fetch shops in a lat/long bounding box, keep within 50 miles (`filterShopsWithinRadiusKm`), rank by distance (`rankPlaceShopsByDistance`). Nearby towns (e.g. Long Beach for LA) no longer require matching city text. Expand chip widens to **150 miles** (`skipPlaceRadius` → `PLACE_SEARCH_EXPAND_RADIUS_KM`). Bare US-state browse still uses text place matching. No cities-table / city-centroid backfill.
+- **Verification:** `npx vitest run tests/server/placeProximityRank.test.ts tests/server/geocodePlaceQuery.test.ts tests/server/widePlaceShopSearch.test.ts tests/server/placeCityState.test.ts tests/server/searchFilterRelaxFromFollowUp.test.ts tests/shared/placeRadiusTokens.test.ts`.
+- Version: **0.97.1**.
+
+## 2026-11-18 - Place search 50-mile radius (initial)
+
+- First pass still gated candidates on city-name / wide place text before the radius filter; expand only removed the radius among those text hits (so LA expand still looked like LA-only). Superseded by the lat/long candidate path above.
+- Version at that pass: **0.97.0**.
+
 ## 2026-11-18 - Shop Google geocode (backfill + create/update)
 
 - **Schema:** Live `diveshops` and `countries` already have `latitude`/`longitude`. No cities table. Coverage before this work: 232/752 shops geocoded; 520 null; 2 countries missing centroids (Curaçao, U.S. Minor Outlying Islands).

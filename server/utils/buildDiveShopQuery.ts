@@ -3,7 +3,16 @@ import { createDiveshopReadClient, PUBLIC_SHOP_LIST_SELECT } from './diveshopRea
 import { coalesceSynonymActivityTokens } from './interpretUserTurn'
 import { promotePlaceToCountryFilters } from './resolveSearchCountryIds'
 import { collectWidePlaceShopIds } from './widePlaceShopSearch'
-import { dropOtherStateCityRows, rankPlaceShops } from './placeProximityRank'
+import { geocodePlaceQuery, shouldApplyPlaceRadius } from './geocodePlaceQuery'
+import {
+  boundingBoxForRadiusKm,
+  dropOtherStateCityRows,
+  filterShopsWithinRadiusKm,
+  PLACE_SEARCH_EXPAND_RADIUS_KM,
+  PLACE_SEARCH_RADIUS_KM,
+  rankPlaceShops,
+  rankPlaceShopsByDistance
+} from './placeProximityRank'
 import { parsePlaceCityState, placeSearchTokens } from '../../shared/placeSearchTokens'
 
 export interface SearchFilters {
@@ -20,6 +29,11 @@ export interface SearchFilters {
   activityExactShopIds?: string[]
   /** Echo of NLU + heuristics for course directory filter; not read by `buildDiveShopQuery` (client + badges + card pills). */
   certificationCourseHint?: string
+  /**
+   * When true, use the expanded place radius (150 mi) instead of the default 50 mi
+   * (user chose “Expand beyond 50 miles”). Still distance-based from the geocoded place.
+   */
+  skipPlaceRadius?: boolean
   dates?: {
     start?: string
     end?: string
@@ -88,8 +102,15 @@ export async function buildDiveShopQuery (
 ) {
   const client = createDiveshopReadClient(supabaseUrl)
   void supabaseKey
-  const defaultLimit = options?.defaultLimit != null && options.defaultLimit > 0 ? options.defaultLimit : 50
   const effectiveFilters = await promotePlaceToCountryFilters(client, filters)
+  // Place searches need a larger candidate window before the 50-mile radius filter.
+  const placeActive = !!effectiveFilters.place?.trim()
+  const defaultLimit =
+    options?.defaultLimit != null && options.defaultLimit > 0
+      ? options.defaultLimit
+      : placeActive
+        ? 500
+        : 50
 
   const applyWindow = <T extends { range: (from: number, to: number) => T, limit: (count: number) => T }>(q: T): T => {
     if (range && range.limit > 0 && range.offset >= 0) {
@@ -165,8 +186,32 @@ export async function buildDiveShopQuery (
     if (regionIds.length > 0) query = query.in('region_id', regionIds)
   }
 
-  // Apply place filter (directory-wide or legacy city/state/address only)
-  if (effectiveFilters.place?.trim()) {
+  // City/local place: prefer Google-geocoded lat/long radius over city-name text match.
+  let placeGeoAnchor: { lat: number; lon: number } | null = null
+  let placeGeoRadiusKm: number | null = null
+  const placeTextForGeo = effectiveFilters.place?.trim() || ''
+  if (
+    placeTextForGeo &&
+    shouldApplyPlaceRadius(placeTextForGeo, effectiveFilters.country)
+  ) {
+    placeGeoAnchor = await geocodePlaceQuery(placeTextForGeo)
+    if (placeGeoAnchor) {
+      placeGeoRadiusKm = effectiveFilters.skipPlaceRadius
+        ? PLACE_SEARCH_EXPAND_RADIUS_KM
+        : PLACE_SEARCH_RADIUS_KM
+      const box = boundingBoxForRadiusKm(placeGeoAnchor, placeGeoRadiusKm)
+      query = query
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null)
+        .gte('latitude', box.minLat)
+        .lte('latitude', box.maxLat)
+        .gte('longitude', box.minLon)
+        .lte('longitude', box.maxLon)
+    }
+  }
+
+  // Apply place filter (directory-wide or legacy city/state/address only) when not using geo radius.
+  if (effectiveFilters.place?.trim() && !placeGeoAnchor) {
     const useWidePlace = options?.widePlace !== false
     if (useWidePlace) {
       const wideIds = await collectWidePlaceShopIds(client, effectiveFilters.place, resolvedCountryIds)
@@ -214,12 +259,18 @@ export async function buildDiveShopQuery (
   query = applyWindow(query)
 
   const result = await query
-  // Place searches: re-rank the fetched page by tier (city, state, other), distance from the city anchor, then rating.
-  // Note: the DB order (rating) and the row limit apply before this re-rank.
+  // Place searches: hard radius from Google-geocoded place (shop lat/long), then re-rank.
   if (effectiveFilters.place?.trim() && result.data) {
-    const { city, state } = parsePlaceCityState(effectiveFilters.place)
-    const tokens = placeSearchTokens(city || effectiveFilters.place)
-    const rows = state ? dropOtherStateCityRows(result.data, tokens, state) : result.data
+    const placeText = effectiveFilters.place.trim()
+    const { city, state } = parsePlaceCityState(placeText)
+    const tokens = placeSearchTokens(city || placeText)
+
+    if (placeGeoAnchor && placeGeoRadiusKm != null) {
+      const rows = filterShopsWithinRadiusKm(result.data, placeGeoAnchor, placeGeoRadiusKm)
+      return { ...result, data: rankPlaceShopsByDistance(rows, placeGeoAnchor) }
+    }
+
+    let rows = state ? dropOtherStateCityRows(result.data, tokens, state) : result.data
     return { ...result, data: rankPlaceShops(rows, tokens, state) }
   }
   return result

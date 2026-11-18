@@ -18,6 +18,8 @@ import {
   buildSearchPaginationSelectableOption,
   SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
 } from '../../shared/searchPaginationChip'
+import { placeRadiusExpandSelectableOption } from '../../shared/placeRadiusTokens'
+import { shouldOfferPlaceRadiusExpand } from './placeRadiusSearchChips'
 import { enrichShopsForSearchCards } from './enrichShopsForSearchCards'
 import { attachSearchMatchGroups } from './searchMatchGroups'
 import { filtersWithActivityMatchContext, formatNoActivityMatchesMessage } from './searchActivityWidenMessage'
@@ -758,6 +760,9 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
   console.log('[AI Search] Final message:', finalMessage)
 
   const trimmedOptions = capSelectableOptionsForAiSearchFirst(aiSearchFirst, selectableOptions)
+  const withPlaceExpand = shouldOfferPlaceRadiusExpand(filters)
+    ? mergeSelectableOptions([placeRadiusExpandSelectableOption()], trimmedOptions)
+    : trimmedOptions
 
   const offerOptionalTripTypeChips =
     responseShops.length > 0 &&
@@ -767,8 +772,8 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     interpretTurn?.trip_product_type == null
 
   const selectableOptionsWithTripFilter = offerOptionalTripTypeChips
-    ? mergeSelectableOptions(trimmedOptions, TRIP_TYPE_OPTIONAL_FILTER_CHIPS)
-    : trimmedOptions
+    ? mergeSelectableOptions(withPlaceExpand, TRIP_TYPE_OPTIONAL_FILTER_CHIPS)
+    : withPlaceExpand
 
   const searchMatchBadges =
     responseShops.length > 0 ? buildSearchMatchBadges(filters, facetHintsForBadges) : []

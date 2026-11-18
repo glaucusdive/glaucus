@@ -182,6 +182,9 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.97.2** — Expand-beyond-50-miles chip stays available after Load next (and when the 50-mile page ends) (2026-11-18).
+- **0.97.1** — Place search finds shops by lat/long around the Google-geocoded place (nearby towns included; expand = 150 mi) (2026-11-18).
+- **0.97.0** — Place search keeps shops within 50 miles of the geocoded city (no Florida-for-LA country noise) (2026-11-18).
 - **0.96.0** — Google Geocoding for dive shop lat/lng: backfill provider, auto-geocode on admin create/update, city-level fallback (2026-11-18).
 - **0.95.2** — Bound admin PostHog visitor queries so Netlify no longer 504s; dashboard polls while cache warms (2026-11-09).
 - **0.95.1** — Fix GA4 on marketing `/`: stop setting `ga-disable-*` during landing defer; enable before initialize (2026-11-07).

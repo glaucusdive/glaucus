@@ -41,6 +41,16 @@
         >
           <Link class="h-4 w-4" aria-hidden="true" />
         </button>
+        <button
+          type="button"
+          class="shrink-0 rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+          :disabled="!hasMapCoords"
+          :aria-label="hasMapCoords ? 'Open in Google Maps' : 'No map coordinates'"
+          :title="hasMapCoords ? 'Open in Google Maps' : 'No latitude/longitude'"
+          @click.stop="onOpenShopMap"
+        >
+          <MapPin class="h-4 w-4" aria-hidden="true" />
+        </button>
       </div>
     </div>
     <span v-if="model.saveError" class="block truncate text-xs leading-tight text-red-600 dark:text-red-400">{{ model.saveError }}</span>
@@ -127,7 +137,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Trash2, Link, Pencil, Copy, ClipboardList } from 'lucide-vue-next'
+import { Trash2, Link, Pencil, Copy, ClipboardList, MapPin } from 'lucide-vue-next'
 import type { ColumnDataSchemaModel } from '@revolist/vue3-datagrid'
 import SearchMultiSelect from '~/components/ui/SearchMultiSelect.vue'
 import type { AdminShopGridContext, ShopGridRow } from './adminShopGridContext'
@@ -158,6 +168,19 @@ const model = computed(() => props.model as ShopGridRow)
 
 /** RevoGrid row models may not expose `id` on every cell; fall back to original/uid. */
 const savedShopId = computed(() => resolveSavedShopId(model.value))
+
+function parseCoord (value: unknown): number | null {
+  if (value == null || value === '') return null
+  const n = typeof value === 'number' ? value : Number(String(value).trim())
+  return Number.isFinite(n) ? n : null
+}
+
+const hasMapCoords = computed(() => {
+  const row = model.value
+  const lat = parseCoord(row.latitude) ?? parseCoord((row.original as { latitude?: unknown } | null)?.latitude)
+  const lon = parseCoord(row.longitude) ?? parseCoord((row.original as { longitude?: unknown } | null)?.longitude)
+  return lat != null && lon != null
+})
 
 const kind = computed(() => {
   const p = prop.value
@@ -279,5 +302,9 @@ function onCopyPortalLink () {
 
 function onOpenShopProfile () {
   ctx.value.openShopProfile(model.value)
+}
+
+function onOpenShopMap () {
+  ctx.value.openShopMap(model.value)
 }
 </script>

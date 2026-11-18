@@ -8,10 +8,8 @@ import { pickShopsWithExactBusinessName } from './resolveBookingTarget'
 import { findClosestShopNameMatch, listShopsMatchingName } from './resolveShop'
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 import { shopDisambiguationSelectableOptions } from '../../shared/bookShopPick'
-import {
-  buildSearchPaginationSelectableOption,
-  SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
-} from '../../shared/searchPaginationChip'
+import { SEARCH_PAGINATION_PAGE_SIZE_DEFAULT } from '../../shared/searchPaginationChip'
+import { buildPlaceSearchPageSelectableOptions } from './placeRadiusSearchChips'
 import { inferSearchFiltersFromDestination, isKnownGeographicDestination } from './destinationToSearchFilters'
 import { attachSearchMatchGroups } from './searchMatchGroups'
 import type { SearchMatchFacets } from '../../shared/searchResultGroups'
@@ -200,8 +198,7 @@ export async function formatEntitySearchResponse (
   const pageSize = SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
   const responseShops = enriched.slice(0, pageSize)
   const remainingMore = Math.max(0, resultCount - responseShops.length)
-  const selectableOptions =
-    remainingMore > 0 ? [buildSearchPaginationSelectableOption(remainingMore, pageSize)] : undefined
+  const selectableOptions = buildPlaceSearchPageSelectableOptions(filters, remainingMore, pageSize)
   const searchMatchBadges =
     responseShops.length > 0 ? buildSearchMatchBadges(filters, facets ?? null) : []
   const partnerShops =

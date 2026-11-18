@@ -24,6 +24,7 @@ export interface AdminShopGridContext {
   copyPortalLink: (row: ShopGridRow) => void | Promise<void>
   prefetchPortalLink: (row: ShopGridRow) => void | Promise<void>
   openShopProfile: (row: ShopGridRow) => void
+  openShopMap: (row: ShopGridRow) => void
 }
 
 export const ADMIN_SHOP_GRID_KEY: InjectionKey<AdminShopGridContext> = Symbol('adminShopGrid')

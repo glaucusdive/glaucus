@@ -7,8 +7,10 @@ import {
 } from '../../server/utils/widePlaceShopSearch'
 
 describe('placeSearchTokens', () => {
-  it('includes full phrase and significant words', () => {
-    expect(placeSearchTokens('Raja Ampat')).toEqual(['Raja Ampat', 'Raja', 'Ampat'])
+  it('emits only the full phrase for multi-word places', () => {
+    expect(placeSearchTokens('Raja Ampat')).toEqual(['Raja Ampat'])
+    expect(placeSearchTokens('Los Angeles')).toEqual(['Los Angeles'])
+    expect(placeSearchTokens('Los Angeles')).not.toContain('Angeles')
   })
 
   it('includes single long token', () => {
@@ -20,7 +22,7 @@ describe('placeSearchTokens', () => {
   })
 
   it('does not emit bare Islands when phrase is Solomon Islands', () => {
-    expect(placeSearchTokens('Solomon Islands')).toEqual(['Solomon Islands', 'Solomon'])
+    expect(placeSearchTokens('Solomon Islands')).toEqual(['Solomon Islands'])
     expect(placeSearchTokens('Solomon Islands')).not.toContain('Islands')
   })
 
@@ -54,20 +56,15 @@ describe('placeSearchTokens', () => {
   })
 
   it('does not emit bare "Southern" or "Africa" from "Southern Africa"', () => {
-    // "southern" < 4 chars? No: s-o-u-t-h-e-r-n = 8 chars, but "southern" is not in the generic set
-    // Wait — "Southern" is not blocked. "Africa" IS blocked. So "Southern" passes through.
-    // This is acceptable: "Southern" is specific enough not to cause false cross-continent matches.
     const tokens = placeSearchTokens('Southern Africa')
     expect(tokens).not.toContain('Africa')
-    expect(tokens).toContain('Southern Africa')
+    expect(tokens).not.toContain('Southern')
+    expect(tokens).toEqual(['Southern Africa'])
   })
 
-  it('still emits significant words for specific multi-word places', () => {
-    // "Nusa Penida" — neither word is generic → both emitted
+  it('emits only the full phrase for specific multi-word places', () => {
     const tokens = placeSearchTokens('Nusa Penida')
-    expect(tokens).toContain('Nusa Penida')
-    expect(tokens).toContain('Nusa')
-    expect(tokens).toContain('Penida')
+    expect(tokens).toEqual(['Nusa Penida'])
   })
 
   it('emits only full phrase when all words are generic (no dangling generic tokens)', () => {

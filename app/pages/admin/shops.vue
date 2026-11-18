@@ -856,6 +856,24 @@ function openShopProfile (row) {
   window.open(path, '_blank', 'noopener,noreferrer')
 }
 
+function parseRowCoord (value) {
+  if (value == null || value === '') return null
+  const n = typeof value === 'number' ? value : Number(String(value).trim())
+  return Number.isFinite(n) ? n : null
+}
+
+function openShopMap (row) {
+  const lat =
+    parseRowCoord(row.latitude) ??
+    parseRowCoord(row.original?.latitude)
+  const lon =
+    parseRowCoord(row.longitude) ??
+    parseRowCoord(row.original?.longitude)
+  if (lat == null || lon == null) return
+  const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lon}`)}`
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
 /** Passed into VGridVueTemplate (RevoGrid mounts cells outside parent provide scope). */
 const gridContext = {
   writeMode,
@@ -870,7 +888,8 @@ const gridContext = {
   optionsFor,
   copyPortalLink,
   prefetchPortalLink,
-  openShopProfile
+  openShopProfile,
+  openShopMap
 }
 
 function withAdminHeader (col) {
