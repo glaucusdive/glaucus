@@ -828,21 +828,32 @@ async function copyPortalLink (row) {
     const copied = await copyTextToClipboard(url)
     if (copied) {
       toast.add({
-        title: 'Link copied',
+        title: 'Partner form link copied',
         color: 'neutral',
         duration: 2500
       })
       return
     }
     toast.add({
-      title: 'Click the link icon again to copy',
+      title: 'Click the form icon again to copy',
       description: 'Your browser blocked clipboard access after loading the link.',
       color: 'neutral',
       duration: 5000
     })
   } catch (e) {
-    window.alert(extractErrorMessage(e) || 'Could not copy partner link')
+    window.alert(extractErrorMessage(e) || 'Could not copy partner form link')
   }
+}
+
+function openShopProfile (row) {
+  const shopId = resolveSavedShopId(row)
+  if (!shopId) return
+  const slug =
+    (typeof row.original?.slug === 'string' && row.original.slug.trim()) ||
+    (typeof row.slug === 'string' && row.slug.trim()) ||
+    shopId
+  const path = `/shops/${encodeURIComponent(slug)}`
+  window.open(path, '_blank', 'noopener,noreferrer')
 }
 
 /** Passed into VGridVueTemplate (RevoGrid mounts cells outside parent provide scope). */
@@ -858,7 +869,8 @@ const gridContext = {
   onLookupCreated,
   optionsFor,
   copyPortalLink,
-  prefetchPortalLink
+  prefetchPortalLink,
+  openShopProfile
 }
 
 function withAdminHeader (col) {

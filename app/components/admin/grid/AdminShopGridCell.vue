@@ -20,18 +20,28 @@
         v-else
         :class="[ADMIN_GRID_READ_DATA, 'min-w-0 flex-1 truncate text-sm font-normal text-zinc-900 dark:text-white']"
       >{{ businessName || '—' }}</span>
-      <button
-        v-if="model.id"
-        type="button"
-        class="shrink-0 rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-        aria-label="Copy partner link"
-        title="Copy partner link"
-        @pointerenter="onPrefetchPortalLink"
-        @focus="onPrefetchPortalLink"
-        @click.stop="onCopyPortalLink"
-      >
-        <Link class="h-4 w-4" aria-hidden="true" />
-      </button>
+      <div v-if="savedShopId" class="flex shrink-0 items-center gap-0.5">
+        <button
+          type="button"
+          class="shrink-0 rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+          aria-label="Copy partner form link"
+          title="Copy partner form link"
+          @pointerenter="onPrefetchPortalLink"
+          @focus="onPrefetchPortalLink"
+          @click.stop="onCopyPortalLink"
+        >
+          <ClipboardList class="h-4 w-4" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          class="shrink-0 rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+          aria-label="Open shop profile"
+          title="Open shop profile"
+          @click.stop="onOpenShopProfile"
+        >
+          <Link class="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
     </div>
     <span v-if="model.saveError" class="block truncate text-xs leading-tight text-red-600 dark:text-red-400">{{ model.saveError }}</span>
   </div>
@@ -117,7 +127,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Trash2, Link, Pencil, Copy } from 'lucide-vue-next'
+import { Trash2, Link, Pencil, Copy, ClipboardList } from 'lucide-vue-next'
 import type { ColumnDataSchemaModel } from '@revolist/vue3-datagrid'
 import SearchMultiSelect from '~/components/ui/SearchMultiSelect.vue'
 import type { AdminShopGridContext, ShopGridRow } from './adminShopGridContext'
@@ -265,5 +275,9 @@ function onPrefetchPortalLink () {
 
 function onCopyPortalLink () {
   void ctx.value.copyPortalLink(model.value)
+}
+
+function onOpenShopProfile () {
+  ctx.value.openShopProfile(model.value)
 }
 </script>
