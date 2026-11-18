@@ -370,6 +370,8 @@ const SHOP_DATA_KEYS = [
   'website_url',
   'city',
   'state',
+  'latitude',
+  'longitude',
   'phone',
   'email',
   'business_type_ids',
@@ -389,6 +391,8 @@ const TEXT_GRID_COLS = [
   { prop: 'website_url', name: 'Website', size: 180 },
   { prop: 'city', name: 'City', size: 140 },
   { prop: 'state', name: 'State', size: 140 },
+  { prop: 'latitude', name: 'Latitude', size: 120 },
+  { prop: 'longitude', name: 'Longitude', size: 120 },
   { prop: 'phone', name: 'Phone', size: 150 },
   { prop: 'email', name: 'Email', size: 180 }
 ]
@@ -443,6 +447,8 @@ function makeDraft (shop) {
     website_url: shop?.website_url ?? '',
     city: shop?.city ?? '',
     state: shop?.state ?? '',
+    latitude: shop?.latitude != null && shop?.latitude !== '' ? shop.latitude : '',
+    longitude: shop?.longitude != null && shop?.longitude !== '' ? shop.longitude : '',
     phone: shop?.phone ?? '',
     email: shop?.email ?? '',
     business_type_ids: businessTypeIdsForShop(shop?.type),
@@ -492,7 +498,7 @@ function watchRowDirty (row) {
 function isDraftDifferent (row, original) {
   if (!original) return true
   const fieldsToCheck = [
-    'business_name', 'street_address', 'website_url', 'city', 'state', 'phone',
+    'business_name', 'street_address', 'website_url', 'city', 'state', 'latitude', 'longitude', 'phone',
     'email', 'country_id', 'region_id'
   ]
   for (const f of fieldsToCheck) {
@@ -585,6 +591,12 @@ function authHeaders () {
   return { Authorization: `Bearer ${accessToken.value}` }
 }
 
+function coordToPayload (v) {
+  if (v == null || v === '') return null
+  const n = typeof v === 'number' ? v : Number(String(v).trim())
+  return Number.isFinite(n) ? n : null
+}
+
 function rowToPayload (row) {
   return {
     business_name: String(row.business_name || '').trim(),
@@ -592,6 +604,8 @@ function rowToPayload (row) {
     website_url: emptyToNull(row.website_url),
     city: emptyToNull(row.city),
     state: emptyToNull(row.state),
+    latitude: coordToPayload(row.latitude),
+    longitude: coordToPayload(row.longitude),
     phone: emptyToNull(row.phone),
     email: emptyToNull(row.email),
     type: serializeTypeFromIds(row.business_type_ids),

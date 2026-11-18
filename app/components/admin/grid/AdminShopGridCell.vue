@@ -182,6 +182,10 @@ const displayRead = computed(() => {
   if (prop.value === 'is_partner') return v ? 'Yes' : ''
   if (v == null || v === '') return ''
   if (prop.value === 'street_address') return String(v).replace(/\s+/g, ' ').trim()
+  if (prop.value === 'latitude' || prop.value === 'longitude') {
+    const n = typeof v === 'number' ? v : Number(String(v).trim())
+    return Number.isFinite(n) ? String(n) : String(v)
+  }
   return String(v)
 })
 

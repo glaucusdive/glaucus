@@ -1,5 +1,13 @@
 # Implementation Log
 
+## 2026-11-18 - Shop Google geocode (backfill + create/update)
+
+- **Schema:** Live `diveshops` and `countries` already have `latitude`/`longitude`. No cities table. Coverage before this work: 232/752 shops geocoded; 520 null; 2 countries missing centroids (Curaçao, U.S. Minor Outlying Islands).
+- **Code:** Shared Google geocode + match rules in [`shared/geocodeAddress.ts`](../shared/geocodeAddress.ts). Server helper [`server/utils/geocodeShopCoords.ts`](../server/utils/geocodeShopCoords.ts). Admin create/patch and portal submission apply call geocode when address fields are present (save succeeds if geocode fails). [`server/api/geocode-shop.post.ts`](../server/api/geocode-shop.post.ts) uses Google when `NUXT_GOOGLE_GEOCODING_API_KEY` / `GOOGLE_GEOCODING_API_KEY` is set (server-only via `runtimeConfig.googleGeocodingApiKey`).
+- **Backfill:** [`scripts/backfill-shop-geocodes.mjs`](../scripts/backfill-shop-geocodes.mjs) adds `--provider=google` and city-level retry. Runbook: [`docs/geo-backfill-steps.md`](geo-backfill-steps.md). Country centroid dry-run script: [`scripts/fill-missing-country-geocodes.mjs`](../scripts/fill-missing-country-geocodes.mjs).
+- **Verification:** `npx vitest run tests/shared/geocodeAddress.test.ts` (11 passed). Google dry-run on 520 missing shops → 509 would-apply; `--from-report` applied **509** (2026-11-18). Post-apply missing: **11**. Country centroids applied for Curaçao + U.S. Minor Outlying Islands. Admin shops grid shows Latitude / Longitude after State (API select + writable on save).
+- Version: **0.96.0**.
+
 ## 2026-11-09 - Admin visitors 504 (PostHog timeout)
 
 - **Cause:** Cold `/api/admin/dashboard/visitors` awaited multiple PostHog queries with `force_cache` then unbounded `blocking`. On Netlify that exceeded the gateway → browser **504**. In-memory SWR does not survive serverless cold instances. Client catch also labeled timeouts as “PostHog not configured.”

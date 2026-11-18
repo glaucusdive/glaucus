@@ -1,5 +1,6 @@
 import { requireAdminUser } from '../../../utils/requireAdminUser'
 import { pickShopCoreFields, syncShopJunctions, type ShopWritePayload } from '../../../utils/adminShopWrite'
+import { tryGeocodeShopAfterAddressWrite } from '../../../utils/geocodeShopCoords'
 
 export default defineEventHandler(async (event) => {
   const { client } = await requireAdminUser(event)
@@ -30,6 +31,8 @@ export default defineEventHandler(async (event) => {
       statusMessage: e instanceof Error ? e.message : 'Failed to update shop relations'
     })
   }
+
+  await tryGeocodeShopAfterAddressWrite(client, id, core)
 
   return { id }
 })

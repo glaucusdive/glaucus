@@ -9,6 +9,8 @@ export type AdminShopListRow = {
   website_url: string | null
   city: string | null
   state: string | null
+  latitude: number | null
+  longitude: number | null
   phone: string | null
   email: string | null
   social_links: ShopSocialLink[]
@@ -35,6 +37,8 @@ export type ShopRowDb = {
   website_url: string | null
   city: string | null
   state: string | null
+  latitude?: number | null
+  longitude?: number | null
   phone: string | null
   email: string | null
   social_links?: unknown
@@ -62,6 +66,8 @@ export function mapDiveshopToAdminListRow (s: ShopRowDb): AdminShopListRow {
     website_url: s.website_url,
     city: s.city,
     state: s.state,
+    latitude: s.latitude != null && Number.isFinite(Number(s.latitude)) ? Number(s.latitude) : null,
+    longitude: s.longitude != null && Number.isFinite(Number(s.longitude)) ? Number(s.longitude) : null,
     phone: s.phone,
     email: s.email,
     social_links: normalizeShopSocialLinks(s.social_links),
@@ -82,7 +88,7 @@ export function mapDiveshopToAdminListRow (s: ShopRowDb): AdminShopListRow {
 }
 
 export const ADMIN_SHOP_LIST_SELECT = `
-  id, slug, business_name, street_address, website_url, city, state, phone, email, social_links, type,
+  id, slug, business_name, street_address, website_url, city, state, latitude, longitude, phone, email, social_links, type,
   country_id, region_id, google_rating, is_partner, created_at, updated_at,
   country:countries(name),
   region:regions(name),
