@@ -112,7 +112,7 @@ import { DIVEMASTER_DIRECTORY_PAGE_SIZE, normalizeDivemasterDirectorySearch, par
 
 const route = useRoute()
 const router = useRouter()
-const { isSignedIn, loading: authLoading, init: initAuth } = useAuth()
+const { isSignedIn, loading: authLoading, init: initAuth, accessToken } = useAuth()
 const addProfileLocation = computed(() => isSignedIn.value
   ? { path: '/settings/profile' }
   : { path: '/auth', query: { signup: '1', redirect: '/settings/profile' } })
@@ -139,8 +139,11 @@ watch(searchTerm, value => { searchInput.value = value })
 
 const emptyDirectory = (): DivemasterDirectoryResponse => ({ profiles: [], page: currentPage.value, pageSize: DIVEMASTER_DIRECTORY_PAGE_SIZE, total: 0 })
 const { data, pending, error, refresh } = await useAsyncData<DivemasterDirectoryResponse>(
-  () => `divemaster-directory-${currentPage.value}-${searchTerm.value}`,
-  () => $fetch('/api/divemasters', { query: { page: currentPage.value, ...(searchTerm.value ? { q: searchTerm.value } : {}) } }),
+  () => `divemaster-directory-${currentPage.value}-${searchTerm.value}-${accessToken.value ? 'auth' : 'anon'}`,
+  () => $fetch('/api/divemasters', {
+    query: { page: currentPage.value, ...(searchTerm.value ? { q: searchTerm.value } : {}) },
+    ...(accessToken.value ? { headers: { Authorization: `Bearer ${accessToken.value}` } } : {})
+  }),
   { default: emptyDirectory }
 )
 const directory = computed(() => data.value ?? emptyDirectory())

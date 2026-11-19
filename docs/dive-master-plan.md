@@ -29,7 +29,7 @@ This document separates the existing divemaster implementation from the broader 
 
 ### Public DivePros Directory
 
-- The designated test username `sashdivemastertest` is excluded from directory browsing/search before totals and pagination, and omitted from sitemap entries. Its direct profile remains accessible with `noindex, nofollow`; editing, reviews and sharing are unchanged. This is discoverability control, not privacy or authentication. The exact username list in [testDivemasters.ts](../shared/testDivemasters.ts) must stay aligned with the directory SQL; renaming the test account requires updating both.
+- Test DivePros use `divemaster_profiles.is_test` (admin checkbox). Public directory RPC excludes `is_test` unless `p_include_test` (admin session). Direct profiles stay reachable with `noindex`. Seed/fallback usernames live in [testDivemasters.ts](../shared/testDivemasters.ts).
 - Apply [20261025160000_hide_test_divemaster_directory.sql](../supabase/migrations/20261025160000_hide_test_divemaster_directory.sql) through the [migration workflow](supabase-migrations.md) to enable the directory exclusion. Deploy application changes for sitemap exclusion and robots metadata. No hosted migration is applied automatically.
 
 - Landing navigation and the footer now use **For DivePros**, opening `/for-dive-pros`. Existing homepage diver content and `/for-businesses` remain unchanged.

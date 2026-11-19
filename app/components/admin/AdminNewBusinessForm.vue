@@ -60,6 +60,16 @@
       <p class="text-xs text-zinc-500 dark:text-zinc-400 -mt-2">
         When this shop matches a search organically, pin it in a Partner section above other results.
       </p>
+      <FormCheckbox
+        :id="fieldId('is-test')"
+        :model-value="Boolean(modelValue.is_test)"
+        @update:model-value="patch({ is_test: Boolean($event) })"
+      >
+        Test shop
+      </FormCheckbox>
+      <p class="text-xs text-zinc-500 dark:text-zinc-400 -mt-2">
+        Hide from public directories, chat search, and sitemaps for non-admins. Direct profile URL still works.
+      </p>
     </div>
 
     <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">

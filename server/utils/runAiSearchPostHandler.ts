@@ -1,5 +1,7 @@
 import { readBody, type H3Event } from 'h3'
 import { getAuthUser } from '../utils/getAuthUser'
+import { requestIsAppAdmin } from '../utils/requestIsAppAdmin'
+import { stampIncludeTestShops } from '../utils/stampIncludeTestShops'
 import {
   applyPreSendTokenToPayload,
   clearBookingPreSendFlags,
@@ -68,6 +70,11 @@ import {
 } from '../utils/fetchSearchShopsWithSparseWiden'
 import { capSparseWidenShopList, buildSearchMatchContext } from '../../shared/searchResultGroups'
 import { formatHereAreOperatorsInPlace } from '../../shared/searchOperatorNoun'
+import { placeRadiusExpandSelectableOption } from '../../shared/placeRadiusTokens'
+import {
+  buildPlaceSearchPageSelectableOptions,
+  shouldOfferPlaceRadiusExpand
+} from '../utils/placeRadiusSearchChips'
 import { filtersWithActivityMatchContext, formatNoActivityMatchesMessage, formatNoPlaceMatchesMessage } from '../utils/searchActivityWidenMessage'
 import { normalizeClientSearchFilters } from '../utils/normalizeClientSearchFilters'
 import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from '../utils/openAiChatModel'
@@ -131,7 +138,7 @@ import { attachSearchMatchGroups } from '../utils/searchMatchGroups'
 import { shopIdsForCourseSearch } from '../utils/shopIdsForCourseSearch'
 import { buildSearchMatchBadges } from '../../shared/searchMatchBadges'
 import { isSearchPaginationUserMessage } from '../../app/utils/searchPaginationIntent'
-import { buildSearchPaginationSelectableOption, SEARCH_PAGINATION_PAGE_SIZE_DEFAULT } from '../../shared/searchPaginationChip'
+import { SEARCH_PAGINATION_PAGE_SIZE_DEFAULT } from '../../shared/searchPaginationChip'
 import { GuidedCommands } from '../../shared/guidedFlow'
 import {
   BOOKING_CONTACT_MEANT_SOMETHING_ELSE,
@@ -513,18 +520,25 @@ async function finalizeSearchPaginationApiResponse (
   const searchMatchBadges = buildSearchMatchBadges(filters, null)
   const rawLen = (nextShopsRaw || []).length
   const remaining = Math.max(0, resultCount - alreadyShown - rawLen)
+  const selectableOptions = buildPlaceSearchPageSelectableOptions(
+    filters,
+    remaining,
+    paginationPageSize
+  )
+  const offerExpand = shouldOfferPlaceRadiusExpand(filters)
 
   if (presentationShops.length > 0) {
     return {
       success: true as const,
-      message: '',
+      message:
+        remaining === 0 && offerExpand
+          ? 'Those are all the shops within about 50 miles. You can expand beyond 50 miles for more, or pick a shop to book.'
+          : '',
       shops: presentationShops,
       totalResults: resultCount,
       hasMoreResults: remaining > 0,
       filters,
-      selectableOptions: remaining > 0
-        ? [buildSearchPaginationSelectableOption(remaining, paginationPageSize)]
-        : undefined,
+      selectableOptions,
       ...(searchMatchBadges.length ? { searchMatchBadges } : {})
     }
   }
@@ -537,9 +551,7 @@ async function finalizeSearchPaginationApiResponse (
       totalResults: resultCount,
       hasMoreResults: remaining > 0,
       filters,
-      selectableOptions: remaining > 0
-        ? [buildSearchPaginationSelectableOption(remaining, paginationPageSize)]
-        : undefined,
+      selectableOptions,
       ...(searchMatchBadges.length ? { searchMatchBadges } : {})
     }
   }
@@ -547,14 +559,14 @@ async function finalizeSearchPaginationApiResponse (
     success: true as const,
     message: remaining > 0
       ? 'Could not load this page of results. Try Load next again, or widen the search.'
-      : 'No more results available.',
+      : offerExpand
+        ? 'No more shops within about 50 miles. You can expand beyond 50 miles for more.'
+        : 'No more results available.',
     shops: [],
     totalResults: resultCount,
     hasMoreResults: remaining > 0,
     filters,
-    selectableOptions: remaining > 0
-      ? [buildSearchPaginationSelectableOption(remaining, paginationPageSize)]
-      : undefined,
+    selectableOptions,
     ...(searchMatchBadges.length ? { searchMatchBadges } : {})
   }
 }
@@ -857,6 +869,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
     return await runWithRetries(async () => {
       let activeTripRequirements = normalizeTripRequirements(bodyTripRequirements)
       const authUser = await getAuthUser(event)
+      const includeTestShops = await requestIsAppAdmin(event)
+      const withTestVisibility = <T extends SearchFilters>(f: T): T =>
+        stampIncludeTestShops(f, includeTestShops) as T
       const bookingSignupTiming = parseBookingSignupTimingFromConfig(useRuntimeConfig().public.bookingSignupTiming)
 
       const agentMeta = {
@@ -959,7 +974,11 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             )
           )
           try {
-            const queryResult = await buildDiveShopQuery(supabaseUrl, supabaseKey, relaxed)
+            const queryResult = await buildDiveShopQuery(
+              supabaseUrl,
+              supabaseKey,
+              withTestVisibility(relaxed)
+            )
             const { data: shops, error: dbErr } = queryResult
             if (!dbErr) {
               const place =
@@ -967,13 +986,16 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
                 relaxed.country?.trim() ||
                 relaxed.region?.trim() ||
                 'that area'
+              const relaxMessage = relaxed.skipPlaceRadius && relaxed.place?.trim()
+                ? `Showing dive shops within about 150 miles of ${place} (expanded beyond the usual 50-mile area). Which one would you like to book?`
+                : `Showing dive shops for a broader search in ${place}.`
               return withAgentMeta({
                 ...(await formatEntitySearchResponse(
                   supabaseUrl,
                   supabaseKey,
                   relaxed,
                   shops as unknown[],
-                  `Showing dive shops for a broader search in ${place}.`
+                  relaxMessage
                 )),
                 intent: 'search' as const
               })
@@ -986,7 +1008,9 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
 
       if (clarifyChoice && pendingEntityClarifyPhrase?.trim()) {
         const phraseCtx = pendingEntityClarifyPhrase.trim()
-        const forced = await handleForcedEntityClarify(clarifyChoice, phraseCtx, supabaseUrl, supabaseKey)
+        const forced = await handleForcedEntityClarify(clarifyChoice, phraseCtx, supabaseUrl, supabaseKey, {
+          includeTestShops
+        })
         if (forced.kind === 'search') {
           return withAgentMeta({ ...forced.response, intent: 'search' as const })
         }
@@ -1084,7 +1108,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               ),
               message
             )
-          let geoFilters = buildGeoFilters()
+          let geoFilters = withTestVisibility(buildGeoFilters())
           const preferredDiveTypes = geoFilters.diveTypes
           let fetchedGeo = await fetchSearchShopsWithSparseWiden(supabaseUrl, supabaseKey, geoFilters)
           let geoList = fetchedGeo.shops as Array<{ id: string; business_name?: string; type?: string | null; google_rating?: number | null }>
@@ -1094,7 +1118,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           let geoError = fetchedGeo.error
           if (!geoError && geoList.length === 0 && (preferredDiveTypes?.length ?? 0) > 0) {
             const { diveTypes: _dropTypes, ...relaxedGeo } = geoFilters
-            geoFilters = relaxedGeo
+            geoFilters = withTestVisibility(relaxedGeo)
             const retry = await buildDiveShopQuery(supabaseUrl, supabaseKey, geoFilters)
             geoError = retry.error
             geoList = (retry.data || []) as typeof geoList
@@ -1125,31 +1149,41 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               placeQualifier:
                 geoList.length > 1 && !countryOnly ? ' (matched by location, not just name)' : undefined
             })
+            const offerExpandRadius = shouldOfferPlaceRadiusExpand(geoFilters)
             const pickMessage =
               geoList.length === 1
                 ? `${pickIntro} Pick one to start booking, or name a city or area to narrow down.`
-                : `${pickIntro} Which one would you like to book? You can name a city or dive type to narrow this down, or ask for more shops in the area.`
+                : offerExpandRadius
+                  ? `${pickIntro} Which one would you like to book? You can expand beyond 50 miles, name a dive type to narrow down, or ask for more shops in the area.`
+                  : `${pickIntro} Which one would you like to book? You can name a city or dive type to narrow this down, or ask for more shops in the area.`
+            const formattedGeo = await formatEntitySearchResponse(
+              supabaseUrl,
+              supabaseKey,
+              geoFilters,
+              geoList as unknown[],
+              widenedTripType ? geoMessage : pickMessage
+            )
             return withAgentMeta({
-              ...(await formatEntitySearchResponse(
-                supabaseUrl,
-                supabaseKey,
-                geoFilters,
-                geoList as unknown[],
-                widenedTripType ? geoMessage : pickMessage
-              )),
+              ...formattedGeo,
               intent: 'search' as const
             })
           }
           if (!geoError && geoList.length === 0 && geoFilters.place?.trim()) {
             logIntentTurn('search')
+            const offerExpandOnEmpty = shouldOfferPlaceRadiusExpand(geoFilters)
             return withAgentMeta({
               success: true,
               intent: 'search' as const,
-              message: formatNoPlaceMatchesMessage(placeLabel ?? geoFilters.place.trim()),
+              message: offerExpandOnEmpty
+                ? `${formatNoPlaceMatchesMessage(placeLabel ?? geoFilters.place.trim())} You can expand beyond 50 miles to look farther.`
+                : formatNoPlaceMatchesMessage(placeLabel ?? geoFilters.place.trim()),
               shops: [],
               totalResults: 0,
               hasMoreResults: false,
-              filters: geoFilters
+              filters: geoFilters,
+              selectableOptions: offerExpandOnEmpty
+                ? [placeRadiusExpandSelectableOption()]
+                : undefined
             })
           }
         }
@@ -1164,7 +1198,11 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
 
         if (tryActivityOnlySearch) {
           const actFilters = mergeActivityIntoFilters({}, interpretTurn)
-          const actQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, actFilters)
+          const actQuery = await buildDiveShopQuery(
+            supabaseUrl,
+            supabaseKey,
+            withTestVisibility(actFilters)
+          )
           const actList = (actQuery.data || []) as Array<{ id: string; business_name?: string }>
           const label = nluActivityTerms.join(', ')
           pushActivity('probe', formatActivityStyleFilterLine(label, actList.length))
@@ -1238,8 +1276,11 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             }
           }
           pushActivity('probe', formatProbeDirectoryLine(referredPhrase))
-          const probe = await probeReferentPhrase(supabaseUrl, supabaseKey, referredPhrase)
+          const probe = await probeReferentPhrase(supabaseUrl, supabaseKey, referredPhrase, {
+            includeTestShops
+          })
           const routed = await routeReferentFromProbe(supabaseUrl, supabaseKey, probe, {
+            includeTestShops,
             allowAutoBook
           })
             if (routed.type === 'closest_shop_suggestion') {
@@ -1524,9 +1565,10 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
           }
           const sp = switchPhrase?.trim() || pickId || ''
           if (target.kind === 'none' && switchPhrase?.trim()) {
-            const probeSw = await probeReferentPhrase(supabaseUrl, supabaseKey, sp)
+            const probeSw = await probeReferentPhrase(supabaseUrl, supabaseKey, sp, { includeTestShops })
             const routedSw = await routeReferentFromProbe(supabaseUrl, supabaseKey, probeSw, {
-              allowAutoBook: true
+              allowAutoBook: true,
+              includeTestShops
             })
             if (routedSw.type === 'search') {
               const { shopId: _s, ...carrySearch } = clearBookingPreSendFlags(
@@ -1858,7 +1900,11 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               inferSearchFiltersFromDestination(locationBrowsePlace),
               msgTrim
             )
-            const browseQuery = await buildDiveShopQuery(supabaseUrl, supabaseKey, browseFilters)
+            const browseQuery = await buildDiveShopQuery(
+              supabaseUrl,
+              supabaseKey,
+              withTestVisibility(browseFilters)
+            )
             const browseList = (browseQuery.data || []) as unknown[]
             const placeLabel =
               browseFilters.place?.trim() ||
@@ -3442,7 +3488,7 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
             const fetched = await fetchSearchShopsWithSparseWiden(
               supabaseUrl,
               supabaseKey,
-              normalizedFromClient
+              withTestVisibility(normalizedFromClient)
             )
             if (fetched.error) {
               console.error('[AI Search] Pagination shop fetch error:', fetched.error)
@@ -3524,7 +3570,11 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
               lastFilters = JSON.parse(filtersMatch[1])
               console.log('[AI Search] Extracted filters for pagination (LLM):', lastFilters)
 
-              const fetched = await fetchSearchShopsWithSparseWiden(supabaseUrl, supabaseKey, lastFilters)
+              const fetched = await fetchSearchShopsWithSparseWiden(
+                supabaseUrl,
+                supabaseKey,
+                withTestVisibility(lastFilters)
+              )
               if (fetched.error) {
                 console.error('Database error during pagination:', fetched.error)
                 throw new Error('Failed to fetch more results')
@@ -3677,7 +3727,8 @@ export async function runAiSearchPostHandler (event: H3Event, options?: RunAiSea
         interpretTurn,
         aiSearchFirst,
         signal: searchAbortSignal,
-        lastSearchFilters: normalizeClientSearchFilters(bodyLastSearchFilters) ?? undefined
+        lastSearchFilters: normalizeClientSearchFilters(bodyLastSearchFilters) ?? undefined,
+        includeTestShops
       })
       activeTripRequirements = tripRequirementsAfterSearchTurn(
         activeTripRequirements,

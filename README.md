@@ -139,6 +139,7 @@ The root [.env.example](.env.example) lists the app's supported local settings. 
 | `NUXT_PUBLIC_SUPABASE_URL` | Supabase project URL; use the local API URL from `supabase start` or a development project |
 | `NUXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/publishable key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only key for privileged database routes; never expose it to client code |
+| `NUXT_GOOGLE_GEOCODING_API_KEY` or `GOOGLE_GEOCODING_API_KEY` | Server-only Google Geocoding key for shop lat/lng on create/update and backfill; never `NUXT_PUBLIC_*` |
 | `NUXT_OPENAI_API_KEY` or `OPENAI_API_KEY` | Optional GPT-5.5 chat/NLU; keep chat AI disabled until configured |
 | `NUXT_PUBLIC_DISABLE_CHAT_AI` | Set `true` to disable model calls locally; defaults to `true` in `.env.example` |
 | `NUXT_PUBLIC_AI_SEARCH_FIRST` | Set `true` to use AI-first search; requires chat AI and an OpenAI key |
@@ -181,6 +182,11 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.97.3** — Hide `is_test` dive shops and DivePros from public lists/search/sitemaps unless admin is logged in (2026-11-18).
+- **0.97.2** — Expand-beyond-50-miles chip stays available after Load next (and when the 50-mile page ends) (2026-11-18).
+- **0.97.1** — Place search finds shops by lat/long around the Google-geocoded place (nearby towns included; expand = 150 mi) (2026-11-18).
+- **0.97.0** — Place search keeps shops within 50 miles of the geocoded city (no Florida-for-LA country noise) (2026-11-18).
+- **0.96.0** — Google Geocoding for dive shop lat/lng: backfill provider, auto-geocode on admin create/update, city-level fallback (2026-11-18).
 - **0.95.2** — Bound admin PostHog visitor queries so Netlify no longer 504s; dashboard polls while cache warms (2026-11-09).
 - **0.95.1** — Fix GA4 on marketing `/`: stop setting `ga-disable-*` during landing defer; enable before initialize (2026-11-07).
 - **0.95.0** — Partner dive shops pin above chat search when they match organically; Load next keeps prior pages bookable (2026-10-30).

@@ -19,7 +19,8 @@ describe('adminShopRowToNewBusinessForm', () => {
       rental_equipment_ids: ['re1'],
       gas_ids: ['g1'],
       dive_site_ids: ['ds1'],
-      is_partner: true
+      is_partner: true,
+      is_test: true
     }
     const form = adminShopRowToNewBusinessForm(row)
     expect(form.business_name).toBe('Pearl Divers')
@@ -27,6 +28,7 @@ describe('adminShopRowToNewBusinessForm', () => {
     expect(form.course_ids).not.toBe(row.course_ids)
     expect(form.country_id).toBe('c1')
     expect(form.is_partner).toBe(true)
+    expect(form.is_test).toBe(true)
     expect(form.social_links).toEqual([{ label: 'Instagram', url: 'https://instagram.com/pearldivers' }])
   })
 

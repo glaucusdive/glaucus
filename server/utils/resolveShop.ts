@@ -36,6 +36,11 @@ export async function getShopById (
   return data as ResolvedShop
 }
 
+export type ResolveShopNameOptions = {
+  /** When true, include `is_test` shops (admin). Default false. */
+  includeTest?: boolean
+}
+
 /**
  * Resolve a dive shop by name (fuzzy match on business_name).
  * Returns the first match; use when user says "book with [name]".
@@ -43,14 +48,17 @@ export async function getShopById (
 export async function resolveShopByName (
   supabaseUrl: string,
   supabaseKey: string,
-  nameQuery: string
+  nameQuery: string,
+  options?: ResolveShopNameOptions | null
 ): Promise<ResolvedShop | null> {
   if (!nameQuery || nameQuery.trim().length < 2) return null
   const client = createDiveshopReadClient(supabaseUrl)
-  const { data, error } = await client
+  let q = client
     .from('diveshops')
     .select(SHOP_NAME_SELECT)
     .ilike('business_name', `%${nameQuery.trim()}%`)
+  if (!options?.includeTest) q = q.eq('is_test', false)
+  const { data, error } = await q
     .limit(1)
     .order('google_rating', { ascending: false, nullsFirst: false })
   if (error || !data || data.length === 0) return null
@@ -64,15 +72,18 @@ export async function listShopsMatchingName (
   supabaseUrl: string,
   supabaseKey: string,
   nameQuery: string,
-  limit = 5
+  limit = 5,
+  options?: ResolveShopNameOptions | null
 ): Promise<ResolvedShop[]> {
   if (!nameQuery || nameQuery.trim().length < 2) return []
   const client = createDiveshopReadClient(supabaseUrl)
   const clean = nameQuery.trim()
-  const { data, error } = await client
+  let q = client
     .from('diveshops')
     .select(SHOP_NAME_SELECT)
     .ilike('business_name', `%${clean}%`)
+  if (!options?.includeTest) q = q.eq('is_test', false)
+  const { data, error } = await q
     .limit(limit)
     .order('google_rating', { ascending: false, nullsFirst: false })
   if (!error && data?.length) return data as ResolvedShop[]
@@ -80,22 +91,24 @@ export async function listShopsMatchingName (
   // Fallback: accent-insensitive + loose token matching (e.g. "Coco View Resort" vs "CoCo View Dive Resort").
   const normalizedNeedle = normalizeSearchText(clean)
   if (!normalizedNeedle) return []
-  const ranked = await listShopsMatchingNameFuzzy(client, normalizedNeedle, limit)
+  const ranked = await listShopsMatchingNameFuzzy(client, normalizedNeedle, limit, options)
   return ranked
 }
 
 async function listShopsMatchingNameFuzzy (
   client: ReturnType<typeof createDiveshopReadClient>,
   normalizedNeedle: string,
-  limit: number
+  limit: number,
+  options?: ResolveShopNameOptions | null
 ): Promise<ResolvedShop[]> {
   const rows: ResolvedShop[] = []
   for (let offset = 0; offset < FUZZY_SCAN_MAX_ROWS; offset += FUZZY_SCAN_CHUNK) {
-    const { data, error } = await client
+    let q = client
       .from('diveshops')
       .select(SHOP_NAME_SELECT)
       .order('business_name', { ascending: true })
-      .range(offset, offset + FUZZY_SCAN_CHUNK - 1)
+    if (!options?.includeTest) q = q.eq('is_test', false)
+    const { data, error } = await q.range(offset, offset + FUZZY_SCAN_CHUNK - 1)
     if (error || !data?.length) break
     rows.push(...(data as ResolvedShop[]))
     if (data.length < FUZZY_SCAN_CHUNK) break
@@ -116,12 +129,13 @@ async function listShopsMatchingNameFuzzy (
 export async function findClosestShopNameMatch (
   supabaseUrl: string,
   supabaseKey: string,
-  nameQuery: string
+  nameQuery: string,
+  options?: ResolveShopNameOptions | null
 ): Promise<ResolvedShop | null> {
   const query = normalizeSearchText(nameQuery)
   if (!query || query.length < 2) return null
   const client = createDiveshopReadClient(supabaseUrl)
-  const ranked = await listShopsMatchingNameFuzzy(client, query, 1)
+  const ranked = await listShopsMatchingNameFuzzy(client, query, 1, options)
   if (!ranked.length) return null
   const top = ranked[0]!
   const score = fuzzyNameScore(query, top.business_name)

@@ -9,6 +9,14 @@ export interface PlaceRankRow {
 
 const EARTH_RADIUS_KM = 6371
 
+/** Hard radius for city/local place search (Google-geocoded query anchor). */
+export const PLACE_SEARCH_RADIUS_MILES = 50
+export const PLACE_SEARCH_RADIUS_KM = PLACE_SEARCH_RADIUS_MILES * 1.609344
+
+/** Wider radius when the user expands beyond the default 50-mile area. */
+export const PLACE_SEARCH_EXPAND_RADIUS_MILES = 150
+export const PLACE_SEARCH_EXPAND_RADIUS_KM = PLACE_SEARCH_EXPAND_RADIUS_MILES * 1.609344
+
 export function haversineKm (lat1: number, lon1: number, lat2: number, lon2: number): number {
   const toRad = (deg: number) => (deg * Math.PI) / 180
   const dLat = toRad(lat2 - lat1)
@@ -63,6 +71,66 @@ export function placeAnchor (rows: PlaceRankRow[], placeTokens: string[], stateH
   const lat = cityRows.reduce((s, r) => s + (r as { latitude: number }).latitude, 0) / cityRows.length
   const lon = cityRows.reduce((s, r) => s + (r as { longitude: number }).longitude, 0) / cityRows.length
   return { lat, lon }
+}
+
+export interface PlaceGeoAnchor {
+  lat: number
+  lon: number
+}
+
+/**
+ * Keep shops with coordinates within maxKm of the anchor.
+ * Drops rows without coordinates (they cannot prove distance).
+ */
+export function filterShopsWithinRadiusKm<T extends PlaceRankRow> (
+  rows: T[],
+  anchor: PlaceGeoAnchor,
+  maxKm: number = PLACE_SEARCH_RADIUS_KM
+): T[] {
+  return rows.filter((row) => {
+    if (!hasCoords(row)) return false
+    return haversineKm(anchor.lat, anchor.lon, row.latitude, row.longitude) <= maxKm
+  })
+}
+
+/** Axis-aligned bounding box around an anchor for DB prefilter (haversine still applies after). */
+export function boundingBoxForRadiusKm (
+  anchor: PlaceGeoAnchor,
+  radiusKm: number
+): { minLat: number; maxLat: number; minLon: number; maxLon: number } {
+  const latDelta = (radiusKm / EARTH_RADIUS_KM) * (180 / Math.PI)
+  const cosLat = Math.cos((anchor.lat * Math.PI) / 180)
+  const lonDelta = cosLat > 0.01
+    ? (radiusKm / (EARTH_RADIUS_KM * cosLat)) * (180 / Math.PI)
+    : 180
+  return {
+    minLat: anchor.lat - latDelta,
+    maxLat: anchor.lat + latDelta,
+    minLon: anchor.lon - lonDelta,
+    maxLon: anchor.lon + lonDelta
+  }
+}
+
+/**
+ * Rank by distance from a fixed geo anchor (Google-geocoded place), then rating, then name.
+ * Prefer this for radius-based place search so nearby towns are not gated by city-name text.
+ */
+export function rankPlaceShopsByDistance<T extends PlaceRankRow> (
+  rows: T[],
+  anchor: PlaceGeoAnchor
+): T[] {
+  const distanceOf = (row: T): number => {
+    if (!hasCoords(row)) return Number.POSITIVE_INFINITY
+    return haversineKm(anchor.lat, anchor.lon, row.latitude, row.longitude)
+  }
+  return [...rows].sort((a, b) => {
+    const distDiff = distanceOf(a) - distanceOf(b)
+    if (distDiff !== 0 && !Number.isNaN(distDiff)) return distDiff > 0 ? 1 : -1
+    const ra = Number(a.google_rating) || 0
+    const rb = Number(b.google_rating) || 0
+    if (rb !== ra) return rb - ra
+    return String(a.business_name ?? '').localeCompare(String(b.business_name ?? ''))
+  })
 }
 
 /**

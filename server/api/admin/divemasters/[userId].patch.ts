@@ -34,6 +34,7 @@ export default defineEventHandler(async (event) => {
     jobs?: DivemasterJob[]
     dive_site_ids?: string[]
     status?: DivemasterProfileStatus
+    is_test?: boolean
   }
 
   let normalizedJobs: DivemasterJob[] | undefined
@@ -138,6 +139,9 @@ export default defineEventHandler(async (event) => {
       patch.reviewed_at = now
       patch.reviewed_by = user.id
     }
+  }
+  if (typeof body.is_test === 'boolean') {
+    patch.is_test = body.is_test
   }
 
   if (Object.keys(patch).length) {

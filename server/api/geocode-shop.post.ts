@@ -1,13 +1,10 @@
 /**
- * Geocode one dive shop by ID using OpenStreetMap Nominatim (free, no API key).
- * Updates diveshops.latitude and diveshops.longitude for accurate "nearby" distances.
- * Requires SUPABASE_SERVICE_ROLE_KEY in env (RLS blocks anon updates).
- * Nominatim usage: 1 request per second; this endpoint does one shop per call.
+ * Geocode one dive shop by ID using Google Geocoding (when configured).
+ * Updates diveshops.latitude and diveshops.longitude.
+ * Requires SUPABASE_SERVICE_ROLE_KEY and NUXT_GOOGLE_GEOCODING_API_KEY (or GOOGLE_GEOCODING_API_KEY).
  */
 import { createClient } from '@supabase/supabase-js'
-
-const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
-const USER_AGENT = 'GlaucusDive/1.0 (https://glaucusdive.com; contact for bulk geocoding)'
+import { geocodeAndSaveShopCoords, resolveGoogleGeocodingApiKey } from '../utils/geocodeShopCoords'
 
 export default defineEventHandler(async (event) => {
   if (event.method !== 'POST') return
@@ -25,6 +22,14 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  const apiKey = resolveGoogleGeocodingApiKey()
+  if (!apiKey) {
+    throw createError({
+      statusCode: 503,
+      statusMessage: 'Geocoding not configured: set NUXT_GOOGLE_GEOCODING_API_KEY in .env'
+    })
+  }
+
   const body = await readBody(event).catch(() => ({}))
   const shopId = body?.shopId && String(body.shopId).trim()
   if (!shopId) {
@@ -35,87 +40,40 @@ export default defineEventHandler(async (event) => {
   }
 
   const client = createClient(supabaseUrl, serviceRoleKey)
+  const result = await geocodeAndSaveShopCoords(client, shopId, apiKey)
 
-  const { data: shop, error: fetchError } = await client
-    .from('diveshops')
-    .select('id, street_address, city, state, country:countries(name)')
-    .eq('id', shopId)
-    .single()
-
-  if (fetchError || !shop) {
-    throw createError({
-      statusCode: 404,
-      statusMessage: 'Dive shop not found'
-    })
+  if (result.reason === 'shop not found') {
+    throw createError({ statusCode: 404, statusMessage: 'Dive shop not found' })
+  }
+  if (result.reason === 'no address') {
+    throw createError({ statusCode: 400, statusMessage: 'Shop has no address to geocode' })
+  }
+  if (result.reason?.startsWith('failed to save coordinates')) {
+    throw createError({ statusCode: 500, statusMessage: 'Failed to save coordinates' })
+  }
+  if (result.reason?.startsWith('request failed:')) {
+    throw createError({ statusCode: 502, statusMessage: 'Geocoding service error' })
   }
 
-  const countryName = typeof shop.country === 'object' && shop.country !== null && 'name' in shop.country
-    ? (shop.country as { name: string }).name
-    : null
-  const parts = [
-    shop.street_address,
-    shop.city,
-    shop.state,
-    countryName
-  ].filter(Boolean)
-  const query = parts.join(', ')
-  if (!query) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Shop has no address to geocode'
-    })
-  }
-
-  const params = new URLSearchParams({
-    q: query,
-    format: 'json',
-    limit: '1'
-  })
-  const res = await fetch(`${NOMINATIM_URL}?${params}`, {
-    headers: { 'User-Agent': USER_AGENT }
-  })
-  if (!res.ok) {
-    throw createError({
-      statusCode: 502,
-      statusMessage: 'Geocoding service error'
-    })
-  }
-
-  const results = await res.json()
-  const first = Array.isArray(results) && results[0]
-  if (!first || first.lat == null || first.lon == null) {
+  if (!result.ok) {
     return {
       ok: false,
       shopId,
-      message: 'No coordinates found for this address',
-      query
+      message: result.reason === 'address mismatch'
+        ? 'Geocode result did not match shop city/state/country'
+        : 'No coordinates found for this address',
+      query: result.query,
+      match: result.match
     }
-  }
-
-  const lat = parseFloat(first.lat)
-  const lon = parseFloat(first.lon)
-  if (Number.isNaN(lat) || Number.isNaN(lon)) {
-    return { ok: false, shopId, message: 'Invalid coordinates returned', query }
-  }
-
-  const { error: updateError } = await client
-    .from('diveshops')
-    .update({ latitude: lat, longitude: lon })
-    .eq('id', shopId)
-
-  if (updateError) {
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'Failed to save coordinates'
-    })
   }
 
   return {
     ok: true,
     shopId,
-    latitude: lat,
-    longitude: lon,
-    display_name: first.display_name,
-    query
+    latitude: result.latitude,
+    longitude: result.longitude,
+    display_name: result.match?.display_name ?? null,
+    query: result.query,
+    level: result.level
   }
 })

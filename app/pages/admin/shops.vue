@@ -370,6 +370,8 @@ const SHOP_DATA_KEYS = [
   'website_url',
   'city',
   'state',
+  'latitude',
+  'longitude',
   'phone',
   'email',
   'business_type_ids',
@@ -378,6 +380,7 @@ const SHOP_DATA_KEYS = [
   'country_name',
   'region_name',
   'is_partner',
+  'is_test',
   'course_ids',
   'rental_equipment_ids',
   'gas_ids',
@@ -389,6 +392,8 @@ const TEXT_GRID_COLS = [
   { prop: 'website_url', name: 'Website', size: 180 },
   { prop: 'city', name: 'City', size: 140 },
   { prop: 'state', name: 'State', size: 140 },
+  { prop: 'latitude', name: 'Latitude', size: 120 },
+  { prop: 'longitude', name: 'Longitude', size: 120 },
   { prop: 'phone', name: 'Phone', size: 150 },
   { prop: 'email', name: 'Email', size: 180 }
 ]
@@ -443,6 +448,8 @@ function makeDraft (shop) {
     website_url: shop?.website_url ?? '',
     city: shop?.city ?? '',
     state: shop?.state ?? '',
+    latitude: shop?.latitude != null && shop?.latitude !== '' ? shop.latitude : '',
+    longitude: shop?.longitude != null && shop?.longitude !== '' ? shop.longitude : '',
     phone: shop?.phone ?? '',
     email: shop?.email ?? '',
     business_type_ids: businessTypeIdsForShop(shop?.type),
@@ -451,6 +458,7 @@ function makeDraft (shop) {
     country_name: shop?.country_name ?? null,
     region_name: shop?.region_name ?? null,
     is_partner: Boolean(shop?.is_partner),
+    is_test: Boolean(shop?.is_test),
     course_ids: Array.isArray(shop?.course_ids) ? [...shop.course_ids] : [],
     rental_equipment_ids: Array.isArray(shop?.rental_equipment_ids) ? [...shop.rental_equipment_ids] : [],
     gas_ids: Array.isArray(shop?.gas_ids) ? [...shop.gas_ids] : [],
@@ -492,7 +500,7 @@ function watchRowDirty (row) {
 function isDraftDifferent (row, original) {
   if (!original) return true
   const fieldsToCheck = [
-    'business_name', 'street_address', 'website_url', 'city', 'state', 'phone',
+    'business_name', 'street_address', 'website_url', 'city', 'state', 'latitude', 'longitude', 'phone',
     'email', 'country_id', 'region_id'
   ]
   for (const f of fieldsToCheck) {
@@ -501,6 +509,7 @@ function isDraftDifferent (row, original) {
     if (String(a) !== String(b)) return true
   }
   if (Boolean(row.is_partner) !== Boolean(original.is_partner)) return true
+  if (Boolean(row.is_test) !== Boolean(original.is_test)) return true
   const idArrays = ['business_type_ids', 'course_ids', 'rental_equipment_ids', 'gas_ids', 'dive_site_ids']
   for (const f of idArrays) {
     const a = [...(row[f] || [])].sort()
@@ -585,6 +594,12 @@ function authHeaders () {
   return { Authorization: `Bearer ${accessToken.value}` }
 }
 
+function coordToPayload (v) {
+  if (v == null || v === '') return null
+  const n = typeof v === 'number' ? v : Number(String(v).trim())
+  return Number.isFinite(n) ? n : null
+}
+
 function rowToPayload (row) {
   return {
     business_name: String(row.business_name || '').trim(),
@@ -592,12 +607,15 @@ function rowToPayload (row) {
     website_url: emptyToNull(row.website_url),
     city: emptyToNull(row.city),
     state: emptyToNull(row.state),
+    latitude: coordToPayload(row.latitude),
+    longitude: coordToPayload(row.longitude),
     phone: emptyToNull(row.phone),
     email: emptyToNull(row.email),
     type: serializeTypeFromIds(row.business_type_ids),
     country_id: row.country_id || null,
     region_id: row.region_id || null,
     is_partner: Boolean(row.is_partner),
+    is_test: Boolean(row.is_test),
     course_ids: row.course_ids || [],
     rental_equipment_ids: row.rental_equipment_ids || [],
     gas_ids: row.gas_ids || [],
@@ -814,21 +832,50 @@ async function copyPortalLink (row) {
     const copied = await copyTextToClipboard(url)
     if (copied) {
       toast.add({
-        title: 'Link copied',
+        title: 'Partner form link copied',
         color: 'neutral',
         duration: 2500
       })
       return
     }
     toast.add({
-      title: 'Click the link icon again to copy',
+      title: 'Click the form icon again to copy',
       description: 'Your browser blocked clipboard access after loading the link.',
       color: 'neutral',
       duration: 5000
     })
   } catch (e) {
-    window.alert(extractErrorMessage(e) || 'Could not copy partner link')
+    window.alert(extractErrorMessage(e) || 'Could not copy partner form link')
   }
+}
+
+function openShopProfile (row) {
+  const shopId = resolveSavedShopId(row)
+  if (!shopId) return
+  const slug =
+    (typeof row.original?.slug === 'string' && row.original.slug.trim()) ||
+    (typeof row.slug === 'string' && row.slug.trim()) ||
+    shopId
+  const path = `/shops/${encodeURIComponent(slug)}`
+  window.open(path, '_blank', 'noopener,noreferrer')
+}
+
+function parseRowCoord (value) {
+  if (value == null || value === '') return null
+  const n = typeof value === 'number' ? value : Number(String(value).trim())
+  return Number.isFinite(n) ? n : null
+}
+
+function openShopMap (row) {
+  const lat =
+    parseRowCoord(row.latitude) ??
+    parseRowCoord(row.original?.latitude)
+  const lon =
+    parseRowCoord(row.longitude) ??
+    parseRowCoord(row.original?.longitude)
+  if (lat == null || lon == null) return
+  const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lon}`)}`
+  window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 /** Passed into VGridVueTemplate (RevoGrid mounts cells outside parent provide scope). */
@@ -844,7 +891,9 @@ const gridContext = {
   onLookupCreated,
   optionsFor,
   copyPortalLink,
-  prefetchPortalLink
+  prefetchPortalLink,
+  openShopProfile,
+  openShopMap
 }
 
 function withAdminHeader (col) {
@@ -878,6 +927,14 @@ const gridColumns = [
     prop: 'is_partner',
     name: 'Partner',
     size: 100,
+    readonly: true,
+    resize: true,
+    cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })
+  }),
+  withAdminHeader({
+    prop: 'is_test',
+    name: 'Test',
+    size: 80,
     readonly: true,
     resize: true,
     cellTemplate: VGridVueTemplate(AdminShopGridCell, { gridContext })

@@ -30,4 +30,26 @@ describe('tryApplySearchFilterRelax', () => {
       tryApplySearchFilterRelax('Any trip type', { diveTypes: ['Dive Resort'] })
     ).toBeNull()
   })
+
+  it('sets skipPlaceRadius for expand-beyond-50-miles chip', () => {
+    const last = { place: 'Los Angeles', country: 'United States' }
+    expect(tryApplySearchFilterRelax('place_radius:expand', last)).toEqual({
+      place: 'Los Angeles',
+      country: 'United States',
+      skipPlaceRadius: true
+    })
+  })
+
+  it('sets skipPlaceRadius for natural-language expand', () => {
+    const last = { place: 'Los Angeles' }
+    expect(tryApplySearchFilterRelax('Expand beyond 50 miles', last)).toEqual({
+      place: 'Los Angeles',
+      skipPlaceRadius: true
+    })
+  })
+
+  it('returns null when radius already expanded', () => {
+    const last = { place: 'Los Angeles', skipPlaceRadius: true }
+    expect(tryApplySearchFilterRelax('place_radius:expand', last)).toBeNull()
+  })
 })

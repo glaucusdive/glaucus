@@ -20,18 +20,38 @@
         v-else
         :class="[ADMIN_GRID_READ_DATA, 'min-w-0 flex-1 truncate text-sm font-normal text-zinc-900 dark:text-white']"
       >{{ businessName || '—' }}</span>
-      <button
-        v-if="model.id"
-        type="button"
-        class="shrink-0 rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-        aria-label="Copy partner link"
-        title="Copy partner link"
-        @pointerenter="onPrefetchPortalLink"
-        @focus="onPrefetchPortalLink"
-        @click.stop="onCopyPortalLink"
-      >
-        <Link class="h-4 w-4" aria-hidden="true" />
-      </button>
+      <div v-if="savedShopId" class="flex shrink-0 items-center gap-0.5">
+        <button
+          type="button"
+          class="shrink-0 rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+          aria-label="Copy partner form link"
+          title="Copy partner form link"
+          @pointerenter="onPrefetchPortalLink"
+          @focus="onPrefetchPortalLink"
+          @click.stop="onCopyPortalLink"
+        >
+          <ClipboardList class="h-4 w-4" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          class="shrink-0 rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+          aria-label="Open shop profile"
+          title="Open shop profile"
+          @click.stop="onOpenShopProfile"
+        >
+          <Link class="h-4 w-4" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          class="shrink-0 rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+          :disabled="!hasMapCoords"
+          :aria-label="hasMapCoords ? 'Open in Google Maps' : 'No map coordinates'"
+          :title="hasMapCoords ? 'Open in Google Maps' : 'No latitude/longitude'"
+          @click.stop="onOpenShopMap"
+        >
+          <MapPin class="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
     </div>
     <span v-if="model.saveError" class="block truncate text-xs leading-tight text-red-600 dark:text-red-400">{{ model.saveError }}</span>
   </div>
@@ -117,7 +137,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Trash2, Link, Pencil, Copy } from 'lucide-vue-next'
+import { Trash2, Link, Pencil, Copy, ClipboardList, MapPin } from 'lucide-vue-next'
 import type { ColumnDataSchemaModel } from '@revolist/vue3-datagrid'
 import SearchMultiSelect from '~/components/ui/SearchMultiSelect.vue'
 import type { AdminShopGridContext, ShopGridRow } from './adminShopGridContext'
@@ -135,7 +155,7 @@ const SELECT_PROPS = new Set([
   'dive_site_ids'
 ])
 
-const READONLY_TEXT_PROPS = new Set(['created_at_display', 'updated_at_display', 'is_partner'])
+const READONLY_TEXT_PROPS = new Set(['created_at_display', 'updated_at_display', 'is_partner', 'is_test'])
 
 const props = defineProps<
   ColumnDataSchemaModel<ShopGridRow> & { gridContext: AdminShopGridContext }
@@ -148,6 +168,19 @@ const model = computed(() => props.model as ShopGridRow)
 
 /** RevoGrid row models may not expose `id` on every cell; fall back to original/uid. */
 const savedShopId = computed(() => resolveSavedShopId(model.value))
+
+function parseCoord (value: unknown): number | null {
+  if (value == null || value === '') return null
+  const n = typeof value === 'number' ? value : Number(String(value).trim())
+  return Number.isFinite(n) ? n : null
+}
+
+const hasMapCoords = computed(() => {
+  const row = model.value
+  const lat = parseCoord(row.latitude) ?? parseCoord((row.original as { latitude?: unknown } | null)?.latitude)
+  const lon = parseCoord(row.longitude) ?? parseCoord((row.original as { longitude?: unknown } | null)?.longitude)
+  return lat != null && lon != null
+})
 
 const kind = computed(() => {
   const p = prop.value
@@ -179,9 +212,13 @@ const textField = computed({
 
 const displayRead = computed(() => {
   const v = model.value[prop.value]
-  if (prop.value === 'is_partner') return v ? 'Yes' : ''
+  if (prop.value === 'is_partner' || prop.value === 'is_test') return v ? 'Yes' : ''
   if (v == null || v === '') return ''
   if (prop.value === 'street_address') return String(v).replace(/\s+/g, ' ').trim()
+  if (prop.value === 'latitude' || prop.value === 'longitude') {
+    const n = typeof v === 'number' ? v : Number(String(v).trim())
+    return Number.isFinite(n) ? String(n) : String(v)
+  }
   return String(v)
 })
 
@@ -261,5 +298,13 @@ function onPrefetchPortalLink () {
 
 function onCopyPortalLink () {
   void ctx.value.copyPortalLink(model.value)
+}
+
+function onOpenShopProfile () {
+  ctx.value.openShopProfile(model.value)
+}
+
+function onOpenShopMap () {
+  ctx.value.openShopMap(model.value)
 }
 </script>

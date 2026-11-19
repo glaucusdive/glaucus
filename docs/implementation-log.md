@@ -1,5 +1,39 @@
 # Implementation Log
 
+## 2026-11-18 - Hide test shops and DivePros (`is_test`)
+
+- Added `diveshops.is_test` and `divemaster_profiles.is_test` (migration `20261118160000_is_test_shops_and_divemasters.sql`). Seeds Dive Porter / Dive Shash shop IDs and DivePros `madebyporter`, `shashwat`, `sashdivemastertest`, `shashtest2`.
+- Public chat search, shop directory, DivePros directory hide `is_test` unless the request Bearer user is admin; sitemaps always exclude. Direct profile URLs still open with `noindex`.
+- Admin: Test checkbox on shop form + DivePro edit; Test column/badge on admin lists.
+- **Migration applied** on Glaucus Supabase (`hyldglninkgngaweejmw`) 2026-11-18 via `apply_migration` `is_test_shops_and_divemasters`.
+- **Verification:** `npx vitest run tests/shared/testVisibilityFlags.test.ts tests/server/sitemapSources.test.ts tests/shared/adminNewBusinessFormShape.test.ts tests/shared/placeRadiusTokens.test.ts`.
+- Version: **0.97.3**.
+
+## 2026-11-18 - Expand chip survives Load next
+
+- Pagination replies (`finalizeSearchPaginationApiResponse`) keep **Expand beyond 50 miles** next to Load next (and alone when the 50-mile page is done). Typed expand still works via filter-relax. Shared helper: `placeRadiusSearchChips.ts` (also used by `formatEntitySearchResponse` / trip-type pipeline).
+- **Verification:** `npx vitest run tests/server/placeRadiusSearchChips.test.ts tests/server/searchFilterRelaxFromFollowUp.test.ts tests/shared/placeRadiusTokens.test.ts`.
+- Version: **0.97.2**.
+
+## 2026-11-18 - Place search by geocoded lat/long (not city-name gate)
+
+- City/local place searches geocode the place via Google at query time (`geocodePlaceQuery`), fetch shops in a lat/long bounding box, keep within 50 miles (`filterShopsWithinRadiusKm`), rank by distance (`rankPlaceShopsByDistance`). Nearby towns (e.g. Long Beach for LA) no longer require matching city text. Expand chip widens to **150 miles** (`skipPlaceRadius` → `PLACE_SEARCH_EXPAND_RADIUS_KM`). Bare US-state browse still uses text place matching. No cities-table / city-centroid backfill.
+- **Verification:** `npx vitest run tests/server/placeProximityRank.test.ts tests/server/geocodePlaceQuery.test.ts tests/server/widePlaceShopSearch.test.ts tests/server/placeCityState.test.ts tests/server/searchFilterRelaxFromFollowUp.test.ts tests/shared/placeRadiusTokens.test.ts`.
+- Version: **0.97.1**.
+
+## 2026-11-18 - Place search 50-mile radius (initial)
+
+- First pass still gated candidates on city-name / wide place text before the radius filter; expand only removed the radius among those text hits (so LA expand still looked like LA-only). Superseded by the lat/long candidate path above.
+- Version at that pass: **0.97.0**.
+
+## 2026-11-18 - Shop Google geocode (backfill + create/update)
+
+- **Schema:** Live `diveshops` and `countries` already have `latitude`/`longitude`. No cities table. Coverage before this work: 232/752 shops geocoded; 520 null; 2 countries missing centroids (Curaçao, U.S. Minor Outlying Islands).
+- **Code:** Shared Google geocode + match rules in [`shared/geocodeAddress.ts`](../shared/geocodeAddress.ts). Server helper [`server/utils/geocodeShopCoords.ts`](../server/utils/geocodeShopCoords.ts). Admin create/patch and portal submission apply call geocode when address fields are present (save succeeds if geocode fails). [`server/api/geocode-shop.post.ts`](../server/api/geocode-shop.post.ts) uses Google when `NUXT_GOOGLE_GEOCODING_API_KEY` / `GOOGLE_GEOCODING_API_KEY` is set (server-only via `runtimeConfig.googleGeocodingApiKey`).
+- **Backfill:** [`scripts/backfill-shop-geocodes.mjs`](../scripts/backfill-shop-geocodes.mjs) adds `--provider=google` and city-level retry. Runbook: [`docs/geo-backfill-steps.md`](geo-backfill-steps.md). Country centroid dry-run script: [`scripts/fill-missing-country-geocodes.mjs`](../scripts/fill-missing-country-geocodes.mjs).
+- **Verification:** `npx vitest run tests/shared/geocodeAddress.test.ts` (11 passed). Google dry-run on 520 missing shops → 509 would-apply; `--from-report` applied **509** (2026-11-18). Post-apply missing: **11**. Country centroids applied for Curaçao + U.S. Minor Outlying Islands. Admin shops grid shows Latitude / Longitude after State (API select + writable on save).
+- Version: **0.96.0**.
+
 ## 2026-11-09 - Admin visitors 504 (PostHog timeout)
 
 - **Cause:** Cold `/api/admin/dashboard/visitors` awaited multiple PostHog queries with `force_cache` then unbounded `blocking`. On Netlify that exceeded the gateway → browser **504**. In-memory SWR does not survive serverless cold instances. Client catch also labeled timeouts as “PostHog not configured.”

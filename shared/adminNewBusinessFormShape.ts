@@ -15,6 +15,7 @@ export interface AdminNewBusinessFormState {
   country_id: string | null
   region_id: string | null
   is_partner: boolean
+  is_test: boolean
   course_ids: string[]
   rental_equipment_ids: string[]
   gas_ids: string[]
@@ -35,6 +36,7 @@ export function emptyAdminNewBusinessForm (): AdminNewBusinessFormState {
     country_id: null,
     region_id: null,
     is_partner: false,
+    is_test: false,
     course_ids: [],
     rental_equipment_ids: [],
     gas_ids: [],
@@ -62,6 +64,7 @@ export function adminShopRowToNewBusinessForm (
     country_id: row.country_id ?? null,
     region_id: row.region_id ?? null,
     is_partner: Boolean(row.is_partner),
+    is_test: Boolean(row.is_test),
     course_ids: [...(row.course_ids || [])],
     rental_equipment_ids: [...(row.rental_equipment_ids || [])],
     gas_ids: [...(row.gas_ids || [])],
@@ -82,6 +85,7 @@ export interface AdminShopWriteBody {
   country_id: string | null
   region_id: string | null
   is_partner: boolean
+  is_test: boolean
   course_ids: string[]
   rental_equipment_ids: string[]
   gas_ids: string[]
@@ -111,6 +115,7 @@ export function buildAdminShopWriteBody (
     country_id: form.country_id || null,
     region_id: form.region_id || null,
     is_partner: Boolean(form.is_partner),
+    is_test: Boolean(form.is_test),
     course_ids: form.course_ids || [],
     rental_equipment_ids: form.rental_equipment_ids || [],
     gas_ids: form.gas_ids || [],
