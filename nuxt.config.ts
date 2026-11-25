@@ -42,11 +42,13 @@ export default defineNuxtConfig({
     sources: [
       ['/api/__sitemap__/blog', { headers: { 'x-sitemap-key': process.env.NUXT_SITEMAP_SOURCE_KEY || '' } }],
       ['/api/__sitemap__/shops', { headers: { 'x-sitemap-key': process.env.NUXT_SITEMAP_SOURCE_KEY || '' } }],
-      ['/api/__sitemap__/divemasters', { headers: { 'x-sitemap-key': process.env.NUXT_SITEMAP_SOURCE_KEY || '' } }]
+      ['/api/__sitemap__/divemasters', { headers: { 'x-sitemap-key': process.env.NUXT_SITEMAP_SOURCE_KEY || '' } }],
+      ['/api/__sitemap__/dictionary', { headers: { 'x-sitemap-key': process.env.NUXT_SITEMAP_SOURCE_KEY || '' } }]
     ],
     urls: [
       { loc: '/' },
       { loc: '/blog' },
+      { loc: '/dictionary' },
       { loc: '/for-businesses' },
       { loc: '/for-dive-pros' },
       { loc: '/privacy' },
@@ -91,6 +93,11 @@ export default defineNuxtConfig({
     shopInquiryNotifyEmail: process.env.NUXT_SHOP_INQUIRY_NOTIFY_EMAIL || '',
     /** Required for geocode-shop API to update diveshops (bypasses RLS). Get from Supabase Dashboard > Project Settings > API. */
     supabaseServiceRoleKey: '',
+    /**
+     * Google Geocoding API key (server-only). Used by admin shop create/update and /api/geocode-shop.
+     * Set NUXT_GOOGLE_GEOCODING_API_KEY or GOOGLE_GEOCODING_API_KEY at runtime. Never put in public.
+     */
+    googleGeocodingApiKey: '',
     /** Secret for /api/__sitemap__/* . Set NUXT_SITEMAP_SOURCE_KEY at build and runtime so /sitemap.xml can call the sources. */
     sitemapSourceKey: '',
     /** Linear personal API key (Settings → API). Used by /api/feedback to create issues. */

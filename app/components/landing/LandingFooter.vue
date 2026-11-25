@@ -2,8 +2,8 @@
   <footer class="fixed top-0 w-full px-4 pt-20 pb-10 sm:px-8 lg:px-20 lg:pt-40 lg:pb-20 h-dvh z-0">
     <div class="grid grid-cols-12 gap-4 h-full">
       <div class="col-span-12 md:col-span-6 xl:col-span-4">
-        <div class="flex flex-col gap-8 items-end text-right md:items-start md:text-left">
-          <div class="h-11 w-fit">
+        <div class="flex flex-col gap-4 items-end text-right md:items-start md:text-left">
+          <div class="w-30 *:w-full *:h-auto">
             <LogoText />
           </div>
           <nav class="flex flex-col gap-x-4 gap-y-2 md:flex-row md:flex-wrap">
@@ -12,6 +12,7 @@
             <NuxtLink to="/for-businesses" target="_blank" rel="noopener noreferrer">For Businesses</NuxtLink>
             <NuxtLink to="/#aboutus">About Us</NuxtLink>
             <NuxtLink to="/#logs">Logs</NuxtLink>
+            <NuxtLink to="/dictionary">Dictionary</NuxtLink>
             <NuxtLink to="/privacy">Privacy Policy</NuxtLink>
             <NuxtLink to="/legal">Legal Notice</NuxtLink>
           </nav>

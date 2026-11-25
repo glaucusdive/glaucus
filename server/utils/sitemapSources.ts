@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
-import { isTestShopId } from '~~/shared/testShops'
-import { isTestDivemasterUsername } from '~~/shared/testDivemasters'
+import { isTestShopRow } from '~~/shared/testShops'
+import { isTestDivemasterRow } from '~~/shared/testDivemasters'
 
 export function assertSitemapSourceKey (event: H3Event) {
   const config = useRuntimeConfig()
@@ -18,12 +18,13 @@ export type ShopSitemapRow = {
   id?: string | null
   slug?: string | null
   updated_at?: string | null
+  is_test?: boolean | null
 }
 
 export function shopSitemapEntries (rows: ShopSitemapRow[]) {
   const entries: { loc: string, lastmod?: string }[] = []
   for (const row of rows) {
-    if (!row.slug || isTestShopId(row.id)) continue
+    if (!row.slug || isTestShopRow(row)) continue
     const entry: { loc: string, lastmod?: string } = {
       loc: `/shops/${encodeURIComponent(row.slug)}`
     }
@@ -37,12 +38,13 @@ export type DivemasterSitemapRow = {
   status?: string | null
   updated_at?: string | null
   username?: string | null
+  is_test?: boolean | null
 }
 
 export function divemasterSitemapEntries (rows: DivemasterSitemapRow[]) {
   const entries: { loc: string, lastmod?: string }[] = []
   for (const row of rows) {
-    if (row.status !== 'published' || !row.username || isTestDivemasterUsername(row.username)) continue
+    if (row.status !== 'published' || !row.username || isTestDivemasterRow(row)) continue
     const entry: { loc: string, lastmod?: string } = {
       loc: `/divemaster/${encodeURIComponent(row.username)}`
     }

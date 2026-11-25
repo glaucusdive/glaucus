@@ -1,3 +1,4 @@
+import { isPlaceRadiusExpandMessage } from '../../shared/placeRadiusTokens'
 import type { SearchFilters } from './buildDiveShopQuery'
 
 function cloneFilters (f: SearchFilters): SearchFilters {
@@ -7,6 +8,7 @@ function cloneFilters (f: SearchFilters): SearchFilters {
   if (f.activityTokens?.length) out.activityTokens = [...f.activityTokens]
   if (f.dates) out.dates = { ...f.dates }
   if (f.certificationCourseHint?.trim()) out.certificationCourseHint = f.certificationCourseHint.trim()
+  if (f.skipPlaceRadius) out.skipPlaceRadius = true
   return out
 }
 
@@ -25,6 +27,7 @@ function normalizeForCompare (f: SearchFilters): Record<string, unknown> {
   if (f.activityTokens?.length) o.activityTokens = [...f.activityTokens].sort()
   if (f.dates?.start || f.dates?.end) o.dates = f.dates
   if (f.certificationCourseHint?.trim()) o.certificationCourseHint = f.certificationCourseHint.trim()
+  if (f.skipPlaceRadius) o.skipPlaceRadius = true
   return o
 }
 
@@ -59,6 +62,15 @@ export function tryApplySearchFilterRelax (message: string, last: SearchFilters)
     (/without filtering by activity or dive site type/i.test(m) || /without activity or site-type filters/i.test(m))
   if (dropActivity) {
     delete next.activityTokens
+    changed = true
+  }
+
+  const expandPlaceRadius =
+    !!last.place?.trim() &&
+    !last.skipPlaceRadius &&
+    isPlaceRadiusExpandMessage(m)
+  if (expandPlaceRadius) {
+    next.skipPlaceRadius = true
     changed = true
   }
 

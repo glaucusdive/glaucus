@@ -21,6 +21,7 @@ export function normalizeClientSearchFilters (raw: unknown): SearchFilters | nul
   if (typeof o.certificationCourseHint === 'string' && o.certificationCourseHint.trim()) {
     out.certificationCourseHint = o.certificationCourseHint.trim().slice(0, 120)
   }
+  if (o.skipPlaceRadius === true) out.skipPlaceRadius = true
   if (o.dates != null && typeof o.dates === 'object' && !Array.isArray(o.dates)) {
     const d = o.dates as Record<string, unknown>
     const start = typeof d.start === 'string' ? d.start : undefined

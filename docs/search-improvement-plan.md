@@ -27,6 +27,7 @@ Location searches return the wrong places:
 5. Restrict dive-site-linked shops in place searches to the same country and place. **Implemented** in `server/utils/widePlaceShopSearch.ts` (no dedicated test).
 6. Skip geo carry-forward when the current message names a place. **Implemented** via `userMessageNamesPlace` in `server/utils/searchFilterCarryForward.ts`.
 7. Rank place results: tier, then distance from the anchor, then `google_rating`, then `business_name`. **Implemented** in `server/utils/placeProximityRank.ts`, used by the tail of `server/utils/buildDiveShopQuery.ts`. Tiers: 0 city and state match; 1 state-name token match; 2 city match in another state (dropped when a state is given); 3 other. Shops without coordinates rank last within their tier.
+8. **50-mile hard radius for city/local place search (2026-11-18).** Geocode the place string with Google at query time (`geocodePlaceQuery` — no cities table / city-centroid backfill). Candidate shops come from a lat/long bounding box, then haversine keeps those within 50 miles of the place anchor (`filterShopsWithinRadiusKm`). Rank by distance from that anchor (`rankPlaceShopsByDistance`), not by city-name text. Bare US-state browse skips the radius and still uses text place matching. Expand chip (`place_radius:expand` → `skipPlaceRadius`) widens to **150 miles** of the same geocoded place; the chip stays on **Load next** pages and when the 50-mile set is exhausted (typed expand also works). If Google geocode fails, falls back to directory text match + tier ranking.
 
 ### Expected results by place (geo coverage, 2026-10-29)
 
@@ -45,22 +46,22 @@ Shops without coordinates rank last within their tier and have no distance order
 
 ### Known limitations
 
-- Ranking runs after the DB row limit and rating order, so a city's shops can be cut off before re-ranking.
+- Place radius needs Google geocode success; if geocode fails, behavior falls back to tier ranking only (no hard radius).
+- Bare US state names that are also cities (e.g. “New York”) skip the 50-mile radius by design (state browse).
 - State matching depends on `diveshops.state` storing a name or ISO code; other formats will not match.
-- 520 shops still lack coordinates (see `csvfiles/missing-geo-shops.csv`). The 163 TomTom rows from the dry run are not confirmed as applied; check the database before claiming coverage.
+- A small number of shops still lack coordinates and are dropped from radius-filtered place results.
 
 ## Geo data
 
-- Distance needs `diveshops.latitude` and `diveshops.longitude`.
-- The anchor for a city is the centroid of geocoded shops in that city.
-- Missing coordinates are filled by a one-time backfill, `scripts/backfill-shop-geocodes.mjs`. It defaults to a dry run, accepts only results that match the stored city, state, and country, and writes a report of everything it skipped.
-- Cities with no geocoded shops have no anchor yet. This is a follow-up.
+- Distance needs `diveshops.latitude` and `diveshops.longitude` (shop backfill; no cities table).
+- The place-search anchor is Google Geocoding of the query string at request time (cached in-process). Nearby towns appear when their shop coords fall inside the radius, even if `city` text differs from the query.
+- Missing shop coordinates are filled by `scripts/backfill-shop-geocodes.mjs` (dry-run by default).
 
 ## Decisions
 
 - No schema changes or migrations in this step.
-- No external place API for now. A place index (GeoNames or cached geocoder results) is a candidate for later.
-- Rating stays the tie-breaker, not the primary sort.
+- **Place search geocode:** city/local place queries use Google Geocoding (same server key as shop backfill) to anchor the radius and to fetch shops by lat/long — not by city-name ilike. Cached in-process per place string. Bare country / bare US-state searches do not use the radius.
+- Rating stays the tie-breaker after tier and distance, not the primary sort.
 
 ## Open questions
 
@@ -80,7 +81,7 @@ Shops without coordinates rank last within their tier and have no distance order
 3. Live verification in the app: "dive in Monterey CA", "Fiji", "Cozumel", "Florida Keys". Record results in [search-demo-guide.md](search-demo-guide.md).
 4. Add a handler-level test for the zero-result guard in `runAiSearchPostHandler.ts`.
 5. Reproduce with debug logs (plan step 1) to confirm which branch returns results.
-6. Raise the candidate fetch size for place queries, so re-ranking does not cut off a city's shops.
+6. Raise the candidate fetch size for place queries — **done** (default 500 when `place` is set).
 7. Confirm "ask for more shops" paging works in the geo branch.
 
 ### Future enhancements

@@ -50,10 +50,12 @@ export const GENERIC_PLACE_TOKEN_WORDS = new Set([
 ])
 
 /**
- * Tokens for directory-style place search: full phrase plus significant words (e.g. Raja Ampat → Ampat).
- * Generic words (directional prefixes, continental names, admin suffixes) are always suppressed
- * as standalone tokens so they cannot pollute a worldwide ilike OR query.
- * When every word in the phrase is generic, only the full compound phrase is emitted.
+ * Tokens for directory-style place search.
+ * Multi-word phrases emit only the full phrase (e.g. "Los Angeles", "Raja Ampat") so trailing
+ * words like "Angeles" cannot substring-match unrelated cities (e.g. Florida).
+ * Single-word places still emit that word. All-generic compounds still emit the full phrase only.
+ * Generic standalone words are suppressed when they appear alone in a multi-word mix (legacy path
+ * unused for multi-word now).
  */
 export function placeSearchTokens (placeRaw: string): string[] {
   const full = sanitizePlaceSearchToken(placeRaw)
@@ -67,8 +69,13 @@ export function placeSearchTokens (placeRaw: string): string[] {
     out.push(s)
   }
   // Short codes such as "CA" would substring-match every country; they are handled as state codes instead.
-  if (full.length >= MIN_TOKEN_LEN) add(full)
-  const words = full.split(/\s+/).filter(w => w.length >= MIN_TOKEN_LEN)
+  if (full.length < MIN_TOKEN_LEN) return out
+  add(full)
+  const rawWords = full.split(/\s+/).filter(Boolean)
+  // Multi-word phrases (including "Los Angeles" where "Los" is under min length): full phrase only.
+  // Stops trailing tokens like "Angeles" from substring-matching unrelated cities.
+  if (rawWords.length >= 2) return out
+  const words = rawWords.filter(w => w.length >= MIN_TOKEN_LEN)
   for (const word of words) {
     if (GENERIC_PLACE_TOKEN_WORDS.has(word.toLowerCase())) continue
     add(word)

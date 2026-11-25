@@ -28,7 +28,7 @@
 import DiveShopDetail from '~/components/DiveShopDetail.vue'
 import { shopSeoDescription, shopSeoTitle } from '~/utils/shopSeo'
 import { isDiveshopUuid } from '~/utils/shopLookup'
-import { isTestShopId } from '~~/shared/testShops'
+import { isTestShopRow } from '~~/shared/testShops'
 
 definePageMeta({ layout: 'default' })
 
@@ -60,7 +60,7 @@ useSeoMeta({
   ogTitle: shopTitle,
   ogDescription: shopDescription,
   ogUrl: canonicalUrl,
-  robots: computed(() => isTestShopId(shopData.value?.id) ? 'noindex, nofollow' : 'index, follow')
+  robots: computed(() => isTestShopRow(shopData.value) ? 'noindex, nofollow' : 'index, follow')
 })
 
 useHead(() => ({

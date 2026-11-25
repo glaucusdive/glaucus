@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
 
   let req = client
     .from('divemaster_profiles')
-    .select('user_id, status, headline, submitted_at, published_at, updated_at, profiles!divemaster_profiles_user_id_fkey!inner(email, display_name, username, role)')
+    .select('user_id, status, headline, is_test, submitted_at, published_at, updated_at, profiles!divemaster_profiles_user_id_fkey!inner(email, display_name, username, role)')
     .order('updated_at', { ascending: false })
 
   if (status === 'draft' || status === 'pending_review' || status === 'published') {
@@ -38,6 +38,7 @@ export default defineEventHandler(async (event) => {
       role: p?.role ?? 'standard',
       status: row.status as DivemasterProfileStatus,
       headline: (row.headline as string | null) ?? null,
+      is_test: Boolean(row.is_test),
       submitted_at: (row.submitted_at as string | null) ?? null,
       published_at: (row.published_at as string | null) ?? null,
       updated_at: (row.updated_at as string | null) ?? null

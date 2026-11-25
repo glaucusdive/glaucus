@@ -18,12 +18,15 @@ import {
   buildSearchPaginationSelectableOption,
   SEARCH_PAGINATION_PAGE_SIZE_DEFAULT
 } from '../../shared/searchPaginationChip'
+import { placeRadiusExpandSelectableOption } from '../../shared/placeRadiusTokens'
+import { shouldOfferPlaceRadiusExpand } from './placeRadiusSearchChips'
 import { enrichShopsForSearchCards } from './enrichShopsForSearchCards'
 import { attachSearchMatchGroups } from './searchMatchGroups'
 import { filtersWithActivityMatchContext, formatNoActivityMatchesMessage } from './searchActivityWidenMessage'
 import { normalizeClientSearchFilters } from './normalizeClientSearchFilters'
 import { OPENAI_CHAT_COMPLETIONS_URL, OPENAI_CHAT_MODEL } from './openAiChatModel'
 import { pickPartnerShops } from '../../shared/partnerSearchShops'
+import { stampIncludeTestShops } from './stampIncludeTestShops'
 
 /** Optional post-result chips: narrow directory by business / trip format. */
 export const TRIP_TYPE_OPTIONAL_FILTER_CHIPS: { label: string; value: string }[] = [
@@ -330,6 +333,8 @@ export interface RunTripTypeSearchAfterLlmInput {
   signal?: AbortSignal
   /** Prior turn filters from the client — refinements keep ANDed axes (activity, course hint, etc.). */
   lastSearchFilters?: SearchFilters | null
+  /** When true (admin session), include `is_test` shops in results. */
+  includeTestShops?: boolean
 }
 
 /** Fewer tap targets in AI-first mode; keep pagination chips. */
@@ -370,7 +375,8 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
     interpretTurn,
     aiSearchFirst,
     signal: searchSignal,
-    lastSearchFilters
+    lastSearchFilters,
+    includeTestShops
   } = input
 
   /** Pagination offset applies only to explicit "show more" / next page — not new searches or refinements. */
@@ -406,6 +412,7 @@ export async function runTripTypeSearchAfterLlm (input: RunTripTypeSearchAfterLl
 
   filters = carryForwardUnsetSearchAxes(filters, lastSearchFilters ?? undefined, message, interpretTurn ?? null)
   filters = attachParsedTripDatesToSearchFilters(filters, message)
+  filters = stampIncludeTestShops(filters, !!includeTestShops)
 
   onStatus?.('Applying filters…')
 
@@ -758,6 +765,9 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
   console.log('[AI Search] Final message:', finalMessage)
 
   const trimmedOptions = capSelectableOptionsForAiSearchFirst(aiSearchFirst, selectableOptions)
+  const withPlaceExpand = shouldOfferPlaceRadiusExpand(filters)
+    ? mergeSelectableOptions([placeRadiusExpandSelectableOption()], trimmedOptions)
+    : trimmedOptions
 
   const offerOptionalTripTypeChips =
     responseShops.length > 0 &&
@@ -767,8 +777,8 @@ SUGGESTIONS: ["short phrase 1", "short phrase 2"]`
     interpretTurn?.trip_product_type == null
 
   const selectableOptionsWithTripFilter = offerOptionalTripTypeChips
-    ? mergeSelectableOptions(trimmedOptions, TRIP_TYPE_OPTIONAL_FILTER_CHIPS)
-    : trimmedOptions
+    ? mergeSelectableOptions(withPlaceExpand, TRIP_TYPE_OPTIONAL_FILTER_CHIPS)
+    : withPlaceExpand
 
   const searchMatchBadges =
     responseShops.length > 0 ? buildSearchMatchBadges(filters, facetHintsForBadges) : []

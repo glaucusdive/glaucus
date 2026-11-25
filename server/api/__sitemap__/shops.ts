@@ -1,6 +1,5 @@
 import { getSupabaseServiceRoleClient } from '../../utils/supabaseServiceRole'
 import { assertSitemapSourceKey, shopSitemapEntries, type ShopSitemapRow } from '../../utils/sitemapSources'
-import { TEST_SHOP_IDS } from '~~/shared/testShops'
 
 const SITEMAP_BATCH_SIZE = 1000
 
@@ -14,8 +13,8 @@ export default defineEventHandler(async (event) => {
     while (true) {
       const { data, error } = await client
         .from('diveshops')
-        .select('id, slug, updated_at')
-        .not('id', 'in', `(${TEST_SHOP_IDS.join(',')})`)
+        .select('id, slug, updated_at, is_test')
+        .eq('is_test', false)
         .order('slug', { ascending: true })
         .range(offset, offset + SITEMAP_BATCH_SIZE - 1)
 

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { pickShopCoreFields, syncShopJunctions, type ShopWritePayload } from './adminShopWrite'
 import { createLookupItem, type LookupKind } from './createLookupItem'
+import { tryGeocodeShopAfterAddressWrite } from './geocodeShopCoords'
 import {
   portalPayloadToShopWrite,
   resolveTempIdsInPayload,
@@ -65,4 +66,5 @@ export async function applyShopSubmissionPayload (
   }
 
   await syncShopJunctions(client, shopId, shopWrite)
+  await tryGeocodeShopAfterAddressWrite(client, shopId, core)
 }

@@ -1,5 +1,53 @@
 # Implementation Log
 
+## 2026-11-24 - Dive dictionary (static glossary)
+
+- Public `/dictionary` (A–Z + search card grid) and `/dictionary/[slug]` detail pages on the `blog` layout; dark feature-section shell from landing.
+- Terms live in [`shared/diveDictionary.ts`](../shared/diveDictionary.ts) (~45 curated definitions). Sitemap source `/api/__sitemap__/dictionary`; `/dictionary` added to fixed sitemap urls. Header/footer Dictionary links.
+- **Verification:** `npx vitest run tests/shared/diveDictionary.test.ts`. No Supabase changes.
+- Version: **0.98.0**.
+
+## 2026-11-18 - Hide test shops and DivePros (`is_test`)
+
+- Added `diveshops.is_test` and `divemaster_profiles.is_test` (migration `20261118160000_is_test_shops_and_divemasters.sql`). Seeds Dive Porter / Dive Shash shop IDs and DivePros `madebyporter`, `shashwat`, `sashdivemastertest`, `shashtest2`.
+- Public chat search, shop directory, DivePros directory hide `is_test` unless the request Bearer user is admin; sitemaps always exclude. Direct profile URLs still open with `noindex`.
+- Admin: Test checkbox on shop form + DivePro edit; Test column/badge on admin lists.
+- **Migration applied** on Glaucus Supabase (`hyldglninkgngaweejmw`) 2026-11-18 via `apply_migration` `is_test_shops_and_divemasters`.
+- **Verification:** `npx vitest run tests/shared/testVisibilityFlags.test.ts tests/server/sitemapSources.test.ts tests/shared/adminNewBusinessFormShape.test.ts tests/shared/placeRadiusTokens.test.ts`.
+- Version: **0.97.3**.
+
+## 2026-11-18 - Expand chip survives Load next
+
+- Pagination replies (`finalizeSearchPaginationApiResponse`) keep **Expand beyond 50 miles** next to Load next (and alone when the 50-mile page is done). Typed expand still works via filter-relax. Shared helper: `placeRadiusSearchChips.ts` (also used by `formatEntitySearchResponse` / trip-type pipeline).
+- **Verification:** `npx vitest run tests/server/placeRadiusSearchChips.test.ts tests/server/searchFilterRelaxFromFollowUp.test.ts tests/shared/placeRadiusTokens.test.ts`.
+- Version: **0.97.2**.
+
+## 2026-11-18 - Place search by geocoded lat/long (not city-name gate)
+
+- City/local place searches geocode the place via Google at query time (`geocodePlaceQuery`), fetch shops in a lat/long bounding box, keep within 50 miles (`filterShopsWithinRadiusKm`), rank by distance (`rankPlaceShopsByDistance`). Nearby towns (e.g. Long Beach for LA) no longer require matching city text. Expand chip widens to **150 miles** (`skipPlaceRadius` → `PLACE_SEARCH_EXPAND_RADIUS_KM`). Bare US-state browse still uses text place matching. No cities-table / city-centroid backfill.
+- **Verification:** `npx vitest run tests/server/placeProximityRank.test.ts tests/server/geocodePlaceQuery.test.ts tests/server/widePlaceShopSearch.test.ts tests/server/placeCityState.test.ts tests/server/searchFilterRelaxFromFollowUp.test.ts tests/shared/placeRadiusTokens.test.ts`.
+- Version: **0.97.1**.
+
+## 2026-11-18 - Place search 50-mile radius (initial)
+
+- First pass still gated candidates on city-name / wide place text before the radius filter; expand only removed the radius among those text hits (so LA expand still looked like LA-only). Superseded by the lat/long candidate path above.
+- Version at that pass: **0.97.0**.
+
+## 2026-11-18 - Shop Google geocode (backfill + create/update)
+
+- **Schema:** Live `diveshops` and `countries` already have `latitude`/`longitude`. No cities table. Coverage before this work: 232/752 shops geocoded; 520 null; 2 countries missing centroids (Curaçao, U.S. Minor Outlying Islands).
+- **Code:** Shared Google geocode + match rules in [`shared/geocodeAddress.ts`](../shared/geocodeAddress.ts). Server helper [`server/utils/geocodeShopCoords.ts`](../server/utils/geocodeShopCoords.ts). Admin create/patch and portal submission apply call geocode when address fields are present (save succeeds if geocode fails). [`server/api/geocode-shop.post.ts`](../server/api/geocode-shop.post.ts) uses Google when `NUXT_GOOGLE_GEOCODING_API_KEY` / `GOOGLE_GEOCODING_API_KEY` is set (server-only via `runtimeConfig.googleGeocodingApiKey`).
+- **Backfill:** [`scripts/backfill-shop-geocodes.mjs`](../scripts/backfill-shop-geocodes.mjs) adds `--provider=google` and city-level retry. Runbook: [`docs/geo-backfill-steps.md`](geo-backfill-steps.md). Country centroid dry-run script: [`scripts/fill-missing-country-geocodes.mjs`](../scripts/fill-missing-country-geocodes.mjs).
+- **Verification:** `npx vitest run tests/shared/geocodeAddress.test.ts` (11 passed). Google dry-run on 520 missing shops → 509 would-apply; `--from-report` applied **509** (2026-11-18). Post-apply missing: **11**. Country centroids applied for Curaçao + U.S. Minor Outlying Islands. Admin shops grid shows Latitude / Longitude after State (API select + writable on save).
+- Version: **0.96.0**.
+
+## 2026-11-09 - Admin visitors 504 (PostHog timeout)
+
+- **Cause:** Cold `/api/admin/dashboard/visitors` awaited multiple PostHog queries with `force_cache` then unbounded `blocking`. On Netlify that exceeded the gateway → browser **504**. In-memory SWR does not survive serverless cold instances. Client catch also labeled timeouts as “PostHog not configured.”
+- **Fix:** Bound each PostHog HTTP call and the cold visitor path (~8s). After cache miss use `refresh: async` + status poll (never `blocking`). Endpoint returns 200 with `posthogRefreshing` when counts are still null. Admin dashboard polls visitors ~2s × 5; network errors keep `posthogConfigured: true`.
+- **Verification:** `npx vitest run tests/server/posthogQuery.test.ts`. Post-deploy: Network tab should show visitors **200** (not 504); cards fill after poll or show the amber failure after polls exhaust.
+- Version: **0.95.2**.
+
 ## 2026-11-07 - GA4 landing defer kill switch
 
 - **Cause:** [`analytics-route-guard.client.ts`](../app/plugins/analytics-route-guard.client.ts) called `disableAnalytics()` on marketing `/` (sets `window['ga-disable-…']=true`) while [`gtag-init.client.ts`](../app/plugins/gtag-init.client.ts) deferred only `initialize()`, never `enableAnalytics()`. Hits on bare `/` were dropped after idle/interaction. Separately, prod HTML at check time had `ga4Enabled:false` and empty `ga4Id` — Netlify must set `NUXT_PUBLIC_GA4_ENABLED=true` and `NUXT_PUBLIC_GA4_ID` at **build** time and redeploy.

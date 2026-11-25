@@ -382,7 +382,7 @@ import { useDemoMode } from '~/composables/useDemoMode'
 import { deleteShopReview } from '~/composables/useShopReviews'
 import { formatOperatingHours, demoHours, demoLanguages, demoDescription } from '~/utils/formatHours'
 import { formatShopCityState } from '~~/shared/bookShopPick'
-import { isTestShopId } from '~~/shared/testShops'
+import { isTestShopRow } from '~~/shared/testShops'
 import { buildShopProfileUrl } from '~~/shared/shopProfileUrl'
 import { normalizeShopSocialLinks } from '~~/shared/shopSocialLinks'
 
@@ -478,7 +478,7 @@ const visibleTabs = computed(() => tabs.filter(tab => showNearbyTab || tab.id !=
 const { shopData, nearbyShops, pending, error } = useShopDetail(props.shopLookup)
 const nearbyShopLinks = computed(() =>
   (nearbyShops.value || [])
-    .filter(shop => shop.slug && !isTestShopId(shop.id))
+    .filter(shop => shop.slug && !isTestShopRow(shop))
     .slice(0, 8)
 )
 

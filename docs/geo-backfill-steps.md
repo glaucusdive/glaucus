@@ -1,13 +1,17 @@
 # Geo Backfill Steps
 
-Backfills missing `diveshops.latitude` and `diveshops.longitude` using OpenStreetMap Nominatim (default) or TomTom (`--provider=tomtom`). Only accepted matches are written. Run from the repo root.
+Backfills missing `diveshops.latitude` and `diveshops.longitude` using **Google Geocoding** (preferred), OpenStreetMap Nominatim, or TomTom. Match order: street → city (soft city/state match) → **admin** (Google hit in the same country when city/state disagree) → **country** (centroid from `countries.latitude` / `longitude`). Run from the repo root.
+
+New and edited shops are geocoded automatically on admin create/update (and approved portal submissions) when `NUXT_GOOGLE_GEOCODING_API_KEY` is set. This runbook is for the one-time backfill of existing null rows.
 
 ## Prerequisites
 
 - `.env` in the repo root with `NUXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Do not commit it.
+- For `--provider=google` (recommended): `NUXT_GOOGLE_GEOCODING_API_KEY` or `GOOGLE_GEOCODING_API_KEY` (server-only; never `NUXT_PUBLIC_*`).
 - For `--provider=tomtom`: `NUXT_PUBLIC_TOMTOM_API_KEY` in the same `.env`.
-- Node 22 or later.
+- Node 22 or later (Google provider imports shared TypeScript via `--experimental-strip-types`).
 - Dependencies installed (`npm install`).
+- **Ask before any `--apply` / `--from-report` write against hosted Supabase.**
 
 ## Step 1: Export the list of shops missing coordinates (read-only)
 
@@ -15,20 +19,28 @@ Backfills missing `diveshops.latitude` and `diveshops.longitude` using OpenStree
 node --env-file=.env scripts/list-missing-geocodes.mjs
 ```
 
-Writes `csvfiles/missing-geo-shops.csv`. Expected: 752 rows before the backfill, 520 after the partial apply (see Current database status).
+Writes `csvfiles/missing-geo-shops.csv`.
 
 ## Step 2: Dry run (no database writes)
 
-Nominatim (default): about 14 minutes, one request per second.
+Google (preferred):
 
 ```sh
-node --env-file=.env scripts/backfill-shop-geocodes.mjs
+node --env-file=.env --experimental-strip-types scripts/backfill-shop-geocodes.mjs --provider=google
 ```
 
-TomTom: much faster, with a 100 ms delay between shops.
+Optional: `--limit=N` for a small sample.
+
+Nominatim (default, ~1 req/s):
 
 ```sh
-node --env-file=.env scripts/backfill-shop-geocodes.mjs --provider=tomtom
+node --env-file=.env --experimental-strip-types scripts/backfill-shop-geocodes.mjs
+```
+
+TomTom:
+
+```sh
+node --env-file=.env --experimental-strip-types scripts/backfill-shop-geocodes.mjs --provider=tomtom
 ```
 
 Either provider prints a summary and the path to a JSON report in the temp folder.
@@ -36,7 +48,7 @@ Either provider prints a summary and the path to a JSON report in the temp folde
 ## Step 3: Convert the dry-run report to CSV
 
 ```sh
-R=$(ls -t "$TMPDIR"geocode-backfill-*.json | head -1) && node -e 'const r=require(process.argv[1]);const q=v=>`"${String(v??"").replace(/"/g,"\"\"")}"`;const h=["id","business_name","status","reason","query","latitude","longitude","match_city","match_state","match_country","match_display"];const rows=r.map(x=>[x.id,x.name,x.status,x.reason,x.query,x.latitude,x.longitude,x.match?.city,x.match?.state,x.match?.country_code,x.match?.display_name].map(q).join(","));console.log([h.join(","),...rows].join("\n"))' "$R" > csvfiles/geocode-dry-run.csv && wc -l csvfiles/geocode-dry-run.csv
+R=$(ls -t "$TMPDIR"geocode-backfill-*.json | head -1) && node -e 'const r=require(process.argv[1]);const q=v=>`"${String(v??"").replace(/"/g,"\"\"")}"`;const h=["id","business_name","status","reason","query","latitude","longitude","match_city","match_state","match_country","match_display","level"];const rows=r.map(x=>[x.id,x.name,x.status,x.reason,x.query,x.latitude,x.longitude,x.match?.city,x.match?.state,x.match?.country_code,x.match?.display_name,x.level].map(q).join(","));console.log([h.join(","),...rows].join("\n"))' "$R" > csvfiles/geocode-dry-run.csv && wc -l csvfiles/geocode-dry-run.csv
 ```
 
 ## Step 4: Count results by status
@@ -49,23 +61,21 @@ Statuses:
 
 - `would-apply`: passed the city, state, and country check. Will be written on apply.
 - `skipped`: no result, or the address did not match. The `reason` column says which.
-- `failed`: request error.
+- `failed`: request or write error.
 
 ## Step 5: Review
 
-Open `csvfiles/geocode-dry-run.csv` and check a sample of `would-apply` rows. Compare `query` with `match_display`. Flag rows where the city or state looks wrong.
+Open `csvfiles/geocode-dry-run.csv` and check a sample of `would-apply` rows. Compare `query` with `match_display`. Flag rows where the city or state looks wrong. `level` is `street`, `city`, `admin` (province/island Google hit in the right country), or `country` (DB country centroid — coarsest).
 
-## Step 6: Apply the reviewed dry-run results (only after review)
+## Step 6: Apply the reviewed dry-run results (only after review + approval)
 
-Uses the Step 2 report. No Nominatim calls, so it takes seconds. Only `would-apply` rows are written.
+Uses the Step 2 report. No geocode API calls. Only `would-apply` rows are written, and only where `latitude` is still null.
 
 ```sh
-node --env-file=.env scripts/backfill-shop-geocodes.mjs --from-report="$(ls -t "$TMPDIR"geocode-backfill-*.json | head -1)"
+node --env-file=.env --experimental-strip-types scripts/backfill-shop-geocodes.mjs --from-report="$(ls -t "$TMPDIR"geocode-backfill-*.json | head -1)"
 ```
 
-Writes `latitude` and `longitude` only where they are still null. Re-running is safe.
-
-Alternative: `--apply` re-runs the lookups for all shops, with `--provider=tomtom` if that was the provider used. Use it only if the report is missing.
+Alternative: `--apply` re-runs the lookups. Prefer `--from-report` after review.
 
 ## Step 7: Post-write check
 
@@ -75,40 +85,35 @@ node --env-file=.env scripts/list-missing-geocodes.mjs && wc -l csvfiles/missing
 
 Expected: the row count drops by the number of applied shops.
 
-## Current database status (checked 2026-10-29)
+## Country centroid gaps (optional)
+
+Two countries may lack centroids (used as SQL nearby fallback when a shop has no coords):
+
+```sh
+node --env-file=.env scripts/fill-missing-country-geocodes.mjs
+# after approval:
+node --env-file=.env scripts/fill-missing-country-geocodes.mjs --apply
+```
+
+## Ongoing: new shops
+
+Admin create (`POST /api/admin/shops`), admin patch when address fields change, approved portal submissions, and `POST /api/geocode-shop` use Google via `shared/geocodeAddress.ts` when the server key is set. Shop save succeeds even if geocoding fails; coords stay null.
+
+## Current database status (checked 2026-11-18, after Google apply)
 
 | Check | Count |
 |---|---|
 | Total `diveshops` rows | 752 |
-| `latitude` or `longitude` null | 520 |
-| Both coordinates set | 232 |
+| `latitude` or `longitude` null | 11 |
+| Both coordinates set | 741 |
+| Countries missing centroids | 0 (Curaçao + U.S. Minor Outlying Islands filled 2026-11-18) |
 
-Geocoded shops by country: United States 116, Mexico 45, France 34, Italy 10, Indonesia 6, Australia 5, and 11 other countries with 1 to 2 each.
-
-The 232 count does not show which provider wrote each row. It is not confirmed that the 163 TomTom `would-apply` rows were applied. Check `csvfiles/geocode-dry-run.csv` against the database before claiming coverage. Accuracy of the 232 written rows has not been reviewed.
-
-## TomTom run results
-
-Last dry run (`--provider=tomtom`, 683 shops attempted of 752):
-
-- `would-apply`: 163
-- `skipped`: 520
-- `failed`: 0 recorded as `failed`; 4 of the skips are request errors (HTTP 429 rate limit)
-
-The remaining 520 are skipped for four reasons:
-
-| Reason | Count | Cause | Possible fix |
-|---|---|---|---|
-| Address mismatch | 328 | TomTom's city, state, or country differs from the shop record. Often the correct place at another admin level (e.g., a village inside a regency, or a borough vs. its city). Some are wrong matches in another region. | Accept city differences when the country and state agree and the TomTom score is high. Route the rest to manual review. |
-| No result | 178 | Query combines city, state, and country into one string, which is too noisy. | Retry with a simpler `city, country` query. |
-| No address | 10 | Source row has no address fields. | Fill the address in the source data, then re-run. |
-| Request failed | 4 | HTTP 429 from TomTom. | Retry these with a longer delay than 100 ms. |
-
-These are proposed improvements and are not implemented. Any change needs a new dry run and review before `--from-report` is used.
+Google dry-run then `--from-report` applied **509** of 520 missing rows (street/city/admin/country levels). Remaining 11 are mostly shops with no address (and one address mismatch).
 
 ## Notes
 
+- Google Geocoding requests count against your Cloud billing/quota. Enable the Geocoding API on the key.
 - Nominatim usage policy: keep one request per second and the descriptive User-Agent. Do not parallelize.
-- TomTom requests count against your plan's quota. Check the remaining quota before large runs.
 - City-level matches do not guarantee street-level accuracy. Spot-check a sample on a map.
 - The `csvfiles/*.csv` outputs are for review and can be deleted after the backfill.
+- There is no `cities` table; city fallback writes coordinates onto the shop row.

@@ -11,6 +11,8 @@ export interface ShopWritePayload {
   website_url?: string | null
   city?: string | null
   state?: string | null
+  latitude?: number | string | null
+  longitude?: number | string | null
   phone?: string | null
   email?: string | null
   social_links?: ShopSocialLink[]
@@ -19,6 +21,7 @@ export interface ShopWritePayload {
   region_id?: string | null
   google_rating?: number | null
   is_partner?: boolean
+  is_test?: boolean
   course_ids?: string[]
   rental_equipment_ids?: string[]
   gas_ids?: string[]
@@ -31,6 +34,8 @@ const SHOP_COLUMNS = [
   'website_url',
   'city',
   'state',
+  'latitude',
+  'longitude',
   'phone',
   'email',
   'social_links',
@@ -38,13 +43,20 @@ const SHOP_COLUMNS = [
   'country_id',
   'region_id',
   'google_rating',
-  'is_partner'
+  'is_partner',
+  'is_test'
 ] as const
 
 function normalizeShopTypeField (value: unknown): string | null {
   if (value == null || value === '') return null
   const parsed = parseDiveBusinessTypesFromStored(String(value))
   return serializeDiveBusinessTypes(parsed)
+}
+
+function normalizeCoordField (value: unknown): number | null {
+  if (value == null || value === '') return null
+  const n = typeof value === 'number' ? value : Number(String(value).trim())
+  return Number.isFinite(n) ? n : null
 }
 
 export function pickShopCoreFields (payload: ShopWritePayload): Record<string, unknown> {
@@ -56,8 +68,10 @@ export function pickShopCoreFields (payload: ShopWritePayload): Record<string, u
         out[col] = normalizeShopTypeField(v)
       } else if (col === 'social_links') {
         out[col] = normalizeShopSocialLinks(v)
-      } else if (col === 'is_partner') {
+      } else if (col === 'is_partner' || col === 'is_test') {
         out[col] = Boolean(v)
+      } else if (col === 'latitude' || col === 'longitude') {
+        out[col] = normalizeCoordField(v)
       } else {
         out[col] = v === '' ? null : v
       }
