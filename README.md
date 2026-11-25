@@ -20,6 +20,7 @@ Before proposing or implementing a feature or fix, read the relevant document be
 | Location autocomplete | [Proposed local-first design and Google constraints](docs/location-autocomplete-design.md) |
 | Shop locations | [Multi-location audit](docs/diveshop-multi-location-audit.md) and [fix plan](docs/diveshop-multi-location-fix-plan.md) |
 | Search visibility | [SEO and indexing](docs/seo-indexing-guidelines.md) |
+| Dive dictionary (glossary) | [Dive dictionary](docs/dive-dictionary.md) |
 | Shop sharing | [Profile QR codes](docs/shop-profile-qr-codes.md) |
 | Dated changes and verification evidence | [Implementation log](docs/implementation-log.md) |
 
@@ -182,6 +183,7 @@ When in doubt: if it only fixes or polishes existing behavior → patch; if it a
 
 *(One version per commit, chronological. Feature = minor bump; patch = patch bump. Newest first. Run `node scripts/build-version-history.js` to regenerate.)*
 
+- **0.98.0** — Dive dictionary: `/dictionary` A–Z glossary + term detail pages (2026-11-24).
 - **0.97.3** — Hide `is_test` dive shops and DivePros from public lists/search/sitemaps unless admin is logged in (2026-11-18).
 - **0.97.2** — Expand-beyond-50-miles chip stays available after Load next (and when the 50-mile page ends) (2026-11-18).
 - **0.97.1** — Place search finds shops by lat/long around the Google-geocoded place (nearby towns included; expand = 150 mi) (2026-11-18).

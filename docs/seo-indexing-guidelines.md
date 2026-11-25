@@ -45,7 +45,8 @@ As of 2026-10-19:
 - `/for-businesses` is the public dive shop directory and is indexable. It is in the sitemap. Search URLs with `?q=` are `noindex, follow`. `/for-businesses/list-your-shop` stays `noindex, follow` and out of the sitemap. Bare `/shops` redirects to the directory.
 - The directory lists name, location, and rating. Phone, email, street address, and notes stay on each shop’s own page, in chat, and on search cards.
 - `robots.txt` does not disallow `/shops/` or `/divemaster/`. It still disallows `/api/`.
-- The sitemap lists fixed routes plus blog posts, shop slugs, and published divemaster usernames. Sitemap source routes require the `x-sitemap-key` header.
+- The sitemap lists fixed routes plus blog posts, shop slugs, published divemaster usernames, and dive dictionary terms. Sitemap source routes require the `x-sitemap-key` header.
+- `/dictionary` is the public glossary index (indexable). Search URLs with `?q=` are `noindex, follow`. Each `/dictionary/{slug}` term page is indexable and listed by `/api/__sitemap__/dictionary`. See [dive-dictionary.md](dive-dictionary.md).
 - Each shop page renders a short server-side list of nearby shop links.
 - Shop reviews are loaded client-side by `app/composables/useShopReviews.ts`.
 - Published divemaster pages (`/divemaster/[username]`) are indexable and included in the sitemap. Draft and pending profiles are not.

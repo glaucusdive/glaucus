@@ -9,12 +9,12 @@
   >
 
     <div class="grid grid-cols-12 gap-4 items-center">
-      <div class="col-span-6 lg:col-span-3">
+      <div class="col-span-6 lg:col-span-2">
         <NuxtLink to="/" aria-label="Glaucus home" @click="goHome">
           <Logo />
         </NuxtLink>
       </div>
-      <div class="hidden min-w-0 lg:col-span-6 lg:flex lg:w-full lg:justify-center">
+      <div class="hidden min-w-0 lg:col-span-8 lg:flex lg:w-full lg:justify-center">
         <div class="flex items-center justify-center">
           <div
             class="inline-flex items-center gap-1 rounded-full bg-zinc-800 p-1 text-zinc-100"
@@ -106,7 +106,7 @@
           </div>
         </div>
       </div>
-      <div class="col-span-6 lg:col-span-3">
+      <div class="col-span-6 lg:col-span-2">
         <div class="flex gap-1 sm:gap-2 items-center justify-end">
           <button
             type="button"
@@ -154,7 +154,8 @@ const defaultNavItems = [
   { id: 'for-dive-pros', label: 'For DivePros', to: '/for-dive-pros' },
   { id: 'for-businesses', label: 'For Businesses', to: '/for-businesses' },
   { id: 'aboutus', label: 'About us' },
-  { id: 'logs', label: 'Logs' }
+  { id: 'logs', label: 'Logs' },
+  { id: 'dictionary', label: 'Dictionary', to: '/dictionary' }
 ]
 
 const props = defineProps({
@@ -228,7 +229,11 @@ const activeNavLinkId = computed(() => {
   if (searchOpen.value) {
     return null
   }
-  const routeItem = resolvedNavItems.value.find(item => item.to && route.path === item.to)
+  const routeItem = resolvedNavItems.value.find((item) => {
+    if (!item.to) return false
+    if (route.path === item.to) return true
+    return item.to !== '/' && route.path.startsWith(`${item.to}/`)
+  })
   if (routeItem) {
     return routeItem.id
   }

@@ -1,5 +1,12 @@
 # Implementation Log
 
+## 2026-11-24 - Dive dictionary (static glossary)
+
+- Public `/dictionary` (A–Z + search card grid) and `/dictionary/[slug]` detail pages on the `blog` layout; dark feature-section shell from landing.
+- Terms live in [`shared/diveDictionary.ts`](../shared/diveDictionary.ts) (~45 curated definitions). Sitemap source `/api/__sitemap__/dictionary`; `/dictionary` added to fixed sitemap urls. Header/footer Dictionary links.
+- **Verification:** `npx vitest run tests/shared/diveDictionary.test.ts`. No Supabase changes.
+- Version: **0.98.0**.
+
 ## 2026-11-18 - Hide test shops and DivePros (`is_test`)
 
 - Added `diveshops.is_test` and `divemaster_profiles.is_test` (migration `20261118160000_is_test_shops_and_divemasters.sql`). Seeds Dive Porter / Dive Shash shop IDs and DivePros `madebyporter`, `shashwat`, `sashdivemastertest`, `shashtest2`.

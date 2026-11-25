@@ -5,7 +5,6 @@
     viewBox="0 0 534 126"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
-    style="width: 100%; height: auto; max-width: 80px; display: block"
     aria-hidden="true"
   >
     <path

@@ -42,11 +42,13 @@ export default defineNuxtConfig({
     sources: [
       ['/api/__sitemap__/blog', { headers: { 'x-sitemap-key': process.env.NUXT_SITEMAP_SOURCE_KEY || '' } }],
       ['/api/__sitemap__/shops', { headers: { 'x-sitemap-key': process.env.NUXT_SITEMAP_SOURCE_KEY || '' } }],
-      ['/api/__sitemap__/divemasters', { headers: { 'x-sitemap-key': process.env.NUXT_SITEMAP_SOURCE_KEY || '' } }]
+      ['/api/__sitemap__/divemasters', { headers: { 'x-sitemap-key': process.env.NUXT_SITEMAP_SOURCE_KEY || '' } }],
+      ['/api/__sitemap__/dictionary', { headers: { 'x-sitemap-key': process.env.NUXT_SITEMAP_SOURCE_KEY || '' } }]
     ],
     urls: [
       { loc: '/' },
       { loc: '/blog' },
+      { loc: '/dictionary' },
       { loc: '/for-businesses' },
       { loc: '/for-dive-pros' },
       { loc: '/privacy' },
